@@ -6,6 +6,8 @@
 
         private bool initialized = false;
 
+        public bool enabled;
+
         public void InitializeOnce()
         {
             if (!initialized)

@@ -8,6 +8,7 @@
 
         public string name;
         public string tag;
+        public bool active = true;
 
         public Entity() 
         {
@@ -59,6 +60,15 @@
             controller.entity = this;
 
         }
+
+
+
+        public void SetActive(bool value)
+        {
+            active = value;
+        }
+
+
 
 
     }
