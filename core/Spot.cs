@@ -2,6 +2,9 @@
 
 namespace SpotEngine
 {
+    /// <summary>
+    /// The Engine class, where you can modify attributes of your game
+    /// </summary>
     public class Spot
     {
 
@@ -13,6 +16,10 @@ namespace SpotEngine
             var nativeWindowSettings = new NativeWindowSettings();
 
             game = new Game(gameWindowSettings, nativeWindowSettings);
+
+            game.Title = "Spot Game";
+            game.CenterWindow();
+            
             
         }
 
