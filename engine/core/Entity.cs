@@ -1,4 +1,7 @@
-﻿namespace SpotEngine
+﻿using System;
+using System.Collections.Generic;
+
+namespace SpotEngine
 {
     public class Entity
     {
@@ -12,6 +15,7 @@
 
         public Entity() 
         {
+            // Setting default values
             name = "entity";
             tag = "default";
             transform = new Transform();
@@ -61,15 +65,15 @@
 
         }
 
-
+        public Controller GetController<T>() where T : Controller
+        {
+            return controllers.Find(controller => controller is T) as T;
+        }
 
         public void SetActive(bool value)
         {
             active = value;
         }
-
-
-
 
     }
 }
