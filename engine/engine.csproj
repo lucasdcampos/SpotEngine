@@ -23,13 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="test\assets\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="test\assets\cat.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <Folder Include="test\" />
   </ItemGroup>
 
 </Project>

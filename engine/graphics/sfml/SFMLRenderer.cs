@@ -1,11 +1,9 @@
-﻿using SpotEngine;
-using SFML.Graphics;
+﻿using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
-using SpotEngine.Graphics.SFML;
-using OpenTK.Windowing.Common;
+using SpotEngine.Internal.Input;
 
-namespace SpotEngine.Graphics.SFML
+namespace SpotEngine.Internal.Graphics.SFML
 {
     public class SFMLRenderer : IGraphicsRenderer
     {
@@ -72,6 +70,9 @@ namespace SpotEngine.Graphics.SFML
 
         public void Run()
         {
+            // Creating the InputHandler for SFML
+            SFMLInputHandler input = new SFMLInputHandler(window);
+
             while (window.IsOpen)
             {
                 window.DispatchEvents();
@@ -80,6 +81,7 @@ namespace SpotEngine.Graphics.SFML
                 Spot.deltaTime = deltaTime;
                 window.SetTitle(Spot.Instance.game.title);
                 RenderFrame();
+
             }
         }
 

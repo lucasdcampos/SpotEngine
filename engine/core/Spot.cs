@@ -1,5 +1,5 @@
 ﻿using OpenTK.Windowing.Desktop;
-using SpotEngine.Graphics.SFML;
+using SpotEngine.Internal.Graphics.SFML;
 
 namespace SpotEngine
 {
@@ -33,7 +33,9 @@ namespace SpotEngine
         {
             winWidth = width;
             winHeight = height;
-            
+
+            Input.Init();
+
             switch (renderer)
             {
                 case RenderMode.Default:
@@ -51,10 +53,13 @@ namespace SpotEngine
                     graphicsRenderer = new SFMLRenderer(width, height);
                     break;
             }
+            
 
             graphicsRenderer.Initialize();
 
             game.InitEntities();
+
+            
 
             while (!ExitConditionMet())
             {

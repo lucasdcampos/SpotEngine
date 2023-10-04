@@ -11,4 +11,10 @@
     <ProjectReference Include="..\engine\engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="assets\cat.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

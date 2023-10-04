@@ -1,8 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace SpotEngine
+﻿namespace SpotEngine
 {
+    /// <summary>
+    /// Entity is everything that exists in the game's level
+    /// It can be the player, a coin, or simply the ground
+    /// Every entity has a name, a tag and a transform
+    /// </summary>
     public class Entity
     {
         public Transform transform { get; set; }
@@ -43,6 +45,9 @@ namespace SpotEngine
             }
         }
 
+        /// <summary>
+        /// Will Spawn a new entity in the game's level
+        /// </summary>
         public static Entity SpawnEntity(Entity entity)
         {
             Entity spawnedEntity = new Entity();
@@ -58,6 +63,10 @@ namespace SpotEngine
             return spawnedEntity;
         }
 
+        /// <summary>
+        /// Will add a new controller to the entity
+        /// The controller will be enabled by default
+        /// </summary>
         public void AddController(Controller controller)
         {
             controllers.Add(controller);
@@ -66,6 +75,10 @@ namespace SpotEngine
 
         }
 
+        /// <summary>
+        /// Will try to get the specified controller from the entity.
+        /// If there isn't a controller of that type, will be returned null.
+        /// </summary>
         public Controller GetController<T>() where T : Controller
         {
             return controllers.Find(controller => controller is T) as T;

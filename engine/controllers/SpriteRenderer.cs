@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SpotEngine;
-using SpotEngine.Graphics.SFML;
+﻿using SpotEngine.Internal.Graphics.SFML;
 
 namespace SpotEngine
 {
+    /// <summary>
+    /// SpriteRenderer is used to display a Sprite on the screen.
+    /// </summary>
     public class SpriteRenderer : Controller
     {
         public string sprite = "";
