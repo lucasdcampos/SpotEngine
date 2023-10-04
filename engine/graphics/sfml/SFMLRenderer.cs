@@ -3,6 +3,7 @@ using SFML.Graphics;
 using SFML.System;
 using SFML.Window;
 using SpotEngine.Graphics.SFML;
+using OpenTK.Windowing.Common;
 
 namespace SpotEngine.Graphics.SFML
 {
@@ -11,6 +12,10 @@ namespace SpotEngine.Graphics.SFML
         public static RenderWindow window;
         private List<DrawableSquare> squares = new List<DrawableSquare>();
         int width, height;
+
+        Clock clock = new Clock();
+        float deltaTime = 0.0f;
+
         public SFMLRenderer(int width, int height)
         {
             window = new RenderWindow(new VideoMode((uint)width, (uint)height), Spot.Instance.game.title);
@@ -70,10 +75,14 @@ namespace SpotEngine.Graphics.SFML
             while (window.IsOpen)
             {
                 window.DispatchEvents();
-
+                deltaTime = clock.Restart().AsSeconds();
+                window.Resized += (sender, e) => { ((Window)sender).Size = new Vector2u(e.Width, e.Height); };
+                Spot.deltaTime = deltaTime;
+                window.SetTitle(Spot.Instance.game.title);
                 RenderFrame();
             }
         }
+
 
     }
 }

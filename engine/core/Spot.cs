@@ -15,6 +15,7 @@ namespace SpotEngine
         public static RenderMode renderMode = RenderMode.Default;
 
         public static int unitSize = 50;
+        public static int winWidth, winHeight;
         public static Spot Instance
         {
             get
@@ -30,6 +31,9 @@ namespace SpotEngine
 
         public void Run(RenderMode renderer, int width, int height)
         {
+            winWidth = width;
+            winHeight = height;
+            
             switch (renderer)
             {
                 case RenderMode.Default:
