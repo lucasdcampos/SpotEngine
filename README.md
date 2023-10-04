@@ -1,16 +1,13 @@
 
 # Spot Engine
 
-<div style="text-align: center;">
-  <img src="assets/img/spot/spot-logo-black-background.png" width="480px">
-</div>
-
+  <img src="assets/img/spot/spot-logo.png" width="480px">
 
 **SpotEngine** is a lightweight and flexible game engine designed to empower game developers to create captivating 2D and 3D experiences. With a focus on simplicity and extensibility, SpotEngine provides the foundation for building interactive games, simulations, and interactive applications.
 
-<img src="assets/img/screenshots/spot-engine-print.png" width="100%">
-
 ## Key Features
+<br>
+<img src="assets/img/screenshots/spot-engine-print.png" width="100%">
 
 **Graphics Rendering**: Utilize the power of OpenGL through OpenTK to render stunning visuals for your games.
 
