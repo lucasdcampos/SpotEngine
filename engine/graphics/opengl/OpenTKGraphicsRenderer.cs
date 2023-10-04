@@ -33,7 +33,7 @@ public class OpenTKGraphicsRenderer : GameWindow, IGraphicsRenderer
     int shaderProgram;
     int vbo;
 
-    public void Initialize(int width, int height)
+    public void Initialize()
     {
         
 

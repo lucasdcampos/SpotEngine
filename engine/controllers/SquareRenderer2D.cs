@@ -1,5 +1,4 @@
-﻿using SpotEngine;
-using SpotEngine.Math;
+﻿using SpotEngine.Math;
 using System.Drawing;
 
 namespace SpotEngine
@@ -12,12 +11,12 @@ namespace SpotEngine
 
         }
 
-        public override void Flow(float deltaTime)
+        public override void Flow()
         {
-            entity.transform.pos = new Vec3(entity.transform.pos.x + 10 * deltaTime, 0, 0);
+            entity.transform.pos = new Vec3(entity.transform.pos.x + 10 * Spot.deltaTime, 0, 0);
         }
 
-        public void Render(Graphics g)
+        public void Render(System.Drawing.Graphics g)
         {
             float x = entity.transform.pos.x;
             float y = entity.transform.pos.y;

@@ -1,13 +1,4 @@
-﻿using OpenTK.Graphics.OpenGL;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
-using System.ComponentModel;
-using OpenTK.Mathematics;
-using System.Collections.Generic;
-using System;
-using SpotEngine;
-
-namespace SpotEngine
+﻿namespace SpotEngine
 {
     public class Game
     {
@@ -22,11 +13,11 @@ namespace SpotEngine
             }
         }
 
-        public void UpdateEntities(float deltaTime)
+        public void UpdateEntities()
         {
             foreach (var entity in entities)
             {
-                entity.Flow(deltaTime);
+                entity.Flow();
             }
         }
 
@@ -37,6 +28,8 @@ namespace SpotEngine
                 Console.WriteLine(entity.name);
             }
         }
+
+
 
     }
 

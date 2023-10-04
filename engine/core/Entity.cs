@@ -30,11 +30,11 @@ namespace SpotEngine
             }
         }
 
-        public void Flow(float deltaTime)
+        public void Flow()
         {
             foreach (Controller controller in controllers)
             {
-                controller.Flow(deltaTime);
+                controller.Flow();
 
                 if(controller.entity == null)
                 {
@@ -54,6 +54,7 @@ namespace SpotEngine
 
             Spot.Instance.game.entities.Add(spawnedEntity);
 
+            Echo.Alert($"Trying to add entity {spawnedEntity.name} to the list of entities");
             return spawnedEntity;
         }
 

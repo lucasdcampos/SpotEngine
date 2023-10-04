@@ -18,7 +18,7 @@
         }
 
         public abstract void Init();
-        public abstract void Flow(float deltaTime);
+        public abstract void Flow();
     }
 }
 

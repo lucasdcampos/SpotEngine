@@ -5,13 +5,18 @@ debug specific things
 */
 
 using SpotEngine;
-using SpotEngine.Math;
+int width = 800;
+int height = 600;
 
-Entity mySquare = new Entity();
-mySquare.transform.scale = new Vec3(64, 64, 0);
+Entity player = Entity.SpawnEntity(new Entity());
+player.AddController(new SpriteRenderer());
+SpriteRenderer spriteRenderer = (SpriteRenderer)player.GetController<SpriteRenderer>();
+spriteRenderer.sprite = "test/assets/cat.png";
 
-//mySquare.AddController(new SquareRenderer2D());
-Entity.SpawnEntity(mySquare);
+Entity ground = Entity.SpawnEntity(new Entity());
+ground.transform.pos = new SpotEngine.Math.Vec3(0, -5.5f, 0);
+ground.transform.scale = new SpotEngine.Math.Vec3(100, 1, 0);
+ground.AddController(new SpriteRenderer());
 
-
-Spot.Instance.Run(new SFMLRenderer(1024,768));
+Spot.Instance.game.title = "Meu jogo incrivel feito com Spot Engine";
+Spot.Instance.Run(RenderMode.Default, width, height);

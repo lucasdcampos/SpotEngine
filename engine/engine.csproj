@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="misc\Echo" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="misc\Echo" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="OpenTK" Version="4.8.0" />
     <PackageReference Include="SFML.Net" Version="2.5.1" />
@@ -15,7 +23,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="test\" />
+    <Folder Include="test\assets\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="test\assets\cat.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

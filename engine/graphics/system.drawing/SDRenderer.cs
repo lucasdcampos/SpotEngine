@@ -6,11 +6,13 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
 {
     private readonly List<DrawableSquare> squares = new List<DrawableSquare>();
     private Bitmap backBuffer;
-
+    int width, height;
     public SDGraphicsRenderer(int width, int height)
     {
         this.Text = Spot.Instance.game.title;
         this.Size = new Size(width, height);
+        this.Width = width;
+        this.Height = height;
         this.FormBorderStyle = FormBorderStyle.Sizable;
         this.MaximizeBox = true;
         this.DoubleBuffered = true;
@@ -24,7 +26,7 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
 
     }
 
-    public void Initialize(int width, int height)
+    public void Initialize()
     {
         backBuffer = new Bitmap(width, height);
 
@@ -47,8 +49,6 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
         DateTime currentTime = DateTime.Now;
         TimeSpan timePassed = currentTime - startTime;
         float deltaTime = (float)timePassed.TotalSeconds;
-
-        Spot.Instance.game.UpdateEntities(deltaTime * 10000f);
 
         startTime = currentTime;
 

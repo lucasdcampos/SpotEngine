@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using System.Drawing;
+﻿using OpenTK.Windowing.Desktop;
+using SpotEngine.Graphics.SFML;
 
 namespace SpotEngine
 {
@@ -8,12 +8,13 @@ namespace SpotEngine
     /// </summary>
     public class Spot
     {
-        public IGraphicsRenderer graphicsRenderer;
+        private IGraphicsRenderer graphicsRenderer;
         public Game game = new Game();
-        public bool initialized;
-
+        public static float deltaTime;
         private static Spot instance;
+        public static RenderMode renderMode = RenderMode.Default;
 
+        public static int unitSize = 50;
         public static Spot Instance
         {
             get
@@ -27,29 +28,42 @@ namespace SpotEngine
         }
 
 
-        public void Run(IGraphicsRenderer renderer)
+        public void Run(RenderMode renderer, int width, int height)
         {
-            graphicsRenderer = renderer;
-
-            if (graphicsRenderer == null)
+            switch (renderer)
             {
-                graphicsRenderer = new SDGraphicsRenderer(800, 600);
-                throw new InvalidOperationException("Graphics renderer is not set.");
+                case RenderMode.Default:
+                    graphicsRenderer = new SFMLRenderer(width, height);
+                    break;
+                case RenderMode.OpenGL:
+                    graphicsRenderer = new OpenTKGraphicsRenderer(GameWindowSettings.Default, NativeWindowSettings.Default);
+                    renderMode = RenderMode.OpenGL;
+                    break;
+                case RenderMode.SystemDrawing:
+                    graphicsRenderer = new SDGraphicsRenderer(width, height);
+                    renderMode = RenderMode.SystemDrawing;
+                    break;
+                case RenderMode.SFML:
+                    graphicsRenderer = new SFMLRenderer(width, height);
+                    break;
             }
 
-            graphicsRenderer.Initialize(800, 600);
+            graphicsRenderer.Initialize();
 
             game.InitEntities();
 
-
             while (!ExitConditionMet())
             {
-                graphicsRenderer.RenderFrame();
-
+                CalculateDeltaTime();
             }
 
-
             graphicsRenderer.Cleanup();
+
+        }
+
+        void CalculateDeltaTime()
+        {
+            deltaTime = 0;
         }
 
         private bool ExitConditionMet()

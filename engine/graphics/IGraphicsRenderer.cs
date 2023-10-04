@@ -1,8 +1,7 @@
-﻿using System.Drawing;
-
+﻿using SpotEngine;
 public interface IGraphicsRenderer
 {
-    void Initialize(int width, int height);
+    void Initialize();
     void RenderFrame();
     void Cleanup();
 

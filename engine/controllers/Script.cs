@@ -9,7 +9,7 @@ namespace SpotEngine
             
         }
 
-        public override void Flow(float deltaTime)
+        public override void Flow()
         {
             
         }
