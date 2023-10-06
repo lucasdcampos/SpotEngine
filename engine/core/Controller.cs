@@ -9,10 +9,16 @@
     {
         public Entity entity { get; set; }
 
+        public Transform transform { get; set; }
+
         private bool initialized = false;
 
         public bool enabled;
 
+        public Controller()
+        {
+            transform = new Transform();
+        }
         /// <summary>
         /// It will just initialize the Controller.
         /// </summary>
@@ -20,6 +26,7 @@
         {
             if (!initialized)
             {
+                transform = entity.transform;
                 Init();
                 initialized = true;
             }
@@ -27,7 +34,7 @@
 
         /// <summary>
         /// The Init method is called at the first frame
-        /// of the game
+        /// of the game.
         /// </summary>
         public abstract void Init();
 
@@ -36,6 +43,15 @@
         /// You can use Spot.deltaTime for fixed calls.
         /// </summary>
         public abstract void Flow();
+
+        /// <summary>
+        /// Will debug a message in the Spot Console.
+        /// It's the same as Echo.Message() func.
+        /// </summary>
+        public void echo(string message)
+        {
+            Echo.Message(message);
+        }
     }
 }
 

@@ -1,9 +1,14 @@
 ﻿namespace SpotEngine
 {
+    /// <summary>
+    /// Is used to detect Input.
+    /// It can be a keyboard being pressed,
+    /// a joystick button, or an custom action.
+    /// </summary>
     public static class Input
     {
         public static Dictionary<string, bool> keyStates = new Dictionary<string, bool>();
-
+        public static List<InputAction> actions = new List<InputAction>();
         public static void Init()
         {
             // Alfabet keys
@@ -91,7 +96,6 @@
             keyStates["DownArrow"] = false;
             keyStates["LeftArrow"] = false;
 
-            Echo.Message("Creating keyStates");
         }
 
         public static void UpdateKeyState(string keyCode, bool isPressed)
@@ -112,6 +116,16 @@
             return false;
         }
 
+        public static bool IsActionTriggering(InputAction action)
+        {
+            foreach (string k in action.keys)
+            {
+                if (IsKeyPressed(k))
+                    return true;
+            }
+
+            return false;
+        }
         public static void PrintKeyStates()
         {
             foreach (var kvp in keyStates)

@@ -1,8 +1,10 @@
-﻿using SpotEngine.Math;
-
-
-namespace SpotEngine
+﻿namespace SpotEngine
 {
+    /// <summary>
+    /// A Transform is what holds the entity
+    /// position, rotation and scale. Every entity
+    /// has a transform.
+    /// </summary>
     public class Transform
     {
         public Vec3 pos { get; set; }

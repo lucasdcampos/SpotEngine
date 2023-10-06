@@ -1,22 +1,22 @@
 ﻿using SpotEngine;
 using System.Drawing;
 using System.Windows.Forms;
-
-public class SDGraphicsRenderer : Form, IGraphicsRenderer
+using SpotEngine.Internal.Graphic;
+internal class SDGraphicsRenderer : Form, IGraphicsRenderer
 {
     private readonly List<DrawableSquare> squares = new List<DrawableSquare>();
     private Bitmap backBuffer;
     int width, height;
     public SDGraphicsRenderer(int width, int height)
     {
-        this.Text = Spot.Instance.game.title;
+        this.Text = Game.title;
         this.Size = new Size(width, height);
         this.Width = width;
         this.Height = height;
         this.FormBorderStyle = FormBorderStyle.Sizable;
         this.MaximizeBox = true;
         this.DoubleBuffered = true;
-        this.BackColor = Color.Black;
+        this.BackColor = System.Drawing.Color.Black;
         this.FormClosed += (sender, e) => Application.Exit();
         this.Paint += (sender, e) =>
         {
@@ -54,7 +54,7 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
 
         using (Graphics backBufferGraphics = Graphics.FromImage(backBuffer))
         {
-            backBufferGraphics.Clear(Color.Black);
+            backBufferGraphics.Clear(System.Drawing.Color.Black);
 
             foreach (var square in squares)
             {
@@ -64,7 +64,7 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
                 }
             }
 
-            RenderEntities(backBufferGraphics, Spot.Instance.game.entities);
+            RenderEntities(backBufferGraphics, Game.entities);
         }
 
         using (Graphics g = this.CreateGraphics())
@@ -79,7 +79,7 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
 
     }
 
-    public void DrawSquare(float x, float y, float size, Color color)
+    public void DrawSquare(float x, float y, float size, System.Drawing.Color color)
     {
         float centerX = this.ClientSize.Width / 2.0f;
         float centerY = this.ClientSize.Height / 2.0f;
@@ -100,7 +100,7 @@ public class SDGraphicsRenderer : Form, IGraphicsRenderer
         public float X { get; set; }
         public float Y { get; set; }
         public float Size { get; set; }
-        public Color Color { get; set; }
+        public System.Drawing.Color Color { get; set; }
     }
 
     public void RenderEntities(Graphics g, List<Entity> entities)

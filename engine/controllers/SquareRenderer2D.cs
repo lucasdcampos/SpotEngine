@@ -1,11 +1,10 @@
-﻿using SpotEngine.Math;
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace SpotEngine
 {
     public class SquareRenderer2D : Controller
     {
-        public Color color = Color.Red;
+        public System.Drawing.Color color = System.Drawing.Color.Red;
         public override void Init()
         {
 
@@ -13,7 +12,7 @@ namespace SpotEngine
 
         public override void Flow()
         {
-            entity.transform.pos = new Vec3(entity.transform.pos.x + 10 * Spot.deltaTime, 0, 0);
+            entity.transform.pos = new Vec3(entity.transform.pos.x + 10 * Time.deltaTime(), 0, 0);
         }
 
         public void Render(System.Drawing.Graphics g)

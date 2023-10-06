@@ -57,9 +57,8 @@
             spawnedEntity.transform = entity.transform;
             spawnedEntity.controllers = entity.controllers;
 
-            Spot.Instance.game.entities.Add(spawnedEntity);
-
-            Echo.Alert($"Trying to add entity {spawnedEntity.name} to the list of entities");
+            Game.entities.Add(spawnedEntity);
+            spawnedEntity.Init();
             return spawnedEntity;
         }
 
@@ -67,11 +66,13 @@
         /// Will add a new controller to the entity
         /// The controller will be enabled by default
         /// </summary>
-        public void AddController(Controller controller)
+        public Controller AddController(Controller controller)
         {
             controllers.Add(controller);
 
             controller.entity = this;
+
+            return controller;
 
         }
 

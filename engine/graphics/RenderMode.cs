@@ -1,6 +1,9 @@
-﻿namespace SpotEngine;
-
-public enum RenderMode
+﻿namespace SpotEngine
 {
-    Default, OpenGL, SystemDrawing, SFML
+    public enum RenderMode
+    {
+        Default, OpenGL, SystemDrawing, SFML
+    }
 }
+
+

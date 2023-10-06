@@ -1,8 +1,10 @@
-﻿using SpotEngine;
-public interface IGraphicsRenderer
+﻿namespace SpotEngine.Internal.Graphic
 {
-    void Initialize();
-    void RenderFrame();
-    void Cleanup();
+    internal interface IGraphicsRenderer
+    {
+        void Initialize();
+        void RenderFrame();
+        void Cleanup();
 
+    }
 }

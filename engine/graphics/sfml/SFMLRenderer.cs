@@ -3,52 +3,64 @@ using SFML.System;
 using SFML.Window;
 using SpotEngine.Internal.Input;
 
-namespace SpotEngine.Internal.Graphics.SFML
+namespace SpotEngine.Internal.Graphic
 {
-    public class SFMLRenderer : IGraphicsRenderer
+    internal class SFMLRenderer : IGraphicsRenderer
     {
         public static RenderWindow window;
         private List<DrawableSquare> squares = new List<DrawableSquare>();
         int width, height;
+        private View camera = new View();
 
         Clock clock = new Clock();
-        float deltaTime = 0.0f;
+        SFML.Graphics.Color backgroundColor = SFML.Graphics.Color.Black;
 
+        Vector2u initialSize;
         public SFMLRenderer(int width, int height)
         {
-            window = new RenderWindow(new VideoMode((uint)width, (uint)height), Spot.Instance.game.title);
+            window = new RenderWindow(new VideoMode((uint)width, (uint)height), Game.title);
             window.Closed += (sender, e) => window.Close();
             this.width = width;
             this.height = height;
 
+            initialSize = window.Size;
             Initialize();
         }
 
         public void Initialize()
         {
+            
             Run();
         }
 
+        Vec3 camPos;
         public void RenderFrame()
         {
+            float scaleX = (float)SFMLRenderer.window.Size.X / initialSize.X;
+            float scaleY = (float)SFMLRenderer.window.Size.Y / initialSize.Y;
+            Screen.updateUnitSize((int)scaleX, (int)scaleY);
 
-            window.Clear(Color.Black);
-
-            foreach (var square in squares)
+            if(Camera.main != null)
             {
-                var rectangle = new RectangleShape(new Vector2f(square.Size, square.Size))
-                {
-                    Position = new Vector2f(square.X, square.Y),
-                    FillColor = square.Color
-                };
-
-                window.Draw(rectangle);
+                camPos = Camera.main.transform.pos;
+                backgroundColor = new SFML.Graphics.Color((byte)Camera.main.backgroundColor.r, (byte)Camera.main.backgroundColor.g, (byte)Camera.main.backgroundColor.b);
             }
-            Spot.Instance.game.UpdateEntities();
+            else
+            {
+                Echo.Alert("(!) Main Camera is missing!");
+                backgroundColor = SFML.Graphics.Color.Magenta;
+            }
+
+            window.Clear(backgroundColor);
+
+
+            Game.UpdateEntities();
+            SpotEngine.Physics.CheckForCollisions();
 
             window.Display();
 
         }
+
 
         public void Cleanup()
         {
@@ -68,6 +80,7 @@ namespace SpotEngine.Internal.Graphics.SFML
             public Color Color { get; set; }
         }
 
+
         public void Run()
         {
             // Creating the InputHandler for SFML
@@ -75,13 +88,19 @@ namespace SpotEngine.Internal.Graphics.SFML
 
             while (window.IsOpen)
             {
+                Time.UpdateDeltaTime(clock.Restart().AsSeconds()) ;
                 window.DispatchEvents();
-                deltaTime = clock.Restart().AsSeconds();
-                window.Resized += (sender, e) => { ((Window)sender).Size = new Vector2u(e.Width, e.Height); };
-                Spot.deltaTime = deltaTime;
-                window.SetTitle(Spot.Instance.game.title);
+                window.SetTitle(Game.title);
                 RenderFrame();
+                FloatRect viewport = new FloatRect(0, 0, 1, 1);
+                camera.Center = new Vector2f((window.Size.X / 2) + camPos.x * Screen.realUnitSize, (window.Size.Y / 2) + camPos.y * Screen.realUnitSize);
+                camera.Viewport = viewport;
+                window.SetView(camera);
 
+                window.Resized += (sender, e) =>
+                {
+                   
+                };
             }
         }
 

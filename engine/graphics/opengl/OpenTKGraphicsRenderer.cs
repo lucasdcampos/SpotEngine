@@ -6,8 +6,8 @@ using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using System.Drawing;
-
-public class OpenTKGraphicsRenderer : GameWindow, IGraphicsRenderer
+using SpotEngine.Internal.Graphic;
+internal class OpenTKGraphicsRenderer : GameWindow, IGraphicsRenderer
 {
     private GameWindow window;
 

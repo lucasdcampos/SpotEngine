@@ -1,4 +1,4 @@
-﻿using SpotEngine.Internal.Graphics.SFML;
+﻿using SpotEngine.Internal.Graphic;
 
 namespace SpotEngine
 {
@@ -7,14 +7,17 @@ namespace SpotEngine
     /// </summary>
     public class SpriteRenderer : Controller
     {
-        public string sprite = "";
+        public Sprite sprite = new Sprite();
+
         ShapeRendererSFML shapeRendererSFML = new ShapeRendererSFML();
         public override void Init()
         {
+            
         }
 
         public override void Flow()
         {
+            
             if (Spot.renderMode == RenderMode.Default || Spot.renderMode == RenderMode.SFML)
             {
                 SFMLHandle();
@@ -23,7 +26,7 @@ namespace SpotEngine
 
         void SFMLHandle()
         {
-            shapeRendererSFML.Init(entity.transform, sprite);
+            shapeRendererSFML.Init(entity.transform, sprite.texturePath);
             shapeRendererSFML.Render(SFMLRenderer.window);
         }
     }

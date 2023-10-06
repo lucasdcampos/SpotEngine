@@ -1,18 +1,18 @@
 ﻿using SFML.Graphics;
 using SFML.System;
 
-namespace SpotEngine.Internal.Graphics.SFML
+namespace SpotEngine.Internal.Graphic
 {
     /// <summary>
     /// This class is used to communicate with the SFML
     /// and render sprites or simple shapes.
     /// </summary>
-    public class ShapeRendererSFML
+    internal class ShapeRendererSFML
     {
         RectangleShape rectangle;
         public bool initialized = false;
         Texture texture;
-        Sprite sprite;
+        SFML.Graphics.Sprite sprite;
         Transform transform;
 
         private Vector2f originalWindowSize;
@@ -27,13 +27,13 @@ namespace SpotEngine.Internal.Graphics.SFML
 
             if (spritePath == null || spritePath == string.Empty || spritePath == "")
             {
-                rectangle = new RectangleShape(new Vector2f(transform.scale.x * Spot.unitSize, transform.scale.y * Spot.unitSize));
+                rectangle = new RectangleShape(new Vector2f(transform.scale.x * Screen.unitSize, transform.scale.y * Screen.unitSize));
 
             }
             else
             {
                 texture = new Texture(spritePath);
-                sprite = new Sprite(texture);
+                sprite = new SFML.Graphics.Sprite(texture);
                 originalSpriteSize = new Vector2f(texture.Size.X, texture.Size.Y);
                 sprite.Origin = originalSpriteSize / 2.0f;
 
@@ -44,22 +44,19 @@ namespace SpotEngine.Internal.Graphics.SFML
         }
         public void Render(RenderWindow window)
         {
-            float scaleX = (float)SFMLRenderer.window.Size.X / originalWindowSize.X;
-            float scaleY = (float)SFMLRenderer.window.Size.Y / originalWindowSize.Y;
 
-            float newUnitSize = System.Math.Min(Spot.unitSize * scaleX, Spot.unitSize * scaleY);
+            float newUnitSize = Screen.realUnitSize;
+
 
             if (rectangle != null)
             {
-                float rectX = (originalWindowSize.X / 2) + newUnitSize * transform.pos.x * (originalWindowSize.X / SFMLRenderer.window.Size.X);
-                float rectY = (originalWindowSize.Y / 2) - newUnitSize * transform.pos.y * (originalWindowSize.Y / SFMLRenderer.window.Size.Y);
-                float rectWidth = transform.scale.x * Spot.unitSize;
-                float rectHeight = transform.scale.y * Spot.unitSize;
+                float rectWidth = transform.scale.x * Screen.unitSize;
+                float rectHeight = transform.scale.y * Screen.unitSize;
 
-                rectangle.FillColor = Color.White;
+                rectangle.FillColor = SFML.Graphics.Color.White;
                 rectangle.Origin = new Vector2f(rectWidth / 2f, rectHeight / 2f);
-                rectangle.Position = new Vector2f(rectX, rectY);
-                rectangle.Size = new Vector2f(rectWidth, rectHeight);
+                rectangle.Position = new Vector2f((SFMLRenderer.window.Size.X / 2) + transform.pos.x * newUnitSize, (SFMLRenderer.window.Size.Y / 2) - transform.pos.y * newUnitSize);
+                rectangle.Size = new Vector2f(transform.scale.x * newUnitSize, transform.scale.y * newUnitSize);
 
                 window.Draw(rectangle);
             }
@@ -68,13 +65,8 @@ namespace SpotEngine.Internal.Graphics.SFML
             {
 
                 sprite.Origin = new Vector2f(texture.Size.X / 2f, texture.Size.Y / 2f);
-
-                sprite.Scale = new Vector2f((transform.scale.x / originalSpriteSize.X) * (originalWindowSize.X / SFMLRenderer.window.Size.X) * Spot.unitSize,
-                    (transform.scale.y / originalSpriteSize.Y) * (originalWindowSize.Y / SFMLRenderer.window.Size.Y) * Spot.unitSize);
-
-                sprite.Position = new Vector2f((originalWindowSize.X / 2) + newUnitSize * (transform.pos.x * (originalWindowSize.X / SFMLRenderer.window.Size.X)),
-                    (originalWindowSize.Y / 2) - newUnitSize * (transform.pos.y * (originalWindowSize.Y / SFMLRenderer.window.Size.Y))
-                );
+                sprite.Scale = new Vector2f(newUnitSize / texture.Size.X * transform.scale.x, newUnitSize / texture.Size.Y * transform.scale.y);
+                sprite.Position = new Vector2f((SFMLRenderer.window.Size.X / 2) + transform.pos.x * newUnitSize, (SFMLRenderer.window.Size.Y / 2) - transform.pos.y * newUnitSize);
 
                 window.Draw(sprite);
             }

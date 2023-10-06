@@ -1,81 +1,70 @@
 ﻿using OpenTK.Windowing.Desktop;
-using SpotEngine.Internal.Graphics.SFML;
+using SpotEngine.Internal.Graphic;
 
 namespace SpotEngine
 {
     /// <summary>
-    /// The Engine class, where you can modify attributes of your game
+    /// The Engine class, here is where the magic happens.
+    /// Your game is executed through here, passing the
+    /// Render API.
     /// </summary>
     public class Spot
     {
-        private IGraphicsRenderer graphicsRenderer;
-        public Game game = new Game();
-        public static float deltaTime;
-        private static Spot instance;
+        private static IGraphicsRenderer graphicsRenderer;
         public static RenderMode renderMode = RenderMode.Default;
 
-        public static int unitSize = 50;
-        public static int winWidth, winHeight;
-        public static Spot Instance
+        public static void Run(RenderMode renderer)
         {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new Spot();
-                }
-                return instance;
-            }
+            renderMode = renderer;
+            Run();
         }
 
-
-        public void Run(RenderMode renderer, int width, int height)
+        public static void Run()
         {
-            winWidth = width;
-            winHeight = height;
+
+            Vec2i res;
+            res.x = Screen.res.x;
+            res.y = Screen.res.y;
 
             Input.Init();
 
-            switch (renderer)
+            // Will load a blank level if no level was specified
+            if(Game.activeLevel == null)
+            {
+                Level blank = new Level();
+                blank.name = "Blank Level";
+                Game.LoadLevel(blank);
+            }
+
+            switch (renderMode)
             {
                 case RenderMode.Default:
-                    graphicsRenderer = new SFMLRenderer(width, height);
+                    graphicsRenderer = new SFMLRenderer(res.x, res.y);
                     break;
                 case RenderMode.OpenGL:
                     graphicsRenderer = new OpenTKGraphicsRenderer(GameWindowSettings.Default, NativeWindowSettings.Default);
-                    renderMode = RenderMode.OpenGL;
                     break;
                 case RenderMode.SystemDrawing:
-                    graphicsRenderer = new SDGraphicsRenderer(width, height);
-                    renderMode = RenderMode.SystemDrawing;
+                    graphicsRenderer = new SDGraphicsRenderer(res.x, res.y);
                     break;
                 case RenderMode.SFML:
-                    graphicsRenderer = new SFMLRenderer(width, height);
+                    graphicsRenderer = new SFMLRenderer(res.x, res.y);
                     break;
             }
-            
 
             graphicsRenderer.Initialize();
 
-            game.InitEntities();
-
-            
-
             while (!ExitConditionMet())
             {
-                CalculateDeltaTime();
+                Time.CalculateDeltaTime();
             }
 
             graphicsRenderer.Cleanup();
-
         }
 
-        void CalculateDeltaTime()
-        {
-            deltaTime = 0;
-        }
 
-        private bool ExitConditionMet()
+
+        private static bool ExitConditionMet()
         {
             return false;
         }
