@@ -9,7 +9,7 @@
 <br>
 <img src="assets/img/screenshots/spot-engine-print.png" width="100%">
 
-**Graphics Rendering**: Utilize the power of OpenGL through OpenTK to render stunning visuals for your games.
+**Graphics Rendering**: Utilize the power of OpenGL to render stunning visuals for your games.
 
 **Entity-Component System**: Implement game logic and functionality using a versatile entity-component system (ECS) architecture.
 
