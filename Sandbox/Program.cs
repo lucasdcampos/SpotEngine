@@ -3,19 +3,13 @@
 
 using SpotEngine;
 
-public class Sandbox : Application
-{
-    public Sandbox()
-    {
-    }
-}
 
 
 public class Program
 {
     public static void Main(string[] args)
     {
-        Application app = new Sandbox();
+        Application app = Application.GetInstance();
         app.Run();
         
     }

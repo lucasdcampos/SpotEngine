@@ -32,19 +32,18 @@ namespace SpotEngine.Internal.Rendering
         {
             Log.Message($"Closing SFML Window '{Title}' ({Width}x{Height})");
             window.Close();
+            Application.GetInstance().Stop();
             return;
         }
         public override void Render()
         {
-            Log.Message("Starting SFML Game Loop");
-            while (window.IsOpen)
-            {     
-                window.DispatchEvents();
+  
+            window.DispatchEvents();
 
-                window.Clear(Color.Magenta);
+            window.Clear(Color.Magenta);
 
-                window.Display();
-            }
+            window.Display();
+            
         }
 
         public override void Update()
