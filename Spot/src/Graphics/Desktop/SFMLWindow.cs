@@ -32,12 +32,16 @@ namespace SpotEngine.Internal.Rendering
         {
             Log.Message($"Closing SFML Window '{Title}' ({Width}x{Height})");
             window.Close();
-            Application.GetInstance().Stop();
+
+            // sending the event to the Spot Engine Event System
+            var e = new WindowEvents.WindowCloseEvent();
+            Event.TriggerWindowCloseEvent(this,e);
+
             return;
         }
+
         public override void Render()
         {
-  
             window.DispatchEvents();
 
             window.Clear(Color.Magenta);
@@ -48,6 +52,9 @@ namespace SpotEngine.Internal.Rendering
 
         public override void Update()
         {
+            // game logic
+
+            Render();
         }
 
 

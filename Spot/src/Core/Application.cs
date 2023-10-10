@@ -1,17 +1,15 @@
 ﻿using SpotEngine.Internal.Rendering;
-using System;
 
 namespace SpotEngine
 {
     public class Application
     {
-        private Window m_Window;
-        private bool m_Run;
+        private static Application? s_Instance;
 
-        // Criar uma instância única da classe Application
-        private static Application s_Instance;
+        private Window? m_Window;
+        private bool m_Running;
 
-        public static Application GetInstance()
+        public static Application GetApp()
         {
             if (s_Instance == null)
             {
@@ -22,24 +20,30 @@ namespace SpotEngine
 
         private Application()
         {
-            // Impedir a criação de instâncias adicionais
             if (s_Instance != null)
             {
-                throw new Exception("An instance of Application already exists.");
+                string err = "An instance of Application already exists.";
+                Log.Error(err);
+                throw new Exception(err);
             }
 
-            m_Run = false;
+            m_Running = false;
         }
 
         public int Run()
         {
-            m_Run = true;
+            // Handling the Close Event
+            Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
+
+            m_Running = true;
             Log.Message("Initializing Application");
             m_Window = new SFMLWindow("My Game", 800, 600);
 
-            while (m_Run)
+
+            while (m_Running)
             {
-                m_Window.Render();
+                m_Window.Update();
+                
             }
 
             return 0;
@@ -48,7 +52,7 @@ namespace SpotEngine
         public void Stop()
         {
             Log.Message("Stopping the application");
-            m_Run = false;
+            m_Running = false;
         }
     }
 }

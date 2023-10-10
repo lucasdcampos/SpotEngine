@@ -17,5 +17,10 @@ namespace SpotEngine
             }
         }
 
+        public class WindowCloseEvent
+        {
+
+        }
+
     }
 }

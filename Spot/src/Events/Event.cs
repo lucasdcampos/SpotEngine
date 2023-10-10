@@ -15,6 +15,7 @@ namespace SpotEngine
         // declaring a generic delegate to every event type
         public delegate void EventHandler(EventType e, object eData);
         public delegate void WindowResizedEventHandler(object sender, WindowEvents.WindowResizeEvent e);
+        public delegate void WindowClosedEventHandler(object sender, WindowEvents.WindowCloseEvent e);
         public delegate void KeyboardPressEventHandler(object sender, InputEvents.KeyboardPressEvent e);
         public delegate void MouseButtonPressEventHandler(object sender, InputEvents.MouseButtonPressEvent e);
         public delegate void MouseButtonReleaseEventHandler(object sender, InputEvents.MouseButtonReleaseEvent e);
@@ -26,6 +27,7 @@ namespace SpotEngine
 
         // declaring specific events
         public static event WindowResizedEventHandler? WindowResizedOccurred;
+        public static event WindowClosedEventHandler? WindowClosedEventOcurred;
         public static event KeyboardPressEventHandler? KeyboardPressedOccurred;
         public static event MouseButtonPressEventHandler? MouseButtonPressedOccurred;
         public static event MouseButtonReleaseEventHandler? MouseButtonReleasedOccurred;
@@ -33,10 +35,16 @@ namespace SpotEngine
         public static event MouseScrollEventHandler? MouseScrolledOccurred;
 
         // creating triggers to every event type
+
         public static void TriggerWindowResizedEvent(object sender, WindowEvents.WindowResizeEvent e)
         {
             WindowResizedOccurred?.Invoke(sender, e);
             EventOccurred?.Invoke(EventType.WindowResized, e);
+        }
+        public static void TriggerWindowCloseEvent(object sender, WindowEvents.WindowCloseEvent e)
+        {
+            WindowClosedEventOcurred?.Invoke(sender, e);
+            EventOccurred?.Invoke(EventType.WindowClosed, e);
         }
 
         public static void TriggerKeyboardPressedEvent(object sender, InputEvents.KeyboardPressEvent e)
