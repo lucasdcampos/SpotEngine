@@ -17,10 +17,16 @@ public abstract class Window
         Title = title;
     }
 
-    public abstract void Initialize();
+    public virtual void Initialize()
+    {
+        Log.Message($"Creating window {Title} ({Width},{Height})");
+    }
     public abstract void Update();
     public abstract void Render();
-    public abstract void Close();
+    public virtual void Close()
+    {
+        Log.Message($"Closing window {Title}, ({Width}x{Height})");
+    }
 
 
 }

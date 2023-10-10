@@ -1,4 +1,5 @@
-﻿using SpotEngine.Internal.Rendering;
+﻿using SpotEngine.Internal.Graphics;
+using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine
 {
@@ -37,13 +38,12 @@ namespace SpotEngine
 
             m_Running = true;
             Log.Message("Initializing Application");
-            m_Window = new SFMLWindow("My Game", 800, 600);
-
+            //m_Window = new SFMLWindow("My Game", 800, 600);
+            m_Window = new OpenGLWindow("My Game", 800, 600);
 
             while (m_Running)
             {
                 m_Window.Update();
-                
             }
 
             return 0;
