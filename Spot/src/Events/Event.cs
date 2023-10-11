@@ -3,8 +3,14 @@
 
 namespace SpotEngine
 {
+    /// <summary>
+    /// A class for managing and triggering events related to input and window events.
+    /// </summary>
     public class Event
     {
+        /// <summary>
+        /// Represents the types of events that can be handled.
+        /// </summary>
         public enum EventType
         {
             WindowResized, WindowMaximized, WindowMinimized, WindowClosed, WindowMoved,

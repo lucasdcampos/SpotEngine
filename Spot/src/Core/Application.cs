@@ -1,8 +1,10 @@
 ﻿using SpotEngine.Internal.Graphics;
-using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine
 {
+    /// <summary>
+    /// Represents the main application for the Spot Engine.
+    /// </summary>
     public class Application
     {
         private static Application? s_Instance;
@@ -10,6 +12,10 @@ namespace SpotEngine
         private Window? m_Window;
         private bool m_Running;
 
+        /// <summary>
+        /// Gets the singleton instance of the Application.
+        /// </summary>
+        /// <returns>The singleton instance of the Application.</returns>
         public static Application GetApp()
         {
             if (s_Instance == null)
@@ -31,9 +37,12 @@ namespace SpotEngine
             m_Running = false;
         }
 
+        /// <summary>
+        /// Runs the application and initializes the main loop.
+        /// </summary>
+        /// <returns>Zero on successful completion.</returns>
         public int Run()
         {
-
             Log.Message("Spot Engine says Hello!");
             // Handling the Close Event
             Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
@@ -45,12 +54,15 @@ namespace SpotEngine
             // main loop
             while (m_Running)
             {
-                
+                // Your application's main logic goes here
             }
 
             return 0;
         }
 
+        /// <summary>
+        /// Stops the application and exits the main loop.
+        /// </summary>
         public void Stop()
         {
             Log.Message("Stopping the application");
