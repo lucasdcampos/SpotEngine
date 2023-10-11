@@ -37,6 +37,13 @@ namespace SpotEngine
             m_Running = false;
         }
 
+        public Window? GetWindow()
+        {
+            if (m_Window == null)
+                Log.Warn("Window is null");
+            return m_Window;
+        }
+
         /// <summary>
         /// Runs the application and initializes the main loop.
         /// </summary>
@@ -54,7 +61,7 @@ namespace SpotEngine
             // main loop
             while (m_Running)
             {
-                // Your application's main logic goes here
+
             }
 
             return 0;
@@ -68,5 +75,7 @@ namespace SpotEngine
             Log.Message("Stopping the application");
             m_Running = false;
         }
+
+
     }
 }
