@@ -66,6 +66,57 @@
         /// Gets a unit vector (with all components equal to one).
         /// </summary>
         public static Vec3 One => new Vec3(1, 1, 1);
+
+        /// <summary>
+        /// Adds two vectors.
+        /// </summary>
+        /// <param name="left">The left-hand vector.</param>
+        /// <param name="right">The right-hand vector.</param>
+        /// <returns>The result of the addition.</returns>
+        public static Vec3 operator +(Vec3 left, Vec3 right)
+        {
+            return new Vec3(left.X + right.X, left.Y + right.Y, left.Z + right.Z);
+        }
+
+        /// <summary>
+        /// Subtracts one vector from another.
+        /// </summary>
+        /// <param name="left">The left-hand vector.</param>
+        /// <param name="right">The right-hand vector.</param>
+        /// <returns>The result of the subtraction.</returns>
+        public static Vec3 operator -(Vec3 left, Vec3 right)
+        {
+            return new Vec3(left.X - right.X, left.Y - right.Y, left.Z - right.Z);
+        }
+
+        /// <summary>
+        /// Multiplies a vector by a scalar.
+        /// </summary>
+        /// <param name="vector">The vector to be multiplied.</param>
+        /// <param name="scalar">The scalar value.</param>
+        /// <returns>The result of the multiplication.</returns>
+        public static Vec3 operator *(Vec3 vector, float scalar)
+        {
+            return new Vec3(vector.X * scalar, vector.Y * scalar, vector.Z * scalar);
+        }
+
+        /// <summary>
+        /// Divides a vector by a scalar.
+        /// </summary>
+        /// <param name="vector">The vector to be divided.</param>
+        /// <param name="scalar">The scalar value.</param>
+        /// <returns>The result of the division.</returns>
+        public static Vec3 operator /(Vec3 vector, float scalar)
+        {
+            if (scalar == 0)
+            {
+                string err = "Division by zero is not allowed.";
+                Log.Error(err);
+                throw new DivideByZeroException(err);
+            }
+            return new Vec3(vector.X / scalar, vector.Y / scalar, vector.Z / scalar);
+        }
     }
+
 }
 
