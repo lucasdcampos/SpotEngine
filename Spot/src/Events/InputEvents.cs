@@ -7,20 +7,20 @@ namespace SpotEngine
     {
         public class KeyboardPressEvent
         {
-            public char KeyChar { get; }
+            public KeyCode Key { get; }
 
-            public KeyboardPressEvent(char keyChar)
+            public KeyboardPressEvent(KeyCode keyCode)
             {
-                KeyChar = keyChar;
+                Key = keyCode;
             }
         }
         public class KeyboardReleaseEvent
         {
-            public char KeyChar { get; }
+            public KeyCode Key { get; }
 
-            public KeyboardReleaseEvent(char keyChar)
+            public KeyboardReleaseEvent(KeyCode keyCode)
             {
-                KeyChar = keyChar;
+                Key = keyCode;
             }
         }
 

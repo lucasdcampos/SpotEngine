@@ -17,6 +17,8 @@ namespace SpotEngine
         public delegate void WindowResizedEventHandler(object sender, WindowEvents.WindowResizeEvent e);
         public delegate void WindowClosedEventHandler(object sender, WindowEvents.WindowCloseEvent e);
         public delegate void KeyboardPressEventHandler(object sender, InputEvents.KeyboardPressEvent e);
+        public delegate void KeyboardReleaseEventHandler(object sender, InputEvents.KeyboardReleaseEvent e);
+
         public delegate void MouseButtonPressEventHandler(object sender, InputEvents.MouseButtonPressEvent e);
         public delegate void MouseButtonReleaseEventHandler(object sender, InputEvents.MouseButtonReleaseEvent e);
         public delegate void MouseMoveEventHandler(object sender, InputEvents.MouseMoveEvent e);
@@ -29,6 +31,7 @@ namespace SpotEngine
         public static event WindowResizedEventHandler? WindowResizedOccurred;
         public static event WindowClosedEventHandler? WindowClosedEventOcurred;
         public static event KeyboardPressEventHandler? KeyboardPressedOccurred;
+        public static event KeyboardReleaseEventHandler? KeyboardReleasedOcurred;
         public static event MouseButtonPressEventHandler? MouseButtonPressedOccurred;
         public static event MouseButtonReleaseEventHandler? MouseButtonReleasedOccurred;
         public static event MouseMoveEventHandler? MouseMovedOccurred;
@@ -50,6 +53,13 @@ namespace SpotEngine
         public static void TriggerKeyboardPressedEvent(object sender, InputEvents.KeyboardPressEvent e)
         {
             KeyboardPressedOccurred?.Invoke(sender, e);
+            EventOccurred?.Invoke(EventType.KeyboardPressed, e);
+
+        }
+
+        public static void TriggerKeyboardReleasedEvent(object sender, InputEvents.KeyboardReleaseEvent e)
+        {
+            KeyboardReleasedOcurred?.Invoke(sender, e);
             EventOccurred?.Invoke(EventType.KeyboardPressed, e);
         }
 
