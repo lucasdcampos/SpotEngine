@@ -1,32 +1,41 @@
+<img src="assets/img/spot/spot-logo.png" width="480px">
 
-# Spot Engine
+# Spot Game Engine
 
-  <img src="assets/img/spot/spot-logo.png" width="480px">
+Welcome to the Spot Game Engine, a work-in-progress game engine built entirely in C#.
 
-**SpotEngine** is a lightweight and flexible game engine designed to empower game developers to create captivating 2D and 3D experiences. With a focus on simplicity and extensibility, SpotEngine provides the foundation for building interactive games, simulations, and interactive applications.
+**Please Note:** There are no publicly available releases of the engine at this time. We are actively developing it, and we'll share more updates as we make progress.
 
-## Key Features
-<br>
-<img src="assets/img/screenshots/spot-engine-print.png" width="100%">
+## Features
 
-**Graphics Rendering**: Utilize the power of OpenGL to render stunning visuals for your games.
-
-**Entity-Component System**: Implement game logic and functionality using a versatile entity-component system (ECS) architecture.
-
-**Cross-Platform**: Develop games that run seamlessly on multiple platforms, including Windows, macOS, and Linux.
-
-**Customization**: Extend and customize the engine to suit your project's unique requirements.
-
-**Simplified Entity** Creation: Create and manage game objects effortlessly with a straightforward API.
+- 2D and 3D Graphics Support
+- Cross-platform compatibility (Windows, Linux, macOS)
+- MIT License
 
 ## Getting Started
-To start developing with SpotEngine, simply include it in your project and leverage its features to bring your game ideas to life. Explore the provided examples and documentation to learn how to harness the engine's capabilities.
 
-## Documentation
-For detailed documentation and examples, visit the <a href="https://learn.trivalent.tech/spot-engine/docs">SpotEngine Documentation.</a>
+While the engine is under development and no releases are available, you can explore the source code and contribute if you wish. Here's how you can get started:
 
-## Contributing
-We welcome contributions from the community to enhance SpotEngine. Whether it's fixing bugs, adding features, or improving performance, your contributions are valuable in making this engine even better.
+1. Clone the repository to your local machine.
+2. Review the source code, documentation, and issues.
+3. If you want to contribute, follow the "How to Contribute" guidelines.
+
+## How to Contribute
+
+We welcome contributions to the Spot Game Engine! If you'd like to contribute, please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and ensure they follow coding standards.
+4. Submit a Pull Request (PR) with your changes.
+5. Your PR will be reviewed, and upon approval, it may be merged.
+
+For major changes or significant contributions, please discuss your ideas in advance by opening an issue.
 
 ## License
-SpotEngine is licensed under the <a href="LICENSE.md">MIT License.</a>
+
+The Spot Game Engine is open source and available under the MIT License. See [LICENSE](LICENSE) for more details.
+
+---
+
+I'm currently developing the engine alone, and I don't have much experience in the area, but it's been fun! - <a href="https://github.com/lukazof">lucasof</a>
