@@ -37,6 +37,10 @@ namespace SpotEngine
             m_Running = false;
         }
 
+        /// <summary>
+        /// Will return the current Window
+        /// </summary>
+        /// <returns>Window or null</returns>
         public Window? GetWindow()
         {
             if (m_Window == null)
@@ -56,12 +60,11 @@ namespace SpotEngine
             m_Running = true;
             Log.Message("Initializing Application");
             Input.Init();
-            m_Window = m_Window == null ? new OpenGLWindow("My Game", 800, 600) : m_Window;
 
             // main loop
             while (m_Running)
             {
-
+                m_Window = m_Window == null ? new OpenGLWindow("My Game", 800, 600) : m_Window;
             }
 
             return 0;
