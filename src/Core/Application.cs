@@ -54,11 +54,11 @@ namespace SpotEngine
         /// <returns>Zero on successful completion.</returns>
         public int Run()
         {
-            Log.Message("Spot Engine says Hello!");
+            Log.Info("Spot Engine says Hello!");
             // Handling the Close Event
             Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
             m_Running = true;
-            Log.Message("Initializing Application");
+            Log.Info("Initializing Application");
             Input.Init();
 
             // main loop
@@ -75,7 +75,7 @@ namespace SpotEngine
         /// </summary>
         public void Stop()
         {
-            Log.Message("Stopping the application");
+            Log.Info("Stopping the application");
             m_Running = false;
         }
 

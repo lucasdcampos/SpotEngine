@@ -24,13 +24,13 @@ namespace SpotEngine.Internal.Rendering
                 Close();
             };
 
-            Log.Message($"Creating SFML Window '{Title}' ({Width}x{Height})");
+            Log.Info($"Creating SFML Window '{Title}' ({Width}x{Height})");
             Render();
         }
 
         public override void Close()
         {
-            Log.Message($"Closing SFML Window '{Title}' ({Width}x{Height})");
+            Log.Info($"Closing SFML Window '{Title}' ({Width}x{Height})");
             window.Close();
 
             // sending the event to the Spot Engine Event System

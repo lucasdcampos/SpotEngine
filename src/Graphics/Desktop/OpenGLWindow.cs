@@ -47,7 +47,6 @@ namespace SpotEngine.Internal.Graphics
 
             protected override void OnUpdateFrame(FrameEventArgs e)
             {
-
             }
 
             protected override void OnKeyDown(KeyboardKeyEventArgs e)
@@ -67,7 +66,7 @@ namespace SpotEngine.Internal.Graphics
             public void SetBaseWindow(OpenGLWindow window)
             {
                 if (baseWindow != null) { Log.Warn("There was already a Base Window defined."); }
-                Log.Message($"Setting Base Window of OpenTK to: '{window}'");
+                Log.Info($"Setting Base Window of OpenTK to: '{window}'");
                 baseWindow = window;
             }
         }

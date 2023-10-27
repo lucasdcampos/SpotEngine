@@ -15,8 +15,9 @@ namespace SpotEngine
         /// Logs a message with default formatting and color.
         /// </summary>
         /// <param name="message">The message to log.</param>
-        public static void Message(string message)
+        public static void Info(string message)
         {
+            prefix = "INFO";
             ConsoleWriteLine(message, ConsoleColor.White);
         }
 
@@ -26,6 +27,7 @@ namespace SpotEngine
         /// <param name="message">The warning message to log.</param>
         public static void Warn(string message)
         {
+            prefix = "WARN";
             ConsoleWriteLine(message, ConsoleColor.DarkYellow);
         }
 
@@ -35,6 +37,7 @@ namespace SpotEngine
         /// <param name="message">The error message to log.</param>
         public static void Error(string message)
         {
+            prefix = "ERROR";
             ConsoleWriteLine(message, ConsoleColor.DarkRed);
         }
 
@@ -45,6 +48,7 @@ namespace SpotEngine
         /// <param name="color">The custom color for the message.</param>
         public static void Custom(string message, ConsoleColor color)
         {
+            prefix = "INFO";
             ConsoleWriteLine(message, color);
         }
 

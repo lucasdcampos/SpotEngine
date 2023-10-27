@@ -41,7 +41,7 @@ public abstract class Window
     /// </summary>
     public virtual void Initialize()
     {
-        Log.Message($"Creating window {Title} ({Width},{Height})");
+        Log.Info($"Creating window {Title} ({Width},{Height})");
     }
 
     /// <summary>
@@ -59,6 +59,6 @@ public abstract class Window
     /// </summary>
     public virtual void Close()
     {
-        Log.Message($"Closing window {Title}, ({Width}x{Height})");
+        Log.Info($"Closing window {Title}, ({Width}x{Height})");
     }
 }
