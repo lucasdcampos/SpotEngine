@@ -3,6 +3,7 @@
 
 namespace SpotEngine
 {
+
     public class Entity
     {
         public int id;
@@ -11,6 +12,7 @@ namespace SpotEngine
         
         public Entity() 
         {
+            id = (int)Rand.Between(0, 99999999);
             name = "Entity";
             tag = "Default";
             

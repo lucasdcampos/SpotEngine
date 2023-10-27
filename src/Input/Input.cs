@@ -18,7 +18,7 @@ namespace SpotEngine
         /// </summary>
         public static void Init()
         {
-            if (m_Initialized) return;
+            if (m_Initialized) { Log.Warn("Trying to initialize Input when it's already initialized!"); return; }
             Event.KeyboardPressedOccurred += (sender, e) => { KeyStates[e.Key] = true; };
             Event.KeyboardReleasedOcurred += (sender, e) => { KeyStates[e.Key] = false; };
 
@@ -27,6 +27,8 @@ namespace SpotEngine
             {
                 KeyStates[key] = false;
             }
+
+            m_Initialized = true;
         }
 
         /// <summary>
