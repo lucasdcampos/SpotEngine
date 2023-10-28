@@ -8,6 +8,7 @@ namespace SpotEngine
         public readonly Guid ID = Guid.NewGuid();
         public string name = "Entity";
         public string tag = "Default";
+        public string layer = "Default";
 
         private bool m_Active;
 
@@ -25,7 +26,7 @@ namespace SpotEngine
             components.Add(component);
             component.entity = this;
         }
-        
+
         public T GetComponent<T>() where T : Component
         {
             foreach (Component component in components)
@@ -35,6 +36,7 @@ namespace SpotEngine
                     return (T)component;
                 }
             }
+
             return null;
         }
 
@@ -42,6 +44,11 @@ namespace SpotEngine
         {
             return components;
         }
+
+        Entity SpawnEntity(Entity entity)
+        {
+            Scene.current.RegisterEntity(entity);
+            return entity;
+        }
     }
 }
-

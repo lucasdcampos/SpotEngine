@@ -13,7 +13,7 @@
             if (scene == null) { Log.Error("Scene could not be loaded. Reason: Scene is NULL"); return; }
 
             Log.Info($"Loading scene {scene.name}");
-            
+
             // copying the scene to a new one, so the original remains intact
             Scene newScene = new Scene();
             newScene.name = scene.name;
@@ -29,7 +29,6 @@
 
             newScene.Start();
         }
-
         
         void Start()
         {
@@ -45,6 +44,7 @@
 
         public void Update()
         {
+
             // TODO: Change this to a faster way
             foreach (var entity in entities)
             {
@@ -53,6 +53,11 @@
                     component.OnUpdate();
                 }
             }
+        }
+
+        public void RegisterEntity(Entity entity)
+        {
+            entities.Add(entity);
         }
 
         public List<Entity> GetEntities()
