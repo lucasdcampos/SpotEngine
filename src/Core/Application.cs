@@ -60,7 +60,6 @@ namespace SpotEngine
             m_Running = true;
             Log.Info("Initializing Application");
             Input.Init();
-            Input.Init();
 
             // main loop
             while (m_Running)

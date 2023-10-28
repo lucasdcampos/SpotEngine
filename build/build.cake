@@ -16,7 +16,7 @@ Task("Build")
     .IsDependentOn("Clean")
     .Does(() =>
 {
-    DotNetBuild("./SpotEngine.sln", new DotNetBuildSettings
+    DotNetBuild("../SpotEngine.sln", new DotNetBuildSettings
     {
         Configuration = configuration,
     });
@@ -26,7 +26,7 @@ Task("Test")
     .IsDependentOn("Build")
     .Does(() =>
 {
-    DotNetTest("./SpotEngine.sln", new DotNetTestSettings
+    DotNetTest("../SpotEngine.sln", new DotNetTestSettings
     {
         Configuration = configuration,
         NoBuild = true,
