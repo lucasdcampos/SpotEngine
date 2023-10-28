@@ -41,6 +41,10 @@ namespace SpotEngine
             ConsoleWriteLine(message, ConsoleColor.DarkRed);
         }
 
+        /// <summary>
+        /// Log a custom Dev message (Will be displayed only when Application.debugMode is true)
+        /// </summary>
+        /// <param name="message"></param>
         public static void Dev(string message)
         {
             if (!Application.debugMode) return;
