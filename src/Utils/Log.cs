@@ -41,6 +41,15 @@ namespace SpotEngine
             ConsoleWriteLine(message, ConsoleColor.DarkRed);
         }
 
+        public static void Dev(string message)
+        {
+            if (!Application.debugMode) return;
+
+            prefix = "DEV";
+            ConsoleWriteLine(message, ConsoleColor.DarkGreen);
+
+        }
+
         /// <summary>
         /// Logs a custom message with a specified color.
         /// </summary>

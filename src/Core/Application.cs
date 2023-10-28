@@ -8,7 +8,7 @@ namespace SpotEngine
     public class Application
     {
         private static Application? s_Instance;
-
+        public static bool debugMode = false;
         private Window? m_Window;
         private bool m_Running;
 
