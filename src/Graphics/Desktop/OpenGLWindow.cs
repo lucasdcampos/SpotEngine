@@ -19,6 +19,9 @@ namespace SpotEngine.Internal.Graphics
         {
             private OpenGLWindow baseWindow;
 
+            private DateTime _lastFrameTime;
+            public static float DeltaTime { get; private set; }
+
             public OpenTKWindow(string title, int width, int height) : base(new GameWindowSettings(), new NativeWindowSettings())
             {
                 Title = title;
@@ -47,6 +50,12 @@ namespace SpotEngine.Internal.Graphics
 
             protected override void OnUpdateFrame(FrameEventArgs e)
             {
+                this.UpdateFrequency = 60;
+                DeltaTime = (float)(DateTime.Now - _lastFrameTime).TotalSeconds;
+                _lastFrameTime = DateTime.Now;
+
+                Time.deltaTime = DeltaTime;
+
             }
 
             protected override void OnKeyDown(KeyboardKeyEventArgs e)
