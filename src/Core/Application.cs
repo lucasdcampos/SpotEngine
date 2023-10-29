@@ -7,6 +7,9 @@ namespace SpotEngine
     /// </summary>
     public class Application
     {
+        /// <summary>
+        /// Will display additional dev information when set to true
+        /// </summary>
         public static bool debugMode = false;
 
         private static Application? s_Instance;
