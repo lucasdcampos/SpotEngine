@@ -9,13 +9,13 @@
         /// Name of the scene.
         /// </summary>
         public string name;
-        
+
         private List<Entity> entities = new List<Entity>();
 
         /// <summary>
         /// Current active scene.
         /// </summary>
-        public static Scene current;
+        public static Scene? current;
 
         /// <summary>
         /// Loads a new scene, replacing the current one.
@@ -80,7 +80,6 @@
             entities.Add(entity);
         }
 
-
         public void UnregisterEntity(Entity entity)
         {
             entities.Remove(entity);
@@ -94,4 +93,6 @@
             return entities;
         }
     }
+
+
 }
