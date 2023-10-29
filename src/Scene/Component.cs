@@ -25,6 +25,7 @@
         /// </summary>
         public virtual void OnUpdate() { }
 
+        internal Application app = Application.GetApp();
         /// <summary>
         /// Logs the specified message. Equivalent to Log.Info.
         /// </summary>

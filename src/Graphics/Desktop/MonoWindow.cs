@@ -7,6 +7,7 @@ namespace SpotEngine.Internal.Graphics
 {
     internal class MonoWindow : Window
     {
+        public MonoGame game;
         public MonoWindow(string title, int width, int height) : base(title, width, height)
         {
             this.Title = title;
@@ -20,7 +21,7 @@ namespace SpotEngine.Internal.Graphics
         public override void Initialize()
         {
             base.Initialize();
-            MonoGame game = new MonoGame(this);
+            game = new MonoGame(this);
             game.Run();
         }
 
@@ -45,8 +46,8 @@ namespace SpotEngine.Internal.Graphics
 
                 _squareManager = new SquareManagerXNA(GraphicsDevice);
 
-                _squareManager.CreateSquare(new Vector2(0, 0), new Vector2(10,10), Color.Red);
-                _squareManager.CreateSquare(new Vector2(200, 200), new Vector2(10,10), Color.Green);
+               //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1,1), Color.Red);
+                //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1f,1f), Color.Green);
             
             }
 
@@ -70,6 +71,11 @@ namespace SpotEngine.Internal.Graphics
                 spriteBatch.End();
 
                 base.Draw(gameTime);
+            }
+
+            public SquareManagerXNA GetSquareManager()
+            {
+                return _squareManager;
             }
         }
 

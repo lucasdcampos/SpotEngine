@@ -23,6 +23,8 @@ public abstract class Window
     /// </summary>
     public string Title { get; protected set; }
 
+    public static int UnitSize = 100;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Window"/> class with the specified title, width, and height.
     /// </summary>

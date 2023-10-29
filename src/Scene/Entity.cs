@@ -34,6 +34,8 @@
 
         private List<Component> components = new List<Component>();
 
+        public Transform transform;
+
         /// <summary>
         /// Sets the active state of the entity.
         /// </summary>
@@ -45,10 +47,12 @@
         /// <summary>
         /// Adds a component to the entity.
         /// </summary>
-        public void AddComponent(Component component)
+        public Component AddComponent(Component component)
         {
             components.Add(component);
             component.entity = this;
+
+            return component;
         }
 
         /// <summary>
@@ -75,9 +79,12 @@
             return components;
         }
 
-        Entity SpawnEntity(Entity entity)
+        public static Entity SpawnEntity(Entity entity)
         {
-            Scene.current.RegisterEntity(entity);
+            if(entity.transform == null)
+                entity.transform = (Transform)entity.AddComponent(new Transform());
+
+            if(Scene.current != null) Scene.current.RegisterEntity(entity);
             return entity;
         }
 

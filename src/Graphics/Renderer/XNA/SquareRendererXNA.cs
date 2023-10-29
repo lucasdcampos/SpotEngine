@@ -21,9 +21,9 @@ namespace SpotEngine.Graphics.Renderer.XNA
 
             int centerX = _graphicsDevice.Viewport.Width / 2;
             int centerY = _graphicsDevice.Viewport.Height / 2;
-            _position = new Vector2(centerX + position.X - size.X / 2, centerY + position.Y - size.Y / 2);
+            _position = new Vector2(centerX + position.X * Window.UnitSize - size.X * Window.UnitSize / 2, centerY + position.Y * Window.UnitSize - size.Y * Window.UnitSize / 2);
 
-            _size = size;
+            _size = size * Window.UnitSize;
             _color = color;
         }
 
@@ -35,5 +35,3 @@ namespace SpotEngine.Graphics.Renderer.XNA
     }
 
 }
-
-

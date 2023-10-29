@@ -10,7 +10,7 @@
         /// </summary>
         public string name;
 
-        private List<Entity> entities = new List<Entity>();
+        public List<Entity> entities = new List<Entity>();
 
         /// <summary>
         /// Current active scene.

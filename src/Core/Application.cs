@@ -1,4 +1,5 @@
 ﻿using SpotEngine.Internal.Graphics;
+using System.Xml.Linq;
 
 namespace SpotEngine
 {
@@ -48,7 +49,7 @@ namespace SpotEngine
         public Window? GetWindow()
         {
             if (m_Window == null)
-                Log.Warn("Window is null");
+                Log.Error("Window is null");
             return m_Window;
         }
 
@@ -82,5 +83,6 @@ namespace SpotEngine
             Log.Info("Stopping the application");
             m_Running = false;
         }
+        
     }
 }
