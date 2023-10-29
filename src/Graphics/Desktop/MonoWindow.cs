@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SpotEngine.Graphics.Renderer.XNA;
 
 namespace SpotEngine.Internal.Graphics
 {
@@ -29,6 +30,8 @@ namespace SpotEngine.Internal.Graphics
             GraphicsDeviceManager graphics;
             SpriteBatch spriteBatch;
 
+            private SquareManagerXNA _squareManager;
+
             public MonoGame(Window baseWindow)
             {
                 graphics = new GraphicsDeviceManager(this);
@@ -39,12 +42,32 @@ namespace SpotEngine.Internal.Graphics
             protected override void Initialize()
             {
                 base.Initialize();
+
+                _squareManager = new SquareManagerXNA(GraphicsDevice);
+
+                _squareManager.CreateSquare(new Vector2(0, 0), new Vector2(10,10), Color.Red);
+                _squareManager.CreateSquare(new Vector2(200, 200), new Vector2(10,10), Color.Green);
+            
+            }
+
+            Texture2D texture;
+            protected override void LoadContent()
+            {
+                spriteBatch = new SpriteBatch(GraphicsDevice);
+
+                texture = new Texture2D(GraphicsDevice, 1, 1);
+                texture.SetData(new[] { Color.White });
             }
 
             protected override void Draw(GameTime gameTime)
             {
+                GraphicsDevice.Clear(Color.Magenta);
 
-                graphics.GraphicsDevice.Clear(Color.Magenta);
+                spriteBatch.Begin();
+
+                _squareManager.Draw(spriteBatch);
+
+                spriteBatch.End();
 
                 base.Draw(gameTime);
             }
