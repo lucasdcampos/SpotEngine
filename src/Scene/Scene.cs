@@ -1,13 +1,25 @@
 ﻿namespace SpotEngine
 {
+    /// <summary>
+    /// Represents a scene in SpotEngine with associated entities.
+    /// </summary>
     public class Scene
     {
+        /// <summary>
+        /// Name of the scene.
+        /// </summary>
         public string name;
         
         private List<Entity> entities = new List<Entity>();
 
+        /// <summary>
+        /// Current active scene.
+        /// </summary>
         public static Scene current;
 
+        /// <summary>
+        /// Loads a new scene, replacing the current one.
+        /// </summary>
         public static void LoadScene(Scene scene)
         {
             if (scene == null) { Log.Error("Scene could not be loaded. Reason: Scene is NULL"); return; }
@@ -29,7 +41,10 @@
 
             newScene.Start();
         }
-        
+
+        /// <summary>
+        /// Starts all components of all entities in the scene.
+        /// </summary>
         void Start()
         {
             // TODO: Change this to a faster way
@@ -42,6 +57,9 @@
             }
         }
 
+        /// <summary>
+        /// Updates all components of all entities in the scene.
+        /// </summary>
         public void Update()
         {
 
@@ -55,11 +73,17 @@
             }
         }
 
+        /// <summary>
+        /// Registers a new entity to the scene.
+        /// </summary>
         public void RegisterEntity(Entity entity)
         {
             entities.Add(entity);
         }
 
+        /// <summary>
+        /// Gets all entities in the scene.
+        /// </summary>
         public List<Entity> GetEntities()
         {
             return entities;
