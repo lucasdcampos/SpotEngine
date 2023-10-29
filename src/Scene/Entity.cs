@@ -80,5 +80,13 @@
             Scene.current.RegisterEntity(entity);
             return entity;
         }
+
+        /// <summary>
+        /// Kills the Entity, unloading it from the current scene
+        /// </summary>
+        public void Kill()
+        {
+            Scene.current.UnregisterEntity(this);
+        }
     }
 }

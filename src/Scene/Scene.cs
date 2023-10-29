@@ -62,7 +62,6 @@
         /// </summary>
         public void Update()
         {
-
             // TODO: Change this to a faster way
             foreach (var entity in entities)
             {
@@ -79,6 +78,12 @@
         public void RegisterEntity(Entity entity)
         {
             entities.Add(entity);
+        }
+
+
+        public void UnregisterEntity(Entity entity)
+        {
+            entities.Remove(entity);
         }
 
         /// <summary>
