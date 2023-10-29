@@ -68,7 +68,7 @@ namespace SpotEngine
             // main loop
             while (m_Running)
             {
-                m_Window = m_Window == null ? new OpenGLWindow("My Game", 800, 600) : m_Window;
+                m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
             }
 
             return 0;
