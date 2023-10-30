@@ -36,6 +36,11 @@
 
         public Transform transform;
 
+        public Entity()
+        {
+            if (transform == null)
+                transform = (Transform)AddComponent(new Transform());
+        }
         /// <summary>
         /// Sets the active state of the entity.
         /// </summary>
@@ -81,11 +86,24 @@
 
         public static Entity SpawnEntity(Entity entity)
         {
-            if(entity.transform == null)
-                entity.transform = (Transform)entity.AddComponent(new Transform());
-
             if(Scene.current != null) Scene.current.RegisterEntity(entity);
+
+            
             return entity;
+        }
+
+        public void LoadComponents()
+        {
+            Log.Info("Loading components for " + name);
+            foreach (Component component in components)
+                component.OnStart();
+
+        }
+
+        internal void UpdateComponents()
+        {
+            foreach (Component component in components)
+                component.OnStart();
         }
 
         /// <summary>

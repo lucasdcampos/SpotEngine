@@ -8,7 +8,6 @@ namespace SpotEngine
         public Sprite sprite;
         public override void OnStart()
         {
-            print("teste");
            if(sprite == null)
             {
                 MonoWindow mono = (MonoWindow)app.GetWindow();
@@ -20,6 +19,7 @@ namespace SpotEngine
                     new Vector2(entity.transform.scale.X, entity.transform.scale.Y),
                     Color.White
                     );
+
             }
         }
 

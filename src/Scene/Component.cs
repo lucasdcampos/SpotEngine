@@ -18,7 +18,7 @@
         /// <summary>
         /// Called when the component starts. Can be overridden.
         /// </summary>
-        public virtual void OnStart() { }
+        public virtual void OnStart() { print("a"); }
 
         /// <summary>
         /// Called once every frame. Can be overridden.

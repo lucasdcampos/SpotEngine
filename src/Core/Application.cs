@@ -53,6 +53,11 @@ namespace SpotEngine
             return m_Window;
         }
 
+        public void CreateWindow()
+        {
+            m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
+        }
+
         /// <summary>
         /// Runs the application and initializes the main loop.
         /// </summary>
@@ -66,11 +71,9 @@ namespace SpotEngine
             Log.Info("Initializing Application");
             Input.Init();
 
+            m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
             // main loop
-            while (m_Running)
-            {
-                m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
-            }
+
 
             return 0;
         }

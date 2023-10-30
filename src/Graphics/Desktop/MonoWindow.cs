@@ -8,6 +8,7 @@ namespace SpotEngine.Internal.Graphics
     internal class MonoWindow : Window
     {
         public MonoGame game;
+
         public MonoWindow(string title, int width, int height) : base(title, width, height)
         {
             this.Title = title;
@@ -15,13 +16,14 @@ namespace SpotEngine.Internal.Graphics
             this.Height = height;
 
             Log.Custom("Set RendererAPI to OpenGL (with XNA)", ConsoleColor.Green);
-            Initialize();
+
+            game = new MonoGame(this);
         }
 
         public override void Initialize()
         {
             base.Initialize();
-            game = new MonoGame(this);
+            
             game.Run();
         }
 
@@ -38,15 +40,15 @@ namespace SpotEngine.Internal.Graphics
                 graphics = new GraphicsDeviceManager(this);
                 Content.RootDirectory = "Content";
                 this.baseWindow = baseWindow;
+                
+                _squareManager = new SquareManagerXNA(graphics.GraphicsDevice);
             }
 
             protected override void Initialize()
             {
                 base.Initialize();
 
-                _squareManager = new SquareManagerXNA(GraphicsDevice);
-
-               //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1,1), Color.Red);
+               _squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1,1), Color.Red);
                 //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1f,1f), Color.Green);
             
             }
@@ -77,6 +79,7 @@ namespace SpotEngine.Internal.Graphics
             {
                 return _squareManager;
             }
+
         }
 
     }
