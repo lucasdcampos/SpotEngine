@@ -40,17 +40,21 @@ namespace SpotEngine.Internal.Graphics
                 graphics = new GraphicsDeviceManager(this);
                 Content.RootDirectory = "Content";
                 this.baseWindow = baseWindow;
-                
-                _squareManager = new SquareManagerXNA(graphics.GraphicsDevice);
+
+                Window.Title = baseWindow.Title;
             }
 
             protected override void Initialize()
             {
                 base.Initialize();
-
-               _squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1,1), Color.Red);
+                _squareManager = new SquareManagerXNA(graphics.GraphicsDevice);
+                //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1,1), Color.Red);
                 //_squareManager.CreateSquare(new Vector2(0, 0), new Vector2(1f,1f), Color.Green);
-            
+
+                if(Scene.current != null)
+                {
+                    Scene.current.Start();
+                }
             }
 
             Texture2D texture;
@@ -60,6 +64,16 @@ namespace SpotEngine.Internal.Graphics
 
                 texture = new Texture2D(GraphicsDevice, 1, 1);
                 texture.SetData(new[] { Color.White });
+            }
+
+            protected override void Update(GameTime gameTime)
+            {
+                base.Update(gameTime);
+
+                if (Scene.current != null)
+                {
+                    Scene.current.Update();
+                }
             }
 
             protected override void Draw(GameTime gameTime)

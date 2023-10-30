@@ -7,11 +7,16 @@ internal class Program
         Application app = Application.GetApp();
         app.Run();
 
-        Entity e = new Entity();
-        e.AddComponent(new Transform());
-        //e.AddComponent(new SpriteRenderer());
+        Scene scene = new Scene();
 
-        e.LoadComponents();
+        Entity e = new Entity();
+        e.AddComponent<Transform>();
+        e.AddComponent<SpriteRenderer>();
+
+        Scene.current = scene;
+        scene.RegisterEntity(e);
+
+        e.transform.scale = new Vec3(0.5f, 0.5f,0.5f);
 
         app.GetWindow().Initialize();
     }

@@ -45,7 +45,7 @@
         /// <summary>
         /// Starts all components of all entities in the scene.
         /// </summary>
-        void Start()
+        public void Start()
         {
             // TODO: Change this to a faster way
             foreach (var entity in entities)

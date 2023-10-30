@@ -1,4 +1,6 @@
-﻿namespace SpotEngine
+﻿using System.ComponentModel;
+
+namespace SpotEngine
 {
     /// <summary>
     /// Represents an entity in SpotEngine with a unique ID and associated components.
@@ -39,7 +41,7 @@
         public Entity()
         {
             if (transform == null)
-                transform = (Transform)AddComponent(new Transform());
+                transform = AddComponent<Transform>();
         }
         /// <summary>
         /// Sets the active state of the entity.
@@ -52,12 +54,12 @@
         /// <summary>
         /// Adds a component to the entity.
         /// </summary>
-        public Component AddComponent(Component component)
+        public T AddComponent<T>() where T : Component, new()
         {
-            components.Add(component);
-            component.entity = this;
-
-            return component;
+            T addedComponent = new T();
+            components.Add(addedComponent);
+            addedComponent.entity = this;
+            return addedComponent;
         }
 
         /// <summary>
