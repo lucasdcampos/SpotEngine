@@ -13,8 +13,10 @@ internal class Program
         Entity e = new Entity();
         e.AddComponent<SpriteRenderer>();
         e.GetComponent<SpriteRenderer>().sprite = new Sprite("Player.png", Color.White);
+        e.AddComponent<Collider2D>();  
         e.transform.scale = new Vec3(1f, 1f, 1f);
         scene.RegisterEntity(e);
+
 
         Entity e2 = new Entity();
         e2.AddComponent<SpriteRenderer>();
@@ -24,6 +26,7 @@ internal class Program
 
         Entity square = new Entity();
         square.AddComponent<SpriteRenderer>();
+        square.AddComponent<Collider2D>();
         square.transform.pos = new Vec3(0, -2, 0);
         square.transform.scale = new Vec3(10, 1, 1);
         scene.RegisterEntity(square);

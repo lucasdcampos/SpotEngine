@@ -27,8 +27,6 @@ namespace SpotEngine.Internal.Graphics
             
         }
 
-        
-
         public class MonoGame : Game
         {
             Window baseWindow;
@@ -73,10 +71,9 @@ namespace SpotEngine.Internal.Graphics
                     Scene.current.Update();
                 }
             }
-
             protected override void Draw(GameTime gameTime)
             {
-                GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.CornflowerBlue);
+                GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Magenta);
 
                 spriteBatch.Begin();
 
@@ -117,13 +114,20 @@ namespace SpotEngine.Internal.Graphics
                     else
                     {
                         texture = Texture2D.FromStream(GraphicsDevice, renderer.sprite.texturePath);
-                        
+
                         spriteBatch.Draw(texture, finalPos, null, finalColor, 0, new Vector2(texture.Width / 2f, texture.Height / 2f), finalScale / Math.Max(texture.Width, texture.Height), SpriteEffects.None, 0f);
                     }
                 }
             }
 
-        }
+            protected override void OnExiting(object sender, EventArgs args)
+            {
+                Application.GetApp().Stop();
+                base.OnExiting(sender, args);
+            }
 
+        }
     }
 }
+
+
