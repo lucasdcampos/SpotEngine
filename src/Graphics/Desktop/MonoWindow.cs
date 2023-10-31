@@ -15,7 +15,6 @@ namespace SpotEngine.Internal.Graphics
             this.Height = height;
             unitSize = UnitSize;
             Log.Custom("Set RendererAPI to OpenGL (with XNA)", ConsoleColor.Green);
-
             game = new MonoGame(this);
         }
 
@@ -29,31 +28,32 @@ namespace SpotEngine.Internal.Graphics
 
         public class MonoGame : Game
         {
-            Window baseWindow;
+            MonoWindow baseWindow;
             GraphicsDeviceManager graphics;
             SpriteBatch spriteBatch;
             List<SpriteRenderer> sprites = new();
 
-            public MonoGame(Window baseWindow)
+            public MonoGame(MonoWindow baseWindow)
             {
                 graphics = new GraphicsDeviceManager(this);
                 Content.RootDirectory = "Assets";
                 this.baseWindow = baseWindow;
 
-                Window.Title = baseWindow.Title;
+
             }
 
             protected override void Initialize()
             {
                 base.Initialize();
+
+                Window.Title = baseWindow.Title;
+
                 IsMouseVisible = true;
 
                 if(Scene.current != null)
                 {
                     Scene.current.Start();
                 }
-
-                Window.Title = baseWindow.Title;
             }
 
             Texture2D texture;
