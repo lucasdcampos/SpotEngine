@@ -53,9 +53,25 @@ namespace SpotEngine
             return m_Window;
         }
 
-        public void CreateWindow()
+        public void CreateWindow(RenderMode mode, string title, Vec2 res)
         {
-            m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
+            if (m_Window != null) { Log.Warn("A window is already in use!"); return; }
+
+            switch (mode)
+            {
+                case RenderMode.Xna:
+                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
+                    break;
+                case RenderMode.OpenTK:
+                    Log.Warn("OpenTK is not supported yet! Creating a Xna window instead");
+                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
+                    break;
+                default:
+                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
+                    break;
+            }
+
+            
         }
 
         /// <summary>
@@ -71,9 +87,10 @@ namespace SpotEngine
             Log.Info("Initializing Application");
             Input.Init();
 
-            m_Window = m_Window == null ? new MonoWindow("My Game", 800, 600) : m_Window;
-            // main loop
-
+            if (m_Window == null)
+            {
+                CreateWindow(RenderMode.Xna, "Spot Game", new Vec2(800, 600));
+            }
 
             return 0;
         }
@@ -86,6 +103,8 @@ namespace SpotEngine
             Log.Info("Stopping the application");
             m_Running = false;
         }
+
+        public enum RenderMode { Xna, OpenTK }
         
     }
 }

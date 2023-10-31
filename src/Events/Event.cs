@@ -60,7 +60,6 @@ namespace SpotEngine
         {
             KeyboardPressedOccurred?.Invoke(sender, e);
             EventOccurred?.Invoke(EventType.KeyboardPressed, e);
-
         }
 
         public static void TriggerKeyboardReleasedEvent(object sender, InputEvents.KeyboardReleaseEvent e)

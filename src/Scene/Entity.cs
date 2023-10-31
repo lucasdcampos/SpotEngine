@@ -43,6 +43,7 @@ namespace SpotEngine
             if (transform == null)
                 transform = AddComponent<Transform>();
         }
+
         /// <summary>
         /// Sets the active state of the entity.
         /// </summary>
@@ -59,6 +60,7 @@ namespace SpotEngine
             T addedComponent = new T();
             components.Add(addedComponent);
             addedComponent.entity = this;
+            addedComponent.transform = transform;
             return addedComponent;
         }
 
@@ -90,16 +92,14 @@ namespace SpotEngine
         {
             if(Scene.current != null) Scene.current.RegisterEntity(entity);
 
-            
             return entity;
         }
 
         public void LoadComponents()
         {
-            Log.Info("Loading components for " + name);
+            Log.Dev("Loading components for " + name);
             foreach (Component component in components)
                 component.OnStart();
-
         }
 
         internal void UpdateComponents()

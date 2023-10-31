@@ -1,31 +1,26 @@
-﻿using SpotEngine.Graphics.Renderer.XNA;
-using SpotEngine.Internal.Graphics;
-using Microsoft.Xna.Framework;
+﻿using SpotEngine.Internal.Graphics;
+
 namespace SpotEngine
 {
     public class SpriteRenderer : Component
     {
         public Sprite sprite;
-        public override void OnStart()
+
+        public SpriteRenderer()
         {
-           if(sprite == null)
-            {
-                MonoWindow mono = (MonoWindow)app.GetWindow();
-
-                SquareManagerXNA squareManager = mono.game.GetSquareManager();
-
-                squareManager.CreateSquare(
-                    new Vector2(entity.transform.pos.X, entity.transform.pos.Y),
-                    new Vector2(entity.transform.scale.X, entity.transform.scale.Y),
-                    Color.White
-                    );
-
-            }
+            sprite = new Sprite();
         }
 
-        public override void OnUpdate()
+        public SpriteRenderer(Sprite sprite)
         {
+            this.sprite = sprite;
+        }
 
+        public override void OnStart()
+        {
+            MonoWindow? window = (MonoWindow)app.GetWindow();
+
+            window?.game.RegisterSprite(this);
         }
     }
 }

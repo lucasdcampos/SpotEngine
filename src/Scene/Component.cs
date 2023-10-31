@@ -11,6 +11,11 @@
         public Entity entity;
 
         /// <summary>
+        /// Associated transform.
+        /// </summary>
+        public Transform transform;
+
+        /// <summary>
         /// Indicates if the component is enabled.
         /// </summary>
         public bool enabled = true;
@@ -18,7 +23,7 @@
         /// <summary>
         /// Called when the component starts. Can be overridden.
         /// </summary>
-        public virtual void OnStart() { print("a"); }
+        public virtual void OnStart() { }
 
         /// <summary>
         /// Called once every frame. Can be overridden.
