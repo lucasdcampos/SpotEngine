@@ -92,6 +92,8 @@ namespace SpotEngine
                 CreateWindow(RenderMode.Xna, "Spot Game", new Vec2(800, 600));
             }
 
+            m_Window.Initialize();
+
             return 0;
         }
 
