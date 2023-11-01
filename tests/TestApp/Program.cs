@@ -6,17 +6,15 @@ internal class Program
     {
         Application app = Application.GetApp();
         
-
         Scene scene = new Scene();
-        Scene.current = scene;
 
         Entity e = new Entity();
         e.AddComponent<SpriteRenderer>();
         e.GetComponent<SpriteRenderer>().sprite = new Sprite("Player.png", Color.White);
-        e.AddComponent<Collider2D>();  
+        e.AddComponent<Collider2D>();
+        e.AddComponent<Rigidbody2D>();
         e.transform.scale = new Vec3(1f, 1f, 1f);
         scene.RegisterEntity(e);
-
 
         Entity e2 = new Entity();
         e2.AddComponent<SpriteRenderer>();
@@ -32,7 +30,10 @@ internal class Program
         scene.RegisterEntity(square);
 
         square.GetComponent<SpriteRenderer>().sprite.color = Color.Blue;
+
+        e.GetComponent<Rigidbody2D>().Velocity = new Vec2(0, -5);
+
+        Scene.LoadScene(scene);
         app.Run();
-        
     }
 }

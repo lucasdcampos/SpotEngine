@@ -22,6 +22,7 @@
         /// </summary>
         public static void LoadScene(Scene scene)
         {
+            bool isCurrentSceneNull = current == null;
             if (scene == null) { Log.Error("Scene could not be loaded. Reason: Scene is NULL"); return; }
 
             Log.Info($"Loading scene {scene.name}");
@@ -39,7 +40,8 @@
                 newScene.entities.Add(e);
             }
 
-            newScene.Start();
+            if(!isCurrentSceneNull)
+                newScene.Start();
         }
 
         /// <summary>
