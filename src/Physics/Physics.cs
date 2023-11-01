@@ -2,6 +2,6 @@
 {
     public class Physics
     {
-        public float gravity = 10f;
+        public static float gravity = 10f;
     }
 }

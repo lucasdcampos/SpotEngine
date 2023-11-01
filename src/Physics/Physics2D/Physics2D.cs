@@ -24,6 +24,11 @@
                 }
             }
         }
+
+        public static bool CheckCollision(Collider2D collider1, Collider2D collider2)
+        {
+            return collider1.IsColliding(collider2);
+        }
     }
 
 }

@@ -32,6 +32,7 @@ namespace SpotEngine.Internal.Graphics
             GraphicsDeviceManager graphics;
             SpriteBatch spriteBatch;
             List<SpriteRenderer> sprites = new();
+            private DateTime _lastFrameTime;
 
             public MonoGame(MonoWindow baseWindow)
             {
@@ -45,6 +46,9 @@ namespace SpotEngine.Internal.Graphics
             protected override void Initialize()
             {
                 base.Initialize();
+
+                this.IsFixedTimeStep = true;
+                this.TargetElapsedTime = TimeSpan.FromSeconds(1d / 30d);
 
                 Window.Title = baseWindow.Title;
 
@@ -65,6 +69,10 @@ namespace SpotEngine.Internal.Graphics
             protected override void Update(GameTime gameTime)
             {
                 base.Update(gameTime);
+
+                var delta = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+                Time.deltaTime = delta;
 
                 if (Scene.current != null)
                 {

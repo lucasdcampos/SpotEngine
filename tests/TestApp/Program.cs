@@ -5,7 +5,7 @@ internal class Program
     public static void Main(string[] args)
     {
         Application app = Application.GetApp();
-        
+
         Scene scene = new Scene();
 
         Entity e = new Entity();
@@ -14,6 +14,8 @@ internal class Program
         e.AddComponent<Collider2D>();
         e.AddComponent<Rigidbody2D>();
         e.transform.scale = new Vec3(1f, 1f, 1f);
+        e.transform.pos = new Vec3(0, 2, 0);
+        e.GetComponent<Rigidbody2D>().Velocity = new Vec2(0, 0);
         scene.RegisterEntity(e);
 
         Entity e2 = new Entity();
@@ -30,8 +32,6 @@ internal class Program
         scene.RegisterEntity(square);
 
         square.GetComponent<SpriteRenderer>().sprite.color = Color.Blue;
-
-        e.GetComponent<Rigidbody2D>().Velocity = new Vec2(0, -5);
 
         Scene.LoadScene(scene);
         app.Run();
