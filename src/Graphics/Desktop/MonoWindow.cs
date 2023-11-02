@@ -14,7 +14,7 @@ namespace SpotEngine.Internal.Graphics
             this.Width = width;
             this.Height = height;
             unitSize = UnitSize;
-            Log.Custom("Set RendererAPI to OpenGL (with XNA)", ConsoleColor.Green);
+            Log.Custom("Set RenderMode to MonoGame", ConsoleColor.Green);
             game = new MonoGame(this);
         }
 
@@ -39,7 +39,6 @@ namespace SpotEngine.Internal.Graphics
                 graphics = new GraphicsDeviceManager(this);
                 Content.RootDirectory = "Assets";
                 this.baseWindow = baseWindow;
-
 
             }
 
@@ -99,7 +98,9 @@ namespace SpotEngine.Internal.Graphics
 
             void DrawSprites()
             {
-                foreach (SpriteRenderer renderer in sprites)
+                var orderedList = sprites.OrderBy(sprite => sprite.sprite.layer).ToList();
+
+                foreach (SpriteRenderer renderer in orderedList)
                 {
                     Vec3 pos = renderer.transform.pos;
                     Vec3 scale = renderer.transform.scale;

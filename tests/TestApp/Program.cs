@@ -10,7 +10,8 @@ internal class Program
 
         Entity e = new Entity();
         e.AddComponent<SpriteRenderer>();
-        e.GetComponent<SpriteRenderer>().sprite = new Sprite("Player.png", Color.White);
+        Sprite spr = e.GetComponent<SpriteRenderer>().sprite = new Sprite("Player.png", Color.White);
+        spr.layer = 10;
         e.AddComponent<Collider2D>();
         e.AddComponent<Rigidbody2D>();
         e.transform.scale = new Vec3(1f, 1f, 1f);
