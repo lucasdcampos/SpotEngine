@@ -41,6 +41,11 @@ namespace SpotEngine
             return KeyStates[keyCode];
         }
 
+        public static bool IsKeyPressed(int keyCode)
+        {
+            return KeyStates[(KeyCode)keyCode];
+        }
+
         /// <summary>
         /// Checks if a specific mouse button is currently pressed.
         /// </summary>
@@ -49,6 +54,12 @@ namespace SpotEngine
         public static bool IsMouseButtonPressed(MouseButton mouseButton)
         {
             return MouseStates[mouseButton];
+        }
+
+        static internal void SetKeyState(int code, bool state)
+        {
+            KeyCode keyCode = (KeyCode)code;
+            KeyStates[keyCode] = state;
         }
     }
 }

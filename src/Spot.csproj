@@ -11,10 +11,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ImGui.NET" Version="1.89.9.2" />
+    <PackageReference Include="ImGui.NET" Version="1.90.0.1" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
+    <PackageReference Include="Monogame.ImGui" Version="1.0.0" />
     <PackageReference Include="OpenTK" Version="5.0.0-pre.8" />
     <PackageReference Include="SFML.Net" Version="2.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\thirdparty\MonoGameImGuiNet\Monogame.ImGuiNet.csproj" />
   </ItemGroup>
 
 </Project>

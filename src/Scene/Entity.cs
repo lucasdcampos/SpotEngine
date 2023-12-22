@@ -80,12 +80,22 @@ namespace SpotEngine
             return null;
         }
 
+        public bool HasComponent<T>() where T : Component
+        {
+            return GetComponent<T>() != null;
+        }
+
         /// <summary>
         /// Gets all components from the entity.
         /// </summary>
         public List<Component> GetComponents()
         {
             return components;
+        }
+
+        public void SetComponents(List<Component> components)
+        {
+            this.components = components;
         }
 
         public static Entity SpawnEntity(Entity entity)

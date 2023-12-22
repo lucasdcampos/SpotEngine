@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Spot", "src\Spot.csproj", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestApp", "tests\TestApp\TestApp.csproj", "{E9340581-BEEA-4130-B0B0-2AE51C1E526C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Monogame.ImGuiNet", "thirdparty\MonoGameImGuiNet\Monogame.ImGuiNet.csproj", "{5F49AA90-382C-403D-831C-03670809BC61}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpotEditor", "src\SpotEditor\SpotEditor.csproj", "{0318D63A-F9DB-4012-8460-00D1381BC022}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{E9340581-BEEA-4130-B0B0-2AE51C1E526C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9340581-BEEA-4130-B0B0-2AE51C1E526C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9340581-BEEA-4130-B0B0-2AE51C1E526C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5F49AA90-382C-403D-831C-03670809BC61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F49AA90-382C-403D-831C-03670809BC61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F49AA90-382C-403D-831C-03670809BC61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F49AA90-382C-403D-831C-03670809BC61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0318D63A-F9DB-4012-8460-00D1381BC022}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0318D63A-F9DB-4012-8460-00D1381BC022}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0318D63A-F9DB-4012-8460-00D1381BC022}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0318D63A-F9DB-4012-8460-00D1381BC022}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

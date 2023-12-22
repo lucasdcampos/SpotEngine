@@ -3,6 +3,7 @@
     public class Collider2D : Component
     {
         public AABB2D BoundingBox { get; set; }
+        private List<Collider2D> m_Colliders = new();
 
         public override void OnStart()
         {
@@ -22,7 +23,13 @@
 
         public void NotifyCollision(Collider2D other)
         {
-            print($"{entity.name} ({entity.ID}) is colliding with {other.entity.name} ({other.entity.ID})");
+            if (!m_Colliders.Contains(other))
+                m_Colliders.Add(other);
+        }
+
+        public List<Collider2D> GetColliders()
+        {
+            return m_Colliders;
         }
     }
 

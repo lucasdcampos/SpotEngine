@@ -20,7 +20,7 @@ namespace SpotEngine
         {
             MonoWindow? window = (MonoWindow)app.GetWindow();
 
-            window?.game.RegisterSprite(this);
+            window?.game.RegisterSprite(this, sprite);
         }
     }
 }

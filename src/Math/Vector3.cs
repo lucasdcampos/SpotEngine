@@ -5,7 +5,7 @@ namespace SpotEngine
     /// <summary>
     /// Represents a three-component vector in 3D space.
     /// </summary>
-    public class Vec3
+    public struct Vec3
     {
         /// <summary>
         /// Gets or sets the X component of the vector.

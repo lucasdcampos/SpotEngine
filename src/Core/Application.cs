@@ -1,4 +1,5 @@
 ﻿using SpotEngine.Internal.Graphics;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace SpotEngine
@@ -12,6 +13,11 @@ namespace SpotEngine
         /// Will display additional dev information when set to true
         /// </summary>
         public static bool debugMode = false;
+
+        public static string applicationName;
+        public static string companyName;
+        public static bool isEditor;
+        public static bool isPlaying;
 
         private static Application? s_Instance;
         private Window? m_Window;
@@ -70,8 +76,6 @@ namespace SpotEngine
                     m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
                     break;
             }
-
-            
         }
 
         /// <summary>
@@ -92,7 +96,15 @@ namespace SpotEngine
                 CreateWindow(RenderMode.Xna, "Spot Game", new Vec2(800, 600));
             }
 
-            m_Window.Initialize();
+            Task gameLoop = Task.Factory.StartNew(() => 
+            {
+                while (m_Running)
+                {
+
+                }
+            });
+
+            m_Window?.Initialize();
 
             return 0;
         }

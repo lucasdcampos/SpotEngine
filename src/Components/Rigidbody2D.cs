@@ -10,28 +10,29 @@
         public override void OnStart()
         {
             base.OnStart();
-            if(Velocity == null) { Velocity = new Vec2(0, 0); }
+            Velocity = new Vec2(0, 0);
             
             Collider = entity.GetComponent<Collider2D>();
         }
 
         public override void OnUpdate()
         {
-
-            transform.pos = new Vec3(
-                transform.pos.X + Velocity.X * Time.deltaTime, 
-                transform.pos.Y + (Velocity.Y - _defaultVelocity) * Time.deltaTime,
-                0);
-
-            if(Collider != null)
+            
+            foreach (Collider2D col in Collider.GetColliders())
             {
-                Collider.BoundingBox.Min.X = transform.pos.X;
-                Collider.BoundingBox.Min.Y = transform.pos.Y;
-                Collider.BoundingBox.Max.X = transform.pos.X + Collider.BoundingBox.Width;
-                Collider.BoundingBox.Max.Y = transform.pos.Y + Collider.BoundingBox.Height;
-
+                if(col.transform.pos.Y <= transform.pos.Y)
+                {
+                    return;
+                }
             }
 
+            if(transform.pos.Y >= -1f)
+            {
+                transform.pos = new Vec3(
+                    transform.pos.X + Velocity.X * Time.deltaTime,
+                    transform.pos.Y + (Velocity.Y - _defaultVelocity) * Time.deltaTime,
+                    0);
+            }
         }
     }
 }

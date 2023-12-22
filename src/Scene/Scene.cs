@@ -17,6 +17,8 @@
         /// </summary>
         public static Scene? current;
 
+        private static Scene protectedScene;
+
         /// <summary>
         /// Loads a new scene, replacing the current one.
         /// </summary>
@@ -25,23 +27,16 @@
             bool isCurrentSceneNull = current == null;
             if (scene == null) { Log.Error("Scene could not be loaded. Reason: Scene is NULL"); return; }
 
-            Log.Info($"Loading scene {scene.name}");
-
             // copying the scene to a new one, so the original remains intact
-            Scene newScene = new Scene();
-            newScene.name = scene.name;
-            newScene.entities.Clear();
-
-            current = newScene;
-
-            foreach (Entity e in scene.entities)
+            Scene newScene = CloneScene(scene);
+            
+            if (!isCurrentSceneNull) 
             {
-                Log.Dev($"Adding {e.name} ({e.ID}) to {newScene.name}");
-                newScene.entities.Add(e);
+                Log.Info($"Loading scene {scene.name}");
+                newScene.Start();
             }
 
-            if(!isCurrentSceneNull)
-                newScene.Start();
+            current = newScene;
         }
 
         /// <summary>
@@ -59,11 +54,34 @@
             }
         }
 
+        public static void SaveScene(Scene scene)
+        {
+            protectedScene = CloneScene(scene);
+        }
+
+        public static Scene CloneScene(Scene scene)
+        {
+            Scene newScene = new Scene();
+            newScene.name = scene.name;
+            newScene.entities.Clear();
+
+            foreach (Entity e in scene.entities)
+            {
+                Log.Dev($"Adding {e.name} ({e.ID}) to {newScene.name}");
+                Entity newEntity = new Entity();
+                newEntity.SetComponents(e.GetComponents());
+                newScene.entities.Add(newEntity);
+            }
+
+            return newScene;
+        }
+
         /// <summary>
         /// Updates all components of all entities in the scene.
         /// </summary>
         public void Update()
         {
+            Physics2D.CheckCollisions();
             // TODO: Change this to a faster way
             foreach (var entity in entities)
             {
@@ -72,6 +90,11 @@
                     component.OnUpdate();
                 }
             }
+        }
+
+        public static Scene GetScene()
+        {
+            return protectedScene;
         }
 
         /// <summary>
@@ -95,6 +118,4 @@
             return entities;
         }
     }
-
-
 }

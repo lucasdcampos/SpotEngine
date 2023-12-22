@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a four-component vector in a three-dimensional space.
     /// </summary>
-    public class Vec4
+    public struct Vec4
     {
         /// <summary>
         /// Gets or sets the X component of the vector.

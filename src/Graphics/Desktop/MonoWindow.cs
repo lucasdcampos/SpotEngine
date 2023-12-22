@@ -1,6 +1,10 @@
-﻿using Microsoft.Xna.Framework;
+﻿using ImGuiNET;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.ImGuiNet;
+using SpotEngine.Internal.Utils;
+using SpotEditor;
 
 namespace SpotEngine.Internal.Graphics
 {
@@ -16,6 +20,7 @@ namespace SpotEngine.Internal.Graphics
             unitSize = UnitSize;
             Log.Custom("Set RenderMode to MonoGame", ConsoleColor.Green);
             game = new MonoGame(this);
+
         }
 
         public override void Initialize()
@@ -31,9 +36,12 @@ namespace SpotEngine.Internal.Graphics
             MonoWindow baseWindow;
             GraphicsDeviceManager graphics;
             SpriteBatch spriteBatch;
-            List<SpriteRenderer> sprites = new();
+            List<Sprite> sprites = new();
+            List<SpriteRenderer> renderers = new();
             private DateTime _lastFrameTime;
-
+            public static ImGuiRenderer GuiRenderer;
+            private bool _toolActive = true;
+            private System.Numerics.Vector4 _colorV4;
             public MonoGame(MonoWindow baseWindow)
             {
                 graphics = new GraphicsDeviceManager(this);
@@ -44,13 +52,14 @@ namespace SpotEngine.Internal.Graphics
 
             protected override void Initialize()
             {
+                GuiRenderer = new ImGuiRenderer(this);
+
                 base.Initialize();
 
                 this.IsFixedTimeStep = true;
                 this.TargetElapsedTime = TimeSpan.FromSeconds(1d / 30d);
 
                 Window.Title = baseWindow.Title;
-
                 IsMouseVisible = true;
 
                 if(Scene.current != null)
@@ -63,6 +72,8 @@ namespace SpotEngine.Internal.Graphics
             protected override void LoadContent()
             {
                 spriteBatch = new SpriteBatch(GraphicsDevice);
+                GuiRenderer.RebuildFontAtlas();
+
             }
 
             protected override void Update(GameTime gameTime)
@@ -73,14 +84,24 @@ namespace SpotEngine.Internal.Graphics
 
                 Time.deltaTime = delta;
 
-                if (Scene.current != null)
+                if (Scene.current != null && Application.isPlaying)
                 {
                     Scene.current.Update();
                 }
+
+                // handling input
+                KeyboardState state = Keyboard.GetState();
+
+                foreach (Keys k in Enum.GetValues(typeof(Keys)))
+                {
+                    Input.SetKeyState((int)XnaKeysToSpot.Convert((k)), state.IsKeyDown(k));
+                }
+
             }
+            System.Numerics.Vector3 v = new System.Numerics.Vector3();
             protected override void Draw(GameTime gameTime)
             {
-                GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Magenta);
+                GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Black);
 
                 spriteBatch.Begin();
 
@@ -89,16 +110,29 @@ namespace SpotEngine.Internal.Graphics
                 spriteBatch.End();
 
                 base.Draw(gameTime);
+
+                GuiRenderer.BeginLayout(gameTime);
+
+                EditorGUI.DrawInspector(true);
+                EditorGUI.DrawTopMenuButtons(true);
+
+                GuiRenderer.EndLayout();
+
             }
 
-            public void RegisterSprite(SpriteRenderer renderer)
+            internal void RegisterSprite(SpriteRenderer renderer, Sprite sprite)
             {
-                sprites.Add(renderer);
+                renderers.Add(renderer);
+            }
+
+            internal void RegisterSprite(Sprite sprite)
+            {
+                sprites.Add(sprite);
             }
 
             void DrawSprites()
             {
-                var orderedList = sprites.OrderBy(sprite => sprite.sprite.layer).ToList();
+                var orderedList = renderers.OrderBy(sprite => sprite.sprite.layer).ToList();
 
                 foreach (SpriteRenderer renderer in orderedList)
                 {
@@ -111,7 +145,9 @@ namespace SpotEngine.Internal.Graphics
                     Vector2 finalScale = new Vector2(scale.X * UnitSize, scale.Y * UnitSize);
                     Vector3 finalRot = new Vector3(rot.X, rot.Y, rot.Z);
 
-                    Microsoft.Xna.Framework.Color finalColor = new Microsoft.Xna.Framework.Color(color.r, color.g, color.b, color.a);
+                    Microsoft.Xna.Framework.Color finalColor 
+                        = new Microsoft.Xna.Framework.Color(color.r, color.g, color.b, color.a);
+
                     if (renderer.sprite == null || renderer.sprite.texturePath == null)
                     {
                         // rendering default white square instead
@@ -138,5 +174,3 @@ namespace SpotEngine.Internal.Graphics
         }
     }
 }
-
-

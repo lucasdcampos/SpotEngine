@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a two-component vector in 2D space.
     /// </summary>
-    public class Vec2
+    public struct Vec2
     {
         /// <summary>
         /// Gets or sets the X component of the vector.

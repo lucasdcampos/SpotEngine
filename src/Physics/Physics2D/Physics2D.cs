@@ -1,16 +1,15 @@
 ﻿namespace SpotEngine
 {
-    public class Physics2D
+    public static class Physics2D
     {
         private static List<Collider2D> colliders = new();
-
 
         public static void AddCollider(Collider2D collider)
         {
             colliders.Add(collider);
         }
 
-        public void CheckCollisions()
+        public static void CheckCollisions()
         {
             for (int i = 0; i < colliders.Count; i++)
             {
@@ -21,6 +20,7 @@
                         colliders[i].NotifyCollision(colliders[j]);
                         colliders[j].NotifyCollision(colliders[i]);
                     }
+
                 }
             }
         }
