@@ -2,13 +2,14 @@
 
 # Spot Game Engine
 
-Welcome to the Spot Game Engine, a work-in-progress game engine built entirely in C#.
+> **⚠️ Warning:** This version of Spot will soon be deprecated as the entire engine is being rebuilt from scratch in C++. There will be one final release here before this repository is archived.
 
-**Please Note:** There are no publicly available releases of the engine at this time. We are actively developing it, and we'll share more updates as we make progress.
 
 ## Getting Started
 
-While the engine is under development and no releases are available, you can explore the source code and contribute if you wish. Here's how you can get started:
+Welcome to the Spot Game Engine, a work-in-progress game engine built entirely in C#.
+
+You can explore the source code and contribute if you wish. Here's how you can get started:
 
 ```sh
 git clone https://github.com/lukazof/SpotEngine.git
@@ -48,3 +49,5 @@ I'm developing the engine alone (you can contribute if you want), and mainly for
 I don't intend to create the most complex engine in the world, because that requires a giant team and years of work.
 
 My goal is to be able to create simple games using the engine, and in the future I might think about expanding it, who knows.
+
+**EDIT:** I'm rebuilding Spot from scratch in C++, and a usable version should be available in the coming months.
