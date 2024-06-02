@@ -40,11 +40,11 @@ namespace SpotEngine.Internal.Graphics
             GL.ClearColor(Color4.Black);
 
             var version = $"OpenGL API {GL.GetString(StringName.Version)}\n";
-                version += "                 "; // lol
-                version += $"Vendor: {GL.GetString(StringName.Vendor)}";
+            version += "                 "; // lol
+            version += $"Vendor: {GL.GetString(StringName.Vendor)}";
 
             Log.Custom(version, ConsoleColor.Cyan);
-            
+
         }
         protected internal override void Update(float dt)
         {
@@ -64,19 +64,19 @@ namespace SpotEngine.Internal.Graphics
             DrawTestTriangle();
 
             m_window.SwapBuffers();
-            
+
         }
 
-        Vec3[] vertices = 
+        Vec3[] vertices =
             {
                 new Vec3( 0.0f,  0.5f, 0.0f),
                 new Vec3( 0.5f, -0.5f, 0.0f),
                 new Vec3(-0.5f, -0.5f, 0.0f)
             };
-        Color color = Color.Blue;
+        Color[] colors = { Color.Red, Color.Green, Color.Blue };
         internal void DrawTestTriangle()
         {
-            Renderer2D.Instance.DrawPrimitive(Primitive.Triangles, vertices, color);
+            Renderer2D.Instance.DrawPrimitive(Primitive.Triangles, vertices, colors);
         }
 
         protected internal override void Close()

@@ -1,4 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL.Compatibility;
+using System.Drawing;
 
 namespace SpotEngine.Internal.Renderer
 {
@@ -13,14 +14,16 @@ namespace SpotEngine.Internal.Renderer
             Instance = new Renderer2D();
         }
 
-        internal void DrawPrimitive(Primitive primitive, Vec3[] vertices, Color color)
+        internal void DrawPrimitive(Primitive primitive, Vec3[] vertices, Color[] colors)
         {
             GL.Begin(FromSpotPrimitive(primitive));
 
-            GL.Color3f(color.r, color.g, color.b);
-            foreach(var vec in vertices)
+            for(int i = 0; i < colors.Length; i++)
             {
-                GL.Vertex3f(vec.X, vec.Y, vec.Z);
+                if (colors[i] != null)
+                    GL.Color3f(colors[i].r, colors[i].g, colors[i].b);
+
+                GL.Vertex3f(vertices[i].X, vertices[i].Y, vertices[i].Z);
             }
 
             GL.End();
