@@ -1,5 +1,8 @@
-﻿// Copyright (c) Trivalent Studios
+﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
+
+// TODO: Rewrite this entire file
+//       I was still dumb when I created this
 
 namespace SpotEngine
 {

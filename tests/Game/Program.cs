@@ -4,8 +4,8 @@ internal class Program
 {
     public static void Main(string[] args)
     {
-        Application app = Application.GetApp();
-        app.CreateWindow(Application.RenderMode.OpenTK, "Spot Engine Editor", new Vec2(800, 600));
+        var app = Application.GetApp();
+        app.CreateWindow("Spot Engine Editor", new Vec2(800, 600));
 
         Scene scene = new Scene();
         scene.name = "BlankScene";

@@ -1,104 +1,99 @@
-﻿// idk why 2 classes, i'll fix it later
-
-using System;
-using OpenTK;
-using OpenTK.Graphics;
-using OpenTK.Graphics.OpenGL;
+﻿using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using OpenTK.Input;
+using System;
+using System.ComponentModel;
+
 
 namespace SpotEngine.Internal.Graphics
 {
     internal class OpenGLWindow : Window
     {
-        private OpenTKWindow window;
-
-        internal class OpenTKWindow : GameWindow
+        GameWindow m_window;
+        internal OpenGLWindow(string title, int width, int height) : base(title, width, height)
         {
-            private OpenGLWindow baseWindow;
-
-            private DateTime _lastFrameTime;
-            public static float DeltaTime { get; private set; }
-
-            public OpenTKWindow(string title, int width, int height) : base(new GameWindowSettings(), new NativeWindowSettings())
+            var settings = new NativeWindowSettings()
             {
-                Title = title;
-                Size = new Vector2i(width, height);
-                
-            }
+                Size = new Vector2i(width, height),
+                Title = title,
+                Flags = ContextFlags.ForwardCompatible,
+            };
 
-            protected override void OnLoad()
-            {
-                base.OnLoad();
-                GL.ClearColor(Color4.Magenta);
-            }
-
-            protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
-            {
-                base.OnClosing(e);
-                baseWindow.Close();
-            }
-
-            protected override void OnRenderFrame(FrameEventArgs e)
-            {
-                GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
-                SwapBuffers();
-            }
-
-            protected override void OnUpdateFrame(FrameEventArgs e)
-            {
-                this.UpdateFrequency = 60;
-                DeltaTime = (float)(DateTime.Now - _lastFrameTime).TotalSeconds;
-                _lastFrameTime = DateTime.Now;
-
-                Time.deltaTime = DeltaTime;
-
-            }
-
-            protected override void OnKeyDown(KeyboardKeyEventArgs e)
-            {
-                int i = (int)e.Key;
-                var ev = new InputEvents.KeyboardPressEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
-                Event.TriggerKeyboardPressedEvent(this, ev);
-            }
-
-            protected override void OnKeyUp(KeyboardKeyEventArgs e)
-            {
-                int i = (int)e.Key;
-                var ev = new InputEvents.KeyboardReleaseEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
-                Event.TriggerKeyboardReleasedEvent(this, ev);
-            }
-
-            public void SetBaseWindow(OpenGLWindow window)
-            {
-                if (baseWindow != null) { Log.Warn("There was already a Base Window defined."); }
-                Log.Info($"Setting Base Window of OpenTK to: '{window}'");
-                baseWindow = window;
-            }
+            m_window = new GameWindow(GameWindowSettings.Default, settings);
         }
 
-        public OpenGLWindow(string title, int width, int height) : base(title, width, height)
-        {
-            window = new OpenTKWindow(title, width, height);
-            window.SetBaseWindow(this);
-            Initialize();
-        }
-
-        public override void Close()
-        {
-            var e = new WindowEvents.WindowCloseEvent();
-            Event.TriggerWindowCloseEvent(this, e);
-            
-        }
-
-        public override void Initialize()
+        protected internal override void Initialize()
         {
             base.Initialize();
-            window.Run();
+
+            m_window.UpdateFrequency = 60;
+            m_window.Context.MakeCurrent();
+            m_window.MakeCurrent();
+
+            m_window.Closing += CloseEvent;
+            m_window.KeyDown += KeyDownEvent;
+            m_window.KeyUp += KeyUpEvent;
+
+            var version = $"OpenGL API {GL.GetString(StringName.Version)}\n";
+                version += "                 "; // lol
+                version += $"Vendor: {GL.GetString(StringName.Vendor)}";
+
+            Log.Custom(version, ConsoleColor.Cyan);
+            
+        }
+        protected internal override void Update()
+        {
+            base.Update();
+
+            // obsolete
+            m_window.ProcessEvents();
+
         }
 
+        protected internal override void Render()
+        {
+            base.Render();
+
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            GL.ClearColor(Color4.Magenta);
+
+            GL.Begin(PrimitiveType.Triangles);
+            GL.Vertex2f(-0.5f, 0.5f);
+            GL.Vertex2f(0.5f, -0.5f);
+            GL.Vertex2f(0f, 0.5f);
+            GL.End();
+
+            m_window.SwapBuffers();
+
+        }
+
+        protected internal override void Close()
+        {
+            base.Close();
+
+            var e = new WindowEvents.WindowCloseEvent();
+            Event.TriggerWindowCloseEvent(this, e);
+        }
+
+        private void CloseEvent(CancelEventArgs e)
+        {
+            Close();
+        }
+
+        private void KeyDownEvent(KeyboardKeyEventArgs e)
+        {
+            int i = (int)e.Key;
+            var ev = new InputEvents.KeyboardPressEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
+            Event.TriggerKeyboardPressedEvent(this, ev);
+
+        }
+
+        private void KeyUpEvent(KeyboardKeyEventArgs e)
+        {
+            int i = (int)e.Key;
+            var ev = new InputEvents.KeyboardReleaseEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
+            Event.TriggerKeyboardReleasedEvent(this, ev);
+        }
     }
 }

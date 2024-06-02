@@ -1,11 +1,9 @@
 ﻿using SpotEngine.Internal.Graphics;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace SpotEngine
 {
     /// <summary>
-    /// Represents the main application for the Spot Engine.
+    /// Represents the main application for the Spot Engine Runtime.
     /// </summary>
     public class Application
     {
@@ -59,23 +57,12 @@ namespace SpotEngine
             return m_Window;
         }
 
-        public void CreateWindow(RenderMode mode, string title, Vec2 res)
+        public void CreateWindow(string title, Vec2 res)
         {
             if (m_Window != null) { Log.Warn("A window is already in use!"); return; }
 
-            switch (mode)
-            {
-                case RenderMode.Xna:
-                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
-                    break;
-                case RenderMode.OpenTK:
-                    Log.Warn("OpenTK is not supported yet! Creating a Xna window instead");
-                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
-                    break;
-                default:
-                    m_Window = new MonoWindow(title, (int)res.X, (int)res.Y);
-                    break;
-            }
+           m_Window = new OpenGLWindow(title, (int)res.X, (int)res.Y);
+            
         }
 
         /// <summary>
@@ -84,7 +71,7 @@ namespace SpotEngine
         /// <returns>Zero on successful completion.</returns>
         public int Run()
         {
-            Log.Info("Spot Engine says Hello!");
+            Log.Info("Hello from Spot Engine");
             // Handling the Close Event
             Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
             m_Running = true;
@@ -93,18 +80,19 @@ namespace SpotEngine
 
             if (m_Window == null)
             {
-                CreateWindow(RenderMode.Xna, "Spot Game", new Vec2(800, 600));
+                CreateWindow("Spot Game", new Vec2(800, 600));
             }
 
-            Task gameLoop = Task.Factory.StartNew(() => 
-            {
-                while (m_Running)
-                {
-
-                }
-            });
-
             m_Window?.Initialize();
+
+            while (m_Running)
+            {
+                if (m_Window == null)
+                    return 0;
+
+                m_Window!.Update();
+                m_Window!.Render();
+            }
 
             return 0;
         }
@@ -117,8 +105,6 @@ namespace SpotEngine
             Log.Info("Stopping the application");
             m_Running = false;
         }
-
-        public enum RenderMode { Xna, OpenTK }
         
     }
 }

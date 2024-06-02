@@ -1,4 +1,4 @@
-﻿// Copyright (c) Trivalent Studios
+﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
 
 namespace SpotEngine

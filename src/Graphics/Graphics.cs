@@ -9,12 +9,7 @@ namespace SpotEngine.Internal.Graphics
     {
         public static void DrawSquare(Sprite sprite, float posx, float posy, float scalex, float scaley)
         {
-            MonoWindow? window = (MonoWindow)Application.GetApp().GetWindow();
-
-            if (window != null)
-            {
-                window.game.RegisterSprite(sprite);
-            }
+            Console.WriteLine("DrawSquare() not yet implemented!");
         }
     }
 }

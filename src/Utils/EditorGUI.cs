@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿// not being used
+using ImGuiNET;
 using SpotEngine;
 
 namespace SpotEditor

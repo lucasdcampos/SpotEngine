@@ -18,9 +18,9 @@ namespace SpotEngine
 
         public override void OnStart()
         {
-            MonoWindow? window = (MonoWindow)app.GetWindow();
+            Console.WriteLine("OnStart() not yet implemented in SpriteRenderer.cs");
 
-            window?.game.RegisterSprite(this, sprite);
+            //window?.game.RegisterSprite(this, sprite);
         }
     }
 }

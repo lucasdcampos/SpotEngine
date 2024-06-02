@@ -1,4 +1,4 @@
-﻿// Copyright (c) Trivalent Studios
+﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
 
 using SpotEngine;
@@ -41,7 +41,7 @@ public abstract class Window
     /// <summary>
     /// Initializes and creates the window.
     /// </summary>
-    public virtual void Initialize()
+    protected internal virtual void Initialize()
     {
         Log.Info($"Creating window {Title} ({Width},{Height})");
     }
@@ -49,17 +49,17 @@ public abstract class Window
     /// <summary>
     /// Updates the window's content or state.
     /// </summary>
-    public virtual void Update() { }
+    protected internal virtual void Update() { }
 
     /// <summary>
     /// Renders the content of the window.
     /// </summary>
-    public virtual void Render() { }
+    protected internal virtual void Render() { }
 
     /// <summary>
     /// Closes and disposes of the window.
     /// </summary>
-    public virtual void Close()
+    protected internal virtual void Close()
     {
         Log.Info($"Closing window {Title}, ({Width}x{Height})");
     }
