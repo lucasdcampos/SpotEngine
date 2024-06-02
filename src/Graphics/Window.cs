@@ -49,12 +49,12 @@ public abstract class Window
     /// <summary>
     /// Updates the window's content or state.
     /// </summary>
-    protected internal virtual void Update() { }
+    protected internal virtual void Update(float dt) { }
 
     /// <summary>
     /// Renders the content of the window.
     /// </summary>
-    protected internal virtual void Render() { }
+    protected internal virtual void Render(float dt) { }
 
     /// <summary>
     /// Closes and disposes of the window.

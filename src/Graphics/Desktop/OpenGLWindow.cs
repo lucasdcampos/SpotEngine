@@ -45,18 +45,18 @@ namespace SpotEngine.Internal.Graphics
             Log.Custom(version, ConsoleColor.Cyan);
             
         }
-        protected internal override void Update()
+        protected internal override void Update(float dt)
         {
-            base.Update();
+            base.Update(dt);
 
             // obsolete
             m_window.ProcessEvents();
 
         }
 
-        protected internal override void Render()
+        protected internal override void Render(float dt)
         {
-            base.Render();
+            base.Render(dt);
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 

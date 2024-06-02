@@ -1,4 +1,6 @@
 ﻿using SpotEngine.Internal.Graphics;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace SpotEngine
 {
@@ -17,9 +19,14 @@ namespace SpotEngine
         public static bool isEditor;
         public static bool isPlaying;
 
+        public int DesiredFramerate { get; set; } = 60;
+        public float UpdateTime { get; private set; } 
+
         private static Application? s_Instance;
         private Window? m_Window;
         private bool m_Running;
+
+        private Stopwatch m_stopwatch;
 
         /// <summary>
         /// Gets the singleton instance of the Application.
@@ -72,10 +79,10 @@ namespace SpotEngine
         public int Run()
         {
             Log.Info("Hello from Spot Engine");
-            // Handling the Close Event
-            Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
             m_Running = true;
-            Log.Info("Initializing Application");
+
+            Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
+
             Input.Init();
 
             if (m_Window == null)
@@ -85,13 +92,25 @@ namespace SpotEngine
 
             m_Window?.Initialize();
 
+            m_stopwatch = Stopwatch.StartNew();
+            var lastFrameTime = TimeSpan.Zero;
+
+            var freq = 1 / DesiredFramerate * 1000;
+
             while (m_Running)
             {
                 if (m_Window == null)
                     return 0;
 
-                m_Window!.Update();
-                m_Window!.Render();
+                TimeSpan currentTime = m_stopwatch.Elapsed;
+                TimeSpan deltaTime = currentTime - lastFrameTime;
+                lastFrameTime = currentTime;
+
+                var dt = (float)deltaTime.TotalSeconds;
+                System.Threading.Thread.Sleep(freq);
+
+                m_Window!.Update(dt);
+                m_Window!.Render(dt);
             }
 
             return 0;
