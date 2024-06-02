@@ -18,9 +18,9 @@ namespace SpotEngine.Internal.Renderer
         {
             GL.Begin(FromSpotPrimitive(primitive));
 
-            for(int i = 0; i < colors.Length; i++)
+            for(int i = 0; i < vertices.Length; i++)
             {
-                if (colors[i] != null)
+                if (i < colors.Length)
                     GL.Color3f(colors[i].r, colors[i].g, colors[i].b);
 
                 GL.Vertex3f(vertices[i].X, vertices[i].Y, vertices[i].Z);

@@ -71,7 +71,7 @@ namespace SpotEngine.Internal.Graphics
             {
                 new Vec3( 0.0f,  0.5f, 0.0f),
                 new Vec3( 0.5f, -0.5f, 0.0f),
-                new Vec3(-0.5f, -0.5f, 0.0f)
+                new Vec3(-0.5f, -0.5f, 0.0f),
             };
         Color[] colors = { Color.Red, Color.Green, Color.Blue };
         internal void DrawTestTriangle()
