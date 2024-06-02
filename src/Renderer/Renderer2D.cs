@@ -14,6 +14,8 @@ namespace SpotEngine.Internal.Renderer
             Instance = new Renderer2D();
         }
 
+        // this is just for testing purposes
+        // legacy opengl should be avoided if possible
         internal void DrawPrimitive(Primitive primitive, Vec3[] vertices, Color[] colors)
         {
             GL.Begin(FromSpotPrimitive(primitive));
