@@ -13,11 +13,13 @@ namespace SpotEngine.Internal.Graphics
         GameWindow m_window;
         internal OpenGLWindow(string title, int width, int height) : base(title, width, height)
         {
+
             var settings = new NativeWindowSettings()
             {
                 Size = new Vector2i(width, height),
                 Title = title,
                 Flags = ContextFlags.ForwardCompatible,
+                Profile = ContextProfile.Compatability // only for debugging purposes
             };
 
             m_window = new GameWindow(GameWindowSettings.Default, settings);
@@ -28,12 +30,13 @@ namespace SpotEngine.Internal.Graphics
             base.Initialize();
 
             m_window.UpdateFrequency = 60;
-            m_window.Context.MakeCurrent();
             m_window.MakeCurrent();
 
             m_window.Closing += CloseEvent;
             m_window.KeyDown += KeyDownEvent;
             m_window.KeyUp += KeyUpEvent;
+
+            GL.ClearColor(Color4.Black);
 
             var version = $"OpenGL API {GL.GetString(StringName.Version)}\n";
                 version += "                 "; // lol
@@ -56,16 +59,26 @@ namespace SpotEngine.Internal.Graphics
             base.Render();
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            GL.ClearColor(Color4.Magenta);
 
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Vertex2f(-0.5f, 0.5f);
-            GL.Vertex2f(0.5f, -0.5f);
-            GL.Vertex2f(0f, 0.5f);
-            GL.End();
+            DrawTestTriangle();
 
             m_window.SwapBuffers();
 
+        }
+
+        internal void DrawTestTriangle()
+        {
+            GL.Begin(PrimitiveType.Triangles);
+
+            GL.Color3f(1, 0, 0);
+            GL.Vertex2f(0.0f, 0.5f);
+
+            GL.Color3f(0, 1, 0);
+            GL.Vertex2f(0.5f, -0.5f);
+
+            GL.Color3f(0, 0, 1);
+            GL.Vertex2f(-0.5f, -0.5f);
+            GL.End();
         }
 
         protected internal override void Close()
