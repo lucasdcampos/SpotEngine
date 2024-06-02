@@ -1,4 +1,5 @@
 ﻿using SpotEngine.Internal.Graphics;
+using SpotEngine.Internal.Renderer;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
@@ -90,8 +91,10 @@ namespace SpotEngine
                 CreateWindow("Spot Game", new Vec2(800, 600));
             }
 
-            m_Window?.Initialize();
+            Renderer2D.Init();
 
+            m_Window?.Initialize();
+            
             m_stopwatch = Stopwatch.StartNew();
             var lastFrameTime = TimeSpan.Zero;
 

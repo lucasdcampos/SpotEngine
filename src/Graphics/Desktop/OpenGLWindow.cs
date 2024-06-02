@@ -2,6 +2,7 @@
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using SpotEngine.Internal.Renderer;
 using System;
 using System.ComponentModel;
 
@@ -63,22 +64,19 @@ namespace SpotEngine.Internal.Graphics
             DrawTestTriangle();
 
             m_window.SwapBuffers();
-
+            
         }
 
+        Vec3[] vertices = 
+            {
+                new Vec3( 0.0f,  0.5f, 0.0f),
+                new Vec3( 0.5f, -0.5f, 0.0f),
+                new Vec3(-0.5f, -0.5f, 0.0f)
+            };
+        Color color = Color.Blue;
         internal void DrawTestTriangle()
         {
-            GL.Begin(PrimitiveType.Triangles);
-
-            GL.Color3f(1, 0, 0);
-            GL.Vertex2f(0.0f, 0.5f);
-
-            GL.Color3f(0, 1, 0);
-            GL.Vertex2f(0.5f, -0.5f);
-
-            GL.Color3f(0, 0, 1);
-            GL.Vertex2f(-0.5f, -0.5f);
-            GL.End();
+            Renderer2D.Instance.DrawPrimitive(Primitive.Triangles, vertices, color);
         }
 
         protected internal override void Close()
