@@ -69,6 +69,10 @@ namespace SpotEngine
         /// </summary>
         public static Vec3 One => new Vec3(1, 1, 1);
 
+        public static Vec3 UnitX => new Vec3(1.0f, 0.0f, 0.0f);
+        public static Vec3 UnitY => new Vec3(0.0f, 1.0f, 0.0f);
+        public static Vec3 UnitZ => new Vec3(0.0f, 0.0f, 1.0f);
+
         /// <summary>
         /// Returns a vector with the minimum components of two vectors.
         /// </summary>
@@ -108,6 +112,22 @@ namespace SpotEngine
         {
             return new Vec3(vector.X * scalar, vector.Y * scalar, vector.Z * scalar);
         }
+
+        /// <summary>
+        /// Calculates the cross product of two vectors.
+        /// </summary>
+        /// <param name="left">The first vector.</param>
+        /// <param name="right">The second vector.</param>
+        /// <returns>The cross product of the two vectors.</returns>
+        public static Vec3 Cross(Vec3 left, Vec3 right)
+        {
+            float x = left.Y * right.Z - left.Z * right.Y;
+            float y = left.Z * right.X - left.X * right.Z;
+            float z = left.X * right.Y - left.Y * right.X;
+
+            return new Vec3(x, y, z);
+        }
+
 
         /// <summary>
         /// Divides a vector by a scalar.

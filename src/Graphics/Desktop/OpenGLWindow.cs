@@ -39,8 +39,8 @@ namespace SpotEngine.Internal.Graphics
             m_native.Closing += CloseEvent;
             m_native.KeyDown += KeyDownEvent;
             m_native.KeyUp += KeyUpEvent;
-
-            GL.ClearColor(OpenTKUtils.SptColorToTKColor(BackgroundColor));
+            
+            
             
             string glVersion = $"OpenGL API {GL.GetString(StringName.Version)}\n";
             glVersion += "                 ";
@@ -59,18 +59,17 @@ namespace SpotEngine.Internal.Graphics
             m_native.ProcessInputEvents();
 
         }
-
         protected internal override void Render(float dt)
         {
             base.Render(dt);
+            GL.ClearColor(OpenTKUtils.SptColorToTKColor(BackgroundColor));
+
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            var t = new Transform();
-            t.Pos.X -= 0.5f;
-            t.Pos.Y -= 0.5f;
-            Application.Renderer.DrawQuad(t, Color.White);
+            Application.ActiveScene.Render(dt);
 
             m_native.Context.SwapBuffers();
+
         }
 
         protected internal override void Close()

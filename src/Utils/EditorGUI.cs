@@ -8,7 +8,7 @@ namespace SpotEditor
     {
         public static void DrawInspector(bool draw)
         {
-            if (draw)
+            /*if (draw)
             {
                 ImGui.Begin("Scene Hierarchy", ref draw);
 
@@ -68,14 +68,14 @@ namespace SpotEditor
                 
 
                 ImGui.End();
-            }
+            }*/
             
         }
 
         public static void DrawTopMenuButtons(bool draw)
         {
 
-            string playButtonString = Application.IsPlaying ? "Stop" : "Play";
+            /*string playButtonString = Application.IsPlaying ? "Stop" : "Play";
 
             if (draw)
             {
@@ -87,15 +87,16 @@ namespace SpotEditor
                 if (ImGui.BeginMenu(playButtonString))
                 {
                     //Application.IsPlaying = !Application.IsPlaying;
-                    
+
                     if(!Application.IsPlaying)
                         Scene.LoadScene(Scene.Active);
                 }
-                    
+
                     ImGui.BeginMenu("Help");
                 ImGui.EndMainMenuBar();
 
             }
+        }*/
         }
     }
 }

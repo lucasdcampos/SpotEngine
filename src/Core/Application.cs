@@ -1,6 +1,6 @@
 ﻿using SpotEngine.Internal.Graphics;
+using SpotEngine.Rendering;
 using System.Diagnostics;
-using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine
 {
@@ -13,6 +13,7 @@ namespace SpotEngine
         public static string companyName => s_instance.m_companyName;
         public static bool IsEditor => s_instance.m_isEditor;
         public static bool IsPlaying => s_instance.m_isPlaying;
+        public static Scene ActiveScene => s_instance.m_activeScene;
         internal static Renderer Renderer => s_instance.m_renderer;
         /// <summary>
         /// Will display additional dev information when set to true
@@ -26,6 +27,7 @@ namespace SpotEngine
         private string m_companyName;
         private bool m_isEditor;
         private bool m_isPlaying;
+        private Scene m_activeScene;
 
         private static Application s_instance;
         private Window m_window;
@@ -92,6 +94,11 @@ namespace SpotEngine
             return 0;
         }
 
+        public void ChanceScene(Scene scene)
+        {
+            m_activeScene = scene;
+        }
+
         /// <summary>
         /// Will return the current Window
         /// </summary>
@@ -141,10 +148,16 @@ namespace SpotEngine
             m_window?.Initialize();
 
             m_renderer = new Renderer(((OpenGLWindow)m_window).Context); // TODO: We shouldn't convert here
+
+            if(m_activeScene == null)
+                m_activeScene = new Scene();
+
+            m_activeScene.Start();
         }
 
         protected virtual void Update(float dt)
         {
+            m_activeScene.Update(dt);
             m_window!.Update(dt);
         }
         protected virtual void Render(float dt)

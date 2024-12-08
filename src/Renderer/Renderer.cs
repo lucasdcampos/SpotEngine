@@ -1,83 +1,123 @@
-﻿using OpenTK.Graphics.OpenGL.Compatibility;
+﻿// TODO: Fix Camera Rotation
+using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 
-namespace SpotEngine.Internal.Rendering
+
+namespace SpotEngine.Rendering
 {
-    internal class Renderer
+    public class Renderer
     {
-        private VAO m_squareVAO;
-        private Shader m_shader;
+        private InternalCamera camera = new InternalCamera { Position = new Vec3(0.0f, 0.0f, 3.0f) };
+        private ShaderManager m_shaderManager;
+        private VAOManager m_vaoManager;
         private IGLFWGraphicsContext m_glContext;
+        public InternalCamera Camera => camera;
         internal Renderer(IGLFWGraphicsContext context)
         {
             m_glContext = context;
-            m_shader = Shader.GetDefault();
+            m_shaderManager = new ShaderManager();
+            m_vaoManager = new VAOManager();
+
+            m_shaderManager.GetShader("default");
 
             InitializeSquare();
         }
 
-        // Note: This is just for testing purposes
-        // legacy OpenGL should be avoided if possible
-        internal void DrawPrimitive(Primitive primitive, Vec3[] vertices, Color[] colors)
-        {
-            
-            GL.Begin(FromSpotPrimitive(primitive));
-
-            for(int i = 0; i < vertices.Length; i++)
-            {
-                if (i < colors.Length)
-                    GL.Color3f(colors[i].R, colors[i].G, colors[i].B);
-
-                GL.Vertex3f(vertices[i].X, vertices[i].Y, vertices[i].Z);
-            }
-
-            GL.End();
-        }
-
-
         private void InitializeSquare()
         {
             float[] squareVertices = {
-                
-                0.0f, 1.0f, 0.0f,
-                1.0f, 1.0f, 0.0f,
-                0.0f, 0.0f, 0.0f,
-                1.0f, 0.0f, 0.0f
+                -0.5f, -0.5f, 0.0f,
+                 0.5f, -0.5f, 0.0f,
+                -0.5f,  0.5f, 0.0f,
+                 0.5f,  0.5f, 0.0f
             };
 
-            m_squareVAO = new VAO(squareVertices);
+            m_vaoManager.GetVAO("square", squareVertices);
         }
 
-        internal void DrawQuad(Transform transform, Color color)
+        public void SetCameraPosition(Vec3 position)
         {
-            m_shader.Use();
+            camera.SetPosition(position);
+        }
 
-            var model = Matrix4.CreateScale(transform.Scale.X, transform.Scale.Y, 1.0f) * Matrix4.CreateTranslation(transform.Pos.X, transform.Pos.Y, 0.0f);
-            m_shader.SetMatrix4("uModel", model);
+        public void SetCameraRotation(Vec3 rotation)
+        {
+            camera.SetRotation(rotation);
+        }
 
-            m_shader.SetVector4("uColor", new Vector4(color.R, color.G, color.B, color.A));
+        public void DrawObject(VAO vao, Transform transform, Color color)
+        {
+            Shader shader = m_shaderManager.GetShader("default");
+            shader.Use();
 
-            m_squareVAO.Bind();
+            // Calculando a matriz de modelo do objeto
+            Matrix4 model = CreateModelMatrix(transform);
+
+            // Obtém a matriz de visão da câmera (posição + rotação da câmera)
+            Matrix4 view = camera.GetViewMatrix();
+
+            // Matriz de projeção
+            Matrix4 projection = camera.GetProjectionMatrix(800 / (float)600);
+
+            // Envia as matrizes para o shader
+            shader.SetMatrix4("uModel", model);
+            shader.SetMatrix4("uView", view);
+            shader.SetMatrix4("uProjection", projection);
+
+            // Define a cor do objeto
+            shader.SetVector4("uColor", new Vector4(color.R, color.G, color.B, color.A));
+
+            // Liga o VAO e desenha o objeto
+            vao.Bind();
             GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
         }
 
-        private PrimitiveType FromSpotPrimitive(Primitive primitive)
+
+        internal void DrawObject(string vaoName, Transform transform, Color color)
         {
-            switch (primitive)
-            {
-                case Primitive.Triangles:
-                    return PrimitiveType.Triangles;
-                case Primitive.Quads: 
-                    return PrimitiveType.Quads;
-            }
+            VAO vao = m_vaoManager.GetVAO(vaoName, new float[] { });
 
-            return PrimitiveType.Triangles;
+            DrawObject(vao, transform, color);
         }
+
+
+        public void DrawQuad(Transform transform, Color color)
+        {
+            DrawObject("square", transform, color);
+        }
+
+        internal void DrawTriangle(Transform transform, Color color)
+        {
+            string vaoKey = $"triangle_{transform.Scale.X}_{transform.Scale.Y}";
+            var vao = m_vaoManager.GetVAO(vaoKey, GenerateTriangleVertices());
+
+            DrawObject(vao, transform, color);
+        }
+
+        private float[] GenerateTriangleVertices()
+        {
+            return new float[]
+            {
+                0.0f,  0.5f, 0.0f,
+               -0.5f, -0.5f, 0.0f,
+                0.5f, -0.5f, 0.0f 
+            };
+        }
+
+        private Matrix4 CreateModelMatrix(Transform transform)
+        {
+            // Calculando a matriz de transformação do objeto (posição, rotação, escala)
+            Matrix4 model = Matrix4.CreateTranslation(transform.Pos.X, transform.Pos.Y, transform.Pos.Z) *
+                            Matrix4.CreateRotationZ(transform.Rot.Z) *
+                            Matrix4.CreateRotationY(transform.Rot.Y) *
+                            Matrix4.CreateRotationX(transform.Rot.X) *
+                            Matrix4.CreateScale(new Vector3(transform.Scale.X, transform.Scale.Y, 1.0f));
+
+            return model;
+        }
+
+
     }
 
-    enum Primitive
-    {
-        Triangles, Quads
-    }
 }
