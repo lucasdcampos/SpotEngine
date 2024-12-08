@@ -1,5 +1,5 @@
 ﻿using SpotEngine;
-using SpotEngine.Rendering;
+using SpotEngine.Internal.Graphics;
 
 internal class Program
 {
@@ -15,9 +15,10 @@ public class MainScene : Scene
 {
     Transform transform = new Transform();
     Vec3 cameraPos = new Vec3(0, 0, 3f);
-
+    Actor Actor = new Actor();
     protected override void OnStart()
     {
+        AddActor(Actor);
         transform.SetTotalScale(0.5f);
     }
 
@@ -39,7 +40,5 @@ public class MainScene : Scene
     protected override void OnRender(float dt)
     {
         base.OnRender(dt);
-        renderer.DrawQuad(transform, Color.White);
     }
 }
-

@@ -1,15 +1,12 @@
-﻿using SpotEngine;
-
-namespace SpotEngine.Internal.Graphics
+﻿namespace SpotEngine.Internal.Graphics
 {
-    /// <summary>
-    /// Low level Graphics API
-    /// </summary>
-    public class Graphics
+    public static class Graphics
     {
-        public static void DrawSquare(Sprite sprite, float posx, float posy, float scalex, float scaley)
+        public static void DrawSquare(SpriteRenderer spriteRenderer)
         {
-            Console.WriteLine("DrawSquare() not yet implemented!");
+            Transform transform = spriteRenderer.transform;
+
+            Application.Renderer.DrawQuad(transform, spriteRenderer.Sprite.color);
         }
     }
 }

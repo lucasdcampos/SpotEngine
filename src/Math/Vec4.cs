@@ -25,6 +25,11 @@
         /// </summary>
         public float W { get; set; }
 
+        public static Vec4 UnitX => new Vec4(1.0f, 0.0f, 0.0f, 0.0f);
+        public static Vec4 UnitY => new Vec4(0.0f, 1.0f, 0.0f, 0.0f);
+        public static Vec4 UnitZ => new Vec4(0.0f, 0.0f, 1.0f, 0.0f);
+        public static Vec4 UnitW => new Vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Vec4"/> class with the specified components.
         /// </summary>

@@ -2,7 +2,7 @@
 using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
-
+using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine.Rendering
 {
@@ -51,28 +51,21 @@ namespace SpotEngine.Rendering
             Shader shader = m_shaderManager.GetShader("default");
             shader.Use();
 
-            // Calculando a matriz de modelo do objeto
             Matrix4 model = CreateModelMatrix(transform);
 
-            // Obtém a matriz de visão da câmera (posição + rotação da câmera)
             Matrix4 view = camera.GetViewMatrix();
 
-            // Matriz de projeção
             Matrix4 projection = camera.GetProjectionMatrix(800 / (float)600);
 
-            // Envia as matrizes para o shader
             shader.SetMatrix4("uModel", model);
             shader.SetMatrix4("uView", view);
             shader.SetMatrix4("uProjection", projection);
 
-            // Define a cor do objeto
             shader.SetVector4("uColor", new Vector4(color.R, color.G, color.B, color.A));
 
-            // Liga o VAO e desenha o objeto
             vao.Bind();
             GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
         }
-
 
         internal void DrawObject(string vaoName, Transform transform, Color color)
         {
@@ -107,7 +100,6 @@ namespace SpotEngine.Rendering
 
         private Matrix4 CreateModelMatrix(Transform transform)
         {
-            // Calculando a matriz de transformação do objeto (posição, rotação, escala)
             Matrix4 model = Matrix4.CreateTranslation(transform.Pos.X, transform.Pos.Y, transform.Pos.Z) *
                             Matrix4.CreateRotationZ(transform.Rot.Z) *
                             Matrix4.CreateRotationY(transform.Rot.Y) *

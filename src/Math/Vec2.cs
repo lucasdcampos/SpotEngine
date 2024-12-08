@@ -60,6 +60,9 @@
         /// </summary>
         public static Vec2 One => new Vec2(1, 1);
 
+        public static Vec2 UnitX => new Vec2(1.0f, 0.0f);
+        public static Vec2 UnitY => new Vec2(0.0f, 1.0f);
+
         /// <summary>
         /// Adds two vectors.
         /// </summary>
