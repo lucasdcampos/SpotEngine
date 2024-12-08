@@ -23,6 +23,11 @@ public abstract class Window
     /// </summary>
     public string Title { get; protected set; }
 
+    /// <summary>
+    /// Gets the title of the window.
+    /// </summary>
+    public Color BackgroundColor { get; set; }
+
     public static int UnitSize = 100;
 
     /// <summary>

@@ -2,81 +2,75 @@
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using SpotEngine.Internal.Renderer;
-using System;
 using System.ComponentModel;
+using SpotEngine.Utils;
+using SpotEngine.Internal.Rendering;
 
 
 namespace SpotEngine.Internal.Graphics
 {
     internal class OpenGLWindow : Window
     {
-        GameWindow m_window;
-        internal OpenGLWindow(string title, int width, int height) : base(title, width, height)
-        {
+        NativeWindow m_native;
+        internal IGLFWGraphicsContext Context => m_native.Context;
 
+        internal OpenGLWindow(string title, int width, int height, bool compatibility = false) : base(title, width, height)
+        {
             var settings = new NativeWindowSettings()
             {
                 Size = new Vector2i(width, height),
                 Title = title,
                 Flags = ContextFlags.ForwardCompatible,
-                Profile = ContextProfile.Compatability // only for debugging purposes
+                // We should be using Core if we can
+                Profile = compatibility? ContextProfile.Compatability : ContextProfile.Core
+                
             };
 
-            m_window = new GameWindow(GameWindowSettings.Default, settings);
+            m_native = new NativeWindow(settings);
+
         }
 
         protected internal override void Initialize()
         {
             base.Initialize();
 
-            m_window.UpdateFrequency = 60;
-            m_window.MakeCurrent();
+            m_native.MakeCurrent();
 
-            m_window.Closing += CloseEvent;
-            m_window.KeyDown += KeyDownEvent;
-            m_window.KeyUp += KeyUpEvent;
+            m_native.Closing += CloseEvent;
+            m_native.KeyDown += KeyDownEvent;
+            m_native.KeyUp += KeyUpEvent;
 
-            GL.ClearColor(Color4.Black);
+            GL.ClearColor(OpenTKUtils.SptColorToTKColor(BackgroundColor));
+            
+            string glVersion = $"OpenGL API {GL.GetString(StringName.Version)}\n";
+            glVersion += "                 ";
+            glVersion += $"Vendor: {GL.GetString(StringName.Vendor)}";
 
-            var version = $"OpenGL API {GL.GetString(StringName.Version)}\n";
-            version += "                 "; // lol
-            version += $"Vendor: {GL.GetString(StringName.Vendor)}";
-
-            Log.Custom(version, ConsoleColor.Cyan);
+            Log.Custom(glVersion, ConsoleColor.Cyan);
 
         }
+
         protected internal override void Update(float dt)
         {
             base.Update(dt);
 
             // obsolete
-            m_window.ProcessEvents();
+            m_native.ProcessEvents();
+            m_native.ProcessInputEvents();
 
         }
 
         protected internal override void Render(float dt)
         {
             base.Render(dt);
-
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            DrawTestTriangle();
+            var t = new Transform();
+            t.Pos.X -= 0.5f;
+            t.Pos.Y -= 0.5f;
+            Application.Renderer.DrawQuad(t, Color.White);
 
-            m_window.SwapBuffers();
-
-        }
-
-        Vec3[] vertices =
-            {
-                new Vec3( 0.0f,  0.5f, 0.0f),
-                new Vec3( 0.5f, -0.5f, 0.0f),
-                new Vec3(-0.5f, -0.5f, 0.0f),
-            };
-        Color[] colors = { Color.Red, Color.Green, Color.Blue };
-        internal void DrawTestTriangle()
-        {
-            Renderer2D.Instance.DrawPrimitive(Primitive.Triangles, vertices, colors);
+            m_native.Context.SwapBuffers();
         }
 
         protected internal override void Close()

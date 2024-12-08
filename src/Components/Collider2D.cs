@@ -9,8 +9,8 @@
         {
             base.OnStart();
 
-            var min = new Vec2(transform.pos.X, transform.pos.Y);
-            var max = new Vec2(transform.pos.X + transform.scale.X, transform.pos.Y + transform.scale.Y);
+            var min = new Vec2(transform.Pos.X, transform.Pos.Y);
+            var max = new Vec2(transform.Pos.X + transform.Scale.X, transform.Pos.Y + transform.Pos.Y);
             BoundingBox = new AABB2D(min, max);
 
             Physics2D.AddCollider(this);

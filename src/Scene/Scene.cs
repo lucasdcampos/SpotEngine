@@ -8,14 +8,14 @@
         /// <summary>
         /// Name of the scene.
         /// </summary>
-        public string name;
+        public string Name { get; protected set; }
 
-        public List<Entity> entities = new List<Entity>();
+        public List<Entity> Entities { get; private set; }
 
         /// <summary>
         /// Current active scene.
         /// </summary>
-        public static Scene? current;
+        public static Scene? Active { get; private set; }
 
         private static Scene protectedScene;
 
@@ -24,7 +24,7 @@
         /// </summary>
         public static void LoadScene(Scene scene)
         {
-            bool isCurrentSceneNull = current == null;
+            bool isCurrentSceneNull = Active == null;
             if (scene == null) { Log.Error("Scene could not be loaded. Reason: Scene is NULL"); return; }
 
             // copying the scene to a new one, so the original remains intact
@@ -32,11 +32,11 @@
             
             if (!isCurrentSceneNull) 
             {
-                Log.Info($"Loading scene {scene.name}");
+                Log.Info($"Loading scene {scene.Name}");
                 newScene.Start();
             }
 
-            current = newScene;
+            Active = newScene;
         }
 
         /// <summary>
@@ -44,12 +44,11 @@
         /// </summary>
         public void Start()
         {
-            // TODO: Change this to a faster way
-            foreach (var entity in entities)
+            for (int i = 0; i < Entities.Count; i++)
             {
-                foreach (var component in entity.GetComponents())
+                for(int j = 0; j < Entities[i].GetComponents().Count; j++)
                 {
-                    component.OnStart();
+                    Entities[i].GetComponents()[j].OnStart();
                 }
             }
         }
@@ -62,15 +61,15 @@
         public static Scene CloneScene(Scene scene)
         {
             Scene newScene = new Scene();
-            newScene.name = scene.name;
-            newScene.entities.Clear();
+            newScene.Name = scene.Name;
+            newScene.Entities.Clear();
 
-            foreach (Entity e in scene.entities)
+            foreach (Entity e in scene.Entities)
             {
-                Log.Dev($"Adding {e.name} ({e.ID}) to {newScene.name}");
+                Log.Dev($"Adding {e.name} ({e.ID}) to {newScene.Name}");
                 Entity newEntity = new Entity();
                 newEntity.SetComponents(e.GetComponents());
-                newScene.entities.Add(newEntity);
+                newScene.Entities.Add(newEntity);
             }
 
             return newScene;
@@ -83,7 +82,7 @@
         {
             Physics2D.CheckCollisions();
             // TODO: Change this to a faster way
-            foreach (var entity in entities)
+            foreach (var entity in Entities)
             {
                 foreach (var component in entity.GetComponents())
                 {
@@ -102,12 +101,12 @@
         /// </summary>
         public void RegisterEntity(Entity entity)
         {
-            entities.Add(entity);
+            Entities.Add(entity);
         }
 
         public void UnregisterEntity(Entity entity)
         {
-            entities.Remove(entity);
+            Entities.Remove(entity);
         }
 
         /// <summary>
@@ -115,7 +114,7 @@
         /// </summary>
         public List<Entity> GetEntities()
         {
-            return entities;
+            return Entities;
         }
     }
 }

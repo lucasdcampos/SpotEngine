@@ -100,7 +100,7 @@ namespace SpotEngine
 
         public static Entity SpawnEntity(Entity entity)
         {
-            if(Scene.current != null) Scene.current.RegisterEntity(entity);
+            if(Scene.Active != null) Scene.Active.RegisterEntity(entity);
 
             return entity;
         }
@@ -121,6 +121,6 @@ namespace SpotEngine
         /// <summary>
         /// Kills the Entity, unloading it from the current scene
         /// </summary>
-        public void Kill() => Scene.current.UnregisterEntity(this);
+        public void Kill() => Scene.Active.UnregisterEntity(this);
     }
 }

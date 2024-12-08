@@ -2,8 +2,8 @@
 {
     public class Transform : Component
     {
-        public Vec3 pos = Vec3.Zero;
-        public Vec3 rot = Vec3.Zero;
-        public Vec3 scale = Vec3.One;
+        public Vec3 Pos = Vec3.Zero;
+        public Vec3 Rot = Vec3.Zero;
+        public Vec3 Scale = Vec3.One;
     }
 }

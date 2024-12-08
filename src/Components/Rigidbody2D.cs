@@ -20,17 +20,17 @@
             
             foreach (Collider2D col in Collider.GetColliders())
             {
-                if(col.transform.pos.Y <= transform.pos.Y)
+                if(col.transform.Pos.Y <= transform.Pos.Y)
                 {
                     return;
                 }
             }
 
-            if(transform.pos.Y >= -1f)
+            if(transform.Pos.Y >= -1f)
             {
-                transform.pos = new Vec3(
-                    transform.pos.X + Velocity.X * Time.deltaTime,
-                    transform.pos.Y + (Velocity.Y - _defaultVelocity) * Time.deltaTime,
+                transform.Pos = new Vec3(
+                    transform.Pos.X + Velocity.X * Time.deltaTime,
+                    transform.Pos.Y + (Velocity.Y - _defaultVelocity) * Time.deltaTime,
                     0);
             }
         }
