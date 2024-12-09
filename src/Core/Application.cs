@@ -15,6 +15,7 @@ namespace SpotEngine
         public static bool IsPlaying => s_instance.m_isPlaying;
         public static Scene ActiveScene => s_instance.m_activeScene;
         internal static Renderer Renderer => s_instance.m_renderer;
+        internal static Window Window => s_instance.m_window;
         /// <summary>
         /// Will display additional dev information when set to true
         /// </summary>
@@ -85,7 +86,7 @@ namespace SpotEngine
 
                 var dt = (float)deltaTime.TotalSeconds;
                 Thread.Sleep(freq);
-
+                Time.deltaTime = dt;
                 Update(dt);
                 Render(dt);
 

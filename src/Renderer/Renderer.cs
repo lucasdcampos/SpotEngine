@@ -55,7 +55,7 @@ namespace SpotEngine.Rendering
 
             Matrix4 view = camera.GetViewMatrix();
 
-            Matrix4 projection = camera.GetProjectionMatrix(800 / (float)600);
+            Matrix4 projection = camera.GetProjectionMatrix(Application.Window.Width / (float)Application.Window.Height);
 
             shader.SetMatrix4("uModel", model);
             shader.SetMatrix4("uView", view);
@@ -73,7 +73,6 @@ namespace SpotEngine.Rendering
 
             DrawObject(vao, transform, color);
         }
-
 
         public void DrawQuad(Transform transform, Color color)
         {
@@ -108,7 +107,6 @@ namespace SpotEngine.Rendering
 
             return model;
         }
-
 
     }
 

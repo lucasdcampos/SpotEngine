@@ -105,6 +105,16 @@ namespace SpotEngine
             return entity;
         }
 
+        internal void Update(float dt)
+        {
+            OnUpdate(dt);
+        }
+
+        protected virtual void OnUpdate(float dt)
+        {
+
+        }
+
         public void LoadComponents()
         {
             Log.Dev("Loading components for " + name);

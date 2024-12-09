@@ -1,5 +1,6 @@
 ﻿using SpotEngine;
 using SpotEngine.Internal.Graphics;
+using System.Text.RegularExpressions;
 
 internal class Program
 {
@@ -13,32 +14,78 @@ internal class Program
 
 public class MainScene : Scene
 {
+    public float zoom = 20;
+    public float gravity = 10;
     Transform transform = new Transform();
-    Vec3 cameraPos = new Vec3(0, 0, 3f);
-    Actor Actor = new Actor();
+    Actor player = new Actor();
+    List<Actor> clouds = new List<Actor>();
+
     protected override void OnStart()
     {
-        AddActor(Actor);
-        transform.SetTotalScale(0.5f);
+        AddActor(player);
+       
+        player.transform.SetTotalScale(1);
+        player.transform.Pos.Y += 1.5f;
+        player.SpriteRenderer.Sprite.color = new Color(200, 50, 0, 255);
+        BackgroundColor = new Color(100, 150, 255, 255);
     }
 
+    float startCountdown = 1.5f;
+    float countdown = 0;
     protected override void OnUpdate(float dt)
     {
+        float speed = 6 * dt;
+
+        Vec3 cameraPos = new Vec3(player.X, player.Y, zoom);
         renderer.SetCameraPosition(cameraPos);
+        ApplyGravity();
+       
+        if (Input.IsKeyPressed(KeyCode.D)) player.transform.Pos.X += speed;
+        if (Input.IsKeyPressed(KeyCode.A)) player.transform.Pos.X -= speed;
 
-        float speed = 2 * dt;
-
-        if (Input.IsKeyPressed(KeyCode.D)) cameraPos.X += speed;
-        if (Input.IsKeyPressed(KeyCode.A)) cameraPos.X -= speed;
         if (Input.IsKeyPressed(KeyCode.W)) cameraPos.Z += speed;
         if (Input.IsKeyPressed(KeyCode.S)) cameraPos.Z -= speed;
 
-        if (Input.IsKeyPressed(KeyCode.K)) transform.Rot.Y += speed * 50;
-        if (Input.IsKeyPressed(KeyCode.L)) transform.Rot.Y -= speed * 50;
+        if(countdown <= 0)
+        {
+            SpawnCloud();
+            countdown = startCountdown;
+        }
+
+        countdown -= dt;
+
     }
 
-    protected override void OnRender(float dt)
+    private void SpawnCloud()
     {
-        base.OnRender(dt);
+        var cloud = new Cloud(player.transform.Pos.Y);
+        clouds.Add(cloud);
+        AddActor(cloud);
+    }
+
+    float accel = 0;
+    void ApplyGravity()
+    {
+        foreach(var c in clouds)
+        {
+            if (player.CollidesWith(c))
+            {
+                accel = 0;
+                return;
+            }
+        }
+
+        //accel += 0.005f * Time.deltaTime;
+        player.transform.Pos.Y -= gravity * Time.deltaTime + accel;
+    }
+
+}
+
+class Cloud : Actor
+{
+    public Cloud(float y)
+    {
+        transform.Pos = new Vec3(Rand.Between(-2.5f, 2.5f), Rand.Between(y-10, y-15f), 0);
+        transform.Scale.X = Rand.Between(3, 5);
     }
 }

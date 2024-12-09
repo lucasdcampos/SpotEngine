@@ -1,11 +1,9 @@
-﻿using OpenTK.Graphics.OpenGL.Compatibility;
+﻿using SpotEngine.Utils;
+using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System.ComponentModel;
-using SpotEngine.Utils;
-using SpotEngine.Internal.Rendering;
-
 
 namespace SpotEngine.Internal.Graphics
 {
@@ -39,9 +37,7 @@ namespace SpotEngine.Internal.Graphics
             m_native.Closing += CloseEvent;
             m_native.KeyDown += KeyDownEvent;
             m_native.KeyUp += KeyUpEvent;
-            
-            
-            
+
             string glVersion = $"OpenGL API {GL.GetString(StringName.Version)}\n";
             glVersion += "                 ";
             glVersion += $"Vendor: {GL.GetString(StringName.Vendor)}";
@@ -58,7 +54,11 @@ namespace SpotEngine.Internal.Graphics
             m_native.ProcessEvents();
             m_native.ProcessInputEvents();
 
+            Width = m_native.Size.X;
+            Height = m_native.Size.Y;
+
         }
+
         protected internal override void Render(float dt)
         {
             base.Render(dt);

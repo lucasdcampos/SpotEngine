@@ -61,7 +61,4 @@ namespace SpotEngine.Internal.Rendering
 
         public void Use() => GL.UseProgram(Handle);
     }
-
-
-
 }

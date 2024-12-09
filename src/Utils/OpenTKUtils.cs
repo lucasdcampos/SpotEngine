@@ -14,7 +14,7 @@ namespace SpotEngine.Utils
 
         public static OpenTK.Mathematics.Color4<Rgba> SptColorToTKColor(Color color)
         {
-            return new Color4<Rgba>(color.R, color.G, color.B, color.A);
+            return new Color4<Rgba>(color.Rf, color.Gf, color.Bf, color.Af);
         }
 
         public static Vector3 SptVec3ToTKVector3(Vec3 vec)

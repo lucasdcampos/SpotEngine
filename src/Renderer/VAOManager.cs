@@ -1,6 +1,4 @@
-﻿using SpotEngine.Internal.Rendering;
-
-namespace SpotEngine.Rendering
+﻿namespace SpotEngine.Internal.Rendering
 {
     internal class VAOManager
     {
