@@ -8,7 +8,7 @@
         {
             if (!vaos.ContainsKey(name))
             {
-                vaos[name] = new VAO(vertices);
+                //vaos[name] = new VAO(vertices);
             }
 
             return vaos[name];

@@ -94,8 +94,9 @@ namespace SpotEngine
 
             return 0;
         }
-
-        public void ChanceScene(Scene scene)
+        
+        // TODO: We should have a "LoadScene()" method
+        public void ChangeScene(Scene scene)
         {
             m_activeScene = scene;
         }
@@ -148,7 +149,7 @@ namespace SpotEngine
 
             m_window?.Initialize();
 
-            m_renderer = new Renderer(((OpenGLWindow)m_window).Context); // TODO: We shouldn't convert here
+            m_renderer = new Renderer();
 
             if(m_activeScene == null)
                 m_activeScene = new Scene();

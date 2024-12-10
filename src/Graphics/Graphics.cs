@@ -6,7 +6,7 @@
         {
             Transform transform = spriteRenderer.transform;
 
-            Application.Renderer.DrawQuad(transform, spriteRenderer.Sprite.color);
+            //Application.Renderer.DrawQuad(transform, spriteRenderer.Sprite.color);
         }
     }
 }

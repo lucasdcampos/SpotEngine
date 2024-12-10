@@ -27,6 +27,11 @@ namespace SpotEngine.Internal.Rendering
 
             GL.DeleteShader(vertexShader);
             GL.DeleteShader(fragmentShader);
+
+            if(Handle.Handle == 0)
+            {
+                Log.Error("Error linking shader");
+            }
         }
 
         public void SetMatrix4(string name, Matrix4 matrix)
@@ -34,7 +39,7 @@ namespace SpotEngine.Internal.Rendering
             int location = GL.GetUniformLocation(Handle, name);
             if (location == -1)
             {
-                Console.WriteLine($"Uniform '{name}' not found in shader!");
+                Log.Error($"Uniform '{name}' not found in shader!");
                 return;
             }
 
@@ -47,7 +52,7 @@ namespace SpotEngine.Internal.Rendering
             int location = GL.GetUniformLocation(Handle, name);
             if (location == -1)
             {
-                Console.WriteLine($"Uniform '{name}' not found in shader!");
+                Log.Error($"Uniform '{name}' not found in shader!");
                 return;
             }
 

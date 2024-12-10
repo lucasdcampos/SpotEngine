@@ -1,43 +1,83 @@
-﻿// TODO: Rewrite
+﻿// TODO: Needs rewrite
 using OpenTK.Mathematics;
 using SpotEngine;
 
 public class InternalCamera
 {
-    public Vec3 Position { get; set; } = new Vec3(0, 0, 5f);
-    public Vec3 Rotation { get; set; } = new Vec3(0, 0, 0);
-    public float Fov { get; set; } = 45.0f;
-    public float Near { get; set; } = 0.1f;
-    public float Far { get; set; } = 100.0f;
+    public Vector3 Position { get; private set; }
+    public Vector3 Front { get; private set; }
+    public Vector3 Up { get; private set; }
+    public Vector3 Right => Vector3.Cross(Front, Up);
+
+    private float _yaw;
+    private float _pitch;
+
+    public InternalCamera(Vector3 startPosition, float yaw = -90.0f, float pitch = 0.0f)
+    {
+        Position = startPosition;
+        Front = new Vector3(0.0f, 0.0f, -1.0f); // Always facing -Z
+        Up = new Vector3(0.0f, 1.0f, 0.0f);
+        _yaw = yaw;
+        _pitch = pitch;
+        UpdateCameraVectors();
+    }
+
+    // Update vertices Front, Up and Right based on the rotation angle
+    private void UpdateCameraVectors()
+    {
+        var front = new Vector3
+        {
+            X = MathF.Cos(MathUtils.DegreesToRadians(_yaw)) * MathF.Cos(MathUtils.DegreesToRadians(_pitch)),
+            Y = MathF.Sin(MathUtils.DegreesToRadians(_pitch)),
+            Z = MathF.Sin(MathUtils.DegreesToRadians(_yaw)) * MathF.Cos(MathUtils.DegreesToRadians(_pitch))
+        };
+        Front = Vector3.Normalize(front);
+    }
 
     public Matrix4 GetViewMatrix()
     {
-        Matrix4 rotationMatrix = Matrix4.CreateRotationX(MathHelper.DegreesToRadians(Rotation.X)) *
-                                 Matrix4.CreateRotationY(MathHelper.DegreesToRadians(Rotation.Y)) *
-                                 Matrix4.CreateRotationZ(MathHelper.DegreesToRadians(Rotation.Z));
-
-        Matrix4 translationMatrix = Matrix4.CreateTranslation(-Position.X, -Position.Y, -Position.Z);
-
-        return rotationMatrix * translationMatrix;
+        return Matrix4.LookAt(Position, Position + Front, Up);
     }
 
-    public Matrix4 GetProjectionMatrix(float aspectRatio)
+    public Matrix4 GetProjectionMatrix(float fov, float aspectRatio, float nearPlane, float farPlane)
     {
-        return Matrix4.CreatePerspectiveFieldOfView(
-            MathHelper.DegreesToRadians(Fov),
-            aspectRatio,
-            Near,
-            Far
-        );
+        return Matrix4.CreatePerspectiveFieldOfView(MathUtils.DegreesToRadians(fov), aspectRatio, nearPlane, farPlane);
     }
 
-    public void SetPosition(Vec3 position)
+    public void SetPosition(Vector3 newPosition)
     {
-        Position = position;
+        Position = newPosition;
     }
 
-    public void SetRotation(Vec3 rotation)
+    public void MoveTo(Vector3 targetPosition)
     {
-        Rotation = rotation;
+        Position = targetPosition;
+    }
+
+    public void SetYaw(float newYaw)
+    {
+        _yaw = newYaw;
+        UpdateCameraVectors();
+    }
+
+    public void SetPitch(float newPitch)
+    {
+        _pitch = newPitch;
+        UpdateCameraVectors();
+    }
+
+    public void SetRotation(float newYaw, float newPitch)
+    {
+        _yaw = newYaw;
+        _pitch = newPitch;
+        UpdateCameraVectors();
+    }
+
+    public void Rotate(float yawOffset, float pitchOffset)
+    {
+        _yaw += yawOffset;
+        _pitch += pitchOffset;
+        UpdateCameraVectors();
     }
 }
+

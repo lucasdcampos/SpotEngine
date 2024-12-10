@@ -1,113 +1,88 @@
-﻿// TODO: Fix Camera Rotation
+﻿// TODO: Needs revision
+using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
-using OpenTK.Windowing.Desktop;
 using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine.Rendering
 {
     public class Renderer
     {
-        private InternalCamera camera = new InternalCamera { Position = new Vec3(0.0f, 0.0f, 3.0f) };
-        private ShaderManager m_shaderManager;
-        private VAOManager m_vaoManager;
-        private IGLFWGraphicsContext m_glContext;
-        public InternalCamera Camera => camera;
-        internal Renderer(IGLFWGraphicsContext context)
+        private Shader m_defaultShader;
+        private InternalCamera m_camera;
+
+        private VAO m_triangleVAO;
+        private float[] m_triangleVertices;
+
+        public InternalCamera Camera => m_camera;
+
+        public Renderer(Shader shader = null)
         {
-            m_glContext = context;
-            m_shaderManager = new ShaderManager();
-            m_vaoManager = new VAOManager();
+            m_defaultShader = shader ?? Shader.GetDefault();
+            m_camera = new InternalCamera(new Vector3(0, 0, 3));
 
-            m_shaderManager.GetShader("default");
-
-            InitializeSquare();
+            InitializeTriangle();
         }
 
-        private void InitializeSquare()
+        private void InitializeTriangle()
         {
-            float[] squareVertices = {
-                -0.5f, -0.5f, 0.0f,
-                 0.5f, -0.5f, 0.0f,
-                -0.5f,  0.5f, 0.0f,
-                 0.5f,  0.5f, 0.0f
+            // All white color by default
+            m_triangleVertices = new float[]
+            {
+                -0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    0.0f, 0.0f,
+                0.5f, -0.5f, 0.0f,     1.0f, 1.0f, 1.0f,    1.0f, 0.0f,
+                0.0f,  0.5f, 0.0f,     1.0f, 1.0f, 1.0f,    0.5f, 1.0f
             };
 
-            m_vaoManager.GetVAO("square", squareVertices);
+            m_triangleVAO = new VAO(m_triangleVertices, 8 * sizeof(float),
+                (0, 3, 0),                  // Vertices (pos)
+                (1, 3, 3 * sizeof(float)),  // Color (neutral)
+                (2, 2, 6 * sizeof(float))   // Texture (not yet implemented)
+            );
         }
 
-        public void SetCameraPosition(Vec3 position)
+
+        private void DrawBase(VAO vao, Matrix4 modelMatrix, Vector4 lightColor)
         {
-            camera.SetPosition(position);
-        }
+            m_defaultShader.Use();
 
-        public void SetCameraRotation(Vec3 rotation)
-        {
-            camera.SetRotation(rotation);
-        }
-
-        public void DrawObject(VAO vao, Transform transform, Color color)
-        {
-            Shader shader = m_shaderManager.GetShader("default");
-            shader.Use();
-
-            Matrix4 model = CreateModelMatrix(transform);
-
-            Matrix4 view = camera.GetViewMatrix();
-
-            Matrix4 projection = camera.GetProjectionMatrix(Application.Window.Width / (float)Application.Window.Height);
-
-            shader.SetMatrix4("uModel", model);
-            shader.SetMatrix4("uView", view);
-            shader.SetMatrix4("uProjection", projection);
-
-            shader.SetVector4("uColor", new Vector4(color.R, color.G, color.B, color.A));
+            m_defaultShader.SetMatrix4("model", modelMatrix);
+            m_defaultShader.SetMatrix4("view", m_camera.GetViewMatrix());
+            m_defaultShader.SetMatrix4("projection", m_camera.GetProjectionMatrix(45.0f, 800f / 600f, 0.1f, 100f));
+            m_defaultShader.SetVector4("lightColor", lightColor);
 
             vao.Bind();
-            GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
+
+            GL.BindVertexArray(VertexArrayHandle.Zero);
         }
 
-        internal void DrawObject(string vaoName, Transform transform, Color color)
+        public void DrawTriangle(Vec3 position, Vec3 scale, Vec3 rotation, Color4<Rgba> color)
         {
-            VAO vao = m_vaoManager.GetVAO(vaoName, new float[] { });
+            // The triangle will disappear if rotation.Y == 0
+            if (rotation.Y == 0)
+                rotation = new Vec3(rotation.X, 0.00001f, rotation.Z);
 
-            DrawObject(vao, transform, color);
+            float angle = SptUtils.ToVector3(rotation).Length;
+            Vector3 axis = SptUtils.ToVector3(rotation).Normalized();
+
+            Matrix4 modelMatrix = Matrix4.Identity;
+            modelMatrix *= Matrix4.CreateTranslation(SptUtils.ToVector3(position));
+            modelMatrix *= Matrix4.CreateFromAxisAngle(axis, angle);
+            modelMatrix *= Matrix4.CreateScale(SptUtils.ToVector3(scale));
+
+            DrawBase(m_triangleVAO, modelMatrix, new Vector4(color.X, color.Y, color.Z, color.W));
         }
 
-        public void DrawQuad(Transform transform, Color color)
+        public void DrawObject(VAO vao, Vector3 position, Vector3 scale, float rotationAngle, Vector3 rotationAxis, Color4<Rgba> color)
         {
-            DrawObject("square", transform, color);
+            Matrix4 modelMatrix = Matrix4.Identity;
+            modelMatrix *= Matrix4.CreateTranslation(position);
+            modelMatrix *= Matrix4.CreateFromAxisAngle(rotationAxis, rotationAngle);
+            modelMatrix *= Matrix4.CreateScale(scale);
+
+            DrawBase(vao, modelMatrix, new Vector4(color.X, color.Y, color.Z, color.W));
         }
-
-        internal void DrawTriangle(Transform transform, Color color)
-        {
-            string vaoKey = $"triangle_{transform.Scale.X}_{transform.Scale.Y}";
-            var vao = m_vaoManager.GetVAO(vaoKey, GenerateTriangleVertices());
-
-            DrawObject(vao, transform, color);
-        }
-
-        private float[] GenerateTriangleVertices()
-        {
-            return new float[]
-            {
-                0.0f,  0.5f, 0.0f,
-               -0.5f, -0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f 
-            };
-        }
-
-        private Matrix4 CreateModelMatrix(Transform transform)
-        {
-            Matrix4 model = Matrix4.CreateTranslation(transform.Pos.X, transform.Pos.Y, transform.Pos.Z) *
-                            Matrix4.CreateRotationZ(transform.Rot.Z) *
-                            Matrix4.CreateRotationY(transform.Rot.Y) *
-                            Matrix4.CreateRotationX(transform.Rot.X) *
-                            Matrix4.CreateScale(new Vector3(transform.Scale.X, transform.Scale.Y, 1.0f));
-
-            return model;
-        }
-
     }
 
 }

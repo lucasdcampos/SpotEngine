@@ -4,6 +4,8 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System.ComponentModel;
+using OpenTK.Graphics;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 
 namespace SpotEngine.Internal.Graphics
 {
@@ -33,7 +35,8 @@ namespace SpotEngine.Internal.Graphics
             base.Initialize();
 
             m_native.MakeCurrent();
-
+            GLLoader.LoadBindings(new GLFWBindingsContext());
+            GL.Enable(EnableCap.DepthTest);
             m_native.Closing += CloseEvent;
             m_native.KeyDown += KeyDownEvent;
             m_native.KeyUp += KeyUpEvent;
@@ -62,7 +65,7 @@ namespace SpotEngine.Internal.Graphics
         protected internal override void Render(float dt)
         {
             base.Render(dt);
-            GL.ClearColor(OpenTKUtils.SptColorToTKColor(BackgroundColor));
+            GL.ClearColor(SptUtils.ToColor4(BackgroundColor));
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 

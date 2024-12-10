@@ -1,14 +1,14 @@
 ﻿using OpenTK.Graphics;
-using OpenTK.Graphics.OpenGL.Compatibility;
+using OpenTK.Graphics.OpenGL;
 
 namespace SpotEngine.Internal.Rendering
 {
-    public class VAO
+    public class VAO : IDisposable
     {
         private VertexArrayHandle vao;
         private BufferHandle vbo;
 
-        public VAO(float[] vertices)
+        public VAO(float[] vertices, int stride, params (int Location, int Size, int Offset)[] attributes)
         {
             vao = GL.GenVertexArray();
             GL.BindVertexArray(vao);
@@ -18,20 +18,30 @@ namespace SpotEngine.Internal.Rendering
 
             unsafe
             {
-                fixed (float* vertexPtr = &vertices[0])
+                fixed (float* vertexPtr = vertices)
                 {
                     GL.BufferData(BufferTargetARB.ArrayBuffer, vertices.Length * sizeof(float), (IntPtr)vertexPtr, BufferUsageARB.StaticDraw);
                 }
             }
 
-            GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), 0);
-            GL.EnableVertexAttribArray(0);
+            foreach (var (location, size, offset) in attributes)
+            {
+                GL.VertexAttribPointer((uint)location, size, VertexAttribPointerType.Float, false, stride, offset);
+                GL.EnableVertexAttribArray((uint)location);
+            }
 
             GL.BindBuffer(BufferTargetARB.ArrayBuffer, BufferHandle.Zero);
             GL.BindVertexArray(VertexArrayHandle.Zero);
         }
 
         public void Bind() => GL.BindVertexArray(vao);
+
+        public void Dispose()
+        {
+            GL.DeleteVertexArray(vao);
+            GL.DeleteBuffer(vbo);
+        }
     }
+
 
 }
