@@ -56,13 +56,13 @@ namespace SpotEngine
             /// <summary>
             /// Gets the ID of the pressed mouse button.
             /// </summary>
-            public int Button { get; }
+            public MouseButton Button { get; }
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MouseButtonPressEvent"/> class with the specified button ID.
             /// </summary>
             /// <param name="button">The ID of the pressed mouse button.</param>
-            public MouseButtonPressEvent(int button)
+            public MouseButtonPressEvent(MouseButton button)
             {
                 Button = button;
             }
@@ -76,13 +76,13 @@ namespace SpotEngine
             /// <summary>
             /// Gets the ID of the released mouse button.
             /// </summary>
-            public int Button { get; }
+            public MouseButton Button { get; }
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MouseButtonReleaseEvent"/> class with the specified button ID.
             /// </summary>
             /// <param name="button">The ID of the released mouse button.</param>
-            public MouseButtonReleaseEvent(int button)
+            public MouseButtonReleaseEvent(MouseButton button)
             {
                 Button = button;
             }
@@ -96,22 +96,28 @@ namespace SpotEngine
             /// <summary>
             /// Gets the X coordinate of the mouse.
             /// </summary>
-            public int X { get; }
+            public float X { get; }
 
             /// <summary>
             /// Gets the Y coordinate of the mouse.
             /// </summary>
-            public int Y { get; }
+            public float Y { get; }
+
+            public float DeltaX { get; }
+
+            public float DeltaY { get; }
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MouseMoveEvent"/> class with the specified X and Y coordinates.
             /// </summary>
             /// <param name="x">The X coordinate of the mouse.</param>
             /// <param name="y">The Y coordinate of the mouse.</param>
-            public MouseMoveEvent(int x, int y)
+            public MouseMoveEvent(float x, float y, float deltax, float deltay)
             {
                 X = x;
                 Y = y;
+                DeltaX = deltax;
+                DeltaY = deltay;
             }
         }
 

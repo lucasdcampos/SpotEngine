@@ -51,6 +51,16 @@
         }
 
         /// <summary>
+        /// Returns a normalized version of the vector (a unit vector pointing in the same direction).
+        /// This method scales the vector so that its length (magnitude) is 1 while maintaining its direction.
+        /// </summary>
+        /// <returns>A new <see cref="Vec2"/> that is the normalized version of the current vector.</returns>
+        public Vec2 Normalized()
+        {
+            return Vec2.Normalize(this);
+        }
+
+        /// <summary>
         /// Gets a zero vector (with all components equal to zero).
         /// </summary>
         public static Vec2 Zero => new Vec2(0, 0);
@@ -60,8 +70,16 @@
         /// </summary>
         public static Vec2 One => new Vec2(1, 1);
 
+        /// <summary>
+        /// Gets a unit vector along the X-axis (1, 0).
+        /// </summary>
         public static Vec2 UnitX => new Vec2(1.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the Y-axis (0, 1).
+        /// </summary>
         public static Vec2 UnitY => new Vec2(0.0f, 1.0f);
+
 
         /// <summary>
         /// Adds two vectors.

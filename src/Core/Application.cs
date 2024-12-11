@@ -1,4 +1,5 @@
 ﻿using SpotEngine.Internal.Graphics;
+using SpotEngine.Internal.Rendering;
 using SpotEngine.Rendering;
 using System.Diagnostics;
 
@@ -9,21 +10,44 @@ namespace SpotEngine
     /// </summary>
     public class Application
     {
+        /// <summary>
+        /// Gets the name of the application.
+        /// </summary>
         public static string ApplicationName => s_instance.m_applicationName;
-        public static string companyName => s_instance.m_companyName;
+
+        /// <summary>
+        /// Gets the name of the company associated with the application.
+        /// </summary>
+        public static string CompanyName => s_instance.m_companyName;
+
+        /// <summary>
+        /// Indicates whether the application is running in editor mode.
+        /// </summary>
         public static bool IsEditor => s_instance.m_isEditor;
+
+        /// <summary>
+        /// Indicates whether the application is currently playing (running in the game mode).
+        /// </summary>
         public static bool IsPlaying => s_instance.m_isPlaying;
+
+        /// <summary>
+        /// Gets the currently active scene in the application.
+        /// </summary>
         public static Scene ActiveScene => s_instance.m_activeScene;
+
+        /// <summary>
+        /// Gets the desired framerate of the application.
+        /// </summary>
+        public static int DesiredFramerate => s_instance.m_desiredFramerate;
+
+
         internal static Renderer Renderer => s_instance.m_renderer;
         internal static Window Window => s_instance.m_window;
-        /// <summary>
-        /// Will display additional dev information when set to true
-        /// </summary>
-        public static bool DebugMode = false;
-        public int DesiredFramerate { get; private set; } = 60;
+        internal static ShaderManager ShaderManager => s_instance.m_shaderManager;
+        internal static VAOManager VAOManager => s_instance.m_VAOManager;
 
         private float m_updateTime;
-
+        private int m_desiredFramerate = 60;
         private string m_applicationName;
         private string m_companyName;
         private bool m_isEditor;
@@ -33,6 +57,8 @@ namespace SpotEngine
         private static Application s_instance;
         private Window m_window;
         private Renderer m_renderer;
+        private ShaderManager m_shaderManager;
+        private VAOManager m_VAOManager;
         private bool m_running;
 
         private Stopwatch m_stopwatch;
@@ -86,7 +112,7 @@ namespace SpotEngine
 
                 var dt = (float)deltaTime.TotalSeconds;
                 Thread.Sleep(freq);
-                Time.deltaTime = dt;
+                Time.DeltaTime = dt;
                 Update(dt);
                 Render(dt);
 
@@ -112,26 +138,37 @@ namespace SpotEngine
             return m_window;
         }
 
-        public void CreateWindow(string title, Vec2 res)
-        {
-            if (m_window != null) { Log.Warn("A window is already in use!"); return; }
-
-            bool useCompatibilityMode = true;
-           m_window = new OpenGLWindow(title, (int)res.X, (int)res.Y, useCompatibilityMode);
-            m_window.BackgroundColor = Color.Black;
-            
-        }
-
+        /// <summary>
+        /// Sets the desired framerate for the application.
+        /// If the provided framerate is less than or equal to zero, an error is logged, and the application is stopped.
+        /// </summary>
+        /// <param name="framerate">The desired framerate to set for the application.</param>
         public void SetDesiredFramerate(int framerate)
         {
-            if(framerate <= 0)
+            if (framerate <= 0)
             {
                 Log.Error("DesiredFramerate should be greater than 0");
                 Stop();
             }
 
-            DesiredFramerate = framerate;
+            m_desiredFramerate = framerate;
         }
+
+        /// <summary>
+        /// Creates a new window with the specified title and resolution.
+        /// If a window already exists, a warning is logged and no new window is created.
+        /// </summary>
+        /// <param name="title">The title to display on the window.</param>
+        /// <param name="res">The resolution of the window as a 2D vector (X: width, Y: height).</param>
+        public void CreateWindow(string title, Vec2 res)
+        {
+            if (m_window != null) { Log.Warn("A window is already in use!"); return; }
+
+            bool useCompatibilityMode = true;
+            m_window = new OpenGLWindow(title, (int)res.X, (int)res.Y, useCompatibilityMode);
+            m_window.BackgroundColor = Color.Black;
+        }
+
 
         private void Init()
         {
@@ -149,6 +186,9 @@ namespace SpotEngine
 
             m_window?.Initialize();
 
+            m_shaderManager = new ShaderManager();
+            m_VAOManager = new VAOManager();
+            m_shaderManager.LoadShader("default", DefaultShaders.DefaultVertexShader, DefaultShaders.DefaultFragmentShader);
             m_renderer = new Renderer();
 
             if(m_activeScene == null)
@@ -159,6 +199,7 @@ namespace SpotEngine
 
         protected virtual void Update(float dt)
         {
+            Input.Update(dt);
             m_activeScene.Update(dt);
             m_window!.Update(dt);
         }

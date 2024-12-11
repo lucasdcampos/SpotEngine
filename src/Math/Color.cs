@@ -34,8 +34,16 @@ namespace SpotEngine
         }
 
         public Color(float r, float g, float b, float a)
-            : this((int)(r * 255), (int)(g * 255), (int)(b * 255), (int)(a * 255))
         {
+            R = (int)r * 255;
+            G = (int)g * 255;
+            B = (int)b * 255;
+            A = (int)a * 255;
+        }
+
+        public static Color Random()
+        {
+            return new Color(Rand.Between(0,255), Rand.Between(0, 255), Rand.Between(0, 255), 255);
         }
     }
 }

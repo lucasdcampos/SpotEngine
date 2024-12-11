@@ -11,9 +11,23 @@ namespace Game
             base.OnStart();
             BackgroundColor = Color.Black;
         }
+
         protected override void OnUpdate(float dt)
         {
-            float movementSpeed = 5.0f;
+            if (Input.IsMouseButtonPressed(MouseButton.Right))
+            {
+                Cursor.Visible = false;
+                MoveCamera(dt);
+            }
+            else
+            {
+                Cursor.Visible = true;
+            }
+        }
+
+        private void MoveCamera(float dt)
+        {
+            float movementSpeed = Input.IsKeyPressed(KeyCode.LeftShift) ? 10 : 5;
             Vector3 moveDirection = Vector3.Zero;
 
             if (Input.IsKeyPressed(KeyCode.W))
@@ -36,11 +50,15 @@ namespace Game
                 renderer.Camera.SetPosition(renderer.Camera.Position + moveDirection * movementSpeed * dt);
             }
 
-            float yawRotationSpeed = 100;
-            if (Input.IsKeyPressed(KeyCode.Q))
-                renderer.Camera.Rotate(-yawRotationSpeed * dt, 0.0f);
-            if (Input.IsKeyPressed(KeyCode.E))
-                renderer.Camera.Rotate(yawRotationSpeed * dt, 0.0f);
+            float mouseSensitivity = 0.03f;
+
+            float deltaX = Input.MouseDeltaX;
+            float deltaY = Input.MouseDeltaY;
+
+            float yawOffset = deltaX * mouseSensitivity;
+            float pitchOffset = deltaY * mouseSensitivity;
+
+            renderer.Camera.Rotate(yawOffset, -pitchOffset);
         }
 
         private float rotationAngle = 0.0f;
@@ -50,14 +68,15 @@ namespace Game
             Vec3 position = new Vec3(0.0f, 0.0f, 0);
             Vec3 scale = new Vec3(1.0f, 1.0f, 1.0f);
             Vec3 rotation = new Vec3(0.0f, 1.0f, 0.0f);
-            Color4<Rgba> color = new Color4<Rgba>(1.0f, 0.0f, 0.0f, 1.0f);
+            Color color = new Color(1.0f, 0.0f, 0.0f, 1.0f);
 
-            //rotationAngle += dt;
+            rotationAngle += dt;
 
             if (rotationAngle >= 360.0f)
                 rotationAngle -= 360.0f;
 
-            renderer.DrawTriangle(position, scale, new Vec3(0.0f, rotationAngle, 0.0f), color);
+            renderer.DrawTriangle(position, scale, new Vec3(0.0f, rotationAngle, 0.0f), new SpotEngine.Rendering.Material(Color.White));
+            
         }
     }
 }

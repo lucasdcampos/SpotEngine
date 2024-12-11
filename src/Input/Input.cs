@@ -13,6 +13,13 @@ namespace SpotEngine
         static Dictionary<KeyCode, bool> KeyStates = new Dictionary<KeyCode, bool>();
         static Dictionary<MouseButton, bool> MouseStates = new Dictionary<MouseButton, bool>();
 
+        public static float MousePositionX {  get; private set; }
+        public static float MousePositionY { get; private set; }
+        public static float MouseDeltaX { get; private set; }
+        public static float MouseDeltaY { get; private set; }
+
+        private static float m_timeSinceLastMouseMovement;
+
         /// <summary>
         /// Initializes the input system and subscribes to keyboard input events.
         /// </summary>
@@ -21,6 +28,9 @@ namespace SpotEngine
             if (m_Initialized) { Log.Warn("Trying to initialize Input when it's already initialized!"); return; }
             Event.KeyboardPressedOccurred += (sender, e) => { KeyStates[e.Key] = true; };
             Event.KeyboardReleasedOcurred += (sender, e) => { KeyStates[e.Key] = false; };
+            
+
+            SetupMouseEvents();
 
             // setting keys to false by default
             foreach (KeyCode key in Enum.GetValues(typeof(KeyCode)))
@@ -28,7 +38,25 @@ namespace SpotEngine
                 KeyStates[key] = false;
             }
 
+            foreach (MouseButton mb in Enum.GetValues(typeof(MouseButton)))
+            {
+                MouseStates[mb] = false;
+            }
+
             m_Initialized = true;
+        }
+
+        private static void SetupMouseEvents()
+        {
+            Event.MouseButtonPressedOccurred += (sender, e) => { MouseStates[e.Button] = true; };
+            Event.MouseButtonReleasedOccurred += (sender, e) => { MouseStates[e.Button] = false; };
+
+            Event.MouseMovedOccurred += (sender, e) => 
+            {
+                m_timeSinceLastMouseMovement = 0;
+                MousePositionX = e.X; MousePositionY = e.Y;
+                MouseDeltaX = e.DeltaX; MouseDeltaY = e.DeltaY;
+            };
         }
 
         /// <summary>
@@ -60,6 +88,16 @@ namespace SpotEngine
         {
             KeyCode keyCode = (KeyCode)code;
             KeyStates[keyCode] = state;
+        }
+
+        internal static void Update(float dt)
+        {
+            m_timeSinceLastMouseMovement += dt;
+            if (m_timeSinceLastMouseMovement > 0.01f)
+            {
+                MouseDeltaX = 0f;
+                MouseDeltaY = 0f;
+            }
         }
     }
 }

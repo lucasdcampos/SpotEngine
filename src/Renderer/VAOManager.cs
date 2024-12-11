@@ -1,17 +1,45 @@
 ﻿namespace SpotEngine.Internal.Rendering
 {
-    internal class VAOManager
+    public class VAOManager
     {
-        private Dictionary<string, VAO> vaos = new Dictionary<string, VAO>();
+        private Dictionary<string, VAO> vaos;
 
-        public VAO GetVAO(string name, float[] vertices)
+        public VAOManager()
         {
-            if (!vaos.ContainsKey(name))
+            vaos = new Dictionary<string, VAO>();
+        }
+
+        public VAO GetVAO(string name)
+        {
+            if (vaos.TryGetValue(name, out VAO vao))
             {
-                //vaos[name] = new VAO(vertices);
+                return vao;
             }
 
-            return vaos[name];
+            throw new KeyNotFoundException($"VAO '{name}' not found.");
+        }
+
+        public VAO LoadVAO(string name, float[] vertices, int stride, params (int index, int size, int offset)[] attributes)
+        {
+            if (vaos.ContainsKey(name))
+            {
+                return vaos[name];
+            }
+
+            VAO vao = new VAO(vertices, stride, attributes);
+            vaos[name] = vao;
+
+            return vao;
+        }
+
+        public void DisposeAll()
+        {
+            foreach (var vao in vaos.Values)
+            {
+                vao.Dispose();
+            }
+
+            vaos.Clear();
         }
     }
 }

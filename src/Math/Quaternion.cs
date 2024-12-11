@@ -44,6 +44,30 @@
         /// Gets the identity quaternion (no rotation).
         /// </summary>
         public static Quaternion Identity => new Quaternion(0, 0, 0, 1);
+
+        /// <summary>
+        /// Creates a quaternion from an axis and an angle using the axis-angle representation of rotation.
+        /// The axis is normalized before calculation. The resulting quaternion represents a rotation 
+        /// around the specified axis by the given angle.
+        /// </summary>
+        /// <param name="axis">The axis of rotation represented as a 3D vector.</param>
+        /// <param name="angle">The angle of rotation in radians.</param>
+        /// <returns>A new <see cref="Quaternion"/> representing the rotation around the given axis by the specified angle.</returns>
+        public static Quaternion FromAxisAngle(Vec3 axis, float angle)
+        {
+            axis = axis.Normalized();
+
+            float halfAngle = angle / 2.0f;
+            float sinHalfAngle = (float)Math.Sin(halfAngle);
+
+            return new Quaternion(
+                axis.X * sinHalfAngle,
+                axis.Y * sinHalfAngle,
+                axis.Z * sinHalfAngle,
+                (float)Math.Cos(halfAngle)
+            );
+        }
+
     }
 
 }

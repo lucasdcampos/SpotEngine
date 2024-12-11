@@ -47,7 +47,7 @@ namespace SpotEngine
         /// <param name="message"></param>
         public static void Dev(string message)
         {
-            if (!Application.DebugMode) return;
+            //if (!Application.DebugMode) return;
 
             prefix = "DEV";
             ConsoleWriteLine(message, ConsoleColor.DarkGreen);

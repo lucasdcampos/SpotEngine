@@ -22,8 +22,9 @@ namespace SpotEngine.Internal.Graphics
                 Title = title,
                 Flags = ContextFlags.ForwardCompatible,
                 // We should be using Core if we can
-                Profile = compatibility? ContextProfile.Compatability : ContextProfile.Core
-                
+                Profile = compatibility ? ContextProfile.Compatability : ContextProfile.Core,
+                StartFocused = true,
+                StartVisible = true
             };
 
             m_native = new NativeWindow(settings);
@@ -37,10 +38,14 @@ namespace SpotEngine.Internal.Graphics
             m_native.MakeCurrent();
             GLLoader.LoadBindings(new GLFWBindingsContext());
             GL.Enable(EnableCap.DepthTest);
-            m_native.Closing += CloseEvent;
-            m_native.KeyDown += KeyDownEvent;
-            m_native.KeyUp += KeyUpEvent;
 
+            m_native.Closing += CloseEvent;
+            m_native.KeyDown += (e) => ProcessKeyboardEvent(e, "key_down");
+            m_native.KeyUp += (e) => ProcessKeyboardEvent(e, "key_up");
+            m_native.MouseDown += (e) => ProcessMouseButtonEvent(e, "key_down");
+            m_native.MouseUp += (e) => ProcessMouseButtonEvent(e, "key_up");
+            m_native.Resize += Resize;
+            m_native.MouseMove += ProcessMouseMoveEvent;
             string glVersion = $"OpenGL API {GL.GetString(StringName.Version)}\n";
             glVersion += "                 ";
             glVersion += $"Vendor: {GL.GetString(StringName.Vendor)}";
@@ -48,6 +53,7 @@ namespace SpotEngine.Internal.Graphics
             Log.Custom(glVersion, ConsoleColor.Cyan);
 
         }
+
 
         protected internal override void Update(float dt)
         {
@@ -60,6 +66,8 @@ namespace SpotEngine.Internal.Graphics
             Width = m_native.Size.X;
             Height = m_native.Size.Y;
 
+            m_native.CursorVisible = Cursor.Visible;
+            //m_native.CursorState = Cursor.State == CursorState.Locked ? OpenTK.Windowing.Common.CursorState.Grabbed : OpenTK.Windowing.Common.CursorState.Normal;
         }
 
         protected internal override void Render(float dt)
@@ -70,9 +78,14 @@ namespace SpotEngine.Internal.Graphics
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
             Application.ActiveScene.Render(dt);
-
+            Application.Renderer.Render(dt);
             m_native.Context.SwapBuffers();
 
+        }
+
+        protected internal void Resize(ResizeEventArgs e)
+        {
+            GL.Viewport(0,0, e.Width, e.Height);
         }
 
         protected internal override void Close()
@@ -88,19 +101,47 @@ namespace SpotEngine.Internal.Graphics
             Close();
         }
 
-        private void KeyDownEvent(KeyboardKeyEventArgs e)
+        private void ProcessMouseButtonEvent(MouseButtonEventArgs e, string type)
         {
-            int i = (int)e.Key;
-            var ev = new InputEvents.KeyboardPressEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
-            Event.TriggerKeyboardPressedEvent(this, ev);
+            int i = (int)e.Button;
+            MouseButton mb = (MouseButton)Enum.ToObject(typeof(MouseButton), i);
 
+            switch (type)
+            {
+                case "key_down":
+                    Event.TriggerMouseButtonPressedEvent(this, new InputEvents.MouseButtonPressEvent(mb));
+                    break;
+                case "key_up":
+                    Event.TriggerMouseButtonReleasedEvent(this, new InputEvents.MouseButtonReleaseEvent(mb));
+                    break;
+                default:
+                    Log.Error($"Invalid Mouse event type: {type}");
+                    break;
+            }
         }
 
-        private void KeyUpEvent(KeyboardKeyEventArgs e)
+        private void ProcessMouseMoveEvent(MouseMoveEventArgs e)
+        {
+            Event.TriggerMouseMoveEvent(this, new InputEvents.MouseMoveEvent(e.X, e.Y, e.DeltaX, e.DeltaY));
+        }
+
+        private void ProcessKeyboardEvent(KeyboardKeyEventArgs e, string type)
         {
             int i = (int)e.Key;
-            var ev = new InputEvents.KeyboardReleaseEvent((KeyCode)Enum.ToObject(typeof(KeyCode), i));
-            Event.TriggerKeyboardReleasedEvent(this, ev);
+            KeyCode keyCode = (KeyCode)Enum.ToObject(typeof(KeyCode), i);
+
+            switch (type)
+            {
+                case "key_down":
+                    Event.TriggerKeyboardPressedEvent(this, new InputEvents.KeyboardPressEvent(keyCode));
+                    break;
+                case "key_up":
+                    Event.TriggerKeyboardReleasedEvent(this, new InputEvents.KeyboardReleaseEvent(keyCode));
+                    break;
+                default:
+                    Log.Error($"Invalid Keyboard event type: {type}");
+                    break;
+            }
         }
     }
 }

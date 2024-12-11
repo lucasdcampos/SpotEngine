@@ -60,6 +60,16 @@ namespace SpotEngine
         }
 
         /// <summary>
+        /// Returns a normalized version of the vector (a unit vector pointing in the same direction).
+        /// This method scales the vector so that its length (magnitude) is 1 while maintaining its direction.
+        /// </summary>
+        /// <returns>A new <see cref="Vec3"/> that is the normalized version of the current vector.</returns>
+        public Vec3 Normalized()
+        {
+            return Vec3.Normalize(this);
+        }
+
+        /// <summary>
         /// Gets a zero vector (with all components equal to zero).
         /// </summary>
         public static Vec3 Zero => new Vec3(0, 0, 0);
@@ -69,9 +79,21 @@ namespace SpotEngine
         /// </summary>
         public static Vec3 One => new Vec3(1, 1, 1);
 
+        /// <summary>
+        /// Gets a unit vector along the X-axis (1, 0, 0).
+        /// </summary>
         public static Vec3 UnitX => new Vec3(1.0f, 0.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the Y-axis (0, 1, 0).
+        /// </summary>
         public static Vec3 UnitY => new Vec3(0.0f, 1.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the Z-axis (0, 0, 1).
+        /// </summary>
         public static Vec3 UnitZ => new Vec3(0.0f, 0.0f, 1.0f);
+
 
         /// <summary>
         /// Returns a vector with the minimum components of two vectors.
@@ -127,7 +149,6 @@ namespace SpotEngine
 
             return new Vec3(x, y, z);
         }
-
 
         /// <summary>
         /// Divides a vector by a scalar.

@@ -25,10 +25,26 @@
         /// </summary>
         public float W { get; set; }
 
+        /// <summary>
+        /// Gets a unit vector along the X-axis (1, 0, 0, 0).
+        /// </summary>
         public static Vec4 UnitX => new Vec4(1.0f, 0.0f, 0.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the Y-axis (0, 1, 0, 0).
+        /// </summary>
         public static Vec4 UnitY => new Vec4(0.0f, 1.0f, 0.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the Z-axis (0, 0, 1, 0).
+        /// </summary>
         public static Vec4 UnitZ => new Vec4(0.0f, 0.0f, 1.0f, 0.0f);
+
+        /// <summary>
+        /// Gets a unit vector along the W-axis (0, 0, 0, 1).
+        /// </summary>
         public static Vec4 UnitW => new Vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Vec4"/> class with the specified components.
@@ -67,6 +83,16 @@
                 return new Vec4(vector.X / length, vector.Y / length, vector.Z / length, vector.W / length);
             }
             return Vec4.Zero;
+        }
+
+        /// <summary>
+        /// Returns a normalized version of the vector (a unit vector pointing in the same direction).
+        /// This method scales the vector so that its length (magnitude) is 1 while maintaining its direction.
+        /// </summary>
+        /// <returns>A new <see cref="Vec4"/> that is the normalized version of the current vector.</returns>
+        public Vec4 Normalized()
+        {
+            return Vec4.Normalize(this);
         }
 
         /// <summary>

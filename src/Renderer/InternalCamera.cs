@@ -8,6 +8,7 @@ public class InternalCamera
     public Vector3 Front { get; private set; }
     public Vector3 Up { get; private set; }
     public Vector3 Right => Vector3.Cross(Front, Up);
+    public bool ClampRotation { get; set; } = true;
 
     private float _yaw;
     private float _pitch;
@@ -76,8 +77,13 @@ public class InternalCamera
     public void Rotate(float yawOffset, float pitchOffset)
     {
         _yaw += yawOffset;
+
         _pitch += pitchOffset;
+        if(ClampRotation)
+            _pitch = Math.Clamp(_pitch, -89.0f, 89.0f);
+
         UpdateCameraVectors();
     }
+
 }
 

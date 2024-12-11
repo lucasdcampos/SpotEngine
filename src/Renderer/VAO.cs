@@ -34,6 +34,19 @@ namespace SpotEngine.Internal.Rendering
             GL.BindVertexArray(VertexArrayHandle.Zero);
         }
 
+        public void UpdateVertices(float[] newVertices)
+        {
+            GL.BindBuffer(BufferTargetARB.ArrayBuffer, vbo);
+            unsafe
+            {
+                fixed (float* vertexPtr = newVertices)
+                {
+                    GL.BufferSubData(BufferTargetARB.ArrayBuffer, IntPtr.Zero, newVertices.Length * sizeof(float), vertexPtr);
+                }
+            }
+        }
+
+
         public void Bind() => GL.BindVertexArray(vao);
 
         public void Dispose()
