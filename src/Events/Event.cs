@@ -1,10 +1,4 @@
-﻿// Copyright (c) Spot Engine
-// Licensed under MIT License.
-
-// TODO: Rewrite this entire file
-//       I was still dumb when I created this
-
-namespace SpotEngine
+﻿namespace SpotEngine.Events
 {
     /// <summary>
     /// A class for managing and triggering events related to input and window events.
@@ -21,78 +15,52 @@ namespace SpotEngine
             MouseMoved, MouseScrolled,
         }
 
-        // declaring a generic delegate to every event type
-        public delegate void EventHandler(EventType e, object eData);
-        public delegate void WindowResizedEventHandler(object sender, WindowEvents.WindowResizeEvent e);
-        public delegate void WindowClosedEventHandler(object sender, WindowEvents.WindowCloseEvent e);
-        public delegate void KeyboardPressEventHandler(object sender, InputEvents.KeyboardPressEvent e);
-        public delegate void KeyboardReleaseEventHandler(object sender, InputEvents.KeyboardReleaseEvent e);
+        // Declaring a generic delegate for event handlers
+        public delegate void EventHandler<T>(object sender, T eData);
 
-        public delegate void MouseButtonPressEventHandler(object sender, InputEvents.MouseButtonPressEvent e);
-        public delegate void MouseButtonReleaseEventHandler(object sender, InputEvents.MouseButtonReleaseEvent e);
-        public delegate void MouseMoveEventHandler(object sender, InputEvents.MouseMoveEvent e);
-        public delegate void MouseScrollEventHandler(object sender, InputEvents.MouseScrollEvent e);
+        // General event for any event type
+        public static event EventHandler<object>? EventOccurred;
 
-        // declaring generic event
-        public static event EventHandler? EventOccurred;
+        // Specific events
+        public static event EventHandler<WindowResizeEvent>? WindowResizedOccurred;
+        public static event EventHandler<WindowCloseEvent>? WindowClosedOccurred;
+        public static event EventHandler<KeyboardPressEvent>? KeyboardPressedOccurred;
+        public static event EventHandler<KeyboardReleaseEvent>? KeyboardReleasedOccurred;
+        public static event EventHandler<MouseButtonPressEvent>? MouseButtonPressedOccurred;
+        public static event EventHandler<MouseButtonReleaseEvent>? MouseButtonReleasedOccurred;
+        public static event EventHandler<MouseMoveEvent>? MouseMovedOccurred;
+        public static event EventHandler<MouseScrollEvent>? MouseScrolledOccurred;
 
-        // declaring specific events
-        public static event WindowResizedEventHandler? WindowResizedOccurred;
-        public static event WindowClosedEventHandler? WindowClosedEventOcurred;
-        public static event KeyboardPressEventHandler? KeyboardPressedOccurred;
-        public static event KeyboardReleaseEventHandler? KeyboardReleasedOcurred;
-        public static event MouseButtonPressEventHandler? MouseButtonPressedOccurred;
-        public static event MouseButtonReleaseEventHandler? MouseButtonReleasedOccurred;
-        public static event MouseMoveEventHandler? MouseMovedOccurred;
-        public static event MouseScrollEventHandler? MouseScrolledOccurred;
-
-        // creating triggers to every event type
-
-        public static void TriggerWindowResizedEvent(object sender, WindowEvents.WindowResizeEvent e)
+        // Generalized method for triggering events
+        private static void TriggerEvent<T>(EventType eventType, EventHandler<T> specificEvent, object sender, T eData)
         {
-            WindowResizedOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.WindowResized, e);
-        }
-        public static void TriggerWindowCloseEvent(object sender, WindowEvents.WindowCloseEvent e)
-        {
-            WindowClosedEventOcurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.WindowClosed, e);
+            specificEvent?.Invoke(sender, eData);
+            EventOccurred?.Invoke(sender, eData);
         }
 
-        public static void TriggerKeyboardPressedEvent(object sender, InputEvents.KeyboardPressEvent e)
-        {
-            KeyboardPressedOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.KeyboardPressed, e);
-        }
+        // Trigger specific events
+        public static void TriggerWindowResizedEvent(object sender, WindowResizeEvent e)
+            => TriggerEvent(EventType.WindowResized, WindowResizedOccurred, sender, e);
 
-        public static void TriggerKeyboardReleasedEvent(object sender, InputEvents.KeyboardReleaseEvent e)
-        {
-            KeyboardReleasedOcurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.KeyboardPressed, e);
-        }
+        public static void TriggerWindowCloseEvent(object sender, WindowCloseEvent e)
+            => TriggerEvent(EventType.WindowClosed, WindowClosedOccurred, sender, e);
 
-        public static void TriggerMouseButtonPressedEvent(object sender, InputEvents.MouseButtonPressEvent e)
-        {
-            MouseButtonPressedOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.MouseButtonPressed, e);
-        }
+        public static void TriggerKeyboardPressedEvent(object sender, KeyboardPressEvent e)
+            => TriggerEvent(EventType.KeyboardPressed, KeyboardPressedOccurred, sender, e);
 
-        public static void TriggerMouseButtonReleasedEvent(object sender, InputEvents.MouseButtonReleaseEvent e)
-        {
-            MouseButtonReleasedOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.MouseButtonReleased, e);
-        }
+        public static void TriggerKeyboardReleasedEvent(object sender, KeyboardReleaseEvent e)
+            => TriggerEvent(EventType.KeyboardReleased, KeyboardReleasedOccurred, sender, e);
 
-        public static void TriggerMouseMoveEvent(object sender, InputEvents.MouseMoveEvent e)
-        {
-            MouseMovedOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.MouseMoved, e);
-        }
+        public static void TriggerMouseButtonPressedEvent(object sender, MouseButtonPressEvent e)
+            => TriggerEvent(EventType.MouseButtonPressed, MouseButtonPressedOccurred, sender, e);
 
-        public static void TriggerMouseScrollEvent(object sender, InputEvents.MouseScrollEvent e)
-        {
-            MouseScrolledOccurred?.Invoke(sender, e);
-            EventOccurred?.Invoke(EventType.MouseScrolled, e);
-        }
+        public static void TriggerMouseButtonReleasedEvent(object sender, MouseButtonReleaseEvent e)
+            => TriggerEvent(EventType.MouseButtonReleased, MouseButtonReleasedOccurred, sender, e);
+
+        public static void TriggerMouseMoveEvent(object sender, MouseMoveEvent e)
+            => TriggerEvent(EventType.MouseMoved, MouseMovedOccurred, sender, e);
+
+        public static void TriggerMouseScrollEvent(object sender, MouseScrollEvent e)
+            => TriggerEvent(EventType.MouseScrolled, MouseScrolledOccurred, sender, e);
     }
 }

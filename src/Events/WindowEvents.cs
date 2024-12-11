@@ -1,26 +1,24 @@
 ﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
 
-namespace SpotEngine
+namespace SpotEngine.Events
 {
-    public class WindowEvents
+    public class WindowResizeEvent
     {
-        public class WindowResizeEvent
+        public int Width { get; }
+        public int Height { get; }
+
+        public WindowResizeEvent(int width, int height)
         {
-            public int Width { get; }
-            public int Height { get; }
-
-            public WindowResizeEvent(int width, int height)
-            {
-                Width = width;
-                Height = height;
-            }
+            Width = width;
+            Height = height;
         }
+    }
 
-        public class WindowCloseEvent
-        {
-
-        }
+    public class WindowCloseEvent
+    {
 
     }
+
 }
+

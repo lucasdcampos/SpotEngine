@@ -6,6 +6,7 @@ using OpenTK.Windowing.Desktop;
 using System.ComponentModel;
 using OpenTK.Graphics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using SpotEngine.Events;
 
 namespace SpotEngine.Internal.Graphics
 {
@@ -92,7 +93,7 @@ namespace SpotEngine.Internal.Graphics
         {
             base.Close();
 
-            var e = new WindowEvents.WindowCloseEvent();
+            var e = new WindowCloseEvent();
             Event.TriggerWindowCloseEvent(this, e);
         }
 
@@ -109,10 +110,10 @@ namespace SpotEngine.Internal.Graphics
             switch (type)
             {
                 case "key_down":
-                    Event.TriggerMouseButtonPressedEvent(this, new InputEvents.MouseButtonPressEvent(mb));
+                    Event.TriggerMouseButtonPressedEvent(this, new MouseButtonPressEvent(mb));
                     break;
                 case "key_up":
-                    Event.TriggerMouseButtonReleasedEvent(this, new InputEvents.MouseButtonReleaseEvent(mb));
+                    Event.TriggerMouseButtonReleasedEvent(this, new MouseButtonReleaseEvent(mb));
                     break;
                 default:
                     Log.Error($"Invalid Mouse event type: {type}");
@@ -122,7 +123,7 @@ namespace SpotEngine.Internal.Graphics
 
         private void ProcessMouseMoveEvent(MouseMoveEventArgs e)
         {
-            Event.TriggerMouseMoveEvent(this, new InputEvents.MouseMoveEvent(e.X, e.Y, e.DeltaX, e.DeltaY));
+            Event.TriggerMouseMoveEvent(this, new MouseMoveEvent(e.X, e.Y, e.DeltaX, e.DeltaY));
         }
 
         private void ProcessKeyboardEvent(KeyboardKeyEventArgs e, string type)
@@ -133,10 +134,10 @@ namespace SpotEngine.Internal.Graphics
             switch (type)
             {
                 case "key_down":
-                    Event.TriggerKeyboardPressedEvent(this, new InputEvents.KeyboardPressEvent(keyCode));
+                    Event.TriggerKeyboardPressedEvent(this, new KeyboardPressEvent(keyCode));
                     break;
                 case "key_up":
-                    Event.TriggerKeyboardReleasedEvent(this, new InputEvents.KeyboardReleaseEvent(keyCode));
+                    Event.TriggerKeyboardReleasedEvent(this, new KeyboardReleaseEvent(keyCode));
                     break;
                 default:
                     Log.Error($"Invalid Keyboard event type: {type}");

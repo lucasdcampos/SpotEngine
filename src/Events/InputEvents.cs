@@ -1,144 +1,139 @@
 ﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
 
-namespace SpotEngine
+namespace SpotEngine.Events
 {
     /// <summary>
-    /// A namespace containing event classes related to input events such as keyboard and mouse input.
+    /// Represents an event for a keyboard key press.
     /// </summary>
-    public class InputEvents
+    public class KeyboardPressEvent
     {
         /// <summary>
-        /// Represents an event for a keyboard key press.
+        /// Gets the KeyCode of the pressed key.
         /// </summary>
-        public class KeyboardPressEvent
-        {
-            /// <summary>
-            /// Gets the KeyCode of the pressed key.
-            /// </summary>
-            public KeyCode Key { get; }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="KeyboardPressEvent"/> class with the specified KeyCode.
-            /// </summary>
-            /// <param name="keyCode">The KeyCode of the pressed key.</param>
-            public KeyboardPressEvent(KeyCode keyCode)
-            {
-                Key = keyCode;
-            }
-        }
+        public KeyCode Key { get; }
 
         /// <summary>
-        /// Represents an event for a keyboard key release.
+        /// Initializes a new instance of the <see cref="KeyboardPressEvent"/> class with the specified KeyCode.
         /// </summary>
-        public class KeyboardReleaseEvent
+        /// <param name="keyCode">The KeyCode of the pressed key.</param>
+        public KeyboardPressEvent(KeyCode keyCode)
         {
-            /// <summary>
-            /// Gets the KeyCode of the released key.
-            /// </summary>
-            public KeyCode Key { get; }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="KeyboardReleaseEvent"/> class with the specified KeyCode.
-            /// </summary>
-            /// <param name="keyCode">The KeyCode of the released key.</param>
-            public KeyboardReleaseEvent(KeyCode keyCode)
-            {
-                Key = keyCode;
-            }
+            Key = keyCode;
         }
+    }
+
+    /// <summary>
+    /// Represents an event for a keyboard key release.
+    /// </summary>
+    public class KeyboardReleaseEvent
+    {
+        /// <summary>
+        /// Gets the KeyCode of the released key.
+        /// </summary>
+        public KeyCode Key { get; }
 
         /// <summary>
-        /// Represents an event for a mouse button press.
+        /// Initializes a new instance of the <see cref="KeyboardReleaseEvent"/> class with the specified KeyCode.
         /// </summary>
-        public class MouseButtonPressEvent
+        /// <param name="keyCode">The KeyCode of the released key.</param>
+        public KeyboardReleaseEvent(KeyCode keyCode)
         {
-            /// <summary>
-            /// Gets the ID of the pressed mouse button.
-            /// </summary>
-            public MouseButton Button { get; }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MouseButtonPressEvent"/> class with the specified button ID.
-            /// </summary>
-            /// <param name="button">The ID of the pressed mouse button.</param>
-            public MouseButtonPressEvent(MouseButton button)
-            {
-                Button = button;
-            }
+            Key = keyCode;
         }
+    }
+
+    /// <summary>
+    /// Represents an event for a mouse button press.
+    /// </summary>
+    public class MouseButtonPressEvent
+    {
+        /// <summary>
+        /// Gets the ID of the pressed mouse button.
+        /// </summary>
+        public MouseButton Button { get; }
 
         /// <summary>
-        /// Represents an event for a mouse button release.
+        /// Initializes a new instance of the <see cref="MouseButtonPressEvent"/> class with the specified button ID.
         /// </summary>
-        public class MouseButtonReleaseEvent
+        /// <param name="button">The ID of the pressed mouse button.</param>
+        public MouseButtonPressEvent(MouseButton button)
         {
-            /// <summary>
-            /// Gets the ID of the released mouse button.
-            /// </summary>
-            public MouseButton Button { get; }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MouseButtonReleaseEvent"/> class with the specified button ID.
-            /// </summary>
-            /// <param name="button">The ID of the released mouse button.</param>
-            public MouseButtonReleaseEvent(MouseButton button)
-            {
-                Button = button;
-            }
+            Button = button;
         }
+    }
+
+    /// <summary>
+    /// Represents an event for a mouse button release.
+    /// </summary>
+    public class MouseButtonReleaseEvent
+    {
+        /// <summary>
+        /// Gets the ID of the released mouse button.
+        /// </summary>
+        public MouseButton Button { get; }
 
         /// <summary>
-        /// Represents an event for mouse movement.
+        /// Initializes a new instance of the <see cref="MouseButtonReleaseEvent"/> class with the specified button ID.
         /// </summary>
-        public class MouseMoveEvent
+        /// <param name="button">The ID of the released mouse button.</param>
+        public MouseButtonReleaseEvent(MouseButton button)
         {
-            /// <summary>
-            /// Gets the X coordinate of the mouse.
-            /// </summary>
-            public float X { get; }
-
-            /// <summary>
-            /// Gets the Y coordinate of the mouse.
-            /// </summary>
-            public float Y { get; }
-
-            public float DeltaX { get; }
-
-            public float DeltaY { get; }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MouseMoveEvent"/> class with the specified X and Y coordinates.
-            /// </summary>
-            /// <param name="x">The X coordinate of the mouse.</param>
-            /// <param name="y">The Y coordinate of the mouse.</param>
-            public MouseMoveEvent(float x, float y, float deltax, float deltay)
-            {
-                X = x;
-                Y = y;
-                DeltaX = deltax;
-                DeltaY = deltay;
-            }
+            Button = button;
         }
+    }
+
+    /// <summary>
+    /// Represents an event for mouse movement.
+    /// </summary>
+    public class MouseMoveEvent
+    {
+        /// <summary>
+        /// Gets the X coordinate of the mouse.
+        /// </summary>
+        public float X { get; }
 
         /// <summary>
-        /// Represents an event for mouse scrolling.
+        /// Gets the Y coordinate of the mouse.
         /// </summary>
-        public class MouseScrollEvent
-        {
-            /// <summary>
-            /// Gets the delta value of the mouse scroll.
-            /// </summary>
-            public int Delta { get; }
+        public float Y { get; }
 
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MouseScrollEvent"/> class with the specified delta value.
-            /// </summary>
-            /// <param name="delta">The delta value of the mouse scroll.</param>
-            public MouseScrollEvent(int delta)
-            {
-                Delta = delta;
-            }
+        public float DeltaX { get; }
+
+        public float DeltaY { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MouseMoveEvent"/> class with the specified X and Y coordinates.
+        /// </summary>
+        /// <param name="x">The X coordinate of the mouse.</param>
+        /// <param name="y">The Y coordinate of the mouse.</param>
+        public MouseMoveEvent(float x, float y, float deltax, float deltay)
+        {
+            X = x;
+            Y = y;
+            DeltaX = deltax;
+            DeltaY = deltay;
+        }
+    }
+
+    /// <summary>
+    /// Represents an event for mouse scrolling.
+    /// </summary>
+    public class MouseScrollEvent
+    {
+        /// <summary>
+        /// Gets the delta value of the mouse scroll.
+        /// </summary>
+        public int Delta { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MouseScrollEvent"/> class with the specified delta value.
+        /// </summary>
+        /// <param name="delta">The delta value of the mouse scroll.</param>
+        public MouseScrollEvent(int delta)
+        {
+            Delta = delta;
         }
     }
 }
+

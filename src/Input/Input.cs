@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Spot Engine
 // Licensed under MIT License.
+using SpotEngine.Events;
 
 namespace SpotEngine
 {
@@ -27,7 +28,7 @@ namespace SpotEngine
         {
             if (m_Initialized) { Log.Warn("Trying to initialize Input when it's already initialized!"); return; }
             Event.KeyboardPressedOccurred += (sender, e) => { KeyStates[e.Key] = true; };
-            Event.KeyboardReleasedOcurred += (sender, e) => { KeyStates[e.Key] = false; };
+            Event.KeyboardReleasedOccurred += (sender, e) => { KeyStates[e.Key] = false; };
             
 
             SetupMouseEvents();

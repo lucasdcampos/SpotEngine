@@ -1,4 +1,5 @@
-﻿using SpotEngine.Internal.Graphics;
+﻿using SpotEngine.Events;
+using SpotEngine.Internal.Graphics;
 using SpotEngine.Internal.Rendering;
 using SpotEngine.Rendering;
 using System.Diagnostics;
@@ -175,7 +176,7 @@ namespace SpotEngine
             Log.Info("Hello from Spot Engine");
             m_running = true;
 
-            Event.WindowClosedEventOcurred += (sender, e) => { Stop(); };
+            Event.WindowClosedOccurred += (sender, e) => { Stop(); };
 
             Input.Init();
 
