@@ -35,10 +35,10 @@ namespace SpotEngine
 
         public Color(float r, float g, float b, float a)
         {
-            R = (int)r * 255;
-            G = (int)g * 255;
-            B = (int)b * 255;
-            A = (int)a * 255;
+            R = (int)(r * 255);
+            G = (int)(g * 255);
+            B = (int)(b * 255);
+            A = (int)(a * 255);
         }
 
         public static Color Random()

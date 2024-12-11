@@ -121,8 +121,8 @@ namespace SpotEngine.Rendering
         {
             float[] lineVertices = new float[]
             {
-        start.X, start.Y, start.Z, color.R, color.G, color.B, color.A,
-        end.X, end.Y, end.Z, color.R, color.G, color.B, color.A
+                start.X, start.Y, start.Z, color.R, color.G, color.B, color.A,
+                end.X, end.Y, end.Z, color.R, color.G, color.B, color.A
             };
 
             m_lineVAO.UpdateVertices(lineVertices);
@@ -175,6 +175,15 @@ namespace SpotEngine.Rendering
             DrawLine(new Vec3(m_camera.Position.X - 1000, 0, 0), new Vec3(m_camera.Position.X + 1000, 0, 0), Color.Red);
             DrawLine(new Vec3(0, m_camera.Position.Y - 1000, 0), new Vec3(0, m_camera.Position.Y + 1000, 0), Color.Green);
             DrawLine(new Vec3(0, 0, m_camera.Position.Z - 1000), new Vec3(0, 0, m_camera.Position.Z + 1000), Color.Blue);
+        }
+
+        public void DrawGizmo(Vec3 pos)
+        {
+            int size = 3;
+
+            DrawLine(new Vec3(pos.X - size, 0, 0), new Vec3(pos.X + size, 0, 0), Color.Red);
+            DrawLine(new Vec3(0, pos.Y - size, 0), new Vec3(0, pos.Y + size, 0), Color.Green);
+            DrawLine(new Vec3(0, 0, pos.Z - size), new Vec3(0, 0, pos.Z + size), Color.Blue);
         }
 
         internal void Render(float dt)

@@ -23,6 +23,11 @@ namespace Game
             {
                 Cursor.Visible = true;
             }
+
+            if (Input.IsKeyPressed(KeyCode.U))
+                planeRotAngle += 0.1f * dt;
+            if (Input.IsKeyPressed(KeyCode.L))
+                planeRotAngle -= 0.1f * dt;
         }
 
         private void MoveCamera(float dt)
@@ -62,10 +67,10 @@ namespace Game
         }
 
         private float rotationAngle = 0.0f;
-
+        private float planeRotAngle = -1.56f;
         protected override void OnRender(float dt)
         {
-            Vec3 position = new Vec3(0.0f, 0.0f, 0);
+            Vec3 position = new Vec3(0.0f, 0.5f, 0);
             Vec3 scale = new Vec3(1.0f, 1.0f, 1.0f);
             Vec3 rotation = new Vec3(0.0f, 1.0f, 0.0f);
             Color color = new Color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -76,7 +81,9 @@ namespace Game
                 rotationAngle -= 360.0f;
 
             renderer.DrawTriangle(position, scale, new Vec3(0.0f, rotationAngle, 0.0f), new SpotEngine.Rendering.Material(Color.White));
-            
+            renderer.DrawSquare(Vec3.Zero, Vec3.One * 10, new Vec3(planeRotAngle, 0, 0), new SpotEngine.Rendering.Material(Color.Green));
+
+            renderer.DrawGizmo(Vec3.One);
         }
     }
 }
