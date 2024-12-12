@@ -1,32 +1,31 @@
-<img src="assets/img/spot/spot-logo.png" width="480px">
+<div align="center">
+  <img src="res/img/spot/spot-logo.png" width="480px">
+</div>
 
-# Spot Game Engine
-
-> **⚠️ Warning:** This version of Spot will soon be deprecated as the entire engine is being rebuilt from scratch in C++. There will be one final release here before this repository is archived.
-
-
-## Getting Started
-
+# 🎮 Spot Game Engine
 Welcome to the Spot Game Engine, a work-in-progress game engine built entirely in C#.
 
 You can explore the source code and contribute if you wish. Here's how you can get started:
 
+## 🛠️	Building from Source
 ```sh
-git clone https://github.com/lukazof/SpotEngine.git
+git clone https://github.com/lucasdcampos/SpotEngine.git
 cd SpotEngine
 ```
 
 Now you can Build it from source:
 
+Windows:
 ```sh
 .\build.ps1
 ```
+Linux:
+```
+chmod +x build.sh
+./build.sh
+```
 
-This is Windows only, in the future a *build.sh* can be created, which runs on Linux and macOS
-
-You can test if it worked by using `dotnet run --project tests/TestApp/TestApp.csproj` (The default app used for testing purposes should now open)
-
-## How to Contribute
+## :handshake: How to Contribute
 
 We welcome contributions to the Spot Game Engine! If you'd like to contribute, please follow these steps:
 
@@ -38,16 +37,6 @@ We welcome contributions to the Spot Game Engine! If you'd like to contribute, p
 
 For major changes or significant contributions, please discuss your ideas in advance by opening an issue.
 
-## License
+## 📄 License
 
-The Spot Game Engine is open source and available under the MIT License. See [LICENSE](LICENSE.md) for more details.
-
----
-
-### Notes from the Author
-I'm developing the engine alone (you can contribute if you want), and mainly for study purposes and also out of curiosity. 
-I don't intend to create the most complex engine in the world, because that requires a giant team and years of work.
-
-My goal is to be able to create simple games using the engine, and in the future I might think about expanding it, who knows.
-
-**EDIT:** I'm rebuilding Spot from scratch in C++, and a usable version should be available in the coming months.
+The Spot Game Engine is open source and available under the MIT License. See [LICENSE](LICENSE.txt) for more details.
