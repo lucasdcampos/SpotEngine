@@ -1,6 +1,5 @@
 ﻿using SpotEngine.Events;
 using SpotEngine.Internal.Graphics;
-using SpotEngine.Internal.Rendering;
 using SpotEngine.Rendering;
 using System.Diagnostics;
 

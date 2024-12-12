@@ -1,4 +1,4 @@
-﻿namespace SpotEngine.Internal.Rendering
+﻿namespace SpotEngine.Rendering
 {
     public class VAOManager
     {

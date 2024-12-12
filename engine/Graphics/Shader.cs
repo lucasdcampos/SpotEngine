@@ -1,10 +1,9 @@
 ﻿using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using SpotEngine.Rendering;
 
 
-namespace SpotEngine.Internal.Rendering
+namespace SpotEngine.Rendering
 {
     public class Shader : IDisposable
     {

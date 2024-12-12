@@ -1,5 +1,4 @@
 ﻿using OpenTK.Mathematics;
-using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine.Rendering
 {

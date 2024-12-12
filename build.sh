@@ -1,0 +1,1 @@
+dotnet build SpotEngine.sln

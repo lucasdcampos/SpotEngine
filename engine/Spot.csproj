@@ -9,6 +9,8 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageLicenseFile></PackageLicenseFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <BaseOutputPath>$(SolutionDir)bin\spot\</BaseOutputPath>
+    <DocumentationFile>$(SolutionDir)bin\spot\obj\Debug\net8.0\Spot.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

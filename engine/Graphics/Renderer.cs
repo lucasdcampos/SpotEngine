@@ -1,7 +1,6 @@
 ﻿using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL.Compatibility;
 using OpenTK.Mathematics;
-using SpotEngine.Internal.Rendering;
 
 namespace SpotEngine.Rendering
 {
@@ -9,10 +8,6 @@ namespace SpotEngine.Rendering
     {
         private Shader m_defaultShader;
         private InternalCamera m_camera;
-
-        private float[] m_triangleVertices;
-        private float[] m_squareVertices;
-        private VAO m_lineVAO;
         private Vec2 m_viewport;
         private ShaderManager m_shaderManager => Application.ShaderManager;
         private VAOManager m_vaoManager => Application.VAOManager;
@@ -24,57 +19,10 @@ namespace SpotEngine.Rendering
             m_defaultShader = shader ?? m_shaderManager.GetShader("default");
             m_camera = new InternalCamera(new Vector3(0, 0, 3));
 
-            InitializeTriangle();
-            InitializeSquare();
-            InitializeLine();
+            VAOCommon.Initialize(m_vaoManager, m_shaderManager);
         }
 
-        private void InitializeTriangle()
-        {
-            m_triangleVertices = new float[]
-            {
-                -0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    0.0f, 0.0f,
-                 0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    1.0f, 0.0f,
-                 0.0f,  0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    0.5f, 1.0f
-            };
-
-            m_vaoManager.LoadVAO("triangle", m_triangleVertices, 8 * sizeof(float),
-                (0, 3, 0),                  // Vertices (pos)
-                (1, 3, 3 * sizeof(float)),  // Color
-                (2, 2, 6 * sizeof(float))   // Texture
-            );
-        }
-
-        private void InitializeSquare()
-        {
-            m_squareVertices = new float[]
-            {
-                -0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    0.0f, 0.0f,
-                 0.5f, -0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    1.0f, 0.0f,
-                 0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    1.0f, 1.0f,
-                -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 1.0f,    0.0f, 1.0f
-            };
-
-            m_vaoManager.LoadVAO("square", m_squareVertices, 8 * sizeof(float),
-                (0, 3, 0),                  // Vertices (pos)
-                (1, 3, 3 * sizeof(float)),  // Color
-                (2, 2, 6 * sizeof(float))   // Texture
-            );
-        }
-
-        private void InitializeLine()
-        {
-            float[] lineVertices = new float[]
-            {
-                0f, 0f, 0f, 1f, 1f, 1f, 1f,
-                0f, 1f, 0f, 1f, 1f, 1f, 1f
-            };
-
-            m_lineVAO = m_vaoManager.LoadVAO("line", lineVertices, 7 * sizeof(float),
-                (0, 3, 0),  // Posição
-                (1, 4, 3 * sizeof(float)) // Color
-            );
-        }
+        
 
         private void DrawBase(string vaoName, Matrix4 modelMatrix, Material material)
         {
@@ -125,7 +73,8 @@ namespace SpotEngine.Rendering
                 end.X, end.Y, end.Z, color.R, color.G, color.B, color.A
             };
 
-            m_lineVAO.UpdateVertices(lineVertices);
+            var lineVAO = m_vaoManager.GetVAO("line");
+            lineVAO.UpdateVertices(lineVertices);
 
             Matrix4 modelMatrix = Matrix4.Identity;
 
@@ -134,7 +83,7 @@ namespace SpotEngine.Rendering
                               m_camera.GetProjectionMatrix(45.0f, m_viewport.X / m_viewport.Y, 0.1f, 100f),
                               new Material(color));
 
-            m_lineVAO.Bind();
+            lineVAO.Bind();
             GL.DrawArrays(PrimitiveType.Lines, 0, 2);
 
             GL.BindVertexArray(VertexArrayHandle.Zero);

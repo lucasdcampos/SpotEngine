@@ -13,7 +13,7 @@ namespace SpotEngine
 
         internal void Render(float dt)
         {
-            Graphics.DrawSquare(this);
+            
         }
     }
 }
