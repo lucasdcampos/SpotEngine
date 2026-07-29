@@ -168,9 +168,6 @@ public sealed class DevConsole
         info.Fn(args);
     }
 
-    /// <summary>
-    /// Renders the console for the current frame.
-    /// </summary>
     public void OnImGuiRender()
     {
         if (!_open)
@@ -191,6 +188,17 @@ public sealed class DevConsole
             return;
         }
 
+        DrawContents();
+
+        ImGui.PopStyleColor();
+        ImGui.End();
+    }
+
+    /// <summary>
+    /// Renders the inner contents of the console (logs and input).
+    /// </summary>
+    public void DrawContents()
+    {
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing();
         ImGui.BeginChild("##output", new Vector2(0.0f, -footerHeight), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
 
@@ -242,9 +250,6 @@ public sealed class DevConsole
             _inputBuf[0] = 0;
             ImGui.SetKeyboardFocusHere(-1);
         }
-
-        ImGui.PopStyleColor();
-        ImGui.End();
     }
 
     private void RegisterBuiltins()
