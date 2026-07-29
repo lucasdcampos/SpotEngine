@@ -22,15 +22,18 @@ internal sealed class GameApp : Application
         #version 330 core
         layout (location = 0) in vec3 aPosition;
         layout (location = 1) in vec3 aColor;
+        layout (location = 2) in vec2 aTexCoord;
 
         uniform mat4 uViewProjection;
         uniform mat4 uTransform;
 
         out vec3 vColor;
+        out vec2 vTexCoord;
 
         void main()
         {
             vColor = aColor;
+            vTexCoord = aTexCoord;
             gl_Position = uViewProjection * uTransform * vec4(aPosition, 1.0);
         }
         """;
@@ -39,23 +42,26 @@ internal sealed class GameApp : Application
         """
         #version 330 core
         in vec3 vColor;
+        in vec2 vTexCoord;
+
+        uniform sampler2D uTexture;
 
         out vec4 fragColor;
 
         void main()
         {
-            fragColor = vec4(vColor, 1.0);
+            fragColor = texture(uTexture, vTexCoord) * vec4(vColor, 1.0);
         }
         """;
 
-    // A quad: four corners, each with a position (vec3) and a color (vec3).
+    // A quad: four corners, each with a position (vec3), a color (vec3), and a texture coordinate (vec2).
     private static readonly float[] Vertices =
     {
-        // Position            // Color
-         0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // top-right    - red
-         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // bottom-right - green
-        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, // bottom-left  - blue
-        -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f, // top-left     - yellow
+        // Position            // Color              // UV
+         0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,    1.0f, 1.0f, // top-right    - red
+         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 0.0f, // bottom-right - green
+        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, // bottom-left  - blue
+        -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,    0.0f, 1.0f, // top-left     - yellow
     };
 
     // Two triangles making up the quad.
@@ -71,6 +77,7 @@ internal sealed class GameApp : Application
     private IndexBuffer? _ibo;
     private VertexArray? _vao;
     private OrthographicCamera? _camera;
+    private Texture2D? _texture;
     private readonly Transform _quadTransform = new();
 
     public GameApp(ApplicationSpec spec)
@@ -86,12 +93,15 @@ internal sealed class GameApp : Application
         // Build the quad: a vertex buffer with position + color per vertex, an index buffer
         // pairing them into two triangles, and a shader program to color it.
         _vao = new VertexArray();
-        _vbo = new VertexBuffer(Vertices, ShaderDataType.Float3, ShaderDataType.Float3);
+        _vbo = new VertexBuffer(Vertices, ShaderDataType.Float3, ShaderDataType.Float3, ShaderDataType.Float2);
         _vao.AddVertexBuffer(_vbo);
         _ibo = new IndexBuffer(Indices);
         _vao.SetIndexBuffer(_ibo);
 
         _shader = new Shader(VertexShaderSource, FragmentShaderSource);
+        // Assets are copied next to the executable, so resolve them relative to the base
+        // directory rather than the (unpredictable) current working directory.
+        _texture = new Texture2D(Path.Combine(AppContext.BaseDirectory, "assets", "spot.png"));
 
         // A 2D orthographic camera: the view is two world units tall, and its width follows the
         // window aspect ratio (kept up to date in OnUpdate).
@@ -136,9 +146,12 @@ internal sealed class GameApp : Application
 
         if (_shader is not null && _camera is not null && _vao is not null)
         {
+            _texture?.Bind(0);
+
             _shader.Use();
             _shader.SetUniform("uViewProjection", _camera.ViewProjection);
             _shader.SetUniform("uTransform", _quadTransform.Matrix);
+            _shader.SetUniform("uTexture", 0);
             Renderer.DrawIndexed(_vao);
         }
     }
@@ -146,6 +159,7 @@ internal sealed class GameApp : Application
     protected override void OnShutdown()
     {
         _shader?.Dispose();
+        _texture?.Dispose();
         _vbo?.Dispose();
         _ibo?.Dispose();
         _vao?.Dispose();

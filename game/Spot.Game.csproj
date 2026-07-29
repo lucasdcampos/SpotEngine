@@ -14,4 +14,8 @@
     <ProjectReference Include="..\engine\Spot.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
