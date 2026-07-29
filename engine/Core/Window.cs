@@ -1,5 +1,7 @@
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
+using Spot.Events;
 using SilkWindow = Silk.NET.Windowing.Window;
 
 namespace Spot.Core;
@@ -32,6 +34,11 @@ public sealed class Window : IDisposable
 {
     private readonly WindowSpec _spec;
     private readonly IWindow _window;
+    private readonly IInputContext _input;
+
+    private int _width;
+    private int _height;
+    private EventCallback? _callback;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Window"/> class.
@@ -40,6 +47,8 @@ public sealed class Window : IDisposable
     public Window(WindowSpec spec)
     {
         _spec = spec;
+        _width = spec.Width;
+        _height = spec.Height;
 
         WindowOptions options = WindowOptions.Default;
         options.Title = spec.Title;
@@ -50,18 +59,21 @@ public sealed class Window : IDisposable
         _window = SilkWindow.Create(options);
         _window.Initialize();
 
+        _input = _window.CreateInput();
+        SetupCallbacks();
+
         Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
     }
 
     /// <summary>
     /// Gets the window width in pixels.
     /// </summary>
-    public int Width => _spec.Width;
+    public int Width => _width;
 
     /// <summary>
     /// Gets the window height in pixels.
     /// </summary>
-    public int Height => _spec.Height;
+    public int Height => _height;
 
     /// <summary>
     /// Gets the window title.
@@ -72,6 +84,12 @@ public sealed class Window : IDisposable
     /// Gets the underlying Silk.NET window.
     /// </summary>
     public IWindow NativeWindow => _window;
+
+    /// <summary>
+    /// Sets the callback invoked when the window raises an event.
+    /// </summary>
+    /// <param name="callback">The event callback.</param>
+    public void SetEventCallback(EventCallback callback) => _callback = callback;
 
     /// <summary>
     /// Processes pending window and input events.
@@ -87,8 +105,36 @@ public sealed class Window : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _input.Dispose();
         _window.DoEvents();
         _window.Reset();
         _window.Dispose();
+    }
+
+    private void SetupCallbacks()
+    {
+        _window.Closing += () => _callback?.Invoke(new WindowCloseEvent());
+
+        _window.Resize += size =>
+        {
+            _width = size.X;
+            _height = size.Y;
+            _callback?.Invoke(new WindowResizeEvent(size.X, size.Y));
+        };
+
+        foreach (IKeyboard keyboard in _input.Keyboards)
+        {
+            keyboard.KeyDown += (_, key, _) => _callback?.Invoke(new KeyPressedEvent((int)key, 0));
+            keyboard.KeyUp += (_, key, _) => _callback?.Invoke(new KeyReleasedEvent((int)key));
+            keyboard.KeyChar += (_, character) => _callback?.Invoke(new KeyTypedEvent(character));
+        }
+
+        foreach (IMouse mouse in _input.Mice)
+        {
+            mouse.MouseMove += (_, position) => _callback?.Invoke(new MouseMovedEvent(position.X, position.Y));
+            mouse.Scroll += (_, wheel) => _callback?.Invoke(new MouseScrolledEvent(wheel.X, wheel.Y));
+            mouse.MouseDown += (_, button) => _callback?.Invoke(new MouseButtonPressedEvent((int)button));
+            mouse.MouseUp += (_, button) => _callback?.Invoke(new MouseButtonReleasedEvent((int)button));
+        }
     }
 }

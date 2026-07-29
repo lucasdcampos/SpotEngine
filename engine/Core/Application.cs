@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Spot.Events;
 
 namespace Spot.Core;
 
@@ -68,13 +69,14 @@ public class Application
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
         _window = new Window(_spec.Window);
+        _window.SetEventCallback(OnEvent);
 
         _running = true;
         OnInit();
 
         var stopwatch = Stopwatch.StartNew();
         TimeSpan lastTime = stopwatch.Elapsed;
-        while (_running && !_window.ShouldClose())
+        while (_running)
         {
             _window.PollEvents();
 
@@ -117,5 +119,28 @@ public class Application
     /// </summary>
     protected virtual void OnShutdown()
     {
+    }
+
+    /// <summary>
+    /// Called for every event raised by the window.
+    /// </summary>
+    /// <param name="e">The event.</param>
+    protected virtual void OnEvent(Event e)
+    {
+        var dispatcher = new EventDispatcher(e);
+        dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
+        dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
+    }
+
+    private bool OnWindowClose(WindowCloseEvent e)
+    {
+        _running = false;
+        return true;
+    }
+
+    private bool OnWindowResize(WindowResizeEvent e)
+    {
+        Log.CoreInfo("Window resized: {0}x{1}", e.Width, e.Height);
+        return false;
     }
 }

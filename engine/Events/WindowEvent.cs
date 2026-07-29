@@ -1,0 +1,55 @@
+namespace Spot.Events;
+
+/// <summary>
+/// Raised when the window is requested to close.
+/// </summary>
+public sealed class WindowCloseEvent : Event
+{
+    /// <inheritdoc />
+    public override EventType Type => EventType.WindowClose;
+
+    /// <inheritdoc />
+    public override string Name => "WindowClose";
+
+    /// <inheritdoc />
+    public override EventCategory CategoryFlags => EventCategory.Application;
+}
+
+/// <summary>
+/// Raised when the window is resized.
+/// </summary>
+public sealed class WindowResizeEvent : Event
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WindowResizeEvent"/> class.
+    /// </summary>
+    /// <param name="width">The new width in pixels.</param>
+    /// <param name="height">The new height in pixels.</param>
+    public WindowResizeEvent(int width, int height)
+    {
+        Width = width;
+        Height = height;
+    }
+
+    /// <summary>
+    /// Gets the new width in pixels.
+    /// </summary>
+    public int Width { get; }
+
+    /// <summary>
+    /// Gets the new height in pixels.
+    /// </summary>
+    public int Height { get; }
+
+    /// <inheritdoc />
+    public override EventType Type => EventType.WindowResize;
+
+    /// <inheritdoc />
+    public override string Name => "WindowResize";
+
+    /// <inheritdoc />
+    public override EventCategory CategoryFlags => EventCategory.Application;
+
+    /// <inheritdoc />
+    public override string ToString() => $"WindowResizeEvent: {Width}x{Height}";
+}
