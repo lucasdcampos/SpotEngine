@@ -11,6 +11,9 @@ public class AssetBrowserPanel
     private string _currentDirectory;
     private string _baseDirectory;
 
+    private bool _isCreatingScript = false;
+    private string _newScriptName = "";
+
     public AssetBrowserPanel(EditorContext context)
     {
         _context = context;
@@ -75,6 +78,15 @@ public class AssetBrowserPanel
                 {
                     ImGui.Button(file.Name, new Vector2(cellSize - 10, cellSize - 10));
                     
+                    if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = file.FullName,
+                            UseShellExecute = true
+                        });
+                    }
+                    
                     if (ImGui.BeginDragDropSource())
                     {
                         ImGui.Text(file.Name);
@@ -90,12 +102,80 @@ public class AssetBrowserPanel
             ImGui.TextColored(new Vector4(1, 0, 0, 1), $"Error reading directory: {ex.Message}");
         }
 
+        if (ImGui.BeginPopupContextWindow("AssetBrowserContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
+        {
+            if (ImGui.MenuItem("New Script"))
+            {
+                _isCreatingScript = true;
+                _newScriptName = "NewScript.cs";
+            }
+            ImGui.EndPopup();
+        }
+
+        if (_isCreatingScript)
+        {
+            ImGui.OpenPopup("Create New Script");
+        }
+
+        bool modalOpen = true;
+        if (ImGui.BeginPopupModal("Create New Script", ref modalOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.InputText("Name", ref _newScriptName, 256);
+            if (ImGui.Button("Create", new Vector2(120, 0)))
+            {
+                CreateScript(_newScriptName);
+                _isCreatingScript = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            {
+                _isCreatingScript = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+        else if (!modalOpen)
+        {
+            _isCreatingScript = false;
+        }
+
         ImGui.Columns(1);
         ImGui.EndChild();
 
         if (asWindow)
         {
             ImGui.End();
+        }
+    }
+
+    private void CreateScript(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".cs")) name += ".cs";
+
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (!File.Exists(filepath))
+        {
+            string className = Path.GetFileNameWithoutExtension(name);
+            // Remova espaços ou caracteres inválidos simples
+            className = className.Replace(" ", "");
+            
+            string template = $@"using System;
+using Spot.Core;
+using Spot.Scenes;
+
+namespace Spot.Game;
+
+public class {className} : Component
+{{
+    public override void OnUpdate(float deltaTime)
+    {{
+        
+    }}
+}}
+";
+            File.WriteAllText(filepath, template);
         }
     }
 }
