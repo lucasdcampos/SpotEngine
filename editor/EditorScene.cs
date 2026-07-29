@@ -26,6 +26,7 @@ public class EditorScene : Scene
     private readonly ViewportPanel _viewportPanel;
     private readonly ViewportPanel _gamePanel;
     private readonly ConsolePanel _consolePanel;
+    private readonly AssetBrowserPanel _assetBrowserPanel;
 
     private Framebuffer? _framebuffer;
     private Framebuffer? _gameFramebuffer;
@@ -40,6 +41,7 @@ public class EditorScene : Scene
         _viewportPanel = new ViewportPanel(_context);
         _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
+        _assetBrowserPanel = new AssetBrowserPanel(_context);
     }
 
     public override void OnEnter()
@@ -221,7 +223,25 @@ public class EditorScene : Scene
 
         ImGui.SetNextWindowPos(new Vector2(mainPos.X, mainPos.Y + middleHeight));
         ImGui.SetNextWindowSize(new Vector2(workSize.X, consoleHeight));
-        _consolePanel.OnImGuiRender();
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
+        ImGui.Begin("BottomPanels", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoTitleBar);
+        ImGui.PopStyleVar();
+
+        if (ImGui.BeginTabBar("BottomTabs"))
+        {
+            if (ImGui.BeginTabItem("Console"))
+            {
+                _consolePanel.OnImGuiRender(asWindow: false);
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Asset Browser"))
+            {
+                _assetBrowserPanel.OnImGuiRender(asWindow: false);
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+        ImGui.End();
     }
     
     public override void OnExit()

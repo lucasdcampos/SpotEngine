@@ -12,11 +12,19 @@ public class ConsolePanel
         _context = context;
     }
 
-    public void OnImGuiRender()
+    public void OnImGuiRender(bool asWindow = true)
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
-        ImGui.Begin("Console", flags);
+        if (asWindow)
+        {
+            ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
+            ImGui.Begin("Console", flags);
+        }
+        
         Spot.Core.Application.Instance.Console.DrawContents();
-        ImGui.End();
+        
+        if (asWindow)
+        {
+            ImGui.End();
+        }
     }
 }
