@@ -11,6 +11,11 @@ public class ApplicationSpec
     /// Gets or sets the application name.
     /// </summary>
     public string Name { get; set; } = "Spot Application";
+
+    /// <summary>
+    /// Gets or sets the window specification.
+    /// </summary>
+    public WindowSpec Window { get; set; } = new WindowSpec();
 }
 
 /// <summary>
@@ -21,6 +26,7 @@ public class Application
     private static Application? s_instance;
 
     private readonly ApplicationSpec _spec;
+    private Window? _window;
     private bool _running;
     private float _deltaTime;
 
@@ -48,6 +54,12 @@ public class Application
     public string Name => _spec.Name;
 
     /// <summary>
+    /// Gets the application window.
+    /// </summary>
+    public Window Window =>
+        _window ?? throw new InvalidOperationException("The window has not been created yet.");
+
+    /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>
     public void Run()
@@ -55,13 +67,17 @@ public class Application
         Log.Init();
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
+        _window = new Window(_spec.Window);
+
         _running = true;
         OnInit();
 
         var stopwatch = Stopwatch.StartNew();
         TimeSpan lastTime = stopwatch.Elapsed;
-        while (_running)
+        while (_running && !_window.ShouldClose())
         {
+            _window.PollEvents();
+
             TimeSpan now = stopwatch.Elapsed;
             _deltaTime = (float)(now - lastTime).TotalSeconds;
             lastTime = now;
@@ -71,6 +87,9 @@ public class Application
 
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
         OnShutdown();
+
+        _window.Dispose();
+        _window = null;
     }
 
     /// <summary>
