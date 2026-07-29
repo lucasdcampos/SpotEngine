@@ -60,6 +60,32 @@ public class Project
         string json = JsonSerializer.Serialize(Active.Config, options);
         File.WriteAllText(filepath, json);
         Active.ProjectDirectory = Path.GetDirectoryName(filepath) ?? string.Empty;
+        
+        GenerateCSProject();
+    }
+
+    private static void GenerateCSProject()
+    {
+        if (Active == null || string.IsNullOrEmpty(Active.ProjectDirectory)) return;
+
+        string csprojPath = Path.Combine(Active.ProjectDirectory, Active.Config.Name + ".csproj");
+        string engineDllPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Spot.Engine.dll"));
+        
+        string csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include=""Spot.Engine"">
+      <HintPath>{engineDllPath}</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>";
+        
+        File.WriteAllText(csprojPath, csprojContent);
     }
 
     public string GetAssetDirectory()
