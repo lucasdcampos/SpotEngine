@@ -3,6 +3,7 @@ using System.Numerics;
 using Spot;
 using Spot.Core;
 using Spot.Rendering;
+using Spot.Scenes;
 
 var spec = new ApplicationSpec
 {
@@ -15,12 +16,17 @@ spec.Window.Height = 720;
 var app = new GameApp(spec);
 app.Run();
 
+/// <summary>A user-defined component holding a quad's color.</summary>
+internal sealed class QuadColor
+{
+    public Vector4 Value { get; set; } = Vector4.One;
+}
+
 internal sealed class GameApp : Application
 {
     private bool _godMode;
     private OrthographicCamera? _camera;
-    private Texture2D? _texture;
-    private readonly Transform _spriteTransform = new();
+    private readonly Scene _scene = new();
 
     public GameApp(ApplicationSpec spec)
         : base(spec)
@@ -32,14 +38,27 @@ internal sealed class GameApp : Application
         Log.Info("Game started - engine version {0}", Engine.GetVersion());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-        // Assets are copied next to the executable, so resolve them relative to the base
-        // directory rather than the (unpredictable) current working directory.
-        _texture = new Texture2D(Path.Combine(AppContext.BaseDirectory, "assets", "spot.png"));
-
         // A 2D orthographic camera: the view is two world units tall, and its width follows the
         // window aspect ratio (kept up to date in OnUpdate).
         float aspect = (float)Window.Width / Window.Height;
         _camera = new OrthographicCamera(-aspect, aspect, -1.0f, 1.0f);
+
+        // Populate the scene: a row of entities, each with its Transform (added automatically) and
+        // a user-defined QuadColor component.
+        const int count = 6;
+        for (int i = 0; i < count; i++)
+        {
+            Entity entity = _scene.CreateEntity($"Quad {i}");
+
+            Transform transform = entity.GetComponent<Transform>();
+            transform.Position = new Vector3(-1.1f + (i * 0.44f), 0.0f, 0.0f);
+            transform.Scale = new Vector3(0.3f, 0.3f, 1.0f);
+
+            entity.AddComponent(new QuadColor
+            {
+                Value = new Vector4(i / (float)count, 0.5f, 1.0f - (i / (float)count), 1.0f),
+            });
+        }
 
         Console.Register("god", _ =>
         {
@@ -69,43 +88,34 @@ internal sealed class GameApp : Application
         float aspect = (float)Window.Width / Window.Height;
         _camera?.SetProjection(-aspect, aspect, -1.0f, 1.0f);
 
-        // Spin the textured sprite to show a transform driving a quad.
-        _spriteTransform.Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
+        // Spin every entity in place by mutating its Transform component.
+        foreach (Entity entity in _scene.View<Transform>())
+        {
+            entity.GetComponent<Transform>().Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
+        }
     }
 
     protected override void OnRender()
     {
         Renderer.Clear();
 
-        if (_camera is null || _texture is null)
+        if (_camera is null)
         {
             return;
         }
 
+        // Render the scene: draw a quad for every entity that has both a Transform and a QuadColor.
         Renderer2D.BeginScene(_camera);
-
-        // A grid of colored quads: all batched into a single draw call.
-        for (int y = 0; y < 5; y++)
+        foreach (Entity entity in _scene.View<Transform, QuadColor>())
         {
-            for (int x = 0; x < 5; x++)
-            {
-                var position = new Vector2(-1.2f + (x * 0.22f), -0.44f + (y * 0.22f));
-                var color = new Vector4(x / 5.0f, y / 5.0f, 0.4f, 1.0f);
-                Renderer2D.DrawQuad(position, new Vector2(0.18f, 0.18f), color);
-            }
+            Renderer2D.DrawQuad(entity.GetComponent<Transform>().Matrix, entity.GetComponent<QuadColor>().Value);
         }
-
-        // A textured sprite, transformed (scaled + spinning) on top.
-        _spriteTransform.Position = new Vector3(0.7f, 0.0f, 0.0f);
-        _spriteTransform.Scale = new Vector3(0.8f, 0.8f, 1.0f);
-        Renderer2D.DrawQuad(_spriteTransform.Matrix, _texture);
 
         Renderer2D.EndScene();
     }
 
     protected override void OnShutdown()
     {
-        _texture?.Dispose();
         Log.Info("Game shutdown complete");
     }
 }
