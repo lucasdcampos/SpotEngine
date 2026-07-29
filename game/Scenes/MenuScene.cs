@@ -28,6 +28,11 @@ internal sealed class MenuScene : Scene
             SceneManager.Load(new SpriteScene());
         }
 
+        if (ImGui.Button("Pong (entities + input)"))
+        {
+            SceneManager.Load(new PongScene());
+        }
+
         ImGui.Separator();
         if (ImGui.Button("Quit"))
         {
