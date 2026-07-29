@@ -35,6 +35,11 @@ public readonly struct Entity : IEquatable<Entity>
         set => GetComponent<TagComponent>().Name = value;
     }
 
+    /// <summary>
+    /// Gets the scene this entity belongs to.
+    /// </summary>
+    public Scene Scene => OwningScene;
+
     private Scene OwningScene =>
         _scene ?? throw new InvalidOperationException("This entity is not associated with a scene.");
 

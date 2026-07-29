@@ -53,6 +53,7 @@ public static class SceneManager
 
         s_current.OnUpdate(deltaTime);
         ScriptSystem.Update(s_current, deltaTime);
+        s_current.FlushDestroyed();
     }
 
     internal static void Render() => s_current?.OnRender();

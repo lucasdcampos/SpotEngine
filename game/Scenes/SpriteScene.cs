@@ -2,6 +2,7 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Core;
 using Spot.Events;
+using Spot.Game.Scripts;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -13,6 +14,7 @@ namespace Spot.Game.Scenes;
 /// </summary>
 internal sealed class SpriteScene : Scene
 {
+    private readonly Random _random = new();
     private OrthographicCamera? _camera;
     private Texture2D? _texture;
     private float _zoom = 1.0f;
@@ -28,7 +30,7 @@ internal sealed class SpriteScene : Scene
         const int count = 5;
         for (int i = 0; i < count; i++)
         {
-            Entity entity = CreateEntity($"Quad {i}");
+            Entity entity = Instantiate($"Quad {i}");
 
             Transform transform = entity.GetComponent<Transform>();
             transform.Position = new Vector3(-1.1f + (i * 0.34f), -0.5f, 0.0f);
@@ -41,7 +43,7 @@ internal sealed class SpriteScene : Scene
         }
 
         // ...and one textured sprite in the middle.
-        Entity logo = CreateEntity("Logo");
+        Entity logo = Instantiate("Logo");
         Transform logoTransform = logo.GetComponent<Transform>();
         logoTransform.Position = new Vector3(0.0f, 0.35f, 0.0f);
         logoTransform.Scale = new Vector3(0.9f, 0.9f, 1.0f);
@@ -81,6 +83,12 @@ internal sealed class SpriteScene : Scene
             _camera.SetProjection(-Aspect * _zoom, Aspect * _zoom, -_zoom, _zoom);
         }
 
+        // Space spawns a short-lived sprite that destroys itself via a Lifetime script.
+        if (Input.GetKeyDown(Key.Space))
+        {
+            SpawnConfetti();
+        }
+
         // Spin every entity in place by mutating its Transform component.
         foreach (Entity entity in View<Transform>())
         {
@@ -110,7 +118,7 @@ internal sealed class SpriteScene : Scene
     {
         ImGui.Begin("Sprites");
         ImGui.TextUnformatted("High-level: entities with Sprite2D, drawn by RenderSystem.");
-        ImGui.TextUnformatted("WASD/arrows: pan camera   Wheel: zoom   Esc: back");
+        ImGui.TextUnformatted("WASD/arrows: pan   Wheel: zoom   Space: spawn   Esc: back");
         ImGui.Separator();
         if (ImGui.Button("Back to menu"))
         {
@@ -121,6 +129,25 @@ internal sealed class SpriteScene : Scene
     }
 
     public override void OnExit() => _texture?.Dispose();
+
+    private void SpawnConfetti()
+    {
+        Entity entity = Instantiate("Confetti");
+        Transform transform = entity.GetComponent<Transform>();
+        transform.Position = new Vector3(
+            (float)((_random.NextDouble() * 2.0) - 1.0) * Aspect,
+            (float)((_random.NextDouble() * 2.0) - 1.0),
+            0.0f);
+        transform.Scale = new Vector3(0.15f, 0.15f, 1.0f);
+
+        entity.AddComponent(new Sprite2D
+        {
+            Color = new Vector4((float)_random.NextDouble(), (float)_random.NextDouble(), (float)_random.NextDouble(), 1.0f),
+        });
+
+        // The sprite removes itself after a couple of seconds.
+        entity.AddScript(new Lifetime(2.0f));
+    }
 
     private static float Aspect => (float)Application.Instance.Window.Width / Application.Instance.Window.Height;
 }
