@@ -3,6 +3,7 @@ using ImGuiNET;
 using Spot.Core;
 using Spot.Events;
 using Spot.Game.Scripts;
+using Spot.Physics;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -147,9 +148,11 @@ internal sealed class PongScene : Scene
 
     private bool Overlaps(Vector3 ballPosition, Entity paddle)
     {
-        Transform transform = paddle.GetComponent<Transform>();
-        return Math.Abs(ballPosition.X - transform.Position.X) < BallHalfSize + PaddleHalfWidth
-            && Math.Abs(ballPosition.Y - transform.Position.Y) < BallHalfSize + PaddleHalfHeight;
+        var ballBox = new Aabb(
+            new Vector2(ballPosition.X, ballPosition.Y),
+            new Vector2(BallHalfSize * 2.0f, BallHalfSize * 2.0f));
+
+        return ballBox.Intersects(Aabb.FromTransform(paddle.GetComponent<Transform>()));
     }
 
     private void BounceOffPaddle(ref Vector3 ballPosition, Entity paddle, int directionX)
