@@ -30,6 +30,16 @@ public class HierarchyPanel
             {
                 _context.Selection = null;
             }
+
+            if (ImGui.BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
+            {
+                if (ImGui.MenuItem("Create Empty Entity"))
+                {
+                    var entity = _context.ActiveScene.Instantiate("Empty Entity");
+                    _context.Selection = entity;
+                }
+                ImGui.EndPopup();
+            }
         }
 
         ImGui.End();
@@ -46,9 +56,26 @@ public class HierarchyPanel
             _context.Selection = entity;
         }
 
+        bool entityDeleted = false;
+        if (ImGui.BeginPopupContextItem())
+        {
+            if (ImGui.MenuItem("Delete Entity"))
+            {
+                entityDeleted = true;
+            }
+            ImGui.EndPopup();
+        }
+
         if (opened)
         {
             ImGui.TreePop();
+        }
+
+        if (entityDeleted)
+        {
+            _context.ActiveScene?.Destroy(entity);
+            if (_context.Selection != null && _context.Selection.Value == entity)
+                _context.Selection = null;
         }
     }
 }
