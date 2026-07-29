@@ -43,8 +43,14 @@ public readonly struct CommandInfo
 /// </summary>
 public sealed class DevConsole
 {
+    private const int MaxLines = 500;
+
+    private static readonly Vector4 DefaultColor = new(0.9f, 0.9f, 0.9f, 1.0f);
+    private static readonly Vector4 CommandColor = new(0.85f, 0.85f, 0.2f, 1.0f);
+    private static readonly Vector4 ErrorColor = new(1.0f, 0.35f, 0.35f, 1.0f);
+
     private readonly Dictionary<string, CommandInfo> _commands = new();
-    private readonly List<string> _lines = new();
+    private readonly List<ConsoleLine> _lines = new();
     private readonly List<string> _history = new();
     private readonly byte[] _inputBuf = new byte[256];
     private readonly ImGuiInputTextCallback _textEditCallback;
@@ -95,13 +101,40 @@ public sealed class DevConsole
     }
 
     /// <summary>
-    /// Appends a line of text to the console output.
+    /// Appends a line of text to the console output, choosing a color from its content.
     /// </summary>
     /// <param name="text">The text to append.</param>
-    public void Print(string text)
+    public void Print(string text) => Print(text, ColorFor(text));
+
+    /// <summary>
+    /// Appends a line of text to the console output with an explicit color.
+    /// </summary>
+    /// <param name="text">The text to append.</param>
+    /// <param name="color">The color to render the line with.</param>
+    public void Print(string text, Vector4 color)
     {
-        _lines.Add(text);
+        _lines.Add(new ConsoleLine(text, color));
+        if (_lines.Count > MaxLines)
+        {
+            _lines.RemoveRange(0, _lines.Count - MaxLines);
+        }
+
         _scrollToBottom = true;
+    }
+
+    private static Vector4 ColorFor(string text)
+    {
+        if (text.Length >= 2 && text[0] == '>' && text[1] == ' ')
+        {
+            return CommandColor;
+        }
+
+        if (text.StartsWith("[error]", StringComparison.Ordinal))
+        {
+            return ErrorColor;
+        }
+
+        return DefaultColor;
     }
 
     /// <summary>
@@ -161,20 +194,10 @@ public sealed class DevConsole
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing();
         ImGui.BeginChild("##output", new Vector2(0.0f, -footerHeight), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
 
-        foreach (string line in _lines)
+        foreach (ConsoleLine line in _lines)
         {
-            var color = new Vector4(0.9f, 0.9f, 0.9f, 1.0f);
-            if (line.Length >= 2 && line[0] == '>' && line[1] == ' ')
-            {
-                color = new Vector4(0.85f, 0.85f, 0.2f, 1.0f);
-            }
-            else if (line.StartsWith("[error]", StringComparison.Ordinal))
-            {
-                color = new Vector4(1.0f, 0.35f, 0.35f, 1.0f);
-            }
-
-            ImGui.PushStyleColor(ImGuiCol.Text, color);
-            ImGui.TextUnformatted(line);
+            ImGui.PushStyleColor(ImGuiCol.Text, line.Color);
+            ImGui.TextUnformatted(line.Text);
             ImGui.PopStyleColor();
         }
 
@@ -291,5 +314,18 @@ public sealed class DevConsole
         }
 
         return 0;
+    }
+
+    private readonly struct ConsoleLine
+    {
+        public ConsoleLine(string text, Vector4 color)
+        {
+            Text = text;
+            Color = color;
+        }
+
+        public string Text { get; }
+
+        public Vector4 Color { get; }
     }
 }

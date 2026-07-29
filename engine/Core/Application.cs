@@ -83,7 +83,7 @@ public class Application
     /// </summary>
     public void Run()
     {
-        Log.Init();
+        Log.Init(new DevConsoleSink(_console));
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
         _window = new Window(_spec.Window);
