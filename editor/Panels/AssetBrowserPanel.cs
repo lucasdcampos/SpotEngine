@@ -18,6 +18,10 @@ public class AssetBrowserPanel
     {
         _context = context;
         _baseDirectory = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        if (!Directory.Exists(_baseDirectory))
+        {
+            try { Directory.CreateDirectory(_baseDirectory); } catch { }
+        }
         _currentDirectory = _baseDirectory;
     }
 
@@ -28,6 +32,10 @@ public class AssetBrowserPanel
         if (_baseDirectory != currentProjectAssetDir)
         {
             _baseDirectory = currentProjectAssetDir;
+            if (!Directory.Exists(_baseDirectory))
+            {
+                try { Directory.CreateDirectory(_baseDirectory); } catch { }
+            }
             _currentDirectory = _baseDirectory;
         }
 
@@ -153,6 +161,11 @@ public class AssetBrowserPanel
     {
         if (string.IsNullOrWhiteSpace(name)) return;
         if (!name.EndsWith(".cs")) name += ".cs";
+
+        if (!Directory.Exists(_currentDirectory))
+        {
+            try { Directory.CreateDirectory(_currentDirectory); } catch { }
+        }
 
         string filepath = Path.Combine(_currentDirectory, name);
         if (!File.Exists(filepath))
