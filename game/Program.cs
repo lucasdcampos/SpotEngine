@@ -44,18 +44,27 @@ internal sealed class GameApp : Application
         }
         """;
 
-    // A single triangle: three vertices, each with a position (vec3) and a color (vec3).
+    // A quad: four corners, each with a position (vec3) and a color (vec3).
     private static readonly float[] Vertices =
     {
         // Position            // Color
-         0.0f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // top    - red
-         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // right  - green
-        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, // left   - blue
+         0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // top-right    - red
+         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // bottom-right - green
+        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, // bottom-left  - blue
+        -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f, // top-left     - yellow
+    };
+
+    // Two triangles making up the quad.
+    private static readonly uint[] Indices =
+    {
+        0, 1, 3,
+        1, 2, 3,
     };
 
     private bool _godMode;
     private Shader? _shader;
     private VertexBuffer? _vbo;
+    private IndexBuffer? _ibo;
     private VertexArray? _vao;
 
     public GameApp(ApplicationSpec spec)
@@ -68,11 +77,13 @@ internal sealed class GameApp : Application
         Log.Info("Game started - engine version {0}", Engine.GetVersion());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-        // Build the triangle: a vertex buffer with position + color per vertex, a vertex array
-        // capturing that layout, and a shader program to color it.
+        // Build the quad: a vertex buffer with position + color per vertex, an index buffer
+        // pairing them into two triangles, and a shader program to color it.
         _vao = new VertexArray();
         _vbo = new VertexBuffer(Vertices, ShaderDataType.Float3, ShaderDataType.Float3);
         _vao.AddVertexBuffer(_vbo);
+        _ibo = new IndexBuffer(Indices);
+        _vao.SetIndexBuffer(_ibo);
 
         _shader = new Shader(VertexShaderSource, FragmentShaderSource);
 
@@ -109,7 +120,7 @@ internal sealed class GameApp : Application
         _shader?.Use();
         if (_vao is not null)
         {
-            Renderer.DrawArrays(_vao, 3);
+            Renderer.DrawIndexed(_vao);
         }
     }
 
@@ -117,6 +128,7 @@ internal sealed class GameApp : Application
     {
         _shader?.Dispose();
         _vbo?.Dispose();
+        _ibo?.Dispose();
         _vao?.Dispose();
         Log.Info("Game shutdown complete");
     }
