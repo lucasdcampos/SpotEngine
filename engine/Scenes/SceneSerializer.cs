@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Spot.Rendering;
+using Spot.Physics;
 
 namespace Spot.Scenes;
 
@@ -19,6 +20,8 @@ public class EntityData
     public Sprite2DData? Sprite { get; set; }
     public ScriptComponentData? Scripts { get; set; }
     public CameraComponentData? Camera { get; set; }
+    public PhysicsBody2DData? PhysicsBody2D { get; set; }
+    public BoxCollider2DData? BoxCollider2D { get; set; }
     public List<EntityData>? Children { get; set; }
 }
 
@@ -28,6 +31,19 @@ public class CameraComponentData
     public bool FixedAspectRatio { get; set; }
     public float ZoomLevel { get; set; }
     public float[]? BackgroundColor { get; set; }
+}
+
+public class PhysicsBody2DData
+{
+    public float[] Velocity { get; set; } = new float[2];
+    public float GravityScale { get; set; } = 1.0f;
+    public bool IsDynamic { get; set; } = true;
+}
+
+public class BoxCollider2DData
+{
+    public float[] Size { get; set; } = new float[2];
+    public float[] Offset { get; set; } = new float[2];
 }
 
 public class ScriptComponentData
@@ -107,6 +123,27 @@ public class SceneSerializer
                 FixedAspectRatio = camera.FixedAspectRatio,
                 ZoomLevel = camera.ZoomLevel,
                 BackgroundColor = new[] { camera.BackgroundColor.X, camera.BackgroundColor.Y, camera.BackgroundColor.Z, camera.BackgroundColor.W }
+            };
+        }
+
+        if (entity.HasComponent<PhysicsBody2DComponent>())
+        {
+            var body = entity.GetComponent<PhysicsBody2DComponent>();
+            entityData.PhysicsBody2D = new PhysicsBody2DData
+            {
+                Velocity = new[] { body.Velocity.X, body.Velocity.Y },
+                GravityScale = body.GravityScale,
+                IsDynamic = body.IsDynamic
+            };
+        }
+
+        if (entity.HasComponent<BoxCollider2DComponent>())
+        {
+            var collider = entity.GetComponent<BoxCollider2DComponent>();
+            entityData.BoxCollider2D = new BoxCollider2DData
+            {
+                Size = new[] { collider.Size.X, collider.Size.Y },
+                Offset = new[] { collider.Offset.X, collider.Offset.Y }
             };
         }
 
@@ -199,6 +236,23 @@ public class SceneSerializer
                 );
             }
             entity.AddComponent(camera);
+        }
+
+        if (entityData.PhysicsBody2D != null)
+        {
+            var body = new PhysicsBody2DComponent();
+            body.Velocity = new System.Numerics.Vector2(entityData.PhysicsBody2D.Velocity[0], entityData.PhysicsBody2D.Velocity[1]);
+            body.GravityScale = entityData.PhysicsBody2D.GravityScale;
+            body.IsDynamic = entityData.PhysicsBody2D.IsDynamic;
+            entity.AddComponent(body);
+        }
+
+        if (entityData.BoxCollider2D != null)
+        {
+            var collider = new BoxCollider2DComponent();
+            collider.Size = new System.Numerics.Vector2(entityData.BoxCollider2D.Size[0], entityData.BoxCollider2D.Size[1]);
+            collider.Offset = new System.Numerics.Vector2(entityData.BoxCollider2D.Offset[0], entityData.BoxCollider2D.Offset[1]);
+            entity.AddComponent(collider);
         }
 
         if (entityData.Scripts != null)

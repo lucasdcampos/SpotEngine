@@ -2,6 +2,7 @@ using System;
 using ImGuiNET;
 using Spot.Rendering;
 using Spot.Scenes;
+using Spot.Physics;
 
 namespace Spot.Editor.Panels;
 
@@ -41,6 +42,18 @@ public class InspectorPanel
                 {
                     if (!_context.Selection.Value.HasComponent<CameraComponent>())
                         _context.Selection.Value.AddComponent(new CameraComponent());
+                    ImGui.CloseCurrentPopup();
+                }
+                if (ImGui.MenuItem("PhysicsBody2D"))
+                {
+                    if (!_context.Selection.Value.HasComponent<PhysicsBody2DComponent>())
+                        _context.Selection.Value.AddComponent(new PhysicsBody2DComponent());
+                    ImGui.CloseCurrentPopup();
+                }
+                if (ImGui.MenuItem("BoxCollider2D"))
+                {
+                    if (!_context.Selection.Value.HasComponent<BoxCollider2DComponent>())
+                        _context.Selection.Value.AddComponent(new BoxCollider2DComponent());
                     ImGui.CloseCurrentPopup();
                 }
                 ImGui.EndPopup();
@@ -162,6 +175,88 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<CameraComponent>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<PhysicsBody2DComponent>())
+        {
+            ImGui.PushID("PhysicsBody2DComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(PhysicsBody2DComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Physics Body 2D");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var body = entity.GetComponent<PhysicsBody2DComponent>();
+                
+                var velocity = body.Velocity;
+                if (ImGui.DragFloat2("Velocity", ref velocity, 0.1f))
+                    body.Velocity = velocity;
+                    
+                float gravity = body.GravityScale;
+                if (ImGui.DragFloat("Gravity Scale", ref gravity, 0.1f))
+                    body.GravityScale = gravity;
+                    
+                bool isDynamic = body.IsDynamic;
+                if (ImGui.Checkbox("Is Dynamic", ref isDynamic))
+                    body.IsDynamic = isDynamic;
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<PhysicsBody2DComponent>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<BoxCollider2DComponent>())
+        {
+            ImGui.PushID("BoxCollider2DComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(BoxCollider2DComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Box Collider 2D");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var collider = entity.GetComponent<BoxCollider2DComponent>();
+                
+                var size = collider.Size;
+                if (ImGui.DragFloat2("Size", ref size, 0.1f))
+                    collider.Size = size;
+                    
+                var offset = collider.Offset;
+                if (ImGui.DragFloat2("Offset", ref offset, 0.1f))
+                    collider.Offset = offset;
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<BoxCollider2DComponent>();
                 
             ImGui.PopID();
         }
