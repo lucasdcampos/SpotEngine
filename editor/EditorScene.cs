@@ -85,6 +85,19 @@ public class EditorScene : Scene
         
         RenderSystem.Render(_context.ActiveScene, _editorCamera.Camera);
         
+        // Debug Physics Rendering
+        Renderer2D.BeginScene(_editorCamera.Camera);
+        foreach (var entity in _context.ActiveScene.View<Spot.Physics.BoxCollider2DComponent, Transform>())
+        {
+            var transform = entity.GetComponent<Transform>();
+            var collider = entity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
+            var bounds = collider.GetWorldBounds(new Vector2(transform.Position.X, transform.Position.Y));
+            
+            // Draw green hollow box
+            Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
+        }
+        Renderer2D.EndScene();
+        
         _framebuffer.Unbind();
         
         // Render Game View
