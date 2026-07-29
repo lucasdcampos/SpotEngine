@@ -56,6 +56,12 @@ public class InspectorPanel
                         _context.Selection.Value.AddComponent(new BoxCollider2DComponent());
                     ImGui.CloseCurrentPopup();
                 }
+                if (ImGui.MenuItem("Script Component"))
+                {
+                    if (!_context.Selection.Value.HasComponent<ScriptComponent>())
+                        _context.Selection.Value.AddComponent(new ScriptComponent());
+                    ImGui.CloseCurrentPopup();
+                }
                 ImGui.EndPopup();
             }
         }
@@ -257,6 +263,80 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<BoxCollider2DComponent>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<ScriptComponent>())
+        {
+            ImGui.PushID("ScriptComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(ScriptComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Script Component");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var scriptComp = entity.GetComponent<ScriptComponent>();
+                
+                int scriptToRemove = -1;
+                for (int i = 0; i < scriptComp.ClassNames.Count; i++)
+                {
+                    string className = scriptComp.ClassNames[i];
+                    ImGui.SetNextItemWidth(ImGui.GetWindowWidth() - 50.0f);
+                    if (ImGui.InputText($"##Script{i}", ref className, 256))
+                    {
+                        scriptComp.ClassNames[i] = className;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button($"X##{i}"))
+                    {
+                        scriptToRemove = i;
+                    }
+                }
+                
+                if (scriptToRemove >= 0)
+                {
+                    scriptComp.ClassNames.RemoveAt(scriptToRemove);
+                }
+                
+                ImGui.Button("Drop Script Here", new System.Numerics.Vector2(-1, 30));
+                if (ImGui.BeginDragDropTarget())
+                {
+                    unsafe
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("SCRIPT_FILE");
+                        if (payload.NativePtr != null)
+                        {
+                            string filename = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                            if (filename != null && filename.EndsWith(".cs"))
+                            {
+                                string cName = filename.Substring(0, filename.Length - 3);
+                                if (!scriptComp.ClassNames.Contains(cName))
+                                {
+                                    scriptComp.ClassNames.Add(cName);
+                                }
+                            }
+                        }
+                    }
+                    ImGui.EndDragDropTarget();
+                }
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<ScriptComponent>();
                 
             ImGui.PopID();
         }

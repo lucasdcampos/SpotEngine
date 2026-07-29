@@ -150,11 +150,7 @@ public class SceneSerializer
         if (entity.HasComponent<ScriptComponent>())
         {
             var scriptComp = entity.GetComponent<ScriptComponent>();
-            var scriptNames = new List<string>();
-            foreach (var script in scriptComp.Scripts)
-            {
-                scriptNames.Add(script.GetType().AssemblyQualifiedName!);
-            }
+            var scriptNames = new List<string>(scriptComp.ClassNames);
             entityData.Scripts = new ScriptComponentData { ScriptNames = scriptNames };
         }
 
@@ -257,15 +253,12 @@ public class SceneSerializer
 
         if (entityData.Scripts != null)
         {
+            var scriptComp = new ScriptComponent();
             foreach (var scriptName in entityData.Scripts.ScriptNames)
             {
-                var type = Type.GetType(scriptName);
-                if (type != null && typeof(EntityBehaviour).IsAssignableFrom(type))
-                {
-                    var scriptInstance = (EntityBehaviour)Activator.CreateInstance(type)!;
-                    entity.AddScript(scriptInstance);
-                }
+                scriptComp.ClassNames.Add(scriptName);
             }
+            entity.AddComponent(scriptComp);
         }
 
         if (entityData.Children != null)
