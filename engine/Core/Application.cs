@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using ImGuiNET;
+using Silk.NET.OpenGL;
 using Spot.Events;
+using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
 
 namespace Spot.Core;
 
@@ -28,6 +31,8 @@ public class Application
 
     private readonly ApplicationSpec _spec;
     private Window? _window;
+    private GL? _gl;
+    private ImGuiController? _imguiController;
     private bool _running;
     private float _deltaTime;
 
@@ -61,6 +66,12 @@ public class Application
         _window ?? throw new InvalidOperationException("The window has not been created yet.");
 
     /// <summary>
+    /// Gets the OpenGL API for the current context.
+    /// </summary>
+    public GL Gl =>
+        _gl ?? throw new InvalidOperationException("The OpenGL context has not been created yet.");
+
+    /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>
     public void Run()
@@ -70,6 +81,12 @@ public class Application
 
         _window = new Window(_spec.Window);
         _window.SetEventCallback(OnEvent);
+
+        _gl = GL.GetApi(_window.NativeWindow);
+        Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
+
+        _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input);
+        ImGui.StyleColorsDark();
 
         _running = true;
         OnInit();
@@ -85,12 +102,22 @@ public class Application
             lastTime = now;
 
             OnUpdate(_deltaTime);
+            OnRender();
+
+            _imguiController.Update(_deltaTime);
+            OnImGuiRender();
+            _imguiController.Render();
+
+            _window.SwapBuffers();
         }
 
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
         OnShutdown();
 
+        _imguiController.Dispose();
         _window.Dispose();
+        _imguiController = null;
+        _gl = null;
         _window = null;
     }
 
@@ -111,6 +138,20 @@ public class Application
     /// </summary>
     /// <param name="deltaTime">The elapsed time in seconds.</param>
     protected virtual void OnUpdate(float deltaTime)
+    {
+    }
+
+    /// <summary>
+    /// Called every frame to render the scene.
+    /// </summary>
+    protected virtual void OnRender()
+    {
+    }
+
+    /// <summary>
+    /// Called every frame to build the ImGui user interface.
+    /// </summary>
+    protected virtual void OnImGuiRender()
     {
     }
 
@@ -140,6 +181,7 @@ public class Application
 
     private bool OnWindowResize(WindowResizeEvent e)
     {
+        _gl?.Viewport(0, 0, (uint)e.Width, (uint)e.Height);
         Log.CoreInfo("Window resized: {0}x{1}", e.Width, e.Height);
         return false;
     }

@@ -1,3 +1,5 @@
+using ImGuiNET;
+using Silk.NET.OpenGL;
 using Spot;
 using Spot.Core;
 
@@ -22,10 +24,23 @@ internal sealed class GameApp : Application
     protected override void OnInit()
     {
         Log.Info("Game started - engine version {0}", Engine.GetVersion());
+        Gl.ClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     }
 
     protected override void OnUpdate(float deltaTime)
     {
+    }
+
+    protected override void OnRender()
+    {
+        Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+    }
+
+    protected override void OnImGuiRender()
+    {
+        ImGui.Begin("SpotEngine");
+        ImGui.Text($"FPS: {ImGui.GetIO().Framerate:F1}");
+        ImGui.End();
     }
 
     protected override void OnShutdown()

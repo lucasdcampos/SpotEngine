@@ -53,8 +53,13 @@ public sealed class Window : IDisposable
         WindowOptions options = WindowOptions.Default;
         options.Title = spec.Title;
         options.Size = new Vector2D<int>(spec.Width, spec.Height);
-        options.API = GraphicsAPI.None;
+        options.API = new GraphicsAPI(
+            ContextAPI.OpenGL,
+            ContextProfile.Core,
+            ContextFlags.Default,
+            new APIVersion(4, 6));
         options.WindowBorder = WindowBorder.Resizable;
+        options.VSync = true;
 
         _window = SilkWindow.Create(options);
         _window.Initialize();
@@ -86,6 +91,11 @@ public sealed class Window : IDisposable
     public IWindow NativeWindow => _window;
 
     /// <summary>
+    /// Gets the input context associated with this window.
+    /// </summary>
+    public IInputContext Input => _input;
+
+    /// <summary>
     /// Sets the callback invoked when the window raises an event.
     /// </summary>
     /// <param name="callback">The event callback.</param>
@@ -95,6 +105,11 @@ public sealed class Window : IDisposable
     /// Processes pending window and input events.
     /// </summary>
     public void PollEvents() => _window.DoEvents();
+
+    /// <summary>
+    /// Swaps the front and back buffers, presenting the rendered frame.
+    /// </summary>
+    public void SwapBuffers() => _window.SwapBuffers();
 
     /// <summary>
     /// Gets a value indicating whether the window has been requested to close.
