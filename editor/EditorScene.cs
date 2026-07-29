@@ -294,11 +294,33 @@ public class EditorScene : Scene
                     string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.spotproject)|*.spotproject");
                     if (filepath != null)
                     {
-                        if (Project.Load(filepath) != null)
+                        if (Project.Load(filepath) != null && Project.Active != null)
                         {
-                            _context.ActiveScene = new Scene(); // A load project automatically loads an empty scene or the start scene
-                            _context.Selection = null;
-                            _currentScenePath = null;
+                            string startSceneAbs = System.IO.Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.StartScene);
+                            var newScene = new Scene();
+                            
+                            if (System.IO.File.Exists(startSceneAbs))
+                            {
+                                var serializer = new SceneSerializer(newScene);
+                                if (serializer.Deserialize(startSceneAbs))
+                                {
+                                    _context.ActiveScene = newScene;
+                                    _context.Selection = null;
+                                    _currentScenePath = startSceneAbs;
+                                }
+                                else
+                                {
+                                    _context.ActiveScene = new Scene();
+                                    _context.Selection = null;
+                                    _currentScenePath = null;
+                                }
+                            }
+                            else
+                            {
+                                _context.ActiveScene = new Scene();
+                                _context.Selection = null;
+                                _currentScenePath = null;
+                            }
                         }
                     }
                 }
