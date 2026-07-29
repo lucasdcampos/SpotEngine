@@ -1,8 +1,10 @@
 using System.Numerics;
 using ImGuiNET;
 using Spot.Core;
+using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
+using Spot.Editor.Scenes;
 
 namespace Spot.Editor;
 
@@ -15,6 +17,9 @@ public class EditorScene : Scene
     private readonly ViewportPanel _viewportPanel;
     private readonly ConsolePanel _consolePanel;
 
+    private Framebuffer? _framebuffer;
+    private readonly EditorCamera _editorCamera = new();
+
     public EditorScene()
     {
         _hierarchyPanel = new HierarchyPanel(_context);
@@ -25,14 +30,36 @@ public class EditorScene : Scene
 
     public override void OnEnter()
     {
+        _framebuffer = new Framebuffer(1280, 720);
+        
+        var demoScene = new DemoScene();
+        demoScene.OnEnter();
+        _context.ActiveScene = demoScene;
+        
+        _viewportPanel.SetFramebuffer(_framebuffer);
+        _viewportPanel.SetCamera(_editorCamera);
     }
 
     public override void OnUpdate(float deltaTime)
     {
+        _context.ActiveScene?.OnUpdate(deltaTime);
     }
 
     public override void OnRender()
     {
+        if (_framebuffer == null || _context.ActiveScene == null)
+            return;
+            
+        _framebuffer.Bind();
+        Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        Renderer.Clear();
+        
+        RenderSystem.Render(_context.ActiveScene, _editorCamera.Camera);
+        
+        _framebuffer.Unbind();
+        
+        var window = Application.Instance.Window;
+        Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
     }
 
     public override void OnImGuiRender()
@@ -65,6 +92,12 @@ public class EditorScene : Scene
         ImGui.SetNextWindowPos(new Vector2(workPos.X, workPos.Y + middleHeight));
         ImGui.SetNextWindowSize(new Vector2(workSize.X, consoleHeight));
         _consolePanel.OnImGuiRender();
+    }
+    
+    public override void OnExit()
+    {
+        _framebuffer?.Dispose();
+        _context.ActiveScene?.OnExit();
     }
 
     private void DrawMenuBar()
