@@ -307,7 +307,7 @@ public class EditorScene : Scene
                 {
                     if (Project.Active != null && string.IsNullOrEmpty(Project.Active.ProjectDirectory))
                     {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.spotproject)|*.spotproject");
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.spotproject)|*.spotproject", "spotproject");
                         if (filepath != null)
                         {
                             Project.SaveActive(filepath);
@@ -352,7 +352,7 @@ public class EditorScene : Scene
                     {
                         if (_currentScenePath == null)
                         {
-                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
+                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene", "spotscene");
                         }
                         
                         if (_currentScenePath != null)
@@ -367,7 +367,7 @@ public class EditorScene : Scene
                 {
                     if (_context.ActiveScene != null)
                     {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene", "spotscene");
                         if (filepath != null)
                         {
                             _currentScenePath = filepath;

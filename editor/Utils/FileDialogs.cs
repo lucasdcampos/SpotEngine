@@ -75,7 +75,7 @@ public static class FileDialogs
         return result;
     }
 
-    public static string? SaveFile(string filter)
+    public static string? SaveFile(string filter, string defExt = "")
     {
         string? result = null;
         var thread = new Thread(() =>
@@ -83,6 +83,8 @@ public static class FileDialogs
             var ofn = new OpenFileName();
             ofn.lStructSize = Marshal.SizeOf(ofn);
             ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
+            if (!string.IsNullOrEmpty(defExt))
+                ofn.lpstrDefExt = defExt;
             
             ofn.lpstrFile = Marshal.AllocHGlobal(520);
             Marshal.WriteInt16(ofn.lpstrFile, 0);
