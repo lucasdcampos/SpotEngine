@@ -97,8 +97,15 @@ public class AssetBrowserPanel
                     
                     if (ImGui.BeginDragDropSource())
                     {
+                        var payloadBytes = System.Text.Encoding.UTF8.GetBytes(file.Name + "\0");
+                        unsafe
+                        {
+                            fixed (byte* p = payloadBytes)
+                            {
+                                ImGui.SetDragDropPayload("SCRIPT_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                            }
+                        }
                         ImGui.Text(file.Name);
-                        // Aqui pode-se implementar o payload (ex: caminho do arquivo) no futuro
                         ImGui.EndDragDropSource();
                     }
                     ImGui.NextColumn();

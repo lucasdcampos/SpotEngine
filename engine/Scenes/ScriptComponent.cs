@@ -8,7 +8,12 @@ namespace Spot.Scenes;
 public sealed class ScriptComponent
 {
     /// <summary>
-    /// Gets the scripts attached to the entity.
+    /// Gets the class names of the scripts attached to the entity.
+    /// </summary>
+    public List<string> ClassNames { get; set; } = new();
+
+    /// <summary>
+    /// Gets the scripts attached to the entity (instantiated at runtime).
     /// </summary>
     internal List<EntityBehaviour> Scripts { get; } = new();
 }
