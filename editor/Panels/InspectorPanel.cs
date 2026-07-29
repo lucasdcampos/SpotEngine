@@ -37,6 +37,12 @@ public class InspectorPanel
                         _context.Selection.Value.AddComponent(new Sprite2D());
                     ImGui.CloseCurrentPopup();
                 }
+                if (ImGui.MenuItem("Camera"))
+                {
+                    if (!_context.Selection.Value.HasComponent<CameraComponent>())
+                        _context.Selection.Value.AddComponent(new CameraComponent());
+                    ImGui.CloseCurrentPopup();
+                }
                 ImGui.EndPopup();
             }
         }
@@ -109,6 +115,53 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<Sprite2D>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<CameraComponent>())
+        {
+            ImGui.PushID("CameraComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(CameraComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Camera");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var cameraComp = entity.GetComponent<CameraComponent>();
+                
+                bool primary = cameraComp.Primary;
+                if (ImGui.Checkbox("Primary", ref primary))
+                    cameraComp.Primary = primary;
+                    
+                bool fixedAspect = cameraComp.FixedAspectRatio;
+                if (ImGui.Checkbox("Fixed Aspect Ratio", ref fixedAspect))
+                    cameraComp.FixedAspectRatio = fixedAspect;
+                    
+                float zoom = cameraComp.ZoomLevel;
+                if (ImGui.DragFloat("Zoom Level", ref zoom, 0.1f, 0.1f, 100.0f))
+                    cameraComp.ZoomLevel = zoom;
+
+                var bgColor = cameraComp.BackgroundColor;
+                if (ImGui.ColorEdit4("Background", ref bgColor))
+                    cameraComp.BackgroundColor = bgColor;
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<CameraComponent>();
                 
             ImGui.PopID();
         }
