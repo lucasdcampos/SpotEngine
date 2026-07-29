@@ -2,6 +2,7 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Core;
 using Spot.Events;
+using Spot.Game.Scripts;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -37,8 +38,8 @@ internal sealed class PongScene : Scene
         Renderer.SetClearColor(0.02f, 0.02f, 0.04f, 1.0f);
         _camera = new OrthographicCamera(-ArenaHalfWidth, ArenaHalfWidth, -ArenaHalfHeight, ArenaHalfHeight);
 
-        _leftPaddle = CreatePaddle("Left Paddle", -ArenaHalfWidth + 0.1f);
-        _rightPaddle = CreatePaddle("Right Paddle", ArenaHalfWidth - 0.1f);
+        _leftPaddle = CreatePaddle("Left Paddle", -ArenaHalfWidth + 0.1f, Key.W, Key.S);
+        _rightPaddle = CreatePaddle("Right Paddle", ArenaHalfWidth - 0.1f, Key.Up, Key.Down);
 
         _ball = CreateEntity("Ball");
         Transform ballTransform = _ball.GetComponent<Transform>();
@@ -50,8 +51,8 @@ internal sealed class PongScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        MovePaddle(_leftPaddle, Key.W, Key.S, deltaTime);
-        MovePaddle(_rightPaddle, Key.Up, Key.Down, deltaTime);
+        // Paddle movement lives in a PaddleController script on each paddle entity, run automatically
+        // by the engine. The scene only drives the ball and scoring.
         UpdateBall(deltaTime);
     }
 
@@ -86,34 +87,15 @@ internal sealed class PongScene : Scene
         ImGui.End();
     }
 
-    private Entity CreatePaddle(string name, float x)
+    private Entity CreatePaddle(string name, float x, Key up, Key down)
     {
         Entity paddle = CreateEntity(name);
         Transform transform = paddle.GetComponent<Transform>();
         transform.Position = new Vector3(x, 0.0f, 0.0f);
         transform.Scale = new Vector3(PaddleHalfWidth * 2.0f, PaddleHalfHeight * 2.0f, 1.0f);
         paddle.AddComponent(new Sprite2D { Color = Vector4.One });
+        paddle.AddScript(new PaddleController(up, down, PaddleSpeed, ArenaHalfHeight - PaddleHalfHeight));
         return paddle;
-    }
-
-    private void MovePaddle(Entity paddle, Key up, Key down, float deltaTime)
-    {
-        Transform transform = paddle.GetComponent<Transform>();
-        Vector3 position = transform.Position;
-
-        if (Input.GetKey(up))
-        {
-            position.Y += PaddleSpeed * deltaTime;
-        }
-
-        if (Input.GetKey(down))
-        {
-            position.Y -= PaddleSpeed * deltaTime;
-        }
-
-        float limit = ArenaHalfHeight - PaddleHalfHeight;
-        position.Y = Math.Clamp(position.Y, -limit, limit);
-        transform.Position = position;
     }
 
     private void UpdateBall(float deltaTime)

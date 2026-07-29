@@ -31,7 +31,12 @@ public static class SceneManager
             return;
         }
 
-        s_current?.OnExit();
+        if (s_current is not null)
+        {
+            ScriptSystem.DestroyAll(s_current);
+            s_current.OnExit();
+        }
+
         s_current = s_pending;
         s_pending = null;
         s_current.OnEnter();
@@ -39,7 +44,16 @@ public static class SceneManager
 
     internal static void DispatchEvent(Spot.Events.Event e) => s_current?.OnEvent(e);
 
-    internal static void Update(float deltaTime) => s_current?.OnUpdate(deltaTime);
+    internal static void Update(float deltaTime)
+    {
+        if (s_current is null)
+        {
+            return;
+        }
+
+        s_current.OnUpdate(deltaTime);
+        ScriptSystem.Update(s_current, deltaTime);
+    }
 
     internal static void Render() => s_current?.OnRender();
 
@@ -47,7 +61,12 @@ public static class SceneManager
 
     internal static void Shutdown()
     {
-        s_current?.OnExit();
+        if (s_current is not null)
+        {
+            ScriptSystem.DestroyAll(s_current);
+            s_current.OnExit();
+        }
+
         s_current = null;
         s_pending = null;
     }

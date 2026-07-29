@@ -79,6 +79,35 @@ public readonly struct Entity : IEquatable<Entity>
     public void RemoveComponent<T>()
         where T : class => OwningScene.RemoveComponent<T>(this);
 
+    /// <summary>
+    /// Attaches a new script of the given type to the entity.
+    /// </summary>
+    /// <typeparam name="T">The script type.</typeparam>
+    /// <returns>The attached script.</returns>
+    public T AddScript<T>()
+        where T : EntityBehaviour, new() => AddScript(new T());
+
+    /// <summary>
+    /// Attaches an already-constructed script to the entity (useful when the script needs constructor
+    /// arguments).
+    /// </summary>
+    /// <typeparam name="T">The script type.</typeparam>
+    /// <param name="script">The script instance.</param>
+    /// <returns>The attached script.</returns>
+    public T AddScript<T>(T script)
+        where T : EntityBehaviour
+    {
+        script.Entity = this;
+
+        if (!TryGetComponent(out ScriptComponent? scripts))
+        {
+            scripts = AddComponent(new ScriptComponent());
+        }
+
+        scripts.Scripts.Add(script);
+        return script;
+    }
+
     /// <inheritdoc />
     public bool Equals(Entity other) => Id == other.Id && ReferenceEquals(_scene, other._scene);
 
