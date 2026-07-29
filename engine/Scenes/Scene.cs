@@ -4,14 +4,52 @@ using Spot.Rendering;
 namespace Spot.Scenes;
 
 /// <summary>
-/// A container of entities and their components. Components are plain data grouped into per-type
-/// pools; behavior lives in systems that query the scene (for example a future render system).
+/// A game scene: both a container of entities/components and a switchable screen with its own
+/// lifecycle. Derive from it to build a screen (a menu, a level, a test), overriding the lifecycle
+/// hooks, and use the entity API to populate it. The <see cref="SceneManager"/> drives the active
+/// scene; components are plain data queried by systems (see <see cref="RenderSystem"/>).
 /// </summary>
-public sealed class Scene
+public class Scene
 {
     private readonly HashSet<int> _entities = new();
     private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
     private int _nextId = 1;
+
+    /// <summary>
+    /// Called once when the scene becomes active. Create resources and entities here.
+    /// </summary>
+    public virtual void OnEnter()
+    {
+    }
+
+    /// <summary>
+    /// Called every frame while the scene is active.
+    /// </summary>
+    /// <param name="deltaTime">The elapsed time in seconds since the previous frame.</param>
+    public virtual void OnUpdate(float deltaTime)
+    {
+    }
+
+    /// <summary>
+    /// Called every frame to render the scene, after the screen is cleared.
+    /// </summary>
+    public virtual void OnRender()
+    {
+    }
+
+    /// <summary>
+    /// Called every frame to build the scene's ImGui user interface.
+    /// </summary>
+    public virtual void OnImGuiRender()
+    {
+    }
+
+    /// <summary>
+    /// Called once when the scene is being replaced. Dispose resources here.
+    /// </summary>
+    public virtual void OnExit()
+    {
+    }
 
     /// <summary>
     /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="Transform"/>.

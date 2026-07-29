@@ -4,6 +4,7 @@ using Silk.NET.OpenGL;
 using Spot.Console;
 using Spot.Events;
 using Spot.Rendering;
+using Spot.Scenes;
 using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
 
 namespace Spot.Core;
@@ -83,7 +84,8 @@ public class Application
     /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>
-    public void Run()
+    /// <param name="startScene">The scene to load first (for example a menu).</param>
+    public void Run(Scene? startScene = null)
     {
         Log.Init(new DevConsoleSink(_console));
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
@@ -94,13 +96,17 @@ public class Application
         _gl = GL.GetApi(_window.NativeWindow);
         Renderer.Init(_gl);
         Renderer2D.Init();
+        Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
 
         _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input);
         ImGui.StyleColorsDark();
 
         _running = true;
-        OnInit();
+        if (startScene is not null)
+        {
+            SceneManager.Load(startScene);
+        }
 
         var stopwatch = Stopwatch.StartNew();
         TimeSpan lastTime = stopwatch.Elapsed;
@@ -112,11 +118,15 @@ public class Application
             _deltaTime = (float)(now - lastTime).TotalSeconds;
             lastTime = now;
 
-            OnUpdate(_deltaTime);
-            OnRender();
+            // Apply any pending scene switch at the frame boundary, then run the active scene.
+            SceneManager.ApplyPendingSwitch();
+            SceneManager.Update(_deltaTime);
+
+            Renderer.Clear();
+            SceneManager.Render();
 
             _imguiController.Update(_deltaTime);
-            OnImGuiRender();
+            SceneManager.ImGuiRender();
             _console.OnImGuiRender();
             _imguiController.Render();
 
@@ -124,7 +134,7 @@ public class Application
         }
 
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
-        OnShutdown();
+        SceneManager.Shutdown();
 
         Renderer2D.Shutdown();
         _imguiController.Dispose();
@@ -139,47 +149,7 @@ public class Application
     /// </summary>
     public void Quit() => _running = false;
 
-    /// <summary>
-    /// Called once after the application starts.
-    /// </summary>
-    protected virtual void OnInit()
-    {
-    }
-
-    /// <summary>
-    /// Called every frame with the elapsed time since the previous frame.
-    /// </summary>
-    /// <param name="deltaTime">The elapsed time in seconds.</param>
-    protected virtual void OnUpdate(float deltaTime)
-    {
-    }
-
-    /// <summary>
-    /// Called every frame to render the scene.
-    /// </summary>
-    protected virtual void OnRender()
-    {
-    }
-
-    /// <summary>
-    /// Called every frame to build the ImGui user interface.
-    /// </summary>
-    protected virtual void OnImGuiRender()
-    {
-    }
-
-    /// <summary>
-    /// Called once before the application stops.
-    /// </summary>
-    protected virtual void OnShutdown()
-    {
-    }
-
-    /// <summary>
-    /// Called for every event raised by the window.
-    /// </summary>
-    /// <param name="e">The event.</param>
-    protected virtual void OnEvent(Event e)
+    private void OnEvent(Event e)
     {
         var dispatcher = new EventDispatcher(e);
         dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
