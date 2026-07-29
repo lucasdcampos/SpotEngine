@@ -109,24 +109,14 @@ internal sealed class GameApp : Application
             return;
         }
 
-        // Render the scene: draw a quad for every entity that has both a Transform and a Sprite2D.
-        // (A dedicated render system will encapsulate this loop later.)
+        // The automatic path: the engine draws every entity with a Transform + Sprite2D for us.
+        RenderSystem.Render(_scene, _camera);
+
+        // Full control still available: render whatever we want, however we want. Here we add a
+        // couple of quads by hand through Renderer2D, independent of the scene.
         Renderer2D.BeginScene(_camera);
-        foreach (Entity entity in _scene.View<Transform, Sprite2D>())
-        {
-            Transform transform = entity.GetComponent<Transform>();
-            Sprite2D sprite = entity.GetComponent<Sprite2D>();
-
-            if (sprite.Texture is not null)
-            {
-                Renderer2D.DrawQuad(transform.Matrix, sprite.Texture, sprite.Color);
-            }
-            else
-            {
-                Renderer2D.DrawQuad(transform.Matrix, sprite.Color);
-            }
-        }
-
+        Renderer2D.DrawQuad(new Vector2(-1.3f, 0.75f), new Vector2(0.12f, 0.12f), new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        Renderer2D.DrawQuad(new Vector2(1.3f, 0.75f), new Vector2(0.12f, 0.12f), new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
         Renderer2D.EndScene();
     }
 
