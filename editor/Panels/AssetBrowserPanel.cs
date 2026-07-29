@@ -180,8 +180,13 @@ using Spot.Scenes;
 
 namespace Spot.Game;
 
-public class {className} : Component
+public class {className} : EntityBehaviour
 {{
+    public override void OnCreate()
+    {{
+        
+    }}
+
     public override void OnUpdate(float deltaTime)
     {{
         
