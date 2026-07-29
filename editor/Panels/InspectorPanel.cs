@@ -22,6 +22,23 @@ public class InspectorPanel
         if (_context.Selection != null)
         {
             DrawComponents(_context.Selection.Value);
+            
+            ImGui.Separator();
+            if (ImGui.Button("Add Component"))
+            {
+                ImGui.OpenPopup("AddComponent");
+            }
+
+            if (ImGui.BeginPopup("AddComponent"))
+            {
+                if (ImGui.MenuItem("Sprite2D"))
+                {
+                    if (!_context.Selection.Value.HasComponent<Sprite2D>())
+                        _context.Selection.Value.AddComponent(new Sprite2D());
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
         }
 
         ImGui.End();
@@ -63,7 +80,23 @@ public class InspectorPanel
 
         if (entity.HasComponent<Sprite2D>())
         {
-            if (ImGui.TreeNodeEx((IntPtr)typeof(Sprite2D).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen, "Sprite2D"))
+            ImGui.PushID("Sprite2D");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(Sprite2D).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Sprite2D");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
             {
                 var sprite = entity.GetComponent<Sprite2D>();
                 
@@ -73,6 +106,11 @@ public class InspectorPanel
                     
                 ImGui.TreePop();
             }
+            
+            if (removeComponent)
+                entity.RemoveComponent<Sprite2D>();
+                
+            ImGui.PopID();
         }
     }
 }
