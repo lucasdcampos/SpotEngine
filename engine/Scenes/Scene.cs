@@ -39,6 +39,7 @@ public class Scene
     public void UpdateRuntime(float deltaTime)
     {
         OnUpdate(deltaTime);
+        Spot.Physics.Physics2DSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
     }
