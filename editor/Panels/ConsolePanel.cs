@@ -1,4 +1,5 @@
 using ImGuiNET;
+using Spot.Core;
 
 namespace Spot.Editor.Panels;
 
@@ -15,7 +16,7 @@ public class ConsolePanel
     {
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
         ImGui.Begin("Console", flags);
-        ImGui.Text("Console Placeholder");
+        Application.Instance.Console.DrawContents();
         ImGui.End();
     }
 }
