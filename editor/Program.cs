@@ -12,7 +12,7 @@ public static class Program
             Window = new WindowSpec { Title = "Spot.Editor", Width = 1280, Height = 720 }
         };
 
-        var app = new Application(spec);
+        var app = new Spot.Core.Application(spec);
         app.Run(new EditorScene());
     }
 }

@@ -16,7 +16,7 @@ public class ConsolePanel
     {
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
         ImGui.Begin("Console", flags);
-        Application.Instance.Console.DrawContents();
+        Spot.Core.Application.Instance.Console.DrawContents();
         ImGui.End();
     }
 }
