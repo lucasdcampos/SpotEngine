@@ -20,6 +20,8 @@ public class EditorScene : Scene
     private Framebuffer? _framebuffer;
     private readonly EditorCamera _editorCamera = new();
 
+    private string? _currentScenePath;
+
     public EditorScene()
     {
         _hierarchyPanel = new HierarchyPanel(_context);
@@ -110,20 +112,14 @@ public class EditorScene : Scene
         {
             if (ImGui.BeginMenu("File"))
             {
-                if (ImGui.MenuItem("Serialize Scene"))
+                if (ImGui.MenuItem("New Scene"))
                 {
-                    if (_context.ActiveScene != null)
-                    {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
-                        if (filepath != null)
-                        {
-                            var serializer = new SceneSerializer(_context.ActiveScene);
-                            serializer.Serialize(filepath);
-                        }
-                    }
+                    _context.ActiveScene = new Scene();
+                    _context.Selection = null;
+                    _currentScenePath = null;
                 }
                 
-                if (ImGui.MenuItem("Deserialize Scene"))
+                if (ImGui.MenuItem("Open Scene..."))
                 {
                     string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.spotscene)|*.spotscene");
                     if (filepath != null)
@@ -134,6 +130,40 @@ public class EditorScene : Scene
                         {
                             _context.ActiveScene = newScene;
                             _context.Selection = null;
+                            _currentScenePath = filepath;
+                        }
+                    }
+                }
+
+                ImGui.Separator();
+
+                if (ImGui.MenuItem("Save Scene"))
+                {
+                    if (_context.ActiveScene != null)
+                    {
+                        if (_currentScenePath == null)
+                        {
+                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
+                        }
+                        
+                        if (_currentScenePath != null)
+                        {
+                            var serializer = new SceneSerializer(_context.ActiveScene);
+                            serializer.Serialize(_currentScenePath);
+                        }
+                    }
+                }
+                
+                if (ImGui.MenuItem("Save Scene As..."))
+                {
+                    if (_context.ActiveScene != null)
+                    {
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
+                        if (filepath != null)
+                        {
+                            _currentScenePath = filepath;
+                            var serializer = new SceneSerializer(_context.ActiveScene);
+                            serializer.Serialize(_currentScenePath);
                         }
                     }
                 }
