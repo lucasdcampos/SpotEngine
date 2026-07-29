@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ImGuiNET;
 using Silk.NET.OpenGL;
+using Spot.Console;
 using Spot.Events;
 using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
 
@@ -30,6 +31,7 @@ public class Application
     private static Application? s_instance;
 
     private readonly ApplicationSpec _spec;
+    private readonly DevConsole _console = new();
     private Window? _window;
     private GL? _gl;
     private ImGuiController? _imguiController;
@@ -72,6 +74,11 @@ public class Application
         _gl ?? throw new InvalidOperationException("The OpenGL context has not been created yet.");
 
     /// <summary>
+    /// Gets the developer console.
+    /// </summary>
+    public DevConsole Console => _console;
+
+    /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>
     public void Run()
@@ -106,6 +113,7 @@ public class Application
 
             _imguiController.Update(_deltaTime);
             OnImGuiRender();
+            _console.OnImGuiRender();
             _imguiController.Render();
 
             _window.SwapBuffers();
@@ -171,6 +179,20 @@ public class Application
         var dispatcher = new EventDispatcher(e);
         dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
         dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
+        dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
+    }
+
+    private bool OnKeyTyped(KeyTypedEvent e)
+    {
+        // The console toggles on the apostrophe character. Using the typed character (rather than the
+        // physical key) keeps the behavior correct regardless of the keyboard layout.
+        if (e.KeyCode == '\'' && !ImGui.GetIO().WantTextInput)
+        {
+            _console.Toggle();
+            return true;
+        }
+
+        return false;
     }
 
     private bool OnWindowClose(WindowCloseEvent e)
