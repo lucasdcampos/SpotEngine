@@ -17,6 +17,13 @@ public static class Renderer
         s_gl ?? throw new InvalidOperationException("The renderer has not been initialized.");
 
     /// <summary>
+    /// Gets the raw OpenGL API as a low-level escape hatch, for rendering the engine's abstractions
+    /// do not cover. Using it couples your code to Silk.NET, so prefer the higher-level APIs
+    /// (<see cref="Renderer"/>, <see cref="Renderer2D"/>) when they suffice.
+    /// </summary>
+    public static GL Api => Gl;
+
+    /// <summary>
     /// Initializes the renderer with the active OpenGL context. Called once by the application.
     /// </summary>
     /// <param name="gl">The OpenGL API for the current context.</param>
