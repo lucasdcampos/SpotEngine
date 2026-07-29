@@ -62,7 +62,7 @@ public class EditorScene : Scene
         
         _framebuffer.Unbind();
         
-        var window = Application.Instance.Window;
+        var window = Spot.Core.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
     }
 
@@ -114,19 +114,27 @@ public class EditorScene : Scene
                 {
                     if (_context.ActiveScene != null)
                     {
-                        var serializer = new SceneSerializer(_context.ActiveScene);
-                        serializer.Serialize("scene.spotscene");
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene");
+                        if (filepath != null)
+                        {
+                            var serializer = new SceneSerializer(_context.ActiveScene);
+                            serializer.Serialize(filepath);
+                        }
                     }
                 }
                 
                 if (ImGui.MenuItem("Deserialize Scene"))
                 {
-                    var newScene = new Scene();
-                    var serializer = new SceneSerializer(newScene);
-                    if (serializer.Deserialize("scene.spotscene"))
+                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.spotscene)|*.spotscene");
+                    if (filepath != null)
                     {
-                        _context.ActiveScene = newScene;
-                        _context.Selection = null;
+                        var newScene = new Scene();
+                        var serializer = new SceneSerializer(newScene);
+                        if (serializer.Deserialize(filepath))
+                        {
+                            _context.ActiveScene = newScene;
+                            _context.Selection = null;
+                        }
                     }
                 }
 
@@ -134,7 +142,7 @@ public class EditorScene : Scene
 
                 if (ImGui.MenuItem("Exit"))
                 {
-                    Application.Instance.Quit();
+                    Spot.Core.Application.Instance.Quit();
                 }
                 ImGui.EndMenu();
             }
