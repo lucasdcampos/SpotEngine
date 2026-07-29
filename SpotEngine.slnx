@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/engine/">
+    <Project Path="engine/Spot.Engine.csproj" />
+  </Folder>
+  <Folder Name="/game/">
+    <Project Path="game/Spot.Game.csproj" />
+  </Folder>
+</Solution>
