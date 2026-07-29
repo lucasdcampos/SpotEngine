@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using Spot;
 using Spot.Core;
 using Spot.Rendering;
@@ -22,12 +23,15 @@ internal sealed class GameApp : Application
         layout (location = 0) in vec3 aPosition;
         layout (location = 1) in vec3 aColor;
 
+        uniform mat4 uViewProjection;
+        uniform mat4 uTransform;
+
         out vec3 vColor;
 
         void main()
         {
             vColor = aColor;
-            gl_Position = vec4(aPosition, 1.0);
+            gl_Position = uViewProjection * uTransform * vec4(aPosition, 1.0);
         }
         """;
 
@@ -66,6 +70,8 @@ internal sealed class GameApp : Application
     private VertexBuffer? _vbo;
     private IndexBuffer? _ibo;
     private VertexArray? _vao;
+    private OrthographicCamera? _camera;
+    private readonly Transform _quadTransform = new();
 
     public GameApp(ApplicationSpec spec)
         : base(spec)
@@ -86,6 +92,11 @@ internal sealed class GameApp : Application
         _vao.SetIndexBuffer(_ibo);
 
         _shader = new Shader(VertexShaderSource, FragmentShaderSource);
+
+        // A 2D orthographic camera: the view is two world units tall, and its width follows the
+        // window aspect ratio (kept up to date in OnUpdate).
+        float aspect = (float)Window.Width / Window.Height;
+        _camera = new OrthographicCamera(-aspect, aspect, -1.0f, 1.0f);
 
         Console.Register("god", _ =>
         {
@@ -111,15 +122,23 @@ internal sealed class GameApp : Application
 
     protected override void OnUpdate(float deltaTime)
     {
+        // Keep the camera's horizontal extent matched to the current window aspect ratio.
+        float aspect = (float)Window.Width / Window.Height;
+        _camera?.SetProjection(-aspect, aspect, -1.0f, 1.0f);
+
+        // Spin the quad to show transforms driving the model matrix.
+        _quadTransform.Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
     }
 
     protected override void OnRender()
     {
         Renderer.Clear();
 
-        _shader?.Use();
-        if (_vao is not null)
+        if (_shader is not null && _camera is not null && _vao is not null)
         {
+            _shader.Use();
+            _shader.SetUniform("uViewProjection", _camera.ViewProjection);
+            _shader.SetUniform("uTransform", _quadTransform.Matrix);
             Renderer.DrawIndexed(_vao);
         }
     }

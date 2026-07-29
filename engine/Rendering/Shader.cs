@@ -68,6 +68,18 @@ public sealed class Shader : IDisposable
     public void SetUniform(string name, Vector4 value) =>
         _gl.Uniform4(GetUniformLocation(name), value.X, value.Y, value.Z, value.W);
 
+    /// <summary>
+    /// Sets a <see cref="Matrix4x4"/> uniform.
+    /// </summary>
+    /// <param name="name">The uniform name.</param>
+    /// <param name="value">The value to set.</param>
+    /// <remarks>
+    /// The matrix is uploaded untransposed: <see cref="Matrix4x4"/>'s row-major memory layout
+    /// matches the column-major matrix GLSL expects for the same transform.
+    /// </remarks>
+    public unsafe void SetUniform(string name, Matrix4x4 value) =>
+        _gl.UniformMatrix4(GetUniformLocation(name), 1, false, (float*)&value);
+
     /// <inheritdoc />
     public void Dispose() => _gl.DeleteProgram(_handle);
 
