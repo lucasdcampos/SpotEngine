@@ -215,6 +215,25 @@ public static class Renderer2D
         s_indexCount += 6;
     }
 
+    /// <summary>
+    /// Draws a hollow rectangle (wireframe) at the given position and size using 4 thin quads.
+    /// </summary>
+    /// <param name="position">The center of the rectangle, in world units.</param>
+    /// <param name="size">The width and height of the rectangle, in world units.</param>
+    /// <param name="color">The RGBA color.</param>
+    /// <param name="thickness">The thickness of the lines.</param>
+    public static void DrawRect(Vector2 position, Vector2 size, Vector4 color, float thickness = 0.05f)
+    {
+        // Top
+        DrawQuad(position + new Vector2(0, size.Y / 2), new Vector2(size.X + thickness, thickness), color);
+        // Bottom
+        DrawQuad(position - new Vector2(0, size.Y / 2), new Vector2(size.X + thickness, thickness), color);
+        // Left
+        DrawQuad(position - new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
+        // Right
+        DrawQuad(position + new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
+    }
+
     private static Texture2D WhiteTexture =>
         s_whiteTexture ?? throw new InvalidOperationException("Renderer2D has not been initialized.");
 
