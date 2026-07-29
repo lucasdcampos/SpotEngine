@@ -3,6 +3,7 @@ using ImGuiNET;
 using Silk.NET.OpenGL;
 using Spot.Console;
 using Spot.Events;
+using Spot.Rendering;
 using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
 
 namespace Spot.Core;
@@ -68,9 +69,10 @@ public class Application
         _window ?? throw new InvalidOperationException("The window has not been created yet.");
 
     /// <summary>
-    /// Gets the OpenGL API for the current context.
+    /// Gets the OpenGL API for the current context. Used internally by the engine; game code
+    /// renders through <see cref="Renderer"/> and the rendering resource types instead.
     /// </summary>
-    public GL Gl =>
+    internal GL Gl =>
         _gl ?? throw new InvalidOperationException("The OpenGL context has not been created yet.");
 
     /// <summary>
@@ -90,6 +92,7 @@ public class Application
         _window.SetEventCallback(OnEvent);
 
         _gl = GL.GetApi(_window.NativeWindow);
+        Renderer.Init(_gl);
         Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
 
         _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input);

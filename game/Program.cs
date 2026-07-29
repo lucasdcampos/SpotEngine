@@ -1,7 +1,7 @@
 using System.Globalization;
-using Silk.NET.OpenGL;
 using Spot;
 using Spot.Core;
+using Spot.Rendering;
 
 var spec = new ApplicationSpec
 {
@@ -16,7 +16,47 @@ app.Run();
 
 internal sealed class GameApp : Application
 {
+    private const string VertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 1) in vec3 aColor;
+
+        out vec3 vColor;
+
+        void main()
+        {
+            vColor = aColor;
+            gl_Position = vec4(aPosition, 1.0);
+        }
+        """;
+
+    private const string FragmentShaderSource =
+        """
+        #version 330 core
+        in vec3 vColor;
+
+        out vec4 fragColor;
+
+        void main()
+        {
+            fragColor = vec4(vColor, 1.0);
+        }
+        """;
+
+    // A single triangle: three vertices, each with a position (vec3) and a color (vec3).
+    private static readonly float[] Vertices =
+    {
+        // Position            // Color
+         0.0f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f, // top    - red
+         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f, // right  - green
+        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f, // left   - blue
+    };
+
     private bool _godMode;
+    private Shader? _shader;
+    private VertexBuffer? _vbo;
+    private VertexArray? _vao;
 
     public GameApp(ApplicationSpec spec)
         : base(spec)
@@ -26,7 +66,15 @@ internal sealed class GameApp : Application
     protected override void OnInit()
     {
         Log.Info("Game started - engine version {0}", Engine.GetVersion());
-        Gl.ClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+        Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+
+        // Build the triangle: a vertex buffer with position + color per vertex, a vertex array
+        // capturing that layout, and a shader program to color it.
+        _vao = new VertexArray();
+        _vbo = new VertexBuffer(Vertices, ShaderDataType.Float3, ShaderDataType.Float3);
+        _vao.AddVertexBuffer(_vbo);
+
+        _shader = new Shader(VertexShaderSource, FragmentShaderSource);
 
         Console.Register("god", _ =>
         {
@@ -42,7 +90,7 @@ internal sealed class GameApp : Application
                 return;
             }
 
-            Gl.ClearColor(
+            Renderer.SetClearColor(
                 float.Parse(args[0], CultureInfo.InvariantCulture) / 255.0f,
                 float.Parse(args[1], CultureInfo.InvariantCulture) / 255.0f,
                 float.Parse(args[2], CultureInfo.InvariantCulture) / 255.0f,
@@ -56,11 +104,20 @@ internal sealed class GameApp : Application
 
     protected override void OnRender()
     {
-        Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        Renderer.Clear();
+
+        _shader?.Use();
+        if (_vao is not null)
+        {
+            Renderer.DrawArrays(_vao, 3);
+        }
     }
 
     protected override void OnShutdown()
     {
+        _shader?.Dispose();
+        _vbo?.Dispose();
+        _vao?.Dispose();
         Log.Info("Game shutdown complete");
     }
 }

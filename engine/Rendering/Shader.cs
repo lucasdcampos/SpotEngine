@@ -1,0 +1,99 @@
+using System.Numerics;
+using Silk.NET.OpenGL;
+using Spot.Core;
+
+namespace Spot.Rendering;
+
+/// <summary>
+/// A compiled and linked OpenGL shader program.
+/// </summary>
+public sealed class Shader : IDisposable
+{
+    private readonly GL _gl;
+    private readonly uint _handle;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Shader"/> class by compiling and linking the given sources.
+    /// </summary>
+    /// <param name="vertexSource">The GLSL source for the vertex stage.</param>
+    /// <param name="fragmentSource">The GLSL source for the fragment stage.</param>
+    public Shader(string vertexSource, string fragmentSource)
+    {
+        _gl = Renderer.Gl;
+
+        uint vertex = CompileShader(ShaderType.VertexShader, vertexSource);
+        uint fragment = CompileShader(ShaderType.FragmentShader, fragmentSource);
+
+        _handle = _gl.CreateProgram();
+        _gl.AttachShader(_handle, vertex);
+        _gl.AttachShader(_handle, fragment);
+        _gl.LinkProgram(_handle);
+
+        _gl.GetProgram(_handle, ProgramPropertyARB.LinkStatus, out int linked);
+        if (linked == 0)
+        {
+            Log.CoreError("Shader program link failed: {0}", _gl.GetProgramInfoLog(_handle));
+        }
+
+        _gl.DetachShader(_handle, vertex);
+        _gl.DetachShader(_handle, fragment);
+        _gl.DeleteShader(vertex);
+        _gl.DeleteShader(fragment);
+    }
+
+    /// <summary>
+    /// Activates the shader program for subsequent draw calls.
+    /// </summary>
+    public void Use() => _gl.UseProgram(_handle);
+
+    /// <summary>
+    /// Sets an <see cref="int"/> uniform.
+    /// </summary>
+    /// <param name="name">The uniform name.</param>
+    /// <param name="value">The value to set.</param>
+    public void SetUniform(string name, int value) => _gl.Uniform1(GetUniformLocation(name), value);
+
+    /// <summary>
+    /// Sets a <see cref="float"/> uniform.
+    /// </summary>
+    /// <param name="name">The uniform name.</param>
+    /// <param name="value">The value to set.</param>
+    public void SetUniform(string name, float value) => _gl.Uniform1(GetUniformLocation(name), value);
+
+    /// <summary>
+    /// Sets a <see cref="Vector4"/> uniform.
+    /// </summary>
+    /// <param name="name">The uniform name.</param>
+    /// <param name="value">The value to set.</param>
+    public void SetUniform(string name, Vector4 value) =>
+        _gl.Uniform4(GetUniformLocation(name), value.X, value.Y, value.Z, value.W);
+
+    /// <inheritdoc />
+    public void Dispose() => _gl.DeleteProgram(_handle);
+
+    private int GetUniformLocation(string name)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+        {
+            Log.CoreWarn("Uniform '{0}' not found in shader program.", name);
+        }
+
+        return location;
+    }
+
+    private uint CompileShader(ShaderType type, string source)
+    {
+        uint shader = _gl.CreateShader(type);
+        _gl.ShaderSource(shader, source);
+        _gl.CompileShader(shader);
+
+        _gl.GetShader(shader, ShaderParameterName.CompileStatus, out int compiled);
+        if (compiled == 0)
+        {
+            Log.CoreError("{0} compilation failed: {1}", type, _gl.GetShaderInfoLog(shader));
+        }
+
+        return shader;
+    }
+}
