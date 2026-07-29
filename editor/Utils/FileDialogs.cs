@@ -40,7 +40,31 @@ public static class FileDialogs
     [DllImport("comdlg32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     private static extern bool GetSaveFileName(ref OpenFileName ofn);
 
-    public static string? OpenFile(string filter)
+    public delegate int BrowseCallbackProc(IntPtr hwnd, int uMsg, IntPtr lParam, IntPtr lpData);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    public struct BROWSEINFO
+    {
+        public IntPtr hwndOwner;
+        public IntPtr pidlRoot;
+        public IntPtr pszDisplayName;
+        public string lpszTitle;
+        public uint ulFlags;
+        public BrowseCallbackProc lpfn;
+        public IntPtr lParam;
+        public int iImage;
+    }
+
+    [DllImport("shell32.dll")]
+    private static extern IntPtr SHBrowseForFolder(ref BROWSEINFO bi);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+    private static extern bool SHGetPathFromIDList(IntPtr pidl, IntPtr pszPath);
+
+    [DllImport("ole32.dll")]
+    private static extern void CoTaskMemFree(IntPtr pv);
+
+    public static string? OpenFile(string filter, string initialDir = "")
     {
         string? result = null;
         var thread = new Thread(() =>
@@ -48,6 +72,8 @@ public static class FileDialogs
             var ofn = new OpenFileName();
             ofn.lStructSize = Marshal.SizeOf(ofn);
             ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
+            if (!string.IsNullOrEmpty(initialDir))
+                ofn.lpstrInitialDir = initialDir;
             
             ofn.lpstrFile = Marshal.AllocHGlobal(520);
             Marshal.WriteInt16(ofn.lpstrFile, 0);
@@ -75,7 +101,7 @@ public static class FileDialogs
         return result;
     }
 
-    public static string? SaveFile(string filter, string defExt = "")
+    public static string? SaveFile(string filter, string defExt = "", string initialDir = "")
     {
         string? result = null;
         var thread = new Thread(() =>
@@ -85,6 +111,8 @@ public static class FileDialogs
             ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
             if (!string.IsNullOrEmpty(defExt))
                 ofn.lpstrDefExt = defExt;
+            if (!string.IsNullOrEmpty(initialDir))
+                ofn.lpstrInitialDir = initialDir;
             
             ofn.lpstrFile = Marshal.AllocHGlobal(520);
             Marshal.WriteInt16(ofn.lpstrFile, 0);
@@ -105,6 +133,35 @@ public static class FileDialogs
 
             Marshal.FreeHGlobal(ofn.lpstrFile);
             Marshal.FreeHGlobal(ofn.lpstrFileTitle);
+        });
+        
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        return result;
+    }
+
+    public static string? SelectFolder()
+    {
+        string? result = null;
+        var thread = new Thread(() =>
+        {
+            var bi = new BROWSEINFO();
+            bi.lpszTitle = "Select Directory";
+            bi.ulFlags = 0x00000001 | 0x00000040; // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+            
+            IntPtr pidl = SHBrowseForFolder(ref bi);
+            if (pidl != IntPtr.Zero)
+            {
+                IntPtr pathPtr = Marshal.AllocHGlobal(260 * 2);
+                if (SHGetPathFromIDList(pidl, pathPtr))
+                {
+                    result = Marshal.PtrToStringAuto(pathPtr);
+                }
+                Marshal.FreeHGlobal(pathPtr);
+                CoTaskMemFree(pidl);
+            }
         });
         
         thread.SetApartmentState(ApartmentState.STA);

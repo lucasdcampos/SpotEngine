@@ -19,6 +19,10 @@ public class EditorScene : Scene
     private EditorState _state = EditorState.Edit;
     private string? _sceneSnapshot;
 
+    private bool _isCreatingProject = false;
+    private string _newProjectName = "MyProject";
+    private string _newProjectLocation = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+
     private readonly EditorContext _context = new();
     
     private readonly HierarchyPanel _hierarchyPanel;
@@ -242,8 +246,90 @@ public class EditorScene : Scene
             ImGui.EndTabBar();
         }
         ImGui.End();
+
+        if (_isCreatingProject)
+        {
+            ImGui.OpenPopup("Create New Project");
+        }
+
+        bool modalOpen = true;
+        if (ImGui.BeginPopupModal("Create New Project", ref modalOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.InputText("Project Name", ref _newProjectName, 128);
+            
+            ImGui.InputText("Location", ref _newProjectLocation, 256);
+            ImGui.SameLine();
+            if (ImGui.Button("...##Location"))
+            {
+                string? folder = Spot.Editor.Utils.FileDialogs.SelectFolder();
+                if (folder != null)
+                {
+                    _newProjectLocation = folder;
+                }
+            }
+            
+            if (ImGui.Button("Create", new Vector2(120, 0)))
+            {
+                CreateProject(_newProjectName, _newProjectLocation);
+                _isCreatingProject = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            {
+                _isCreatingProject = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+        else if (!modalOpen)
+        {
+            _isCreatingProject = false;
+        }
     }
     
+    private void CreateProject(string name, string location)
+    {
+        string projDir = System.IO.Path.Combine(location, name);
+        if (!System.IO.Directory.Exists(projDir)) System.IO.Directory.CreateDirectory(projDir);
+        
+        string assetsDir = System.IO.Path.Combine(projDir, "Assets");
+        if (!System.IO.Directory.Exists(assetsDir)) System.IO.Directory.CreateDirectory(assetsDir);
+        
+        string sptprojPath = System.IO.Path.Combine(projDir, name + ".sptproj");
+        
+        Project.New();
+        Project.Active!.Config.Name = name;
+        Project.Active.Config.StartScene = "Scenes/Main.sptscene";
+        Project.Active.ProjectDirectory = projDir;
+        
+        Project.SaveActive(sptprojPath); // Saves project config and generates .csproj
+        
+        string slnContent = $@"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project(""{{9A19103F-16F7-4668-BE54-9A1E7A4F7556}}"") = ""{name}"", ""{name}.csproj"", ""{{{System.Guid.NewGuid().ToString().ToUpper()}}}""
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
+";
+        System.IO.File.WriteAllText(System.IO.Path.Combine(projDir, name + ".sln"), slnContent);
+        
+        _context.ActiveScene = new Scene();
+        _context.Selection = null;
+        _currentScenePath = null;
+    }
+
     public override void OnExit()
     {
         _framebuffer?.Dispose();
@@ -283,15 +369,12 @@ public class EditorScene : Scene
             {
                 if (ImGui.MenuItem("New Project"))
                 {
-                    Project.New();
-                    _context.ActiveScene = new Scene();
-                    _context.Selection = null;
-                    _currentScenePath = null;
+                    _isCreatingProject = true;
                 }
                 
                 if (ImGui.MenuItem("Open Project..."))
                 {
-                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.spotproject)|*.spotproject");
+                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.sptproj)|*.sptproj");
                     if (filepath != null)
                     {
                         if (Project.Load(filepath) != null && Project.Active != null)
@@ -329,7 +412,7 @@ public class EditorScene : Scene
                 {
                     if (Project.Active != null && string.IsNullOrEmpty(Project.Active.ProjectDirectory))
                     {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.spotproject)|*.spotproject", "spotproject");
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.sptproj)|*.sptproj", "sptproj");
                         if (filepath != null)
                         {
                             Project.SaveActive(filepath);
@@ -337,7 +420,7 @@ public class EditorScene : Scene
                     }
                     else if (Project.Active != null)
                     {
-                        Project.SaveActive(System.IO.Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.Name + ".spotproject")); // Not ideal but saves in same dir
+                        Project.SaveActive(System.IO.Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.Name + ".sptproj"));
                     }
                 }
                 
@@ -352,7 +435,8 @@ public class EditorScene : Scene
                 
                 if (ImGui.MenuItem("Open Scene..."))
                 {
-                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.spotscene)|*.spotscene");
+                    string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.sptscene)|*.sptscene", initialDir);
                     if (filepath != null)
                     {
                         var newScene = new Scene();
@@ -374,7 +458,8 @@ public class EditorScene : Scene
                     {
                         if (_currentScenePath == null)
                         {
-                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene", "spotscene");
+                            string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
                         }
                         
                         if (_currentScenePath != null)
@@ -389,7 +474,8 @@ public class EditorScene : Scene
                 {
                     if (_context.ActiveScene != null)
                     {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.spotscene)|*.spotscene", "spotscene");
+                        string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
                         if (filepath != null)
                         {
                             _currentScenePath = filepath;

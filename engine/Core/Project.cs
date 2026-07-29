@@ -6,7 +6,7 @@ namespace Spot.Core;
 public class ProjectConfig
 {
     public string Name { get; set; } = "New Project";
-    public string StartScene { get; set; } = "Scenes/Main.spotscene";
+    public string StartScene { get; set; } = "Scenes/Main.sptscene";
     public string AssetDirectory { get; set; } = "Assets";
 }
 
@@ -15,7 +15,7 @@ public class Project
     public static Project? Active { get; private set; }
 
     public ProjectConfig Config { get; private set; }
-    public string ProjectDirectory { get; private set; }
+    public string ProjectDirectory { get; set; }
 
     private Project(ProjectConfig config, string directory)
     {
