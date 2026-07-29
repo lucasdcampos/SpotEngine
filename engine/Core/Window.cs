@@ -139,8 +139,8 @@ public sealed class Window : IDisposable
 
         foreach (IKeyboard keyboard in _input.Keyboards)
         {
-            keyboard.KeyDown += (_, key, _) => _callback?.Invoke(new KeyPressedEvent((int)key, 0));
-            keyboard.KeyUp += (_, key, _) => _callback?.Invoke(new KeyReleasedEvent((int)key));
+            keyboard.KeyDown += (_, key, _) => _callback?.Invoke(new KeyPressedEvent((Key)(int)key));
+            keyboard.KeyUp += (_, key, _) => _callback?.Invoke(new KeyReleasedEvent((Key)(int)key));
             keyboard.KeyChar += (_, character) => _callback?.Invoke(new KeyTypedEvent(character));
         }
 
@@ -148,8 +148,8 @@ public sealed class Window : IDisposable
         {
             mouse.MouseMove += (_, position) => _callback?.Invoke(new MouseMovedEvent(position.X, position.Y));
             mouse.Scroll += (_, wheel) => _callback?.Invoke(new MouseScrolledEvent(wheel.X, wheel.Y));
-            mouse.MouseDown += (_, button) => _callback?.Invoke(new MouseButtonPressedEvent((int)button));
-            mouse.MouseUp += (_, button) => _callback?.Invoke(new MouseButtonReleasedEvent((int)button));
+            mouse.MouseDown += (_, button) => _callback?.Invoke(new MouseButtonPressedEvent((MouseButton)(int)button));
+            mouse.MouseUp += (_, button) => _callback?.Invoke(new MouseButtonReleasedEvent((MouseButton)(int)button));
         }
     }
 }

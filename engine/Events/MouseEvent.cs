@@ -1,3 +1,5 @@
+using Spot.Core;
+
 namespace Spot.Events;
 
 /// <summary>
@@ -86,16 +88,16 @@ public abstract class MouseButtonEvent : Event
     /// <summary>
     /// Initializes a new instance of the <see cref="MouseButtonEvent"/> class.
     /// </summary>
-    /// <param name="button">The mouse button index.</param>
-    protected MouseButtonEvent(int button)
+    /// <param name="button">The mouse button.</param>
+    protected MouseButtonEvent(MouseButton button)
     {
         Button = button;
     }
 
     /// <summary>
-    /// Gets the mouse button index.
+    /// Gets the mouse button.
     /// </summary>
-    public int Button { get; }
+    public MouseButton Button { get; }
 
     /// <inheritdoc />
     public override EventCategory CategoryFlags =>
@@ -110,8 +112,8 @@ public sealed class MouseButtonPressedEvent : MouseButtonEvent
     /// <summary>
     /// Initializes a new instance of the <see cref="MouseButtonPressedEvent"/> class.
     /// </summary>
-    /// <param name="button">The mouse button index.</param>
-    public MouseButtonPressedEvent(int button)
+    /// <param name="button">The mouse button.</param>
+    public MouseButtonPressedEvent(MouseButton button)
         : base(button)
     {
     }
@@ -134,8 +136,8 @@ public sealed class MouseButtonReleasedEvent : MouseButtonEvent
     /// <summary>
     /// Initializes a new instance of the <see cref="MouseButtonReleasedEvent"/> class.
     /// </summary>
-    /// <param name="button">The mouse button index.</param>
-    public MouseButtonReleasedEvent(int button)
+    /// <param name="button">The mouse button.</param>
+    public MouseButtonReleasedEvent(MouseButton button)
         : base(button)
     {
     }

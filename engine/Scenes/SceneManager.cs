@@ -37,6 +37,8 @@ public static class SceneManager
         s_current.OnEnter();
     }
 
+    internal static void DispatchEvent(Spot.Events.Event e) => s_current?.OnEvent(e);
+
     internal static void Update(float deltaTime) => s_current?.OnUpdate(deltaTime);
 
     internal static void Render() => s_current?.OnRender();

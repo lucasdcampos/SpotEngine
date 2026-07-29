@@ -1,4 +1,6 @@
 using ImGuiNET;
+using Spot.Core;
+using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -69,10 +71,21 @@ internal sealed class HelloTriangleScene : Scene
         }
     }
 
+    public override void OnEvent(Event e)
+    {
+        // Per-scene, event-driven input: Escape returns to the menu.
+        if (e is KeyPressedEvent { Key: Key.Escape })
+        {
+            SceneManager.Load(new MenuScene());
+            e.Handled = true;
+        }
+    }
+
     public override void OnImGuiRender()
     {
         ImGui.Begin("Hello Triangle");
         ImGui.TextUnformatted("Low-level API: Shader + VertexArray + Renderer.DrawArrays");
+        ImGui.TextUnformatted("Press Esc or click below to go back.");
         ImGui.Separator();
         if (ImGui.Button("Back to menu"))
         {

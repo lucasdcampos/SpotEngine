@@ -112,6 +112,7 @@ public class Application
         TimeSpan lastTime = stopwatch.Elapsed;
         while (_running)
         {
+            Input.NewFrame();
             _window.PollEvents();
 
             TimeSpan now = stopwatch.Elapsed;
@@ -151,17 +152,26 @@ public class Application
 
     private void OnEvent(Event e)
     {
+        // The input state always sees every event, even ones handled below.
+        Input.OnEvent(e);
+
         var dispatcher = new EventDispatcher(e);
         dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
         dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
         dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
+
+        // Forward anything the engine did not consume to the active scene.
+        if (!e.Handled)
+        {
+            SceneManager.DispatchEvent(e);
+        }
     }
 
     private bool OnKeyTyped(KeyTypedEvent e)
     {
         // The console toggles on the apostrophe character. Using the typed character (rather than the
         // physical key) keeps the behavior correct regardless of the keyboard layout.
-        if (e.KeyCode == '\'' && !ImGui.GetIO().WantTextInput)
+        if (e.Character == '\'' && !ImGui.GetIO().WantTextInput)
         {
             _console.Toggle();
             return true;
