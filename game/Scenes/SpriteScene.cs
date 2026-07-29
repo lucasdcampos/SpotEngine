@@ -1,6 +1,7 @@
 using System.Numerics;
 using ImGuiNET;
 using Spot.Core;
+using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -14,6 +15,7 @@ internal sealed class SpriteScene : Scene
 {
     private OrthographicCamera? _camera;
     private Texture2D? _texture;
+    private float _zoom = 1.0f;
 
     public override void OnEnter()
     {
@@ -48,12 +50,51 @@ internal sealed class SpriteScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        _camera?.SetProjection(-Aspect, Aspect, -1.0f, 1.0f);
+        if (_camera is not null)
+        {
+            // Polling input: WASD / arrow keys pan the camera, mouse wheel zooms.
+            const float panSpeed = 1.5f;
+            Vector3 position = _camera.Position;
+            if (Input.GetKey(Key.A) || Input.GetKey(Key.Left))
+            {
+                position.X -= panSpeed * deltaTime;
+            }
+
+            if (Input.GetKey(Key.D) || Input.GetKey(Key.Right))
+            {
+                position.X += panSpeed * deltaTime;
+            }
+
+            if (Input.GetKey(Key.S) || Input.GetKey(Key.Down))
+            {
+                position.Y -= panSpeed * deltaTime;
+            }
+
+            if (Input.GetKey(Key.W) || Input.GetKey(Key.Up))
+            {
+                position.Y += panSpeed * deltaTime;
+            }
+
+            _camera.Position = position;
+
+            _zoom = Math.Clamp(_zoom - (Input.MouseScrollDelta.Y * 0.1f), 0.25f, 3.0f);
+            _camera.SetProjection(-Aspect * _zoom, Aspect * _zoom, -_zoom, _zoom);
+        }
 
         // Spin every entity in place by mutating its Transform component.
         foreach (Entity entity in View<Transform>())
         {
             entity.GetComponent<Transform>().Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
+        }
+    }
+
+    public override void OnEvent(Event e)
+    {
+        // Per-scene, event-driven input: Escape returns to the menu.
+        if (e is KeyPressedEvent { Key: Key.Escape })
+        {
+            SceneManager.Load(new MenuScene());
+            e.Handled = true;
         }
     }
 
@@ -69,6 +110,7 @@ internal sealed class SpriteScene : Scene
     {
         ImGui.Begin("Sprites");
         ImGui.TextUnformatted("High-level: entities with Sprite2D, drawn by RenderSystem.");
+        ImGui.TextUnformatted("WASD/arrows: pan camera   Wheel: zoom   Esc: back");
         ImGui.Separator();
         if (ImGui.Button("Back to menu"))
         {

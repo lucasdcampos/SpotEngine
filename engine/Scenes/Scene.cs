@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Spot.Core;
+using Spot.Events;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -41,6 +43,16 @@ public class Scene
     /// Called every frame to build the scene's ImGui user interface.
     /// </summary>
     public virtual void OnImGuiRender()
+    {
+    }
+
+    /// <summary>
+    /// Called for each window/input event the engine did not consume. Set <see cref="Event.Handled"/>
+    /// to stop further processing. For continuous input, prefer polling <see cref="Input"/> in
+    /// <see cref="OnUpdate"/>.
+    /// </summary>
+    /// <param name="e">The event.</param>
+    public virtual void OnEvent(Event e)
     {
     }
 
