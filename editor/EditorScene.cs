@@ -110,6 +110,28 @@ public class EditorScene : Scene
         {
             if (ImGui.BeginMenu("File"))
             {
+                if (ImGui.MenuItem("Serialize Scene"))
+                {
+                    if (_context.ActiveScene != null)
+                    {
+                        var serializer = new SceneSerializer(_context.ActiveScene);
+                        serializer.Serialize("scene.spotscene");
+                    }
+                }
+                
+                if (ImGui.MenuItem("Deserialize Scene"))
+                {
+                    var newScene = new Scene();
+                    var serializer = new SceneSerializer(newScene);
+                    if (serializer.Deserialize("scene.spotscene"))
+                    {
+                        _context.ActiveScene = newScene;
+                        _context.Selection = null;
+                    }
+                }
+
+                ImGui.Separator();
+
                 if (ImGui.MenuItem("Exit"))
                 {
                     Application.Instance.Quit();
