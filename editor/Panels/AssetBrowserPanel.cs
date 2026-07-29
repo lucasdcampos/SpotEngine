@@ -9,17 +9,25 @@ public class AssetBrowserPanel
 {
     private readonly EditorContext _context;
     private string _currentDirectory;
-    private readonly string _baseDirectory;
+    private string _baseDirectory;
 
     public AssetBrowserPanel(EditorContext context)
     {
         _context = context;
-        _baseDirectory = Environment.CurrentDirectory;
+        _baseDirectory = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         _currentDirectory = _baseDirectory;
     }
 
     public void OnImGuiRender(bool asWindow = false)
     {
+        // Update base directory if project changes
+        var currentProjectAssetDir = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        if (_baseDirectory != currentProjectAssetDir)
+        {
+            _baseDirectory = currentProjectAssetDir;
+            _currentDirectory = _baseDirectory;
+        }
+
         if (asWindow)
         {
             ImGui.Begin("Asset Browser");
@@ -52,26 +60,29 @@ public class AssetBrowserPanel
         try
         {
             var dirInfo = new DirectoryInfo(_currentDirectory);
-            foreach (var directory in dirInfo.GetDirectories())
+            if (dirInfo.Exists)
             {
-                if (ImGui.Button(directory.Name + "\n(Dir)", new Vector2(cellSize - 10, cellSize - 10)))
+                foreach (var directory in dirInfo.GetDirectories())
                 {
-                    _currentDirectory = directory.FullName;
+                    if (ImGui.Button(directory.Name + "\n(Dir)", new Vector2(cellSize - 10, cellSize - 10)))
+                    {
+                        _currentDirectory = directory.FullName;
+                    }
+                    ImGui.NextColumn();
                 }
-                ImGui.NextColumn();
-            }
 
-            foreach (var file in dirInfo.GetFiles())
-            {
-                ImGui.Button(file.Name, new Vector2(cellSize - 10, cellSize - 10));
-                
-                if (ImGui.BeginDragDropSource())
+                foreach (var file in dirInfo.GetFiles())
                 {
-                    ImGui.Text(file.Name);
-                    // Aqui pode-se implementar o payload (ex: caminho do arquivo) no futuro
-                    ImGui.EndDragDropSource();
+                    ImGui.Button(file.Name, new Vector2(cellSize - 10, cellSize - 10));
+                    
+                    if (ImGui.BeginDragDropSource())
+                    {
+                        ImGui.Text(file.Name);
+                        // Aqui pode-se implementar o payload (ex: caminho do arquivo) no futuro
+                        ImGui.EndDragDropSource();
+                    }
+                    ImGui.NextColumn();
                 }
-                ImGui.NextColumn();
             }
         }
         catch (Exception ex)

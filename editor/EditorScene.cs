@@ -49,9 +49,9 @@ public class EditorScene : Scene
         _framebuffer = new Framebuffer(1280, 720);
         _gameFramebuffer = new Framebuffer(1280, 720);
         
-        var demoScene = new DemoScene();
-        demoScene.OnEnter();
-        _context.ActiveScene = demoScene;
+        Project.New();
+        
+        _context.ActiveScene = new Scene();
         
         _viewportPanel.SetFramebuffer(_framebuffer);
         _viewportPanel.SetCamera(_editorCamera);
@@ -281,6 +281,46 @@ public class EditorScene : Scene
         {
             if (ImGui.BeginMenu("File"))
             {
+                if (ImGui.MenuItem("New Project"))
+                {
+                    Project.New();
+                    _context.ActiveScene = new Scene();
+                    _context.Selection = null;
+                    _currentScenePath = null;
+                }
+                
+                if (ImGui.MenuItem("Open Project..."))
+                {
+                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.spotproject)|*.spotproject");
+                    if (filepath != null)
+                    {
+                        if (Project.Load(filepath) != null)
+                        {
+                            _context.ActiveScene = new Scene(); // A load project automatically loads an empty scene or the start scene
+                            _context.Selection = null;
+                            _currentScenePath = null;
+                        }
+                    }
+                }
+                
+                if (ImGui.MenuItem("Save Project"))
+                {
+                    if (Project.Active != null && string.IsNullOrEmpty(Project.Active.ProjectDirectory))
+                    {
+                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.spotproject)|*.spotproject");
+                        if (filepath != null)
+                        {
+                            Project.SaveActive(filepath);
+                        }
+                    }
+                    else if (Project.Active != null)
+                    {
+                        Project.SaveActive(System.IO.Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.Name + ".spotproject")); // Not ideal but saves in same dir
+                    }
+                }
+                
+                ImGui.Separator();
+
                 if (ImGui.MenuItem("New Scene"))
                 {
                     _context.ActiveScene = new Scene();
