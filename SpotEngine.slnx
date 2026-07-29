@@ -5,4 +5,7 @@
   <Folder Name="/game/">
     <Project Path="game/Spot.Game.csproj" />
   </Folder>
+  <Folder Name="/editor/">
+    <Project Path="editor/Spot.Editor.csproj" />
+  </Folder>
 </Solution>
