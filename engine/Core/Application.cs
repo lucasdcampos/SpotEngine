@@ -93,6 +93,7 @@ public class Application
 
         _gl = GL.GetApi(_window.NativeWindow);
         Renderer.Init(_gl);
+        Renderer2D.Init();
         Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
 
         _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input);
@@ -125,6 +126,7 @@ public class Application
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
         OnShutdown();
 
+        Renderer2D.Shutdown();
         _imguiController.Dispose();
         _window.Dispose();
         _imguiController = null;

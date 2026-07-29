@@ -9,7 +9,7 @@ namespace Spot.Rendering;
 public sealed class Texture2D : IDisposable
 {
     private readonly GL _gl;
-    private readonly uint _handle;
+    private uint _handle;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Texture2D"/> class by loading an image from disk.
@@ -27,29 +27,28 @@ public sealed class Texture2D : IDisposable
         Width = (uint)image.Width;
         Height = (uint)image.Height;
 
-        _handle = _gl.GenTexture();
-        Bind();
-
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.Repeat);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.Repeat);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
-
         fixed (byte* pixels = image.Data)
         {
-            _gl.TexImage2D(
-                TextureTarget.Texture2D,
-                0,
-                InternalFormat.Rgba8,
-                Width,
-                Height,
-                0,
-                PixelFormat.Rgba,
-                PixelType.UnsignedByte,
-                pixels);
+            Upload(pixels);
         }
+    }
 
-        _gl.GenerateMipmap(TextureTarget.Texture2D);
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Texture2D"/> class from raw RGBA pixels in memory.
+    /// </summary>
+    /// <param name="width">The texture width in pixels.</param>
+    /// <param name="height">The texture height in pixels.</param>
+    /// <param name="rgbaPixels">The pixel data, four bytes (R, G, B, A) per pixel.</param>
+    public unsafe Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels)
+    {
+        _gl = Renderer.Gl;
+        Width = width;
+        Height = height;
+
+        fixed (byte* pixels = rgbaPixels)
+        {
+            Upload(pixels);
+        }
     }
 
     /// <summary>
@@ -74,4 +73,28 @@ public sealed class Texture2D : IDisposable
 
     /// <inheritdoc />
     public void Dispose() => _gl.DeleteTexture(_handle);
+
+    private unsafe void Upload(byte* pixels)
+    {
+        _handle = _gl.GenTexture();
+        Bind();
+
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.Repeat);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.Repeat);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+
+        _gl.TexImage2D(
+            TextureTarget.Texture2D,
+            0,
+            InternalFormat.Rgba8,
+            Width,
+            Height,
+            0,
+            PixelFormat.Rgba,
+            PixelType.UnsignedByte,
+            pixels);
+
+        _gl.GenerateMipmap(TextureTarget.Texture2D);
+    }
 }

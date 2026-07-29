@@ -60,9 +60,16 @@ public static class Renderer
     /// Draws the given vertex array as a list of triangles using its index buffer.
     /// </summary>
     /// <param name="vertexArray">The vertex array to draw. It must have an index buffer set.</param>
-    public static unsafe void DrawIndexed(VertexArray vertexArray)
+    public static void DrawIndexed(VertexArray vertexArray) => DrawIndexed(vertexArray, vertexArray.IndexCount);
+
+    /// <summary>
+    /// Draws the first <paramref name="indexCount"/> indices of the given vertex array as triangles.
+    /// </summary>
+    /// <param name="vertexArray">The vertex array to draw. It must have an index buffer set.</param>
+    /// <param name="indexCount">The number of indices to draw.</param>
+    public static unsafe void DrawIndexed(VertexArray vertexArray, uint indexCount)
     {
         vertexArray.Bind();
-        Gl.DrawElements(PrimitiveType.Triangles, vertexArray.IndexCount, DrawElementsType.UnsignedInt, null);
+        Gl.DrawElements(PrimitiveType.Triangles, indexCount, DrawElementsType.UnsignedInt, null);
     }
 }

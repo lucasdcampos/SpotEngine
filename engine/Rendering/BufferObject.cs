@@ -15,7 +15,7 @@ internal sealed class BufferObject<TData> : IDisposable
     private readonly uint _handle;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="BufferObject{TData}"/> class and uploads the data.
+    /// Initializes a new immutable buffer and uploads the given data once.
     /// </summary>
     /// <param name="data">The data to upload to the buffer.</param>
     /// <param name="target">The buffer target (for example <see cref="BufferTargetARB.ArrayBuffer"/>).</param>
@@ -37,9 +37,38 @@ internal sealed class BufferObject<TData> : IDisposable
     }
 
     /// <summary>
+    /// Initializes an empty dynamic buffer sized for <paramref name="capacity"/> elements,
+    /// to be filled later with <see cref="SetData"/>.
+    /// </summary>
+    /// <param name="capacity">The number of elements the buffer can hold.</param>
+    /// <param name="target">The buffer target (for example <see cref="BufferTargetARB.ArrayBuffer"/>).</param>
+    public unsafe BufferObject(uint capacity, BufferTargetARB target)
+    {
+        _gl = Renderer.Gl;
+        _target = target;
+        _handle = _gl.GenBuffer();
+
+        Bind();
+        _gl.BufferData(_target, (nuint)(capacity * sizeof(TData)), null, BufferUsageARB.DynamicDraw);
+    }
+
+    /// <summary>
     /// Binds the buffer to its target.
     /// </summary>
     public void Bind() => _gl.BindBuffer(_target, _handle);
+
+    /// <summary>
+    /// Replaces the start of the buffer's contents with the given data.
+    /// </summary>
+    /// <param name="data">The data to upload.</param>
+    public unsafe void SetData(ReadOnlySpan<TData> data)
+    {
+        Bind();
+        fixed (TData* pData = data)
+        {
+            _gl.BufferSubData(_target, 0, (nuint)(data.Length * sizeof(TData)), pData);
+        }
+    }
 
     /// <inheritdoc />
     public void Dispose() => _gl.DeleteBuffer(_handle);

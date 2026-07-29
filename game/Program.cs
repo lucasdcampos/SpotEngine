@@ -17,68 +17,10 @@ app.Run();
 
 internal sealed class GameApp : Application
 {
-    private const string VertexShaderSource =
-        """
-        #version 330 core
-        layout (location = 0) in vec3 aPosition;
-        layout (location = 1) in vec3 aColor;
-        layout (location = 2) in vec2 aTexCoord;
-
-        uniform mat4 uViewProjection;
-        uniform mat4 uTransform;
-
-        out vec3 vColor;
-        out vec2 vTexCoord;
-
-        void main()
-        {
-            vColor = aColor;
-            vTexCoord = aTexCoord;
-            gl_Position = uViewProjection * uTransform * vec4(aPosition, 1.0);
-        }
-        """;
-
-    private const string FragmentShaderSource =
-        """
-        #version 330 core
-        in vec3 vColor;
-        in vec2 vTexCoord;
-
-        uniform sampler2D uTexture;
-
-        out vec4 fragColor;
-
-        void main()
-        {
-            fragColor = texture(uTexture, vTexCoord) * vec4(vColor, 1.0);
-        }
-        """;
-
-    // A quad: four corners, each with a position (vec3), a color (vec3), and a texture coordinate (vec2).
-    private static readonly float[] Vertices =
-    {
-        // Position            // Color              // UV
-         0.5f,  0.5f, 0.0f,    1.0f, 0.0f, 0.0f,    1.0f, 1.0f, // top-right    - red
-         0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,    1.0f, 0.0f, // bottom-right - green
-        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,    0.0f, 0.0f, // bottom-left  - blue
-        -0.5f,  0.5f, 0.0f,    1.0f, 1.0f, 0.0f,    0.0f, 1.0f, // top-left     - yellow
-    };
-
-    // Two triangles making up the quad.
-    private static readonly uint[] Indices =
-    {
-        0, 1, 3,
-        1, 2, 3,
-    };
-
     private bool _godMode;
-    private Shader? _shader;
-    private VertexBuffer? _vbo;
-    private IndexBuffer? _ibo;
-    private VertexArray? _vao;
     private OrthographicCamera? _camera;
     private Texture2D? _texture;
-    private readonly Transform _quadTransform = new();
+    private readonly Transform _spriteTransform = new();
 
     public GameApp(ApplicationSpec spec)
         : base(spec)
@@ -90,15 +32,6 @@ internal sealed class GameApp : Application
         Log.Info("Game started - engine version {0}", Engine.GetVersion());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-        // Build the quad: a vertex buffer with position + color per vertex, an index buffer
-        // pairing them into two triangles, and a shader program to color it.
-        _vao = new VertexArray();
-        _vbo = new VertexBuffer(Vertices, ShaderDataType.Float3, ShaderDataType.Float3, ShaderDataType.Float2);
-        _vao.AddVertexBuffer(_vbo);
-        _ibo = new IndexBuffer(Indices);
-        _vao.SetIndexBuffer(_ibo);
-
-        _shader = new Shader(VertexShaderSource, FragmentShaderSource);
         // Assets are copied next to the executable, so resolve them relative to the base
         // directory rather than the (unpredictable) current working directory.
         _texture = new Texture2D(Path.Combine(AppContext.BaseDirectory, "assets", "spot.png"));
@@ -136,33 +69,43 @@ internal sealed class GameApp : Application
         float aspect = (float)Window.Width / Window.Height;
         _camera?.SetProjection(-aspect, aspect, -1.0f, 1.0f);
 
-        // Spin the quad to show transforms driving the model matrix.
-        _quadTransform.Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
+        // Spin the textured sprite to show a transform driving a quad.
+        _spriteTransform.Rotation += new Vector3(0.0f, 0.0f, 45.0f * deltaTime);
     }
 
     protected override void OnRender()
     {
         Renderer.Clear();
 
-        if (_shader is not null && _camera is not null && _vao is not null)
+        if (_camera is null || _texture is null)
         {
-            _texture?.Bind(0);
-
-            _shader.Use();
-            _shader.SetUniform("uViewProjection", _camera.ViewProjection);
-            _shader.SetUniform("uTransform", _quadTransform.Matrix);
-            _shader.SetUniform("uTexture", 0);
-            Renderer.DrawIndexed(_vao);
+            return;
         }
+
+        Renderer2D.BeginScene(_camera);
+
+        // A grid of colored quads: all batched into a single draw call.
+        for (int y = 0; y < 5; y++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                var position = new Vector2(-1.2f + (x * 0.22f), -0.44f + (y * 0.22f));
+                var color = new Vector4(x / 5.0f, y / 5.0f, 0.4f, 1.0f);
+                Renderer2D.DrawQuad(position, new Vector2(0.18f, 0.18f), color);
+            }
+        }
+
+        // A textured sprite, transformed (scaled + spinning) on top.
+        _spriteTransform.Position = new Vector3(0.7f, 0.0f, 0.0f);
+        _spriteTransform.Scale = new Vector3(0.8f, 0.8f, 1.0f);
+        Renderer2D.DrawQuad(_spriteTransform.Matrix, _texture);
+
+        Renderer2D.EndScene();
     }
 
     protected override void OnShutdown()
     {
-        _shader?.Dispose();
         _texture?.Dispose();
-        _vbo?.Dispose();
-        _ibo?.Dispose();
-        _vao?.Dispose();
         Log.Info("Game shutdown complete");
     }
 }
