@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Spot.Editor")]
+
 namespace Spot;
 
 /// <summary>
