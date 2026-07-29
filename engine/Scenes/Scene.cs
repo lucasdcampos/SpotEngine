@@ -85,6 +85,17 @@ public class Scene
     /// <param name="entity">The entity to destroy.</param>
     public void DestroyEntity(Entity entity)
     {
+        if (TryGetComponent(entity, out ScriptComponent? scripts))
+        {
+            foreach (EntityBehaviour script in scripts.Scripts)
+            {
+                if (script.Started)
+                {
+                    script.OnDestroy();
+                }
+            }
+        }
+
         _entities.Remove(entity.Id);
         foreach (Dictionary<int, object> pool in _pools.Values)
         {
