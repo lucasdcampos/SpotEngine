@@ -34,6 +34,16 @@ public class Scene
     }
 
     /// <summary>
+    /// Called every frame in play mode to run scene logic (scripts, physics).
+    /// </summary>
+    public void UpdateRuntime(float deltaTime)
+    {
+        OnUpdate(deltaTime);
+        ScriptSystem.Update(this, deltaTime);
+        FlushDestroyed();
+    }
+
+    /// <summary>
     /// Called every frame to render the scene, after the screen is cleared.
     /// </summary>
     public virtual void OnRender()
@@ -77,6 +87,7 @@ public class Scene
 
         var entity = new Entity(id, this);
         entity.AddComponent(new TagComponent(name));
+        entity.AddComponent(new RelationshipComponent());
         entity.AddComponent(new Transform());
         return entity;
     }
@@ -109,6 +120,16 @@ public class Scene
 
     private void DestroyImmediate(int id)
     {
+        var entity = new Entity(id, this);
+        if (entity.TryGetComponent(out RelationshipComponent? rel))
+        {
+            entity.SetParent(null);
+            foreach (var child in rel.Children.ToList())
+            {
+                DestroyImmediate(child.Id);
+            }
+        }
+
         if (_pools.TryGetValue(typeof(ScriptComponent), out Dictionary<int, object>? scriptPool) &&
             scriptPool.TryGetValue(id, out object? value))
         {
@@ -185,6 +206,11 @@ public class Scene
     internal T AddComponent<T>(Entity entity, T component)
         where T : class
     {
+        if (component is Transform transform)
+        {
+            transform.Entity = entity;
+        }
+
         PoolFor(typeof(T))[entity.Id] = component;
         return component;
     }

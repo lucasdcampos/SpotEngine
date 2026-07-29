@@ -1,4 +1,5 @@
 using System.Numerics;
+using Spot.Scenes;
 
 namespace Spot.Rendering;
 
@@ -14,10 +15,17 @@ public sealed class Transform
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
 
+    public Entity? Entity { get; internal set; }
+
     /// <summary>
     /// Gets or sets the position, in world units.
     /// </summary>
     public Vector3 Position { get; set; } = Vector3.Zero;
+
+    /// <summary>
+    /// Gets the world position.
+    /// </summary>
+    public Vector3 WorldPosition => Matrix.Translation;
 
     /// <summary>
     /// Gets or sets the rotation as Euler angles in degrees (X = pitch, Y = yaw, Z = roll).
@@ -25,9 +33,40 @@ public sealed class Transform
     public Vector3 Rotation { get; set; } = Vector3.Zero;
 
     /// <summary>
+    /// Gets the world rotation as Euler angles in degrees.
+    /// </summary>
+    public Vector3 WorldRotation
+    {
+        get
+        {
+            Vector3 worldRot = Rotation;
+            Entity? parentEntity = Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) ? rel.Parent : null;
+            if (parentEntity != null && parentEntity.Value.TryGetComponent(out Transform? parentTransform))
+            {
+                worldRot += parentTransform.WorldRotation;
+            }
+            return worldRot;
+        }
+    }
+
+    /// <summary>
     /// Gets or sets the scale along each axis.
     /// </summary>
     public Vector3 Scale { get; set; } = Vector3.One;
+
+    /// <summary>
+    /// Gets the local model matrix.
+    /// </summary>
+    public Matrix4x4 LocalMatrix
+    {
+        get
+        {
+            Vector3 radians = Rotation * DegreesToRadians;
+            return Matrix4x4.CreateScale(Scale)
+                * Matrix4x4.CreateFromYawPitchRoll(radians.Y, radians.X, radians.Z)
+                * Matrix4x4.CreateTranslation(Position);
+        }
+    }
 
     /// <summary>
     /// Gets the model matrix that maps local space to world space.
@@ -36,10 +75,17 @@ public sealed class Transform
     {
         get
         {
-            Vector3 radians = Rotation * DegreesToRadians;
-            return Matrix4x4.CreateScale(Scale)
-                * Matrix4x4.CreateFromYawPitchRoll(radians.Y, radians.X, radians.Z)
-                * Matrix4x4.CreateTranslation(Position);
+            Matrix4x4 local = LocalMatrix;
+
+            if (Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
+            {
+                if (rel.Parent.Value.TryGetComponent(out Transform? parentTransform))
+                {
+                    return local * parentTransform.Matrix;
+                }
+            }
+
+            return local;
         }
     }
 }

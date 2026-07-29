@@ -44,6 +44,71 @@ public readonly struct Entity : IEquatable<Entity>
         _scene ?? throw new InvalidOperationException("This entity is not associated with a scene.");
 
     /// <summary>
+    /// Gets the entity's parent, if any.
+    /// </summary>
+    public Entity? Parent
+    {
+        get => TryGetComponent(out RelationshipComponent? rel) ? rel.Parent : null;
+    }
+
+    /// <summary>
+    /// Gets the entity's children.
+    /// </summary>
+    public IEnumerable<Entity> Children
+    {
+        get => TryGetComponent(out RelationshipComponent? rel) ? rel.Children : Enumerable.Empty<Entity>();
+    }
+
+    /// <summary>
+    /// Checks if this entity is a descendant of the given entity.
+    /// </summary>
+    public bool IsDescendantOf(Entity entity)
+    {
+        Entity? current = this.Parent;
+        while (current != null)
+        {
+            if (current.Value == entity) return true;
+            current = current.Value.Parent;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Sets the entity's parent.
+    /// </summary>
+    /// <param name="parent">The new parent entity.</param>
+    public void SetParent(Entity? parent)
+    {
+        if (parent != null && (parent.Value == this || parent.Value.IsDescendantOf(this)))
+        {
+            return; // Prevent circular hierarchy
+        }
+
+        if (!TryGetComponent(out RelationshipComponent? rel))
+            rel = AddComponent(new RelationshipComponent());
+
+        if (rel.Parent == parent) return;
+
+        if (rel.Parent != null)
+        {
+            if (rel.Parent.Value.TryGetComponent(out RelationshipComponent? currentParentRel))
+            {
+                currentParentRel.Children.Remove(this);
+            }
+        }
+
+        rel.Parent = parent;
+
+        if (parent != null)
+        {
+            if (!parent.Value.TryGetComponent(out RelationshipComponent? parentRel))
+                parentRel = parent.Value.AddComponent(new RelationshipComponent());
+            
+            parentRel.Children.Add(this);
+        }
+    }
+
+    /// <summary>
     /// Attaches a component to the entity, replacing any existing component of the same type.
     /// </summary>
     /// <typeparam name="T">The component type.</typeparam>
