@@ -42,7 +42,11 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        _context.ActiveScene?.OnUpdate(deltaTime);
+        if (_context.ActiveScene != null)
+        {
+            _context.ActiveScene.OnUpdate(deltaTime);
+            _context.ActiveScene.FlushDestroyed();
+        }
     }
 
     public override void OnRender()
