@@ -32,7 +32,11 @@ public class InspectorPanel
         if (entity.HasComponent<TagComponent>())
         {
             var tag = entity.GetComponent<TagComponent>();
-            ImGui.Text($"Tag: {tag.Name}");
+            string name = tag.Name;
+            if (ImGui.InputText("Tag", ref name, 256))
+            {
+                tag.Name = name;
+            }
         }
 
         if (entity.HasComponent<Transform>())
@@ -40,9 +44,19 @@ public class InspectorPanel
             if (ImGui.TreeNodeEx((IntPtr)typeof(Transform).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen, "Transform"))
             {
                 var transform = entity.GetComponent<Transform>();
-                ImGui.Text($"Position: {transform.Position.X:0.00}, {transform.Position.Y:0.00}, {transform.Position.Z:0.00}");
-                ImGui.Text($"Rotation: {transform.Rotation.X:0.00}, {transform.Rotation.Y:0.00}, {transform.Rotation.Z:0.00}");
-                ImGui.Text($"Scale: {transform.Scale.X:0.00}, {transform.Scale.Y:0.00}, {transform.Scale.Z:0.00}");
+                
+                var position = transform.Position;
+                if (ImGui.DragFloat3("Position", ref position, 0.1f))
+                    transform.Position = position;
+                
+                var rotation = transform.Rotation;
+                if (ImGui.DragFloat3("Rotation", ref rotation, 0.1f))
+                    transform.Rotation = rotation;
+                
+                var scale = transform.Scale;
+                if (ImGui.DragFloat3("Scale", ref scale, 0.1f))
+                    transform.Scale = scale;
+                    
                 ImGui.TreePop();
             }
         }
@@ -52,7 +66,11 @@ public class InspectorPanel
             if (ImGui.TreeNodeEx((IntPtr)typeof(Sprite2D).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen, "Sprite2D"))
             {
                 var sprite = entity.GetComponent<Sprite2D>();
-                ImGui.Text($"Color: {sprite.Color.X:0.00}, {sprite.Color.Y:0.00}, {sprite.Color.Z:0.00}, {sprite.Color.W:0.00}");
+                
+                var color = sprite.Color;
+                if (ImGui.ColorEdit4("Color", ref color))
+                    sprite.Color = color;
+                    
                 ImGui.TreePop();
             }
         }
