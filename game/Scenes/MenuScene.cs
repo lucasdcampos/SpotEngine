@@ -34,6 +34,13 @@ internal sealed class MenuScene : Scene
         }
 
         ImGui.Separator();
+        
+        if (ImGui.Button("Load User Scene (scene.spotscene)"))
+        {
+            SceneManager.Load(new LoadedScene("scene.spotscene"));
+        }
+
+        ImGui.Separator();
         if (ImGui.Button("Quit"))
         {
             Application.Instance.Quit();
