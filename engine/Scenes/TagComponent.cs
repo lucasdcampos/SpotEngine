@@ -2,7 +2,7 @@ namespace Spot.Scenes;
 
 /// <summary>
 /// A human-readable name attached to an entity. Every entity created by
-/// <see cref="Scene.CreateEntity"/> has one.
+/// <see cref="Scene.Instantiate"/> has one.
 /// </summary>
 public sealed class TagComponent
 {

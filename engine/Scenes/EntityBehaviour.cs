@@ -18,12 +18,35 @@ public abstract class EntityBehaviour
     internal bool Started { get; set; }
 
     /// <summary>
+    /// Gets the scene the script's entity belongs to.
+    /// </summary>
+    protected Scene Scene => Entity.Scene;
+
+    /// <summary>
     /// Gets the attached entity's component of the given type.
     /// </summary>
     /// <typeparam name="T">The component type.</typeparam>
     /// <returns>The component.</returns>
     protected T GetComponent<T>()
         where T : class => Entity.GetComponent<T>();
+
+    /// <summary>
+    /// Creates a new entity in this script's scene.
+    /// </summary>
+    /// <param name="name">The entity name.</param>
+    /// <returns>The new entity.</returns>
+    protected Entity Instantiate(string name = "Entity") => Scene.Instantiate(name);
+
+    /// <summary>
+    /// Marks the given entity for destruction at the end of the frame.
+    /// </summary>
+    /// <param name="entity">The entity to destroy.</param>
+    protected void Destroy(Entity entity) => Scene.Destroy(entity);
+
+    /// <summary>
+    /// Marks this script's own entity for destruction at the end of the frame.
+    /// </summary>
+    protected void Destroy() => Scene.Destroy(Entity);
 
     /// <summary>
     /// Called once, on the first frame after the script is attached.

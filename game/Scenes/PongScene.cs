@@ -41,7 +41,7 @@ internal sealed class PongScene : Scene
         _leftPaddle = CreatePaddle("Left Paddle", -ArenaHalfWidth + 0.1f, Key.W, Key.S);
         _rightPaddle = CreatePaddle("Right Paddle", ArenaHalfWidth - 0.1f, Key.Up, Key.Down);
 
-        _ball = CreateEntity("Ball");
+        _ball = Instantiate("Ball");
         Transform ballTransform = _ball.GetComponent<Transform>();
         ballTransform.Scale = new Vector3(BallHalfSize * 2.0f, BallHalfSize * 2.0f, 1.0f);
         _ball.AddComponent(new Sprite2D { Color = new Vector4(1.0f, 0.9f, 0.4f, 1.0f) });
@@ -89,7 +89,7 @@ internal sealed class PongScene : Scene
 
     private Entity CreatePaddle(string name, float x, Key up, Key down)
     {
-        Entity paddle = CreateEntity(name);
+        Entity paddle = Instantiate(name);
         Transform transform = paddle.GetComponent<Transform>();
         transform.Position = new Vector3(x, 0.0f, 0.0f);
         transform.Scale = new Vector3(PaddleHalfWidth * 2.0f, PaddleHalfHeight * 2.0f, 1.0f);

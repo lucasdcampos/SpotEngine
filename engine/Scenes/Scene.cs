@@ -15,6 +15,7 @@ public class Scene
 {
     private readonly HashSet<int> _entities = new();
     private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
+    private readonly HashSet<int> _pendingDestroy = new();
     private int _nextId = 1;
 
     /// <summary>
@@ -64,11 +65,12 @@ public class Scene
     }
 
     /// <summary>
-    /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="Transform"/>.
+    /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="Transform"/>. Safe to
+    /// call at any time, including from a script.
     /// </summary>
     /// <param name="name">The entity name.</param>
     /// <returns>The new entity.</returns>
-    public Entity CreateEntity(string name = "Entity")
+    public Entity Instantiate(string name = "Entity")
     {
         int id = _nextId++;
         _entities.Add(id);
@@ -80,14 +82,37 @@ public class Scene
     }
 
     /// <summary>
-    /// Destroys an entity and all of its components.
+    /// Marks an entity for destruction. The entity and its components are removed at the end of the
+    /// current frame, so it is safe to call from a script (even on the entity running the script).
     /// </summary>
     /// <param name="entity">The entity to destroy.</param>
-    public void DestroyEntity(Entity entity)
+    public void Destroy(Entity entity) => _pendingDestroy.Add(entity.Id);
+
+    /// <summary>
+    /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the
+    /// engine at the end of each frame.
+    /// </summary>
+    internal void FlushDestroyed()
     {
-        if (TryGetComponent(entity, out ScriptComponent? scripts))
+        if (_pendingDestroy.Count == 0)
         {
-            foreach (EntityBehaviour script in scripts.Scripts)
+            return;
+        }
+
+        foreach (int id in _pendingDestroy)
+        {
+            DestroyImmediate(id);
+        }
+
+        _pendingDestroy.Clear();
+    }
+
+    private void DestroyImmediate(int id)
+    {
+        if (_pools.TryGetValue(typeof(ScriptComponent), out Dictionary<int, object>? scriptPool) &&
+            scriptPool.TryGetValue(id, out object? value))
+        {
+            foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
             {
                 if (script.Started)
                 {
@@ -96,10 +121,10 @@ public class Scene
             }
         }
 
-        _entities.Remove(entity.Id);
+        _entities.Remove(id);
         foreach (Dictionary<int, object> pool in _pools.Values)
         {
-            pool.Remove(entity.Id);
+            pool.Remove(id);
         }
     }
 
