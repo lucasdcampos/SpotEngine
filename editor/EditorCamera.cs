@@ -15,7 +15,7 @@ public class EditorCamera
     public Vector3 Position { get; set; } = new Vector3(0, 0, 0);
     public float Pitch { get; set; } = 0.0f;
     public float Yaw { get; set; } = 0.0f;
-    public bool Is3D { get; set; } = false;
+    public bool Is3D { get; set; } = true;
     
     private Matrix4x4 _projection;
     private Matrix4x4 _view;
@@ -31,6 +31,8 @@ public class EditorCamera
 
     public EditorCamera()
     {
+        Is3D = Spot.Editor.Utils.EditorSettings.GlobalIs3DMode;
+        if (Is3D) Position = new Vector3(0, 0, 10);
         UpdateProjection();
         UpdateView();
     }
@@ -158,6 +160,7 @@ public class EditorCamera
     public void ToggleMode()
     {
         Is3D = !Is3D;
+        Spot.Editor.Utils.EditorSettings.GlobalIs3DMode = Is3D;
         if (Is3D)
         {
             Position = new Vector3(Position.X, Position.Y, 10);

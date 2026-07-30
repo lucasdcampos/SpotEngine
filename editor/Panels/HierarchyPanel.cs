@@ -92,6 +92,34 @@ public class HierarchyPanel
         return entity;
     }
 
+    /// <summary>Creates an entity with an empty <see cref="MeshRenderer"/> component, selects it, and returns it.</summary>
+    public Entity CreateMesh()
+    {
+        var entity = CreateEntity("Mesh");
+        entity.AddComponent(new MeshRenderer());
+        return entity;
+    }
+
+    /// <summary>
+    /// Creates an entity with a <see cref="MeshRenderer"/> loaded from the given model file, selects it,
+    /// and returns it. The model is loaded eagerly; failures are logged and leave the renderer empty.
+    /// </summary>
+    public Entity CreateMeshFromModel(string modelPath)
+    {
+        var entity = CreateEntity(System.IO.Path.GetFileNameWithoutExtension(modelPath));
+        var meshRenderer = new MeshRenderer { ModelPath = modelPath };
+        try
+        {
+            meshRenderer.Model = Spot.Assets.Model.Load(modelPath);
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to load model '{0}': {1}", modelPath, ex.Message);
+        }
+        entity.AddComponent(meshRenderer);
+        return entity;
+    }
+
     // Creates a new root entity, selects it, and returns it so callers can attach extra components.
     private Entity CreateEntity(string name)
     {

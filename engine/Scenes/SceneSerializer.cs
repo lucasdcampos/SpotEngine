@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using Spot.Rendering;
 using Spot.Physics;
+using Spot.Assets;
 
 namespace Spot.Scenes;
 
@@ -18,6 +19,7 @@ public class EntityData
     public TagComponent? Tag { get; set; }
     public TransformData? Transform { get; set; }
     public Sprite2DData? Sprite { get; set; }
+    public MeshRendererData? MeshRenderer { get; set; }
     public ScriptComponentData? Scripts { get; set; }
     public CameraComponentData? Camera { get; set; }
     public PhysicsBody2DData? PhysicsBody2D { get; set; }
@@ -64,6 +66,12 @@ public class Sprite2DData
 {
     public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
     public string? TexturePath { get; set; }
+}
+
+public class MeshRendererData
+{
+    public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
+    public string? ModelPath { get; set; }
 }
 
 public class SceneSerializer
@@ -115,6 +123,16 @@ public class SceneSerializer
             {
                 Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W },
                 TexturePath = sprite.TexturePath
+            };
+        }
+
+        if (entity.HasComponent<MeshRenderer>())
+        {
+            var meshRenderer = entity.GetComponent<MeshRenderer>();
+            entityData.MeshRenderer = new MeshRendererData
+            {
+                Color = new[] { meshRenderer.Color.X, meshRenderer.Color.Y, meshRenderer.Color.Z, meshRenderer.Color.W },
+                ModelPath = meshRenderer.ModelPath
             };
         }
 
@@ -232,6 +250,25 @@ public class SceneSerializer
                 }
             }
             entity.AddComponent(sprite);
+        }
+
+        if (entityData.MeshRenderer != null)
+        {
+            var meshRenderer = new MeshRenderer();
+            meshRenderer.Color = new System.Numerics.Vector4(entityData.MeshRenderer.Color[0], entityData.MeshRenderer.Color[1], entityData.MeshRenderer.Color[2], entityData.MeshRenderer.Color[3]);
+            if (!string.IsNullOrEmpty(entityData.MeshRenderer.ModelPath))
+            {
+                meshRenderer.ModelPath = entityData.MeshRenderer.ModelPath;
+                try
+                {
+                    meshRenderer.Model = Model.Load(meshRenderer.ModelPath);
+                }
+                catch (Exception ex)
+                {
+                    System.Console.WriteLine($"Failed to load model '{meshRenderer.ModelPath}': {ex.Message}");
+                }
+            }
+            entity.AddComponent(meshRenderer);
         }
 
         if (entityData.Camera != null)

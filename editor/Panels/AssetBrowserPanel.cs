@@ -11,7 +11,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Other }
 
     private readonly struct AssetEntry
     {
@@ -30,6 +30,7 @@ public class AssetBrowserPanel
     }
 
     private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
+    private static readonly string[] ModelExtensions = { ".obj", ".fbx", ".gltf", ".glb", ".dae", ".ply", ".stl" };
     private const int MaxThumbnails = 128;
 
     private readonly EditorContext _context;
@@ -249,6 +250,17 @@ public class AssetBrowserPanel
                     }
                 }
             }
+            else if (entry.Kind == AssetKind.Model)
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("MODEL_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
             else
             {
                 var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");
@@ -341,6 +353,7 @@ public class AssetBrowserPanel
             AssetKind.Script => ("C#", palette.Accent),
             AssetKind.Scene => ("SCENE", new Vector4(0.66f, 0.40f, 0.98f, 1.0f)),
             AssetKind.Image => ("IMG", new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
+            AssetKind.Model => ("3D", new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
             _ => (BadgeFor(entry.Name), palette.TextDisabled),
         };
 
@@ -518,6 +531,7 @@ public class AssetBrowserPanel
         if (ext == ".cs") return AssetKind.Script;
         if (ext == ".sptscene") return AssetKind.Scene;
         if (ImageExtensions.Contains(ext)) return AssetKind.Image;
+        if (ModelExtensions.Contains(ext)) return AssetKind.Model;
         return AssetKind.Other;
     }
 

@@ -3,6 +3,7 @@ using ImGuiNET;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Physics;
+using Spot.Assets;
 
 namespace Spot.Editor.Panels;
 
@@ -36,6 +37,12 @@ public class InspectorPanel
                 {
                     if (!_context.Selection.Value.HasComponent<Sprite2D>())
                         _context.Selection.Value.AddComponent(new Sprite2D());
+                    ImGui.CloseCurrentPopup();
+                }
+                if (ImGui.MenuItem("Mesh Renderer"))
+                {
+                    if (!_context.Selection.Value.HasComponent<MeshRenderer>())
+                        _context.Selection.Value.AddComponent(new MeshRenderer());
                     ImGui.CloseCurrentPopup();
                 }
                 if (ImGui.MenuItem("Camera"))
@@ -175,7 +182,71 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<Sprite2D>();
-                
+
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<MeshRenderer>())
+        {
+            ImGui.PushID("MeshRenderer");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(MeshRenderer).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Mesh Renderer");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var meshRenderer = entity.GetComponent<MeshRenderer>();
+
+                var color = meshRenderer.Color;
+                if (ImGui.ColorEdit4("Color", ref color))
+                    meshRenderer.Color = color;
+
+                string modelLabel = meshRenderer.Model != null
+                    ? $"{System.IO.Path.GetFileName(meshRenderer.ModelPath) ?? "Model"} (Drop to change)"
+                    : "Drop 3D Model Here";
+                ImGui.Button(modelLabel, new System.Numerics.Vector2(-1, 30));
+                if (ImGui.BeginDragDropTarget())
+                {
+                    unsafe
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("MODEL_FILE");
+                        if (payload.NativePtr != null)
+                        {
+                            string filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                            if (filepath != null)
+                            {
+                                try
+                                {
+                                    meshRenderer.Model = Model.Load(filepath);
+                                    meshRenderer.ModelPath = filepath;
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Console.WriteLine($"Failed to load model: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                    ImGui.EndDragDropTarget();
+                }
+
+                ImGui.TreePop();
+            }
+
+            if (removeComponent)
+                entity.RemoveComponent<MeshRenderer>();
+
             ImGui.PopID();
         }
 

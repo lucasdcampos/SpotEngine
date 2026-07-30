@@ -738,6 +738,9 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Create Empty", "", false, hasScene)) _hierarchyPanel.CreateEmpty();
             if (ImGui.MenuItem("Create Camera", "", false, hasScene)) _hierarchyPanel.CreateCamera();
             if (ImGui.MenuItem("Create Sprite", "", false, hasScene)) _hierarchyPanel.CreateSprite();
+            if (ImGui.MenuItem("Create Mesh", "", false, hasScene)) _hierarchyPanel.CreateMesh();
+            ImGui.Separator();
+            if (ImGui.MenuItem("Import 3D Model...", "", false, hasScene)) ImportModel();
             ImGui.EndMenu();
         }
 
@@ -888,6 +891,19 @@ public class EditorScene : Scene
         {
             OpenSceneAsset(filepath);
         }
+    }
+
+    private void ImportModel()
+    {
+        if (_context.ActiveScene == null) return;
+
+        string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+        const string filter = "3D Models (*.obj;*.fbx;*.gltf;*.glb;*.dae;*.ply;*.stl)|*.obj;*.fbx;*.gltf;*.glb;*.dae;*.ply;*.stl";
+        string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile(filter, initialDir);
+        if (filepath == null) return;
+
+        string imported = Spot.Editor.Utils.AssetImporter.ImportModel(filepath);
+        _hierarchyPanel.CreateMeshFromModel(imported);
     }
 
     private void SaveScene()
