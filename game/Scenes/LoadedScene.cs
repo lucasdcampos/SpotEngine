@@ -29,7 +29,7 @@ public class LoadedScene : Scene
     public override void OnRender()
     {
         Renderer.Clear();
-        RenderSystem.Render(this, _camera);
+        RenderSystem.Render(this, _camera.ViewProjection);
     }
 
     public override void OnImGuiRender()
