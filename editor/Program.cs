@@ -15,6 +15,6 @@ public static class Program
         };
 
         var app = new Spot.Core.Application(spec);
-        app.Run(new EditorScene());
+        app.Run(new LauncherScene());
     }
 }

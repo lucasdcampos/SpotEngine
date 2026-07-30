@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using static Spot.Editor.UI.EditorPalette;
 
 namespace Spot.Editor.UI;
@@ -8,6 +9,9 @@ namespace Spot.Editor.UI;
 /// </summary>
 public static class EditorThemes
 {
+    /// <summary>All built-in themes, used to populate the editor's theme menu.</summary>
+    public static IReadOnlyList<EditorTheme> All => new[] { SpotDark };
+
     /// <summary>
     /// The default theme: a neutral dark grey surface with a blue accent, gentle rounding and
     /// subtle borders.
