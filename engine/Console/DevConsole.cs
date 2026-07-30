@@ -59,6 +59,13 @@ public sealed class DevConsole
 
     private readonly Dictionary<string, CommandInfo> _commands = new();
     private readonly List<ConsoleLine> _lines = new();
+
+    // Log lines can arrive from background threads (for example a build process piping its output
+    // through the logger), so every access to _lines is guarded. Rendering copies into this scratch
+    // buffer under the lock and then draws from it, keeping the lock off the ImGui calls.
+    private readonly object _linesLock = new();
+    private readonly List<ConsoleLine> _renderBuffer = new();
+
     private readonly List<string> _history = new();
     private readonly byte[] _inputBuf = new byte[256];
     private readonly ImGuiInputTextCallback _textEditCallback;
@@ -85,7 +92,16 @@ public sealed class DevConsole
     public bool IsOpen => _open;
 
     /// <summary>Gets the most recently printed line, if any.</summary>
-    public ConsoleLine? LastLine => _lines.Count > 0 ? _lines[^1] : null;
+    public ConsoleLine? LastLine
+    {
+        get
+        {
+            lock (_linesLock)
+            {
+                return _lines.Count > 0 ? _lines[^1] : null;
+            }
+        }
+    }
 
     /// <summary>
     /// Toggles the visibility of the console.
@@ -124,10 +140,13 @@ public sealed class DevConsole
     /// <param name="color">The color to render the line with.</param>
     public void Print(string text, Vector4 color)
     {
-        _lines.Add(new ConsoleLine(text, color));
-        if (_lines.Count > MaxLines)
+        lock (_linesLock)
         {
-            _lines.RemoveRange(0, _lines.Count - MaxLines);
+            _lines.Add(new ConsoleLine(text, color));
+            if (_lines.Count > MaxLines)
+            {
+                _lines.RemoveRange(0, _lines.Count - MaxLines);
+            }
         }
 
         _scrollToBottom = true;
@@ -209,7 +228,15 @@ public sealed class DevConsole
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing();
         ImGui.BeginChild("##output", new Vector2(0.0f, -footerHeight), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
 
-        foreach (ConsoleLine line in _lines)
+        // Snapshot the lines under the lock so a background thread appending output cannot mutate the
+        // list while we enumerate it, then render from the copy without holding the lock.
+        lock (_linesLock)
+        {
+            _renderBuffer.Clear();
+            _renderBuffer.AddRange(_lines);
+        }
+
+        foreach (ConsoleLine line in _renderBuffer)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, line.Color);
             ImGui.TextUnformatted(line.Text);
@@ -274,7 +301,13 @@ public sealed class DevConsole
             }
         }, "List all available commands");
 
-        Register("clear", _ => _lines.Clear(), "Clear console output");
+        Register("clear", _ =>
+        {
+            lock (_linesLock)
+            {
+                _lines.Clear();
+            }
+        }, "Clear console output");
     }
 
     private string GetInputText()

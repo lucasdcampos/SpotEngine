@@ -18,6 +18,13 @@ public abstract class EntityBehaviour
     internal bool Started { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the script threw from a lifecycle hook and was
+    /// disabled by the engine. A faulted script is skipped on subsequent frames so one broken script
+    /// neither crashes the engine nor spams the log, while other scripts keep running.
+    /// </summary>
+    internal bool Faulted { get; set; }
+
+    /// <summary>
     /// Gets the scene the script's entity belongs to.
     /// </summary>
     protected Scene Scene => Entity.Scene;

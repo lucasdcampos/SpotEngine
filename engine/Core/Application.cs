@@ -51,6 +51,8 @@ public class Application
     private ImGuiController? _imguiController;
     private bool _running;
     private float _deltaTime;
+    private string? _lastFrameError;
+    private bool _frameFaulted;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
@@ -140,26 +142,64 @@ public class Application
         TimeSpan lastTime = stopwatch.Elapsed;
         while (_running)
         {
-            Input.NewFrame();
-            _window.PollEvents();
+            _frameFaulted = false;
 
-            TimeSpan now = stopwatch.Elapsed;
-            _deltaTime = (float)(now - lastTime).TotalSeconds;
-            lastTime = now;
+            // Top-level safety net: no single frame — game logic, a UI panel, an input/event handler,
+            // or the window's own bookkeeping — is allowed to take the whole engine down. Anything that
+            // throws here is logged and the loop continues. Only failures during startup, before this
+            // loop (window/GL/ImGui creation), are treated as unrecoverable and left to stop the app.
+            try
+            {
+                Input.NewFrame();
+                _window.PollEvents();
 
-            // Apply any pending scene switch at the frame boundary, then run the active scene.
-            SceneManager.ApplyPendingSwitch();
-            SceneManager.Update(_deltaTime);
+                TimeSpan now = stopwatch.Elapsed;
+                _deltaTime = (float)(now - lastTime).TotalSeconds;
+                lastTime = now;
 
-            Renderer.Clear();
-            SceneManager.Render();
+                // Apply any pending scene switch at the frame boundary, then run the active scene.
+                try
+                {
+                    SceneManager.ApplyPendingSwitch();
+                    SceneManager.Update(_deltaTime);
 
-            _imguiController.Update(_deltaTime);
-            SceneManager.ImGuiRender();
-            _console.OnImGuiRender();
-            _imguiController.Render();
+                    Renderer.Clear();
+                    SceneManager.Render();
+                }
+                catch (Exception ex)
+                {
+                    ReportFrameError("scene update/render", ex);
+                }
 
-            _window.SwapBuffers();
+                // NewFrame (Update) must always be matched by Render so ImGui's frame stays balanced;
+                // the finally guarantees that even when the scene-supplied UI in between throws.
+                _imguiController.Update(_deltaTime);
+                try
+                {
+                    SceneManager.ImGuiRender();
+                    _console.OnImGuiRender();
+                }
+                catch (Exception ex)
+                {
+                    ReportFrameError("UI render", ex);
+                }
+                finally
+                {
+                    _imguiController.Render();
+                }
+
+                _window.SwapBuffers();
+            }
+            catch (Exception ex)
+            {
+                ReportFrameError("frame", ex);
+            }
+
+            // A clean frame clears the de-dup latch so the same fault is reported again if it returns.
+            if (!_frameFaulted)
+            {
+                _lastFrameError = null;
+            }
         }
 
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
@@ -185,20 +225,49 @@ public class Application
     /// </summary>
     public void Quit() => _running = false;
 
+    /// <summary>
+    /// Logs a recovered per-frame exception without ever tearing the application down. Consecutive
+    /// identical failures are collapsed so a fault that reoccurs every frame does not flood the
+    /// console; a different (or cleared) error is logged again.
+    /// </summary>
+    private void ReportFrameError(string phase, Exception ex)
+    {
+        _frameFaulted = true;
+
+        string signature = phase + ":" + ex.ToString();
+        if (signature == _lastFrameError)
+        {
+            return;
+        }
+
+        _lastFrameError = signature;
+        Log.CoreError("Recovered from an exception during {0}; continuing. {1}", phase, ex);
+    }
+
     private void OnEvent(Event e)
     {
-        // The input state always sees every event, even ones handled below.
-        Input.OnEvent(e);
-
-        var dispatcher = new EventDispatcher(e);
-        dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
-        dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
-        dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
-
-        // Forward anything the engine did not consume to the active scene.
-        if (!e.Handled)
+        // Event handlers run arbitrary game and editor code — button clicks, key bindings, the
+        // CanClose gate. A fault in any one of them must not crash the engine, so each event is
+        // isolated here (and kept independent of others in the same poll) and merely logged.
+        try
         {
-            SceneManager.DispatchEvent(e);
+            // The input state always sees every event, even ones handled below.
+            Input.OnEvent(e);
+
+            var dispatcher = new EventDispatcher(e);
+            dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
+            dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
+            dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
+
+            // Forward anything the engine did not consume to the active scene.
+            if (!e.Handled)
+            {
+                SceneManager.DispatchEvent(e);
+            }
+        }
+        catch (Exception ex)
+        {
+            ReportFrameError("event handling", ex);
         }
     }
 
