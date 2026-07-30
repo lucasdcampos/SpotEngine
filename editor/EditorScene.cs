@@ -424,6 +424,22 @@ EndGlobal
                     }
                 }
                 
+                if (Project.Active != null)
+                {
+                    if (ImGui.BeginMenu("Regenerate Project Files"))
+                    {
+                        if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)"))
+                        {
+                            Project.GenerateCSProject(overwriteProgram: false);
+                        }
+                        if (ImGui.MenuItem("Full Reset (Includes Program.cs)"))
+                        {
+                            Project.GenerateCSProject(overwriteProgram: true);
+                        }
+                        ImGui.EndMenu();
+                    }
+                }
+                
                 ImGui.Separator();
 
                 if (ImGui.MenuItem("New Scene"))
