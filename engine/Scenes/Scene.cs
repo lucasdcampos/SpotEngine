@@ -23,6 +23,15 @@ public class Scene
     /// </summary>
     public virtual void OnEnter()
     {
+        var window = Spot.Core.Application.Instance.Window;
+        foreach (var entity in View<CameraComponent>())
+        {
+            var cc = GetComponent<CameraComponent>(entity);
+            if (!cc.FixedAspectRatio)
+            {
+                cc.SetViewportSize(window.Width, window.Height);
+            }
+        }
     }
 
     /// <summary>
@@ -94,6 +103,21 @@ public class Scene
     /// <param name="e">The event.</param>
     public virtual void OnEvent(Event e)
     {
+        var dispatcher = new EventDispatcher(e);
+        dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
+    }
+
+    private bool OnWindowResize(WindowResizeEvent e)
+    {
+        foreach (var entity in View<CameraComponent>())
+        {
+            var cc = GetComponent<CameraComponent>(entity);
+            if (!cc.FixedAspectRatio)
+            {
+                cc.SetViewportSize(e.Width, e.Height);
+            }
+        }
+        return false;
     }
 
     /// <summary>

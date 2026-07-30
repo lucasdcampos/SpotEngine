@@ -51,9 +51,7 @@ public static class SceneManager
             return;
         }
 
-        s_current.OnUpdate(deltaTime);
-        ScriptSystem.Update(s_current, deltaTime);
-        s_current.FlushDestroyed();
+        s_current.UpdateRuntime(deltaTime);
     }
 
     internal static void Render() => s_current?.OnRender();
