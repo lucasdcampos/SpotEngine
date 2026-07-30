@@ -63,6 +63,7 @@ public class TransformData
 public class Sprite2DData
 {
     public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
+    public string? TexturePath { get; set; }
 }
 
 public class SceneSerializer
@@ -112,7 +113,8 @@ public class SceneSerializer
             var sprite = entity.GetComponent<Sprite2D>();
             entityData.Sprite = new Sprite2DData
             {
-                Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W }
+                Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W },
+                TexturePath = sprite.TexturePath
             };
         }
 
@@ -217,6 +219,18 @@ public class SceneSerializer
         {
             var sprite = new Sprite2D();
             sprite.Color = new System.Numerics.Vector4(entityData.Sprite.Color[0], entityData.Sprite.Color[1], entityData.Sprite.Color[2], entityData.Sprite.Color[3]);
+            if (!string.IsNullOrEmpty(entityData.Sprite.TexturePath))
+            {
+                sprite.TexturePath = entityData.Sprite.TexturePath;
+                try
+                {
+                    sprite.Texture = new Texture2D(sprite.TexturePath);
+                }
+                catch (Exception ex)
+                {
+                    System.Console.WriteLine($"Failed to load texture '{sprite.TexturePath}': {ex.Message}");
+                }
+            }
             entity.AddComponent(sprite);
         }
 
@@ -260,11 +274,42 @@ public class SceneSerializer
         if (entityData.Scripts != null)
         {
             var scriptComp = new ScriptComponent();
+            entity.AddComponent(scriptComp);
+            
             foreach (var scriptName in entityData.Scripts.ScriptNames)
             {
                 scriptComp.ClassNames.Add(scriptName);
+                
+                string className = scriptName.EndsWith(".cs") ? scriptName.Substring(0, scriptName.Length - 3) : scriptName;
+                
+                Type? scriptType = null;
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    scriptType = assembly.GetTypes().FirstOrDefault(t => t.Name == className && t.IsSubclassOf(typeof(EntityBehaviour)));
+                    if (scriptType != null)
+                    {
+                        break;
+                    }
+                }
+                
+                if (scriptType != null)
+                {
+                    try
+                    {
+                        var scriptInstance = (EntityBehaviour)Activator.CreateInstance(scriptType)!;
+                        scriptInstance.Entity = entity;
+                        scriptComp.Scripts.Add(scriptInstance);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Console.WriteLine($"Failed to instantiate script '{scriptName}': {ex.Message}");
+                    }
+                }
+                else
+                {
+                    System.Console.WriteLine($"Failed to load script '{scriptName}'. Type not found.");
+                }
             }
-            entity.AddComponent(scriptComp);
         }
 
         if (entityData.Children != null)

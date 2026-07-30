@@ -117,7 +117,13 @@ public class Project
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=""**\*.sptproj"" CopyToOutputDirectory=""PreserveNewest"" />
+    <Compile Remove=""Build\**"" />
+    <None Remove=""Build\**"" />
+    <EmbeddedResource Remove=""Build\**"" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=""**\*.sptproj"" CopyToOutputDirectory=""PreserveNewest"" Exclude=""Build\**;bin\**;obj\**"" />
     <None Include=""Assets\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
   </ItemGroup>
 </Project>";
@@ -134,6 +140,33 @@ using Spot.Scenes;
 
 namespace {Active.Config.Name.Replace(" ", "")};
 
+class LoaderScene : Scene
+{{
+    public override void OnEnter()
+    {{
+        string projectPath = ""{Active.Config.Name}.sptproj"";
+        if (Project.Load(projectPath) != null && Project.Active != null)
+        {{
+            string startScenePath = Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
+            if (File.Exists(startScenePath))
+            {{
+                var realScene = new Scene();
+                var serializer = new SceneSerializer(realScene);
+                serializer.Deserialize(startScenePath);
+                SceneManager.Load(realScene);
+            }}
+            else
+            {{
+                Console.WriteLine($""Start scene not found: {{startScenePath}}"");
+            }}
+        }}
+        else
+        {{
+            Console.WriteLine(""Warning: Could not load project configuration."");
+        }}
+    }}
+}}
+
 class Program
 {{
     static void Main(string[] args)
@@ -147,28 +180,7 @@ class Program
         spec.Window.Height = 720;
 
         var app = new Application(spec);
-        var startScene = new Scene();
-
-        string projectPath = ""{Active.Config.Name}.sptproj"";
-        if (Project.Load(projectPath) != null && Project.Active != null)
-        {{
-            string startScenePath = Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
-            if (File.Exists(startScenePath))
-            {{
-                var serializer = new SceneSerializer(startScene);
-                serializer.Deserialize(startScenePath);
-            }}
-            else
-            {{
-                Console.WriteLine($""Start scene not found: {{startScenePath}}"");
-            }}
-        }}
-        else
-        {{
-            Console.WriteLine(""Warning: Could not load project configuration."");
-        }}
-
-        app.Run(startScene);
+        app.Run(new LoaderScene());
     }}
 }}
 ";

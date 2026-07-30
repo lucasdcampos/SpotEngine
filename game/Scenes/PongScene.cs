@@ -61,7 +61,7 @@ internal sealed class PongScene : Scene
     {
         if (_camera is not null)
         {
-            RenderSystem.Render(this, _camera);
+            RenderSystem.Render(this, _camera.ViewProjection);
         }
     }
 

@@ -21,6 +21,11 @@ public sealed class Sprite2D
     public Texture2D? Texture { get; set; }
 
     /// <summary>
+    /// Gets or sets the path to the texture file, used for serialization.
+    /// </summary>
+    public string? TexturePath { get; set; }
+
+    /// <summary>
     /// Gets or sets the color. For a textured sprite this multiplies the sampled texture (a tint);
     /// for an untextured sprite it is the fill color. Defaults to opaque white.
     /// </summary>

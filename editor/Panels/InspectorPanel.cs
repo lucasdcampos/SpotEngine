@@ -129,6 +129,47 @@ public class InspectorPanel
                 if (ImGui.ColorEdit4("Color", ref color))
                     sprite.Color = color;
                     
+                ImGui.Button(sprite.Texture != null ? "Texture Loaded (Drop to change)" : "Drop Texture Here", new System.Numerics.Vector2(-1, 30));
+                if (ImGui.BeginDragDropTarget())
+                {
+                    unsafe
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
+                        if (payload.NativePtr != null)
+                        {
+                            string filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                            if (filepath != null)
+                            {
+                                try
+                                {
+                                    var newTexture = new Texture2D(filepath);
+                                    if (sprite.Texture != null)
+                                    {
+                                        sprite.Texture.Dispose();
+                                    }
+                                    sprite.Texture = newTexture;
+                                    sprite.TexturePath = filepath;
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Console.WriteLine($"Failed to load texture: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                    ImGui.EndDragDropTarget();
+                }
+
+                if (sprite.Texture != null)
+                {
+                    if (ImGui.Button("Remove Texture", new System.Numerics.Vector2(-1, 24)))
+                    {
+                        sprite.Texture.Dispose();
+                        sprite.Texture = null;
+                        sprite.TexturePath = null;
+                    }
+                }
+                    
                 ImGui.TreePop();
             }
             

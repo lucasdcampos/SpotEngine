@@ -230,15 +230,29 @@ public class AssetBrowserPanel
             }
         }
 
-        // Drag files as script payloads (consumed by the Inspector for ScriptComponent).
+        // Drag files as payloads (consumed by the Inspector).
         if (!entry.IsDirectory && ImGui.BeginDragDropSource())
         {
-            var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");
-            unsafe
+            if (entry.Kind == AssetKind.Image)
             {
-                fixed (byte* p = payloadBytes)
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
                 {
-                    ImGui.SetDragDropPayload("SCRIPT_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("IMAGE_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
+            else
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("SCRIPT_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
                 }
             }
             ImGui.Text(entry.Name);

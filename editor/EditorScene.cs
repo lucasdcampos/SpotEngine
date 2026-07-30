@@ -448,6 +448,16 @@ public class EditorScene : Scene
         }
 
         UpdateSceneStatus();
+
+        var lastLine = Spot.Core.Application.Instance.Console.LastLine;
+        if (lastLine != null)
+        {
+            var viewport = ImGui.GetMainViewport();
+            ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X + 10, viewport.WorkPos.Y + viewport.WorkSize.Y - 30));
+            ImGui.Begin("StatusOverlay", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
+            ImGui.TextColored(lastLine.Value.Color, lastLine.Value.Text);
+            ImGui.End();
+        }
     }
 
     private void CreateProject(string name, string location)
@@ -458,6 +468,59 @@ public class EditorScene : Scene
         _context.ActiveScene = new Scene();
         _context.Selection = null;
         _currentScenePath = null;
+    }
+
+    private void BuildProject()
+    {
+        if (Project.Active == null || string.IsNullOrEmpty(Project.Active.ProjectDirectory)) return;
+        
+        Spot.Core.Log.Info("Starting build process...");
+        Project.GenerateCSProject();
+        string buildDir = System.IO.Path.Combine(Project.Active.ProjectDirectory, "Build");
+        
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                string csprojFile = $"{Project.Active.Config.Name}.csproj";
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"publish \"{csprojFile}\" -c Release -o \"{buildDir}\"",
+                    WorkingDirectory = Project.Active.ProjectDirectory,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                processInfo.RedirectStandardOutput = true;
+                processInfo.RedirectStandardError = true;
+
+                var process = new System.Diagnostics.Process { StartInfo = processInfo };
+                process.OutputDataReceived += (sender, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) Spot.Core.Log.Info(e.Data); };
+                process.ErrorDataReceived += (sender, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) Spot.Core.Log.Error(e.Data); };
+
+                if (process.Start())
+                {
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    process.WaitForExit();
+
+                    if (process.ExitCode == 0)
+                    {
+                        Spot.Core.Log.Info("Build completed successfully!");
+                        System.Diagnostics.Process.Start("explorer.exe", $"\"{buildDir}\"");
+                    }
+                    else
+                    {
+                        Spot.Core.Log.Error($"Build failed with exit code {process.ExitCode}. See above for details.");
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Spot.Core.Log.Error($"Failed to build project: {ex.Message}");
+            }
+        });
     }
 
     public override void OnExit()
@@ -537,6 +600,7 @@ public class EditorScene : Scene
             if (Project.Active != null)
             {
                 ImGui.Separator();
+                if (ImGui.MenuItem("Build Game (Release)")) BuildProject();
                 if (ImGui.BeginMenu("Regenerate Project Files"))
                 {
                     if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)")) Project.GenerateCSProject(overwriteProgram: false);
@@ -654,8 +718,8 @@ public class EditorScene : Scene
     // Keyboard shortcuts handled once per frame (editor/edit mode only).
     private void HandleShortcuts()
     {
-        var io = ImGui.GetIO();
-        if (_state == EditorState.Edit && io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.S, repeat: false))
+        bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
         {
             SaveScene();
         }

@@ -84,6 +84,9 @@ public sealed class DevConsole
     /// </summary>
     public bool IsOpen => _open;
 
+    /// <summary>Gets the most recently printed line, if any.</summary>
+    public ConsoleLine? LastLine => _lines.Count > 0 ? _lines[^1] : null;
+
     /// <summary>
     /// Toggles the visibility of the console.
     /// </summary>
@@ -323,9 +326,9 @@ public sealed class DevConsole
         return 0;
     }
 
-    private readonly struct ConsoleLine
+    public readonly struct ConsoleLine
     {
-        public ConsoleLine(string text, Vector4 color)
+        public ConsoleLine(string text, System.Numerics.Vector4 color)
         {
             Text = text;
             Color = color;
