@@ -74,12 +74,19 @@ public class Project
             Directory.CreateDirectory(engineBinDir);
         }
 
-        string sourceDllPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Spot.Engine.dll"));
+        string sourceDllPath = typeof(Project).Assembly.Location;
         string targetDllPath = Path.Combine(engineBinDir, "Spot.Engine.dll");
 
-        if (File.Exists(sourceDllPath))
+        try
         {
-            File.Copy(sourceDllPath, targetDllPath, overwrite: true);
+            if (File.Exists(sourceDllPath))
+            {
+                File.Copy(sourceDllPath, targetDllPath, overwrite: true);
+            }
+        }
+        catch
+        {
+            // Ignore if file is locked or fails
         }
 
         string csprojPath = Path.Combine(Active.ProjectDirectory, Active.Config.Name + ".csproj");
