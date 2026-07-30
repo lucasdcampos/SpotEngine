@@ -68,9 +68,22 @@ public class Project
     {
         if (Active == null || string.IsNullOrEmpty(Active.ProjectDirectory)) return;
 
+        string engineBinDir = Path.Combine(Active.ProjectDirectory, "EngineBin");
+        if (!Directory.Exists(engineBinDir))
+        {
+            Directory.CreateDirectory(engineBinDir);
+        }
+
+        string sourceDllPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Spot.Engine.dll"));
+        string targetDllPath = Path.Combine(engineBinDir, "Spot.Engine.dll");
+
+        if (File.Exists(sourceDllPath))
+        {
+            File.Copy(sourceDllPath, targetDllPath, overwrite: true);
+        }
+
         string csprojPath = Path.Combine(Active.ProjectDirectory, Active.Config.Name + ".csproj");
-        string engineDllPath = Path.GetFullPath(Path.Combine(Environment.CurrentDirectory, "Spot.Engine.dll"));
-        
+
         string csprojContent = $@"<Project Sdk=""Microsoft.NET.Sdk"">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -82,8 +95,18 @@ public class Project
 
   <ItemGroup>
     <Reference Include=""Spot.Engine"">
-      <HintPath>{engineDllPath}</HintPath>
+      <HintPath>EngineBin\Spot.Engine.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include=""Serilog"" Version=""4.4.0"" />
+    <PackageReference Include=""Serilog.Sinks.Console"" Version=""6.1.1"" />
+    <PackageReference Include=""Silk.NET.Input"" Version=""2.23.0"" />
+    <PackageReference Include=""Silk.NET.OpenGL"" Version=""2.23.0"" />
+    <PackageReference Include=""Silk.NET.OpenGL.Extensions.ImGui"" Version=""2.23.0"" />
+    <PackageReference Include=""Silk.NET.Windowing"" Version=""2.23.0"" />
+    <PackageReference Include=""StbImageSharp"" Version=""2.30.15"" />
   </ItemGroup>
 
   <ItemGroup>
