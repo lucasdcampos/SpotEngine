@@ -5,6 +5,7 @@ using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
 using Spot.Editor.Scenes;
+using Spot.Editor.UI;
 
 namespace Spot.Editor;
 
@@ -46,10 +47,20 @@ public class EditorScene : Scene
         _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
+
+        _hierarchyPanel.OnEntityDoubleClicked += entity =>
+        {
+            if (entity.HasComponent<Transform>())
+            {
+                _editorCamera.Focus(entity.GetComponent<Transform>().WorldPosition);
+            }
+        };
     }
 
     public override void OnEnter()
     {
+        EditorThemeManager.SetTheme(EditorThemes.SpotDark);
+
         _framebuffer = new Framebuffer(1280, 720);
         _gameFramebuffer = new Framebuffer(1280, 720);
         
@@ -89,7 +100,24 @@ public class EditorScene : Scene
         Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         Renderer.Clear();
         
-        RenderSystem.Render(_context.ActiveScene, _editorCamera.Camera);
+        if (_editorCamera.Is3D)
+            Renderer.SetDepthTest(true);
+            
+        RenderSystem.Render(_context.ActiveScene, _editorCamera.ViewProjection);
+        
+        // Draw Axes
+        var palette = EditorThemeManager.Current.Palette;
+        Renderer2D.BeginScene(_editorCamera.ViewProjection);
+        Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, 0.05f); // X
+        Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, 0.05f); // Y
+        if (_editorCamera.Is3D)
+        {
+            Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, 0.05f); // Z
+        }
+        Renderer2D.EndScene();
+
+        if (_editorCamera.Is3D)
+            Renderer.SetDepthTest(false);
         
         // Debug Physics Rendering
         if (_context.Selection.HasValue)
@@ -97,7 +125,7 @@ public class EditorScene : Scene
             var selectedEntity = _context.Selection.Value;
             if (selectedEntity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && selectedEntity.HasComponent<Transform>())
             {
-                Renderer2D.BeginScene(_editorCamera.Camera);
+                Renderer2D.BeginScene(_editorCamera.ViewProjection);
                 
                 var transform = selectedEntity.GetComponent<Transform>();
                 var collider = selectedEntity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
@@ -115,8 +143,9 @@ public class EditorScene : Scene
         // Render Game View
         _gameFramebuffer.Bind();
         
-        OrthographicCamera? gameCamera = null;
+        System.Numerics.Matrix4x4? viewProjection = null;
         Vector4 clearColor = new Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+        bool is3D = false;
         
         foreach (var entity in _context.ActiveScene.View<CameraComponent>())
         {
@@ -126,10 +155,9 @@ public class EditorScene : Scene
                 if (entity.HasComponent<Transform>())
                 {
                     var transform = entity.GetComponent<Transform>();
-                    cc.Camera.Position = transform.WorldPosition;
-                    cc.Camera.Rotation = transform.WorldRotation.Z;
+                    viewProjection = cc.GetViewProjection(transform);
+                    is3D = cc.Is3D;
                 }
-                gameCamera = cc.Camera;
                 clearColor = cc.BackgroundColor;
                 break;
             }
@@ -138,9 +166,15 @@ public class EditorScene : Scene
         Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
         Renderer.Clear();
 
-        if (gameCamera != null)
+        if (viewProjection.HasValue)
         {
-            RenderSystem.Render(_context.ActiveScene, gameCamera);
+            if (is3D)
+                Renderer.SetDepthTest(true);
+                
+            RenderSystem.Render(_context.ActiveScene, viewProjection.Value);
+            
+            if (is3D)
+                Renderer.SetDepthTest(false);
         }
         
         _gameFramebuffer.Unbind();
@@ -162,14 +196,27 @@ public class EditorScene : Scene
         ImGui.SetNextWindowPos(new Vector2(workPos.X, workPos.Y));
         ImGui.SetNextWindowSize(new Vector2(workSize.X, toolbarHeight));
         ImGui.Begin("##Toolbar", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoScrollbar);
-        
+
+        // Center the play/stop control in the toolbar.
+        var palette = EditorThemeManager.Current.Palette;
+        float buttonWidth = 90.0f;
+        ImGui.SetCursorPosX((workSize.X - buttonWidth) * 0.5f);
+
         if (_state == EditorState.Edit)
         {
-            if (ImGui.Button("Play")) { OnPlay(); }
+            ImGui.PushStyleColor(ImGuiCol.Button, palette.Accent);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, palette.AccentHovered);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, palette.AccentActive);
+            if (ImGui.Button("Play", new Vector2(buttonWidth, 0))) { OnPlay(); }
+            ImGui.PopStyleColor(3);
         }
         else
         {
-            if (ImGui.Button("Stop")) { OnStop(); }
+            ImGui.PushStyleColor(ImGuiCol.Button, palette.LogError);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.45f, 0.45f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.85f, 0.25f, 0.25f, 1.0f));
+            if (ImGui.Button("Stop", new Vector2(buttonWidth, 0))) { OnStop(); }
+            ImGui.PopStyleColor(3);
         }
         ImGui.End();
 

@@ -45,9 +45,17 @@ public sealed class DevConsole
 {
     private const int MaxLines = 500;
 
-    private static readonly Vector4 DefaultColor = new(0.9f, 0.9f, 0.9f, 1.0f);
-    private static readonly Vector4 CommandColor = new(0.85f, 0.85f, 0.2f, 1.0f);
-    private static readonly Vector4 ErrorColor = new(1.0f, 0.35f, 0.35f, 1.0f);
+    /// <summary>
+    /// Gets or sets the color used for regular console output. Exposed so the editor's theming can
+    /// override it; the engine keeps a sensible default so the console works standalone.
+    /// </summary>
+    public static Vector4 DefaultTextColor { get; set; } = new(0.9f, 0.9f, 0.9f, 1.0f);
+
+    /// <summary>Gets or sets the color used to echo entered commands.</summary>
+    public static Vector4 CommandColor { get; set; } = new(0.85f, 0.85f, 0.2f, 1.0f);
+
+    /// <summary>Gets or sets the color used for error output.</summary>
+    public static Vector4 ErrorColor { get; set; } = new(1.0f, 0.35f, 0.35f, 1.0f);
 
     private readonly Dictionary<string, CommandInfo> _commands = new();
     private readonly List<ConsoleLine> _lines = new();
@@ -134,7 +142,7 @@ public sealed class DevConsole
             return ErrorColor;
         }
 
-        return DefaultColor;
+        return DefaultTextColor;
     }
 
     /// <summary>
@@ -179,18 +187,14 @@ public sealed class DevConsole
         ImGui.SetNextWindowSize(new Vector2(viewport.Size.X * 0.6f, viewport.Size.Y * 0.45f), ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X + 20.0f, viewport.Pos.Y + 20.0f), ImGuiCond.FirstUseEver);
 
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.08f, 0.08f, 0.08f, 0.95f));
-
         if (!ImGui.Begin("Developer Console", ref _open, ImGuiWindowFlags.NoCollapse))
         {
-            ImGui.PopStyleColor();
             ImGui.End();
             return;
         }
 
         DrawContents();
 
-        ImGui.PopStyleColor();
         ImGui.End();
     }
 
@@ -228,10 +232,8 @@ public sealed class DevConsole
             _justOpened = false;
         }
 
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.15f, 0.15f, 0.15f, 1.0f));
         ImGui.SetNextItemWidth(-1.0f);
         bool submitted = ImGui.InputText("##input", _inputBuf, (uint)_inputBuf.Length, inputFlags, _textEditCallback);
-        ImGui.PopStyleColor();
 
         if (submitted)
         {
