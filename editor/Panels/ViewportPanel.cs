@@ -99,7 +99,18 @@ public class ViewportPanel
                         if (ImGui.IsKeyPressed(ImGuiKey.R)) _gizmo.Mode = GizmoMode.Scale;
                     }
                 }
-                
+
+                // --- CLICK TO SELECT ---
+                // A left click that is not consumed by a gizmo handle picks the entity under the
+                // cursor (or clears the selection when nothing is hit). The camera uses the middle/
+                // right buttons, so the left button is free for selection.
+                if (isHovered && !_gizmo.IsUsing && _context.ActiveScene != null
+                    && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    _context.Selection = ScenePicker.Pick(
+                        _context.ActiveScene, _camera.ViewProjection, io.MousePos, cursorPos, viewportSize);
+                }
+
                 // --- CAMERA CONTROLS ---
                 if (isHovered && !_gizmo.IsUsing)
                 {
