@@ -15,10 +15,10 @@ public class InspectorPanel
         _context = context;
     }
 
-    public void OnImGuiRender()
+    public void OnImGuiRender(ref bool open)
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
-        ImGui.Begin("Inspector", flags);
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
+        ImGui.Begin("Inspector", ref open, flags);
 
         if (_context.Selection != null)
         {

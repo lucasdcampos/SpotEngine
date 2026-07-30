@@ -125,6 +125,7 @@ public class Application
         }
 
         _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input, fontConfig);
+        ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         ImGui.StyleColorsDark();
 
         _running = true;
