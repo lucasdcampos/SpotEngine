@@ -51,10 +51,14 @@ public class AssetBrowserPanel
     private string _renameBuffer = "";
     private bool _isDeleting;
     private string _deleteTarget = "";
+    private bool _isCreatingScene;
+    private string _newSceneName = "";
 
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
+
+    public Action<string>? OnAssetOpened;
 
     public AssetBrowserPanel(EditorContext context)
     {
@@ -226,7 +230,8 @@ public class AssetBrowserPanel
             }
             else
             {
-                OpenExternally(entry.FullPath);
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
             }
         }
 
@@ -356,6 +361,7 @@ public class AssetBrowserPanel
         if (ImGui.MenuItem(entry.IsDirectory ? "Open" : "Open Externally"))
         {
             if (entry.IsDirectory) _pendingNavigate = entry.FullPath;
+            else if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
             else OpenExternally(entry.FullPath);
         }
         if (ImGui.MenuItem("Show in Explorer"))
@@ -395,6 +401,11 @@ public class AssetBrowserPanel
             _isCreatingScript = true;
             _newScriptName = "NewScript.cs";
         }
+        if (ImGui.MenuItem("New Scene"))
+        {
+            _isCreatingScene = true;
+            _newSceneName = "NewScene.sptscene";
+        }
         ImGui.Separator();
         if (ImGui.MenuItem("Open in Explorer"))
         {
@@ -407,11 +418,13 @@ public class AssetBrowserPanel
     {
         if (_isCreatingScript) ImGui.OpenPopup("Create New Script");
         if (_isCreatingFolder) ImGui.OpenPopup("Create New Folder");
+        if (_isCreatingScene) ImGui.OpenPopup("Create New Scene");
         if (_isRenaming) ImGui.OpenPopup("Rename");
         if (_isDeleting) ImGui.OpenPopup("Delete Asset");
 
         DrawTextEntryModal("Create New Script", "Name", ref _isCreatingScript, ref _newScriptName, CreateScript);
         DrawTextEntryModal("Create New Folder", "Name", ref _isCreatingFolder, ref _newFolderName, CreateFolder);
+        DrawTextEntryModal("Create New Scene", "Name", ref _isCreatingScene, ref _newSceneName, CreateScene);
         DrawTextEntryModal("Rename", "New name", ref _isRenaming, ref _renameBuffer, name => RenameEntry(_renameTarget, name));
 
         bool deleteOpen = true;
@@ -575,6 +588,18 @@ public class {className} : EntityBehaviour
         if (string.IsNullOrWhiteSpace(name)) return;
         string path = Path.Combine(_currentDirectory, name.Trim());
         try { Directory.CreateDirectory(path); } catch { }
+    }
+
+    private void CreateScene(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptscene")) name += ".sptscene";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+        
+        var newScene = new Spot.Scenes.Scene();
+        new Spot.Scenes.SceneSerializer(newScene).Serialize(filepath);
     }
 
     private void RenameEntry(string fullPath, string newName)
