@@ -6,7 +6,7 @@ namespace Spot.Core;
 public class ProjectConfig
 {
     public string Name { get; set; } = "New Project";
-    public string StartScene { get; set; } = "Assets/Scenes/Main.sptscene";
+    public string StartScene { get; set; } = "Scenes/Main.sptscene";
     public string AssetDirectory { get; set; } = "Assets";
 }
 
@@ -152,7 +152,7 @@ class Program
         string projectPath = ""{Active.Config.Name}.sptproj"";
         if (Project.Load(projectPath) != null && Project.Active != null)
         {{
-            string startScenePath = Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.StartScene);
+            string startScenePath = Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
             if (File.Exists(startScenePath))
             {{
                 var serializer = new SceneSerializer(startScene);
