@@ -58,6 +58,15 @@ public class AssetBrowserPanel
         }
         
         ImGui.Text(_currentDirectory);
+        ImGui.SameLine();
+        if (ImGui.Button("Open in Explorer"))
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _currentDirectory,
+                UseShellExecute = true
+            });
+        }
         ImGui.Separator();
 
         ImGui.BeginChild("AssetList");
