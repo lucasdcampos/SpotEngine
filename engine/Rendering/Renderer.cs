@@ -44,6 +44,18 @@ public static class Renderer
     public static void Clear() => Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
     /// <summary>
+    /// Enables or disables depth testing.
+    /// </summary>
+    /// <param name="enable">Whether depth testing should be enabled.</param>
+    public static void SetDepthTest(bool enable)
+    {
+        if (enable)
+            Gl.Enable(EnableCap.DepthTest);
+        else
+            Gl.Disable(EnableCap.DepthTest);
+    }
+
+    /// <summary>
     /// Sets the rendering viewport.
     /// </summary>
     /// <param name="x">The lower-left x coordinate, in pixels.</param>

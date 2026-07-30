@@ -134,12 +134,12 @@ public static class Renderer2D
     }
 
     /// <summary>
-    /// Begins a batch of 2D geometry rendered through the given camera.
+    /// Begins a batch of 2D geometry rendered with the given view-projection matrix.
     /// </summary>
-    /// <param name="camera">The camera whose view-projection the quads are drawn with.</param>
-    public static void BeginScene(OrthographicCamera camera)
+    /// <param name="viewProjection">The view-projection matrix to use for this batch.</param>
+    public static void BeginScene(Matrix4x4 viewProjection)
     {
-        s_viewProjection = camera.ViewProjection;
+        s_viewProjection = viewProjection;
         StartBatch();
     }
 
@@ -232,6 +232,40 @@ public static class Renderer2D
         DrawQuad(position - new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
         // Right
         DrawQuad(position + new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
+    }
+
+    /// <summary>
+    /// Draws a line between two points in 3D space using a stretched quad.
+    /// </summary>
+    public static void DrawLine(Vector3 p0, Vector3 p1, Vector4 color, float thickness = 0.05f)
+    {
+        Vector3 dir = p1 - p0;
+        float length = dir.Length();
+        if (length == 0.0f) return;
+        dir /= length;
+
+        Vector3 center = (p0 + p1) * 0.5f;
+
+        Vector3 right = Vector3.UnitX;
+        float dot = Vector3.Dot(right, dir);
+        
+        Matrix4x4 rotation;
+        if (dot > 0.9999f)
+            rotation = Matrix4x4.Identity;
+        else if (dot < -0.9999f)
+            rotation = Matrix4x4.CreateRotationZ(MathF.PI);
+        else
+        {
+            Vector3 axis = Vector3.Normalize(Vector3.Cross(right, dir));
+            float angle = MathF.Acos(dot);
+            rotation = Matrix4x4.CreateFromAxisAngle(axis, angle);
+        }
+
+        Matrix4x4 transform1 = Matrix4x4.CreateScale(length, thickness, thickness) * rotation * Matrix4x4.CreateTranslation(center);
+        DrawQuad(transform1, color);
+
+        Matrix4x4 transform2 = Matrix4x4.CreateScale(length, thickness, thickness) * Matrix4x4.CreateRotationX(MathF.PI / 2.0f) * rotation * Matrix4x4.CreateTranslation(center);
+        DrawQuad(transform2, color);
     }
 
     private static Texture2D WhiteTexture =>

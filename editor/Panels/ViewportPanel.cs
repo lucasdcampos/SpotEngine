@@ -10,6 +10,7 @@ public class ViewportPanel
 {
     private readonly EditorContext _context;
     private Framebuffer? _framebuffer;
+    private Framebuffer? _cameraPreviewFramebuffer;
     private EditorCamera? _camera;
     private bool _isDraggingX = false;
     private bool _isDraggingY = false;
@@ -22,6 +23,11 @@ public class ViewportPanel
     public void SetFramebuffer(Framebuffer framebuffer)
     {
         _framebuffer = framebuffer;
+    }
+    
+    public void SetCameraPreviewFramebuffer(Framebuffer framebuffer)
+    {
+        _cameraPreviewFramebuffer = framebuffer;
     }
 
     public void SetCamera(EditorCamera camera)
@@ -50,6 +56,22 @@ public class ViewportPanel
                 if (ImGui.Button(_camera.Is3D ? "3D Mode" : "2D Mode"))
                 {
                     _camera.ToggleMode();
+                }
+
+                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
+                {
+                    // Render Camera Preview in bottom right
+                    float previewWidth = 320;
+                    float previewHeight = 180;
+                    
+                    var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 20, previewHeight + 20);
+                    
+                    // Draw a small background/border for it
+                    var drawList = ImGui.GetWindowDrawList();
+                    drawList.AddRectFilled(previewPos - new Vector2(2, 2), previewPos + new Vector2(previewWidth + 2, previewHeight + 2), ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f)));
+                    drawList.AddImage((IntPtr)_cameraPreviewFramebuffer.ColorAttachment, previewPos, previewPos + new Vector2(previewWidth, previewHeight), new Vector2(0, 1), new Vector2(1, 0));
+                    
+                    drawList.AddText(previewPos + new Vector2(5, 5), ImGui.GetColorU32(new Vector4(1, 1, 1, 1)), "Camera Preview");
                 }
 
                 var io = ImGui.GetIO();
