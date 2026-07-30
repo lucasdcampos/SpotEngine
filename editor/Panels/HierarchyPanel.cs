@@ -7,6 +7,7 @@ namespace Spot.Editor.Panels;
 
 public class HierarchyPanel
 {
+    public Action<Entity>? OnEntityDoubleClicked;
     private readonly EditorContext _context;
 
     public HierarchyPanel(EditorContext context)
@@ -55,14 +56,48 @@ public class HierarchyPanel
             {
                 if (ImGui.MenuItem("Create Empty Entity"))
                 {
-                    var entity = _context.ActiveScene.Instantiate("Empty Entity");
-                    _context.Selection = entity;
+                    CreateEmpty();
+                }
+                if (ImGui.MenuItem("Create Camera"))
+                {
+                    CreateCamera();
+                }
+                if (ImGui.MenuItem("Create Sprite"))
+                {
+                    CreateSprite();
                 }
                 ImGui.EndPopup();
             }
         }
 
         ImGui.End();
+    }
+
+    /// <summary>Creates an empty entity, selects it, and returns it.</summary>
+    public Entity CreateEmpty() => CreateEntity("Empty Entity");
+
+    /// <summary>Creates an entity with a <see cref="CameraComponent"/>, selects it, and returns it.</summary>
+    public Entity CreateCamera()
+    {
+        var entity = CreateEntity("Camera");
+        entity.AddComponent(new CameraComponent());
+        return entity;
+    }
+
+    /// <summary>Creates an entity with a <see cref="Sprite2D"/> component, selects it, and returns it.</summary>
+    public Entity CreateSprite()
+    {
+        var entity = CreateEntity("Sprite");
+        entity.AddComponent(new Sprite2D());
+        return entity;
+    }
+
+    // Creates a new root entity, selects it, and returns it so callers can attach extra components.
+    private Entity CreateEntity(string name)
+    {
+        var entity = _context.ActiveScene!.Instantiate(name);
+        _context.Selection = entity;
+        return entity;
     }
 
     private void DrawEntityNode(Entity entity)
@@ -80,6 +115,11 @@ public class HierarchyPanel
         if (ImGui.IsItemClicked())
         {
             _context.Selection = entity;
+        }
+        
+        if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+        {
+            OnEntityDoubleClicked?.Invoke(entity);
         }
 
         // Drag Source
