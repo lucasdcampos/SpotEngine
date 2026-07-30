@@ -108,6 +108,8 @@ public class Application
         _gl = GL.GetApi(_window.NativeWindow);
         Renderer.Init(_gl);
         Renderer2D.Init();
+        Renderer3D.Init();
+        Spot.Assets.ModelImporter.Register(new Spot.Assets.AssimpModelImporter());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
 

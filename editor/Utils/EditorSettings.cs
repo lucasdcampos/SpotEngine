@@ -12,11 +12,14 @@ public class EditorWindowSettings
     public int PosX { get; set; } = -1;
     public int PosY { get; set; } = -1;
     public bool Maximized { get; set; } = false;
+    public bool Is3DMode { get; set; } = true;
 }
 
 public static class EditorSettings
 {
     private static readonly string SettingsFile = "editor_window.json";
+    
+    public static bool GlobalIs3DMode { get; set; } = true;
 
     public static void LoadAndApply(IWindow window)
     {
@@ -37,6 +40,7 @@ public static class EditorSettings
                         window.Position = new Vector2D<int>(settings.PosX, settings.PosY);
                     }
                     window.WindowState = settings.Maximized ? WindowState.Maximized : WindowState.Normal;
+                    GlobalIs3DMode = settings.Is3DMode;
                 }
             }
             catch { }
@@ -53,7 +57,8 @@ public static class EditorSettings
                 Height = window.Size.Y,
                 PosX = window.Position.X,
                 PosY = window.Position.Y,
-                Maximized = window.WindowState == WindowState.Maximized
+                Maximized = window.WindowState == WindowState.Maximized,
+                Is3DMode = GlobalIs3DMode
             };
             
             // If the window is minimized or hidden when closing, we don't want to save that as normal size/pos
