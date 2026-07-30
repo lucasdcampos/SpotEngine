@@ -48,6 +48,17 @@ public class EditorScene : Scene
     private int _dirtyCheckCounter;
     private string? _lastWindowTitle;
 
+    // Per-panel visibility, toggled from View > Panels and by each window's close button.
+    private bool _showScene = true;
+    private bool _showGame = true;
+    private bool _showHierarchy = true;
+    private bool _showInspector = true;
+    private bool _showConsole = true;
+    private bool _showAssetBrowser = true;
+
+    // When set, the default docked layout is rebuilt on the next frame (first launch / Reset Layout).
+    private bool _rebuildDefaultLayout = true;
+
     public EditorScene()
     {
         _hierarchyPanel = new HierarchyPanel(_context);
@@ -291,38 +302,43 @@ public class EditorScene : Scene
 
         DrawMenuBar();
 
-        var viewport = ImGui.GetMainViewport();
-        var workPos = viewport.WorkPos;
-        var workSize = viewport.WorkSize;
+        // Full-viewport dockspace so every editor panel can be docked, resized and rearranged.
+        // The resulting layout is persisted across runs via imgui.ini.
+        uint dockspaceId = ImGui.DockSpaceOverViewport();
 
-        // The play/stop control now lives in the main menu bar (see DrawMenuBar), so the panels
-        // start right below it with no separate toolbar strip.
-        var mainPos = workPos;
-        float hierarchyWidth = 300;
-        float inspectorWidth = 300;
-        float consoleHeight = 200;
-
-        float middleWidth = workSize.X - hierarchyWidth - inspectorWidth;
-        float middleHeight = workSize.Y - consoleHeight;
-
-        ImGui.SetNextWindowPos(new Vector2(mainPos.X, mainPos.Y));
-        ImGui.SetNextWindowSize(new Vector2(hierarchyWidth, middleHeight));
-        _hierarchyPanel.OnImGuiRender();
-
-        ImGui.SetNextWindowPos(new Vector2(mainPos.X + hierarchyWidth, mainPos.Y));
-        ImGui.SetNextWindowSize(new Vector2(middleWidth, middleHeight));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
-        ImGui.Begin("Viewports", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoTitleBar);
-        ImGui.PopStyleVar();
-
-        if (ImGui.BeginTabBar("ViewportTabs"))
+        // First launch (no imgui.ini) or an explicit Reset Layout: arrange the panels into the
+        // default docked layout. DockBuilder must run after the dockspace is submitted this frame.
+        if (_rebuildDefaultLayout)
         {
-            if (ImGui.BeginTabItem("Scene"))
+            _rebuildDefaultLayout = false;
+            BuildDefaultLayout(dockspaceId, ImGui.GetMainViewport().WorkSize);
+        }
+
+        // Each panel is now an independent dockable window: closable via its title-bar 'x' and
+        // reopenable from View > Panels. The 'ref' visibility flag also drives the close button.
+        if (_showHierarchy)
+        {
+            _hierarchyPanel.OnImGuiRender(ref _showHierarchy);
+        }
+
+        if (_showScene)
+        {
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
+            bool open = ImGui.Begin("Scene", ref _showScene, ImGuiWindowFlags.NoCollapse);
+            ImGui.PopStyleVar();
+            if (open)
             {
                 _viewportPanel.OnImGuiRender(handleInput: true);
-                ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Game"))
+            ImGui.End();
+        }
+
+        if (_showGame)
+        {
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
+            bool open = ImGui.Begin("Game", ref _showGame, ImGuiWindowFlags.NoCollapse);
+            ImGui.PopStyleVar();
+            if (open)
             {
                 var size = ImGui.GetContentRegionAvail();
                 if (size.X > 0 && size.Y > 0 && _context.ActiveScene != null)
@@ -337,39 +353,36 @@ public class EditorScene : Scene
                         }
                     }
                 }
-                
+
                 _gamePanel.OnImGuiRender(handleInput: false);
-                ImGui.EndTabItem();
             }
-            ImGui.EndTabBar();
+            ImGui.End();
         }
-        ImGui.End();
 
-        ImGui.SetNextWindowPos(new Vector2(mainPos.X + hierarchyWidth + middleWidth, mainPos.Y));
-        ImGui.SetNextWindowSize(new Vector2(inspectorWidth, middleHeight));
-        _inspectorPanel.OnImGuiRender();
-
-        ImGui.SetNextWindowPos(new Vector2(mainPos.X, mainPos.Y + middleHeight));
-        ImGui.SetNextWindowSize(new Vector2(workSize.X, consoleHeight));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
-        ImGui.Begin("BottomPanels", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoTitleBar);
-        ImGui.PopStyleVar();
-
-        if (ImGui.BeginTabBar("BottomTabs"))
+        if (_showInspector)
         {
-            if (ImGui.BeginTabItem("Console"))
+            _inspectorPanel.OnImGuiRender(ref _showInspector);
+        }
+
+        if (_showConsole)
+        {
+            bool open = ImGui.Begin("Console", ref _showConsole, ImGuiWindowFlags.NoCollapse);
+            if (open)
             {
                 _consolePanel.OnImGuiRender(asWindow: false);
-                ImGui.EndTabItem();
             }
-            if (ImGui.BeginTabItem("Asset Browser"))
+            ImGui.End();
+        }
+
+        if (_showAssetBrowser)
+        {
+            bool open = ImGui.Begin("Asset Browser", ref _showAssetBrowser, ImGuiWindowFlags.NoCollapse);
+            if (open)
             {
                 _assetBrowserPanel.OnImGuiRender(asWindow: false);
-                ImGui.EndTabItem();
             }
-            ImGui.EndTabBar();
+            ImGui.End();
         }
-        ImGui.End();
 
         if (_isCreatingProject)
         {
@@ -478,6 +491,29 @@ public class EditorScene : Scene
         }
     }
 
+    // Rebuilds the default docked arrangement: Hierarchy on the left, Inspector on the right,
+    // Console/Asset Browser tabbed along the bottom, and the Scene/Game viewports in the center.
+    private static void BuildDefaultLayout(uint dockspaceId, Vector2 size)
+    {
+        ImGuiDock.igDockBuilderRemoveNode(dockspaceId);
+        ImGuiDock.igDockBuilderAddNode(dockspaceId, ImGuiDock.DockNodeFlagsDockSpace);
+        ImGuiDock.igDockBuilderSetNodeSize(dockspaceId, size);
+
+        uint center = dockspaceId;
+        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Left, 0.20f, out uint left, out center);
+        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Right, 0.25f, out uint right, out center);
+        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.25f, out uint bottom, out center);
+
+        ImGuiDock.igDockBuilderDockWindow("Hierarchy", left);
+        ImGuiDock.igDockBuilderDockWindow("Inspector", right);
+        ImGuiDock.igDockBuilderDockWindow("Console", bottom);
+        ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottom);
+        ImGuiDock.igDockBuilderDockWindow("Scene", center);
+        ImGuiDock.igDockBuilderDockWindow("Game", center);
+
+        ImGuiDock.igDockBuilderFinish(dockspaceId);
+    }
+
     private void DrawMenuBar()
     {
         if (!ImGui.BeginMainMenuBar())
@@ -485,7 +521,7 @@ public class EditorScene : Scene
             return;
         }
 
-        if (ImGui.BeginMenu("File"))
+        if (ImGui.BeginMenu("Scene"))
         {
             if (ImGui.MenuItem("Open Scene...")) OpenScene();
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
@@ -522,6 +558,27 @@ public class EditorScene : Scene
 
         if (ImGui.BeginMenu("View"))
         {
+            if (ImGui.BeginMenu("Panels"))
+            {
+                ImGui.MenuItem("Scene", "", ref _showScene);
+                ImGui.MenuItem("Game", "", ref _showGame);
+                ImGui.MenuItem("Hierarchy", "", ref _showHierarchy);
+                ImGui.MenuItem("Inspector", "", ref _showInspector);
+                ImGui.MenuItem("Console", "", ref _showConsole);
+                ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
+                ImGui.EndMenu();
+            }
+
+            if (ImGui.MenuItem("Reset Layout"))
+            {
+                // Bring every panel back and rebuild the default docked arrangement next frame.
+                _showScene = _showGame = _showHierarchy = true;
+                _showInspector = _showConsole = _showAssetBrowser = true;
+                _rebuildDefaultLayout = true;
+            }
+
+            ImGui.Separator();
+
             if (ImGui.BeginMenu("Theme"))
             {
                 foreach (var theme in EditorThemes.All)

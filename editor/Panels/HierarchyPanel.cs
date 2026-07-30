@@ -15,10 +15,10 @@ public class HierarchyPanel
         _context = context;
     }
 
-    public void OnImGuiRender()
+    public void OnImGuiRender(ref bool open)
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove;
-        ImGui.Begin("Hierarchy", flags);
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
+        ImGui.Begin("Hierarchy", ref open, flags);
 
         if (_context.ActiveScene != null)
         {
