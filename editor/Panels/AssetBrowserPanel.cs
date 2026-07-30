@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
 
@@ -123,7 +124,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            ImGui.TextColored(new Vector4(1, 0, 0, 1), $"Error reading directory: {ex.Message}");
+            ImGui.TextColored(EditorThemeManager.Current.Palette.LogError, $"Error reading directory: {ex.Message}");
         }
 
         if (ImGui.BeginPopupContextWindow("AssetBrowserContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))

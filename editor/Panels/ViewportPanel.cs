@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Rendering;
+using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
 
@@ -40,21 +41,28 @@ public class ViewportPanel
             
             var cursorPos = ImGui.GetCursorScreenPos();
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
+            bool isHovered = ImGui.IsItemHovered();
 
             if (handleInput && _camera != null)
             {
+                // Toggle Button overlay
+                ImGui.SetCursorScreenPos(cursorPos + new Vector2(10, 10));
+                if (ImGui.Button(_camera.Is3D ? "3D Mode" : "2D Mode"))
+                {
+                    _camera.ToggleMode();
+                }
+
                 var io = ImGui.GetIO();
-                bool isHovered = ImGui.IsItemHovered();
                 
-                // --- CUSTOM 2D GIZMO ---
-                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
+                // --- CUSTOM GIZMO (2D ONLY) ---
+                if (!_camera.Is3D && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
                 {
                     var entity = _context.Selection.Value;
                     var transform = entity.GetComponent<Transform>();
                     var drawList = ImGui.GetWindowDrawList();
 
                     float unitsPerPixel = _camera.GetUnitsPerPixel();
-                    var cameraPos = _camera.Camera.Position;
+                    var cameraPos = _camera.Position;
                     
                     Vector2 screenCenter = cursorPos + viewportSize * 0.5f;
                     Vector2 screenEntityPos = new Vector2(
@@ -99,12 +107,13 @@ public class ViewportPanel
                     }
 
                     // Drawing
-                    uint colorX = hoverX || _isDraggingX ? 0xFF00FFFF : 0xFF0000FF; // Yellow when hovered/active, Red otherwise
-                    uint colorY = hoverY || _isDraggingY ? 0xFF00FFFF : 0xFF00FF00; // Yellow when hovered/active, Green otherwise
+                    var palette = EditorThemeManager.Current.Palette;
+                    uint colorX = ImGui.GetColorU32(hoverX || _isDraggingX ? palette.GizmoHover : palette.AxisX);
+                    uint colorY = ImGui.GetColorU32(hoverY || _isDraggingY ? palette.GizmoHover : palette.AxisY);
 
                     drawList.AddLine(screenEntityPos, arrowXEnd, colorX, 3.0f);
                     drawList.AddLine(screenEntityPos, arrowYEnd, colorY, 3.0f);
-                    
+
                     // Center square
                     drawList.AddRectFilled(screenEntityPos - new Vector2(4, 4), screenEntityPos + new Vector2(4, 4), 0xFFFFFFFF);
                 }
@@ -116,10 +125,50 @@ public class ViewportPanel
                     {
                         _camera.OnMouseScroll(io.MouseWheel);
                     }
-
-                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right))
+                }
+                
+                if (!_isDraggingX && !_isDraggingY)
+                {
+                    if (_camera.Is3D && ImGui.IsMouseDown(ImGuiMouseButton.Right) && (isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0)))
                     {
-                        _camera.OnMouseDrag(io.MouseDelta);
+                        // Lock cursor
+                        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+                        if (mice.Count > 0) mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Raw;
+
+                        // 3D Mouselook
+                        _camera.MouseLook(io.MouseDelta);
+                        
+                        // 3D Movement
+                        Vector3 moveDir = Vector3.Zero;
+                        if (ImGui.IsKeyDown(ImGuiKey.W)) moveDir.Z += 1;
+                        if (ImGui.IsKeyDown(ImGuiKey.S)) moveDir.Z -= 1;
+                        if (ImGui.IsKeyDown(ImGuiKey.A)) moveDir.X -= 1;
+                        if (ImGui.IsKeyDown(ImGuiKey.D)) moveDir.X += 1;
+                        if (ImGui.IsKeyDown(ImGuiKey.E)) moveDir.Y += 1;
+                        if (ImGui.IsKeyDown(ImGuiKey.Q)) moveDir.Y -= 1;
+                        
+                        if (moveDir != Vector3.Zero)
+                        {
+                            float speed = 5.0f; // units per second
+                            if (ImGui.IsKeyDown(ImGuiKey.LeftShift)) speed = 20.0f;
+                            _camera.Move(moveDir, speed * io.DeltaTime);
+                        }
+                    }
+                    else
+                    {
+                        // Unlock cursor
+                        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+                        if (mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw)
+                        {
+                            mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Normal;
+                        }
+
+                        if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) && 
+                            (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (! _camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
+                        {
+                            // 2D/3D Pan
+                            _camera.OnMouseDrag(io.MouseDelta);
+                        }
                     }
                 }
             }

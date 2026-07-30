@@ -6,6 +6,7 @@ using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
 using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
+using ImGuiFontConfig = Silk.NET.OpenGL.Extensions.ImGui.ImGuiFontConfig;
 
 namespace Spot.Core;
 
@@ -23,6 +24,17 @@ public class ApplicationSpec
     /// Gets or sets the window specification.
     /// </summary>
     public WindowSpec Window { get; set; } = new WindowSpec();
+
+    /// <summary>
+    /// Gets or sets an optional path to a TrueType font (.ttf) used for the ImGui UI. When null or
+    /// missing on disk, ImGui's built-in default font is used instead.
+    /// </summary>
+    public string? FontPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pixel size used when loading <see cref="FontPath"/>.
+    /// </summary>
+    public int FontSize { get; set; } = 16;
 }
 
 /// <summary>
@@ -99,7 +111,20 @@ public class Application
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
 
-        _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input);
+        // Load a custom UI font when one is configured and present; otherwise fall back gracefully to
+        // ImGui's default font. The font must be supplied at controller construction because that is
+        // when the font atlas texture is built.
+        ImGuiFontConfig? fontConfig = null;
+        if (!string.IsNullOrEmpty(_spec.FontPath) && File.Exists(_spec.FontPath))
+        {
+            fontConfig = new ImGuiFontConfig(_spec.FontPath, _spec.FontSize);
+        }
+        else if (!string.IsNullOrEmpty(_spec.FontPath))
+        {
+            Log.CoreWarn("UI font not found at '{0}', using the default font.", _spec.FontPath);
+        }
+
+        _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input, fontConfig);
         ImGui.StyleColorsDark();
 
         _running = true;
