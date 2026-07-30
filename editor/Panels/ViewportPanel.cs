@@ -12,8 +12,7 @@ public class ViewportPanel
     private Framebuffer? _framebuffer;
     private Framebuffer? _cameraPreviewFramebuffer;
     private EditorCamera? _camera;
-    private bool _isDraggingX = false;
-    private bool _isDraggingY = false;
+    private readonly TransformGizmo _gizmo = new();
 
     public ViewportPanel(EditorContext context)
     {
@@ -51,12 +50,21 @@ public class ViewportPanel
 
             if (handleInput && _camera != null)
             {
-                // Toggle Button overlay
+                // Toolbar overlay: camera mode toggle followed by the gizmo mode buttons.
                 ImGui.SetCursorScreenPos(cursorPos + new Vector2(10, 10));
                 if (ImGui.Button(_camera.Is3D ? "3D Mode" : "2D Mode"))
                 {
                     _camera.ToggleMode();
                 }
+
+                ImGui.SameLine();
+                ImGui.Dummy(new Vector2(8, 0));
+                ImGui.SameLine();
+                DrawGizmoModeButton("Move", GizmoMode.Translate);
+                ImGui.SameLine();
+                DrawGizmoModeButton("Rotate", GizmoMode.Rotate);
+                ImGui.SameLine();
+                DrawGizmoModeButton("Scale", GizmoMode.Scale);
 
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
                 {
@@ -76,80 +84,32 @@ public class ViewportPanel
 
                 var io = ImGui.GetIO();
                 
-                // --- CUSTOM GIZMO (2D ONLY) ---
-                if (!_camera.Is3D && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
+                // --- TRANSFORM GIZMO (2D & 3D: translate / rotate / scale) ---
+                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
                 {
-                    var entity = _context.Selection.Value;
-                    var transform = entity.GetComponent<Transform>();
-                    var drawList = ImGui.GetWindowDrawList();
+                    var transform = _context.Selection.Value.GetComponent<Transform>();
+                    _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered);
 
-                    float unitsPerPixel = _camera.GetUnitsPerPixel();
-                    var cameraPos = _camera.Position;
-                    
-                    Vector2 screenCenter = cursorPos + viewportSize * 0.5f;
-                    Vector2 screenEntityPos = new Vector2(
-                        screenCenter.X + (transform.WorldPosition.X - cameraPos.X) / unitsPerPixel,
-                        screenCenter.Y - (transform.WorldPosition.Y - cameraPos.Y) / unitsPerPixel
-                    );
-
-                    float arrowLength = 60.0f;
-                    float hitRadius = 10.0f;
-                    
-                    Vector2 arrowXEnd = screenEntityPos + new Vector2(arrowLength, 0);
-                    Vector2 arrowYEnd = screenEntityPos + new Vector2(0, -arrowLength);
-                    
-                    Vector2 mousePos = io.MousePos;
-
-                    // Hover logic
-                    bool hoverX = Math.Abs(mousePos.Y - screenEntityPos.Y) < hitRadius && mousePos.X > screenEntityPos.X && mousePos.X < arrowXEnd.X;
-                    bool hoverY = Math.Abs(mousePos.X - screenEntityPos.X) < hitRadius && mousePos.Y < screenEntityPos.Y && mousePos.Y > arrowYEnd.Y;
-
-                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                    // Unity-style mode switch. Guarded so it does not fire while flying the 3D
+                    // camera with the right mouse button (which uses W/A/S/D for movement).
+                    if (isHovered && !ImGui.IsMouseDown(ImGuiMouseButton.Right))
                     {
-                        if (hoverX) _isDraggingX = true;
-                        else if (hoverY) _isDraggingY = true;
+                        if (ImGui.IsKeyPressed(ImGuiKey.W)) _gizmo.Mode = GizmoMode.Translate;
+                        if (ImGui.IsKeyPressed(ImGuiKey.E)) _gizmo.Mode = GizmoMode.Rotate;
+                        if (ImGui.IsKeyPressed(ImGuiKey.R)) _gizmo.Mode = GizmoMode.Scale;
                     }
-                    if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
-                    {
-                        _isDraggingX = false;
-                        _isDraggingY = false;
-                    }
-
-                    if (_isDraggingX)
-                    {
-                        var position = transform.Position;
-                        position.X += io.MouseDelta.X * unitsPerPixel;
-                        transform.Position = position;
-                    }
-                    if (_isDraggingY)
-                    {
-                        var position = transform.Position;
-                        position.Y -= io.MouseDelta.Y * unitsPerPixel;
-                        transform.Position = position;
-                    }
-
-                    // Drawing
-                    var palette = EditorThemeManager.Current.Palette;
-                    uint colorX = ImGui.GetColorU32(hoverX || _isDraggingX ? palette.GizmoHover : palette.AxisX);
-                    uint colorY = ImGui.GetColorU32(hoverY || _isDraggingY ? palette.GizmoHover : palette.AxisY);
-
-                    drawList.AddLine(screenEntityPos, arrowXEnd, colorX, 3.0f);
-                    drawList.AddLine(screenEntityPos, arrowYEnd, colorY, 3.0f);
-
-                    // Center square
-                    drawList.AddRectFilled(screenEntityPos - new Vector2(4, 4), screenEntityPos + new Vector2(4, 4), 0xFFFFFFFF);
                 }
                 
                 // --- CAMERA CONTROLS ---
-                if (isHovered && !_isDraggingX && !_isDraggingY)
+                if (isHovered && !_gizmo.IsUsing)
                 {
                     if (io.MouseWheel != 0.0f)
                     {
                         _camera.OnMouseScroll(io.MouseWheel);
                     }
                 }
-                
-                if (!_isDraggingX && !_isDraggingY)
+
+                if (!_gizmo.IsUsing)
                 {
                     if (_camera.Is3D && ImGui.IsMouseDown(ImGuiMouseButton.Right) && (isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0)))
                     {
@@ -198,6 +158,26 @@ public class ViewportPanel
         else
         {
             ImGui.Text("Viewport Placeholder");
+        }
+    }
+
+    // A gizmo-mode toolbar button that stays highlighted while its mode is the active one.
+    private void DrawGizmoModeButton(string label, GizmoMode mode)
+    {
+        bool active = _gizmo.Mode == mode;
+        if (active)
+        {
+            var accent = ImGui.GetStyle().Colors[(int)ImGuiCol.ButtonActive];
+            ImGui.PushStyleColor(ImGuiCol.Button, accent);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, accent);
+        }
+        if (ImGui.Button(label))
+        {
+            _gizmo.Mode = mode;
+        }
+        if (active)
+        {
+            ImGui.PopStyleColor(2);
         }
     }
 }

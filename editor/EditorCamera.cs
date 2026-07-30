@@ -21,7 +21,14 @@ public class EditorCamera
     private Matrix4x4 _view;
     
     public Matrix4x4 ViewProjection => _view * _projection;
-    
+
+    // World-space camera basis. In 2D the camera looks down -Z with the usual screen axes, so the
+    // basis is fixed; in 3D it follows the current pitch/yaw. Used by the gizmos to translate along
+    // the view plane and to size rotation rings independently of zoom/distance.
+    public Vector3 Right => Is3D ? GetRightDirection() : Vector3.UnitX;
+    public Vector3 Up => Is3D ? GetUpDirection() : Vector3.UnitY;
+    public Vector3 Forward => Is3D ? GetForwardDirection() : -Vector3.UnitZ;
+
     public EditorCamera()
     {
         UpdateProjection();
