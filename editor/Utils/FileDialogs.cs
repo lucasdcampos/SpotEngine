@@ -69,31 +69,46 @@ public static class FileDialogs
         string? result = null;
         var thread = new Thread(() =>
         {
-            var ofn = new OpenFileName();
-            ofn.lStructSize = Marshal.SizeOf(ofn);
-            ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
-            if (!string.IsNullOrEmpty(initialDir))
-                ofn.lpstrInitialDir = initialDir;
-            
-            ofn.lpstrFile = Marshal.AllocHGlobal(520);
-            Marshal.WriteInt16(ofn.lpstrFile, 0);
-            ofn.nMaxFile = 260;
-            
-            ofn.lpstrFileTitle = Marshal.AllocHGlobal(128);
-            Marshal.WriteInt16(ofn.lpstrFileTitle, 0);
-            ofn.nMaxFileTitle = 64;
-            
-            ofn.lpstrTitle = "Open File";
-
-            if (GetOpenFileName(ref ofn))
+            // This runs on a dedicated STA thread; an unhandled exception here would terminate the
+            // whole process, so it is contained and the dialog simply returns no selection.
+            IntPtr fileBuf = IntPtr.Zero;
+            IntPtr titleBuf = IntPtr.Zero;
+            try
             {
-                result = Marshal.PtrToStringAuto(ofn.lpstrFile);
-            }
+                var ofn = new OpenFileName();
+                ofn.lStructSize = Marshal.SizeOf(ofn);
+                ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
+                if (!string.IsNullOrEmpty(initialDir))
+                    ofn.lpstrInitialDir = initialDir;
 
-            Marshal.FreeHGlobal(ofn.lpstrFile);
-            Marshal.FreeHGlobal(ofn.lpstrFileTitle);
+                fileBuf = Marshal.AllocHGlobal(520);
+                Marshal.WriteInt16(fileBuf, 0);
+                ofn.lpstrFile = fileBuf;
+                ofn.nMaxFile = 260;
+
+                titleBuf = Marshal.AllocHGlobal(128);
+                Marshal.WriteInt16(titleBuf, 0);
+                ofn.lpstrFileTitle = titleBuf;
+                ofn.nMaxFileTitle = 64;
+
+                ofn.lpstrTitle = "Open File";
+
+                if (GetOpenFileName(ref ofn))
+                {
+                    result = Marshal.PtrToStringAuto(ofn.lpstrFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.CoreError("Open file dialog failed: {0}", ex);
+            }
+            finally
+            {
+                if (fileBuf != IntPtr.Zero) Marshal.FreeHGlobal(fileBuf);
+                if (titleBuf != IntPtr.Zero) Marshal.FreeHGlobal(titleBuf);
+            }
         });
-        
+
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();
@@ -106,35 +121,49 @@ public static class FileDialogs
         string? result = null;
         var thread = new Thread(() =>
         {
-            var ofn = new OpenFileName();
-            ofn.lStructSize = Marshal.SizeOf(ofn);
-            ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
-            if (!string.IsNullOrEmpty(defExt))
-                ofn.lpstrDefExt = defExt;
-            if (!string.IsNullOrEmpty(initialDir))
-                ofn.lpstrInitialDir = initialDir;
-            
-            ofn.lpstrFile = Marshal.AllocHGlobal(520);
-            Marshal.WriteInt16(ofn.lpstrFile, 0);
-            ofn.nMaxFile = 260;
-            
-            ofn.lpstrFileTitle = Marshal.AllocHGlobal(128);
-            Marshal.WriteInt16(ofn.lpstrFileTitle, 0);
-            ofn.nMaxFileTitle = 64;
-            
-            ofn.lpstrTitle = "Save File";
-            // OFN_OVERWRITEPROMPT = 0x00000002
-            ofn.Flags = 0x00000002;
-
-            if (GetSaveFileName(ref ofn))
+            // Contained like OpenFile: a fault on this STA thread must not bring the process down.
+            IntPtr fileBuf = IntPtr.Zero;
+            IntPtr titleBuf = IntPtr.Zero;
+            try
             {
-                result = Marshal.PtrToStringAuto(ofn.lpstrFile);
-            }
+                var ofn = new OpenFileName();
+                ofn.lStructSize = Marshal.SizeOf(ofn);
+                ofn.lpstrFilter = filter.Replace("|", "\0") + "\0";
+                if (!string.IsNullOrEmpty(defExt))
+                    ofn.lpstrDefExt = defExt;
+                if (!string.IsNullOrEmpty(initialDir))
+                    ofn.lpstrInitialDir = initialDir;
 
-            Marshal.FreeHGlobal(ofn.lpstrFile);
-            Marshal.FreeHGlobal(ofn.lpstrFileTitle);
+                fileBuf = Marshal.AllocHGlobal(520);
+                Marshal.WriteInt16(fileBuf, 0);
+                ofn.lpstrFile = fileBuf;
+                ofn.nMaxFile = 260;
+
+                titleBuf = Marshal.AllocHGlobal(128);
+                Marshal.WriteInt16(titleBuf, 0);
+                ofn.lpstrFileTitle = titleBuf;
+                ofn.nMaxFileTitle = 64;
+
+                ofn.lpstrTitle = "Save File";
+                // OFN_OVERWRITEPROMPT = 0x00000002
+                ofn.Flags = 0x00000002;
+
+                if (GetSaveFileName(ref ofn))
+                {
+                    result = Marshal.PtrToStringAuto(ofn.lpstrFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.CoreError("Save file dialog failed: {0}", ex);
+            }
+            finally
+            {
+                if (fileBuf != IntPtr.Zero) Marshal.FreeHGlobal(fileBuf);
+                if (titleBuf != IntPtr.Zero) Marshal.FreeHGlobal(titleBuf);
+            }
         });
-        
+
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();
@@ -147,23 +176,37 @@ public static class FileDialogs
         string? result = null;
         var thread = new Thread(() =>
         {
-            var bi = new BROWSEINFO();
-            bi.lpszTitle = "Select Directory";
-            bi.ulFlags = 0x00000001 | 0x00000040; // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
-            
-            IntPtr pidl = SHBrowseForFolder(ref bi);
-            if (pidl != IntPtr.Zero)
+            // Contained like the file dialogs: a fault here must not bring the process down.
+            try
             {
-                IntPtr pathPtr = Marshal.AllocHGlobal(260 * 2);
-                if (SHGetPathFromIDList(pidl, pathPtr))
+                var bi = new BROWSEINFO();
+                bi.lpszTitle = "Select Directory";
+                bi.ulFlags = 0x00000001 | 0x00000040; // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+
+                IntPtr pidl = SHBrowseForFolder(ref bi);
+                if (pidl != IntPtr.Zero)
                 {
-                    result = Marshal.PtrToStringAuto(pathPtr);
+                    IntPtr pathPtr = Marshal.AllocHGlobal(260 * 2);
+                    try
+                    {
+                        if (SHGetPathFromIDList(pidl, pathPtr))
+                        {
+                            result = Marshal.PtrToStringAuto(pathPtr);
+                        }
+                    }
+                    finally
+                    {
+                        Marshal.FreeHGlobal(pathPtr);
+                        CoTaskMemFree(pidl);
+                    }
                 }
-                Marshal.FreeHGlobal(pathPtr);
-                CoTaskMemFree(pidl);
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.CoreError("Select folder dialog failed: {0}", ex);
             }
         });
-        
+
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         thread.Join();

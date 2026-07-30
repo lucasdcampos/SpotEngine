@@ -14,7 +14,18 @@ public static class Program
             FontSize = 16
         };
 
-        var app = new Spot.Core.Application(spec);
-        app.Run(new LauncherScene());
+        try
+        {
+            var app = new Spot.Core.Application(spec);
+            app.Run(new LauncherScene());
+        }
+        catch (Exception ex)
+        {
+            // Reaching here means an error escaped the engine's per-frame safety nets — the engine
+            // could not start or was irreversibly compromised. There is nothing left to recover to,
+            // so surface a clear fatal message rather than a raw unhandled-exception dump, then exit.
+            System.Console.Error.WriteLine($"Fatal: Spot.Editor stopped because of an unrecoverable error.\n{ex}");
+            System.Environment.Exit(1);
+        }
     }
 }
