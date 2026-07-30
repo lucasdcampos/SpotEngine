@@ -21,6 +21,7 @@ public class EditorScene : Scene
     private string? _sceneSnapshot;
 
     private bool _isCreatingProject = false;
+    private bool _showAbout = false;
     private string _newProjectName = "MyProject";
     private string _newProjectLocation = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
 
@@ -35,9 +36,17 @@ public class EditorScene : Scene
 
     private Framebuffer? _framebuffer;
     private Framebuffer? _gameFramebuffer;
+    private Framebuffer? _cameraPreviewFramebuffer;
     private readonly EditorCamera _editorCamera = new();
 
     private string? _currentScenePath;
+
+    // Unsaved-changes tracking. Rather than hooking every mutation site, the current scene is
+    // serialized and compared (throttled) against the snapshot captured at the last save/open.
+    private string? _savedSnapshot;
+    private bool _isSceneDirty = true;
+    private int _dirtyCheckCounter;
+    private string? _lastWindowTitle;
 
     public EditorScene()
     {
@@ -63,15 +72,44 @@ public class EditorScene : Scene
 
         _framebuffer = new Framebuffer(1280, 720);
         _gameFramebuffer = new Framebuffer(1280, 720);
-        
-        Project.New();
-        
-        _context.ActiveScene = new Scene();
-        
+        _cameraPreviewFramebuffer = new Framebuffer(320, 180);
+
         _viewportPanel.SetFramebuffer(_framebuffer);
+        _viewportPanel.SetCameraPreviewFramebuffer(_cameraPreviewFramebuffer);
         _viewportPanel.SetCamera(_editorCamera);
 
         _gamePanel.SetFramebuffer(_gameFramebuffer);
+
+        LoadStartScene();
+    }
+
+    // Loads the active project's start scene (falling back to an empty standalone scene when there
+    // is none), so the editor opens on whatever the launcher selected.
+    private void LoadStartScene()
+    {
+        if (Project.Active == null)
+        {
+            Project.New();
+            _context.ActiveScene = new Scene();
+            _context.Selection = null;
+            _currentScenePath = null;
+            return;
+        }
+
+        string startAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
+        var scene = new Scene();
+        if (System.IO.File.Exists(startAbs) && new SceneSerializer(scene).Deserialize(startAbs))
+        {
+            _context.ActiveScene = scene;
+            _currentScenePath = startAbs;
+            MarkSceneClean();
+        }
+        else
+        {
+            _context.ActiveScene = new Scene();
+            _currentScenePath = null;
+        }
+        _context.Selection = null;
     }
 
     public override void OnUpdate(float deltaTime)
@@ -108,11 +146,48 @@ public class EditorScene : Scene
         // Draw Axes
         var palette = EditorThemeManager.Current.Palette;
         Renderer2D.BeginScene(_editorCamera.ViewProjection);
-        Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, 0.05f); // X
-        Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, 0.05f); // Y
+        
+        float axisThickness;
         if (_editorCamera.Is3D)
         {
-            Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, 0.05f); // Z
+            float dist = _editorCamera.Position.Length();
+            // Scale thickness based on distance from origin. 
+            // A multiplier of 0.005f keeps it visually around 1-2 pixels thick depending on FOV.
+            axisThickness = Math.Max(0.01f, dist * 0.005f);
+        }
+        else
+        {
+            // In 2D, scale thickness based on zoom level.
+            axisThickness = Math.Max(0.01f, _editorCamera.ZoomLevel * 0.005f);
+        }
+        
+        Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness); // X
+        Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness); // Y
+        if (_editorCamera.Is3D)
+        {
+            Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, axisThickness); // Z
+            
+            // Draw 3D Grid
+            int gridSize = 100;
+            float gridThickness = axisThickness * 0.2f;
+            Vector4 gridColor = new Vector4(0.3f, 0.3f, 0.3f, 1.0f);
+            
+            float camX = MathF.Round(_editorCamera.Position.X);
+            float camZ = MathF.Round(_editorCamera.Position.Z);
+            
+            for (int i = -gridSize; i <= gridSize; i++)
+            {
+                float z = camZ + i;
+                float x = camX + i;
+                
+                // Lines parallel to X axis
+                if (MathF.Abs(z) > 0.01f)
+                    Renderer2D.DrawLine(new Vector3(camX - gridSize, 0, z), new Vector3(camX + gridSize, 0, z), gridColor, gridThickness);
+                    
+                // Lines parallel to Z axis
+                if (MathF.Abs(x) > 0.01f)
+                    Renderer2D.DrawLine(new Vector3(x, 0, camZ - gridSize), new Vector3(x, 0, camZ + gridSize), gridColor, gridThickness);
+            }
         }
         Renderer2D.EndScene();
 
@@ -156,7 +231,7 @@ public class EditorScene : Scene
                 {
                     var transform = entity.GetComponent<Transform>();
                     viewProjection = cc.GetViewProjection(transform);
-                    is3D = cc.Is3D;
+                    is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
                 }
                 clearColor = cc.BackgroundColor;
                 break;
@@ -179,6 +254,32 @@ public class EditorScene : Scene
         
         _gameFramebuffer.Unbind();
 
+        // Render Camera Preview
+        if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>())
+        {
+            _cameraPreviewFramebuffer.Bind();
+            var entity = _context.Selection.Value;
+            var cc = entity.GetComponent<CameraComponent>();
+            if (entity.HasComponent<Transform>())
+            {
+                var transform = entity.GetComponent<Transform>();
+                var viewProj = cc.GetViewProjection(transform);
+                var is3DPrev = cc.ProjectionType == SceneCameraProjection.Perspective;
+                
+                Renderer.SetClearColor(cc.BackgroundColor.X, cc.BackgroundColor.Y, cc.BackgroundColor.Z, cc.BackgroundColor.W);
+                Renderer.Clear();
+                
+                if (is3DPrev)
+                    Renderer.SetDepthTest(true);
+                    
+                RenderSystem.Render(_context.ActiveScene, viewProj);
+                
+                if (is3DPrev)
+                    Renderer.SetDepthTest(false);
+            }
+            _cameraPreviewFramebuffer.Unbind();
+        }
+
         var window = Spot.Core.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
         Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -186,47 +287,23 @@ public class EditorScene : Scene
 
     public override void OnImGuiRender()
     {
+        HandleShortcuts();
+
         DrawMenuBar();
 
-        float toolbarHeight = 40;
         var viewport = ImGui.GetMainViewport();
         var workPos = viewport.WorkPos;
         var workSize = viewport.WorkSize;
 
-        ImGui.SetNextWindowPos(new Vector2(workPos.X, workPos.Y));
-        ImGui.SetNextWindowSize(new Vector2(workSize.X, toolbarHeight));
-        ImGui.Begin("##Toolbar", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoScrollbar);
-
-        // Center the play/stop control in the toolbar.
-        var palette = EditorThemeManager.Current.Palette;
-        float buttonWidth = 90.0f;
-        ImGui.SetCursorPosX((workSize.X - buttonWidth) * 0.5f);
-
-        if (_state == EditorState.Edit)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Button, palette.Accent);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, palette.AccentHovered);
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, palette.AccentActive);
-            if (ImGui.Button("Play", new Vector2(buttonWidth, 0))) { OnPlay(); }
-            ImGui.PopStyleColor(3);
-        }
-        else
-        {
-            ImGui.PushStyleColor(ImGuiCol.Button, palette.LogError);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.45f, 0.45f, 1.0f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.85f, 0.25f, 0.25f, 1.0f));
-            if (ImGui.Button("Stop", new Vector2(buttonWidth, 0))) { OnStop(); }
-            ImGui.PopStyleColor(3);
-        }
-        ImGui.End();
-
-        var mainPos = new Vector2(workPos.X, workPos.Y + toolbarHeight);
+        // The play/stop control now lives in the main menu bar (see DrawMenuBar), so the panels
+        // start right below it with no separate toolbar strip.
+        var mainPos = workPos;
         float hierarchyWidth = 300;
         float inspectorWidth = 300;
         float consoleHeight = 200;
 
         float middleWidth = workSize.X - hierarchyWidth - inspectorWidth;
-        float middleHeight = workSize.Y - consoleHeight - toolbarHeight;
+        float middleHeight = workSize.Y - consoleHeight;
 
         ImGui.SetNextWindowPos(new Vector2(mainPos.X, mainPos.Y));
         ImGui.SetNextWindowSize(new Vector2(hierarchyWidth, middleHeight));
@@ -333,45 +410,38 @@ public class EditorScene : Scene
         {
             _isCreatingProject = false;
         }
+
+        if (_showAbout)
+        {
+            ImGui.OpenPopup("About Spot Editor");
+        }
+
+        bool aboutOpen = true;
+        if (ImGui.BeginPopupModal("About Spot Editor", ref aboutOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text("Spot Editor");
+            ImGui.TextDisabled("A lightweight 2D/3D game engine.");
+            ImGui.Separator();
+            if (ImGui.Button("Close", new Vector2(120, 0)))
+            {
+                _showAbout = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+        else if (!aboutOpen)
+        {
+            _showAbout = false;
+        }
+
+        UpdateSceneStatus();
     }
-    
+
     private void CreateProject(string name, string location)
     {
-        string projDir = System.IO.Path.Combine(location, name);
-        if (!System.IO.Directory.Exists(projDir)) System.IO.Directory.CreateDirectory(projDir);
-        
-        string assetsDir = System.IO.Path.Combine(projDir, "Assets");
-        if (!System.IO.Directory.Exists(assetsDir)) System.IO.Directory.CreateDirectory(assetsDir);
-        
-        string sptprojPath = System.IO.Path.Combine(projDir, name + ".sptproj");
-        
-        Project.New();
-        Project.Active!.Config.Name = name;
-        Project.Active.Config.StartScene = "Scenes/Main.sptscene";
-        Project.Active.ProjectDirectory = projDir;
-        
-        Project.SaveActive(sptprojPath); // Saves project config and generates .csproj
-        
-        string slnContent = $@"
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-Project(""{{9A19103F-16F7-4668-BE54-9A1E7A4F7556}}"") = ""{name}"", ""{name}.csproj"", ""{{{System.Guid.NewGuid().ToString().ToUpper()}}}""
-EndProject
-Global
-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{{{System.Guid.NewGuid().ToString().ToUpper()}}}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-EndGlobal
-";
-        System.IO.File.WriteAllText(System.IO.Path.Combine(projDir, name + ".sln"), slnContent);
-        
+        string sptprojPath = ProjectFactory.Create(name, location);
+        Spot.Editor.Utils.RecentProjects.Add(sptprojPath);
+
         _context.ActiveScene = new Scene();
         _context.Selection = null;
         _currentScenePath = null;
@@ -410,153 +480,251 @@ EndGlobal
 
     private void DrawMenuBar()
     {
-        if (ImGui.BeginMainMenuBar())
+        if (!ImGui.BeginMainMenuBar())
         {
-            if (ImGui.BeginMenu("File"))
+            return;
+        }
+
+        if (ImGui.BeginMenu("File"))
+        {
+            if (ImGui.MenuItem("Open Scene...")) OpenScene();
+            if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
+            ImGui.Separator();
+            if (ImGui.MenuItem("Exit")) Spot.Core.Application.Instance.Quit();
+            ImGui.EndMenu();
+        }
+
+        if (ImGui.BeginMenu("Project"))
+        {
+            if (ImGui.MenuItem("New Project...")) _isCreatingProject = true;
+            if (ImGui.MenuItem("Open Project...")) OpenProject();
+            if (Project.Active != null)
             {
-                if (ImGui.MenuItem("New Project"))
-                {
-                    _isCreatingProject = true;
-                }
-                
-                if (ImGui.MenuItem("Open Project..."))
-                {
-                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.sptproj)|*.sptproj");
-                    if (filepath != null)
-                    {
-                        if (Project.Load(filepath) != null && Project.Active != null)
-                        {
-                            string startSceneAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
-                            var newScene = new Scene();
-                            
-                            if (System.IO.File.Exists(startSceneAbs))
-                            {
-                                var serializer = new SceneSerializer(newScene);
-                                if (serializer.Deserialize(startSceneAbs))
-                                {
-                                    _context.ActiveScene = newScene;
-                                    _context.Selection = null;
-                                    _currentScenePath = startSceneAbs;
-                                }
-                                else
-                                {
-                                    _context.ActiveScene = new Scene();
-                                    _context.Selection = null;
-                                    _currentScenePath = null;
-                                }
-                            }
-                            else
-                            {
-                                _context.ActiveScene = new Scene();
-                                _context.Selection = null;
-                                _currentScenePath = null;
-                            }
-                        }
-                    }
-                }
-                
-                if (ImGui.MenuItem("Save Project"))
-                {
-                    if (Project.Active != null && string.IsNullOrEmpty(Project.Active.ProjectDirectory))
-                    {
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Project (*.sptproj)|*.sptproj", "sptproj");
-                        if (filepath != null)
-                        {
-                            Project.SaveActive(filepath);
-                        }
-                    }
-                    else if (Project.Active != null)
-                    {
-                        Project.SaveActive(System.IO.Path.Combine(Project.Active.ProjectDirectory, Project.Active.Config.Name + ".sptproj"));
-                    }
-                }
-                
-                if (Project.Active != null)
-                {
-                    if (ImGui.BeginMenu("Regenerate Project Files"))
-                    {
-                        if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)"))
-                        {
-                            Project.GenerateCSProject(overwriteProgram: false);
-                        }
-                        if (ImGui.MenuItem("Full Reset (Includes Program.cs)"))
-                        {
-                            Project.GenerateCSProject(overwriteProgram: true);
-                        }
-                        ImGui.EndMenu();
-                    }
-                }
-                
                 ImGui.Separator();
-
-                if (ImGui.MenuItem("New Scene"))
+                if (ImGui.BeginMenu("Regenerate Project Files"))
                 {
-                    _context.ActiveScene = new Scene();
-                    _context.Selection = null;
-                    _currentScenePath = null;
+                    if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)")) Project.GenerateCSProject(overwriteProgram: false);
+                    if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Project.GenerateCSProject(overwriteProgram: true);
+                    ImGui.EndMenu();
                 }
-                
-                if (ImGui.MenuItem("Open Scene..."))
-                {
-                    string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
-                    string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.sptscene)|*.sptscene", initialDir);
-                    if (filepath != null)
-                    {
-                        var newScene = new Scene();
-                        var serializer = new SceneSerializer(newScene);
-                        if (serializer.Deserialize(filepath))
-                        {
-                            _context.ActiveScene = newScene;
-                            _context.Selection = null;
-                            _currentScenePath = filepath;
-                        }
-                    }
-                }
+            }
+            ImGui.EndMenu();
+        }
 
-                ImGui.Separator();
+        if (ImGui.BeginMenu("Entity"))
+        {
+            bool hasScene = _context.ActiveScene != null;
+            if (ImGui.MenuItem("Create Empty", "", false, hasScene)) _hierarchyPanel.CreateEmpty();
+            if (ImGui.MenuItem("Create Camera", "", false, hasScene)) _hierarchyPanel.CreateCamera();
+            if (ImGui.MenuItem("Create Sprite", "", false, hasScene)) _hierarchyPanel.CreateSprite();
+            ImGui.EndMenu();
+        }
 
-                if (ImGui.MenuItem("Save Scene"))
+        if (ImGui.BeginMenu("View"))
+        {
+            if (ImGui.BeginMenu("Theme"))
+            {
+                foreach (var theme in EditorThemes.All)
                 {
-                    if (_context.ActiveScene != null)
-                    {
-                        if (_currentScenePath == null)
-                        {
-                            string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
-                            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
-                        }
-                        
-                        if (_currentScenePath != null)
-                        {
-                            var serializer = new SceneSerializer(_context.ActiveScene);
-                            serializer.Serialize(_currentScenePath);
-                        }
-                    }
-                }
-                
-                if (ImGui.MenuItem("Save Scene As..."))
-                {
-                    if (_context.ActiveScene != null)
-                    {
-                        string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
-                        string? filepath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
-                        if (filepath != null)
-                        {
-                            _currentScenePath = filepath;
-                            var serializer = new SceneSerializer(_context.ActiveScene);
-                            serializer.Serialize(_currentScenePath);
-                        }
-                    }
-                }
-
-                ImGui.Separator();
-
-                if (ImGui.MenuItem("Exit"))
-                {
-                    Spot.Core.Application.Instance.Quit();
+                    bool selected = ReferenceEquals(EditorThemeManager.Current, theme);
+                    if (ImGui.MenuItem(theme.Name, "", selected)) EditorThemeManager.SetTheme(theme);
                 }
                 ImGui.EndMenu();
             }
-            ImGui.EndMainMenuBar();
+            ImGui.EndMenu();
+        }
+
+        if (ImGui.BeginMenu("Help"))
+        {
+            if (ImGui.MenuItem("About")) _showAbout = true;
+            ImGui.EndMenu();
+        }
+
+        DrawPlayControl();
+
+        ImGui.EndMainMenuBar();
+    }
+
+    // Draws the centered play/stop icon button inside the main menu bar.
+    private void DrawPlayControl()
+    {
+        var palette = EditorThemeManager.Current.Palette;
+        float size = ImGui.GetFrameHeight();
+
+        // Center the control horizontally in the menu bar (unless the menus already reach past it).
+        float centerX = (ImGui.GetWindowWidth() - size) * 0.5f;
+        if (centerX > ImGui.GetCursorPosX())
+        {
+            ImGui.SetCursorPosX(centerX);
+        }
+
+        var drawList = ImGui.GetWindowDrawList();
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton("##playstop", new Vector2(size, size));
+        bool hovered = ImGui.IsItemHovered();
+        bool clicked = ImGui.IsItemClicked(ImGuiMouseButton.Left);
+
+        if (hovered)
+        {
+            drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+        }
+
+        float pad = size * 0.30f;
+        if (_state == EditorState.Edit)
+        {
+            // Play: right-pointing triangle.
+            uint color = ImGui.GetColorU32(palette.Accent);
+            Vector2 a = p0 + new Vector2(pad, pad);
+            Vector2 b = p0 + new Vector2(pad, size - pad);
+            Vector2 c = p0 + new Vector2(size - pad, size * 0.5f);
+            drawList.AddTriangleFilled(a, b, c, color);
+            if (clicked) OnPlay();
+        }
+        else
+        {
+            // Stop: filled square.
+            uint color = ImGui.GetColorU32(palette.LogError);
+            drawList.AddRectFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(size - pad, size - pad), color, 2.0f);
+            if (clicked) OnStop();
+        }
+
+        if (hovered)
+        {
+            ImGui.SetTooltip(_state == EditorState.Edit ? "Play" : "Stop");
         }
     }
+
+    // Keyboard shortcuts handled once per frame (editor/edit mode only).
+    private void HandleShortcuts()
+    {
+        var io = ImGui.GetIO();
+        if (_state == EditorState.Edit && io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.S, repeat: false))
+        {
+            SaveScene();
+        }
+    }
+
+    // Records the current scene as the clean baseline (called after a successful save/open).
+    private void MarkSceneClean()
+    {
+        _savedSnapshot = _context.ActiveScene != null
+            ? new SceneSerializer(_context.ActiveScene).SerializeToString()
+            : null;
+        _isSceneDirty = false;
+        _dirtyCheckCounter = 0;
+    }
+
+    // Refreshes the unsaved-changes flag and reflects it (with a '*') in the window title.
+    private void UpdateSceneStatus()
+    {
+        if (_state == EditorState.Edit)
+        {
+            if (_context.ActiveScene == null)
+            {
+                _isSceneDirty = false;
+            }
+            else if (_currentScenePath == null)
+            {
+                _isSceneDirty = true; // never saved to a file yet
+            }
+            else if (++_dirtyCheckCounter >= 15)
+            {
+                _dirtyCheckCounter = 0;
+                string current = new SceneSerializer(_context.ActiveScene).SerializeToString();
+                _isSceneDirty = _savedSnapshot == null || current != _savedSnapshot;
+            }
+        }
+
+        string sceneName = _currentScenePath != null
+            ? System.IO.Path.GetFileNameWithoutExtension(_currentScenePath)
+            : "Untitled";
+        string title = _state == EditorState.Play
+            ? $"{sceneName} (Playing) - Spot.Editor"
+            : $"{sceneName}{(_isSceneDirty ? "*" : "")} - Spot.Editor";
+
+        if (title != _lastWindowTitle)
+        {
+            _lastWindowTitle = title;
+            Spot.Core.Application.Instance.Window.NativeWindow.Title = title;
+        }
+    }
+
+    private void OpenScene()
+    {
+        string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+        string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Scene (*.sptscene)|*.sptscene", initialDir);
+        if (filepath != null)
+        {
+            var newScene = new Scene();
+            var serializer = new SceneSerializer(newScene);
+            if (serializer.Deserialize(filepath))
+            {
+                _context.ActiveScene = newScene;
+                _context.Selection = null;
+                _currentScenePath = filepath;
+                MarkSceneClean();
+            }
+        }
+    }
+
+    private void SaveScene()
+    {
+        if (_context.ActiveScene == null) return;
+
+        // No file backing this scene yet: prompt the user to create one.
+        if (_currentScenePath == null)
+        {
+            string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
+            _currentScenePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
+            if (_currentScenePath == null) return; // user cancelled the dialog
+        }
+
+        new SceneSerializer(_context.ActiveScene).Serialize(_currentScenePath);
+        EnsureStartScene(_currentScenePath);
+        MarkSceneClean();
+    }
+
+    // Promotes the just-saved scene to the project's start scene when none is defined yet or the
+    // configured one is missing. The project config is persisted automatically (there is no manual
+    // "Save Project" action).
+    private void EnsureStartScene(string sceneAbsolutePath)
+    {
+        var project = Project.Active;
+        if (project == null || string.IsNullOrEmpty(project.ProjectDirectory)) return;
+
+        string assetDir = project.GetAssetDirectory();
+        string configuredAbs = System.IO.Path.Combine(assetDir, project.Config.StartScene);
+        bool needsStartScene = string.IsNullOrEmpty(project.Config.StartScene) || !System.IO.File.Exists(configuredAbs);
+        if (!needsStartScene) return;
+
+        project.Config.StartScene = System.IO.Path.GetRelativePath(assetDir, sceneAbsolutePath).Replace('\\', '/');
+        Project.SaveActive(System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj"));
+        Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
+    }
+
+    private void OpenProject()
+    {
+        string? filepath = Spot.Editor.Utils.FileDialogs.OpenFile("Spot Project (*.sptproj)|*.sptproj");
+        if (filepath == null || Project.Load(filepath) == null || Project.Active == null)
+        {
+            return;
+        }
+
+        Spot.Editor.Utils.RecentProjects.Add(filepath);
+
+        string startSceneAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
+        var newScene = new Scene();
+        if (System.IO.File.Exists(startSceneAbs) && new SceneSerializer(newScene).Deserialize(startSceneAbs))
+        {
+            _context.ActiveScene = newScene;
+            _currentScenePath = startSceneAbs;
+        }
+        else
+        {
+            _context.ActiveScene = new Scene();
+            _currentScenePath = null;
+        }
+        _context.Selection = null;
+    }
+
 }
