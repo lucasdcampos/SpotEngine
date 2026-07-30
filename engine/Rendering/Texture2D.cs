@@ -52,6 +52,12 @@ public sealed class Texture2D : IDisposable
     }
 
     /// <summary>
+    /// Gets the native OpenGL texture handle. Exposed so editor UI can display the texture through
+    /// ImGui (for example as an asset thumbnail via <c>ImGui.Image</c>).
+    /// </summary>
+    public uint Handle => _handle;
+
+    /// <summary>
     /// Gets the texture width in pixels.
     /// </summary>
     public uint Width { get; }
