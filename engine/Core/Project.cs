@@ -64,7 +64,7 @@ public class Project
         GenerateCSProject();
     }
 
-    private static void GenerateCSProject()
+    public static void GenerateCSProject(bool overwriteProgram = false)
     {
         if (Active == null || string.IsNullOrEmpty(Active.ProjectDirectory)) return;
 
@@ -125,7 +125,7 @@ public class Project
         File.WriteAllText(csprojPath, csprojContent);
 
         string programPath = Path.Combine(Active.ProjectDirectory, "Program.cs");
-        if (!File.Exists(programPath))
+        if (overwriteProgram || !File.Exists(programPath))
         {
             string programContent = $@"using System;
 using System.IO;
