@@ -21,7 +21,18 @@ public sealed class MeshRenderer
     public string? ModelPath { get; set; }
 
     /// <summary>
-    /// Gets or sets the color multiplied into the shaded model. Defaults to opaque white.
+    /// Gets or sets the material applied to the model. When set, its color and texture are used; when
+    /// <see langword="null"/>, the model falls back to the plain <see cref="Color"/>.
+    /// </summary>
+    public Material? Material { get; set; }
+
+    /// <summary>
+    /// Gets or sets the path to the material file, used for serialization.
+    /// </summary>
+    public string? MaterialPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the fallback color used when no <see cref="Material"/> is assigned. Defaults to opaque white.
     /// </summary>
     public Vector4 Color { get; set; } = Vector4.One;
 }

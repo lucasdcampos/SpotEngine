@@ -36,6 +36,19 @@ public static class ModelImporter
     /// <exception cref="NotSupportedException">No importer is registered for the file's extension.</exception>
     public static Model Load(string path)
     {
+        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (s_cache.TryGetValue(path, out Model? primitiveCached))
+            {
+                return primitiveCached;
+            }
+            string typeName = path.Substring(10);
+            Model primitive = PrimitiveModelFactory.Create(typeName);
+            primitive.SourcePath = path;
+            s_cache[path] = primitive;
+            return primitive;
+        }
+
         string fullPath = Path.GetFullPath(path);
         if (s_cache.TryGetValue(fullPath, out Model? cached))
         {

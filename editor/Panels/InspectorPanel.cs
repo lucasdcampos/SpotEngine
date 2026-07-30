@@ -21,7 +21,11 @@ public class InspectorPanel
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
         ImGui.Begin("Inspector", ref open, flags);
 
-        if (_context.Selection != null)
+        if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
+        {
+            DrawMaterialEditor(_context.SelectedAssetPath);
+        }
+        else if (_context.Selection != null)
         {
             DrawComponents(_context.Selection.Value);
             
@@ -63,6 +67,12 @@ public class InspectorPanel
                         _context.Selection.Value.AddComponent(new BoxCollider2DComponent());
                     ImGui.CloseCurrentPopup();
                 }
+                if (ImGui.MenuItem("Directional Light"))
+                {
+                    if (!_context.Selection.Value.HasComponent<DirectionalLightComponent>())
+                        _context.Selection.Value.AddComponent(new DirectionalLightComponent());
+                    ImGui.CloseCurrentPopup();
+                }
                 if (ImGui.MenuItem("Script Component"))
                 {
                     if (!_context.Selection.Value.HasComponent<ScriptComponent>())
@@ -74,6 +84,91 @@ public class InspectorPanel
         }
 
         ImGui.End();
+    }
+
+    private void DrawMaterialEditor(string path)
+    {
+        // Material.Load caches by path and never throws (it logs and returns a default on failure),
+        // so editing this instance updates every model referencing the same file live.
+        var material = Material.Load(path);
+
+        ImGui.TextDisabled(System.IO.Path.GetFileName(path));
+        ImGui.Separator();
+
+        var color = material.Color;
+        if (ImGui.ColorEdit4("Color", ref color))
+            material.Color = color;
+        if (ImGui.IsItemDeactivatedAfterEdit())
+            material.Save(path);
+
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Texture");
+        ImGui.Button(material.Texture != null
+            ? $"{System.IO.Path.GetFileName(material.TexturePath) ?? "Texture"} (Drop to change)"
+            : "Drop Texture Here", new System.Numerics.Vector2(-1, 30));
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
+                if (payload.NativePtr != null)
+                {
+                    string filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                    if (filepath != null)
+                    {
+                        try
+                        {
+                            material.SetTexture(filepath);
+                            material.Save(path);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Console.WriteLine($"Failed to set material texture: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            ImGui.EndDragDropTarget();
+        }
+
+        if (material.Texture != null)
+        {
+            if (ImGui.Button("Remove Texture", new System.Numerics.Vector2(-1, 24)))
+            {
+                material.SetTexture(null);
+                material.Save(path);
+            }
+        }
+    }
+
+    private static void AssignMaterial(MeshRenderer meshRenderer, string path)
+    {
+        try
+        {
+            meshRenderer.Material = Material.Load(path);
+            meshRenderer.MaterialPath = path;
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"Failed to load material '{path}': {ex.Message}");
+        }
+    }
+
+    private static System.Collections.Generic.List<string> EnumerateProjectMaterials()
+    {
+        var result = new System.Collections.Generic.List<string>();
+        string? dir = Spot.Core.Project.Active?.GetAssetDirectory();
+        if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+        {
+            try
+            {
+                result.AddRange(System.IO.Directory.EnumerateFiles(dir, "*.sptmat", System.IO.SearchOption.AllDirectories));
+            }
+            catch
+            {
+            }
+        }
+        return result;
     }
 
     private void DrawComponents(Entity entity)
@@ -215,7 +310,7 @@ public class InspectorPanel
                 string modelLabel = meshRenderer.Model != null
                     ? $"{System.IO.Path.GetFileName(meshRenderer.ModelPath) ?? "Model"} (Drop to change)"
                     : "Drop 3D Model Here";
-                ImGui.Button(modelLabel, new System.Numerics.Vector2(-1, 30));
+                bool modelClicked = ImGui.Button(modelLabel, new System.Numerics.Vector2(-1, 30));
                 if (ImGui.BeginDragDropTarget())
                 {
                     unsafe
@@ -239,6 +334,78 @@ public class InspectorPanel
                         }
                     }
                     ImGui.EndDragDropTarget();
+                }
+
+                if (modelClicked)
+                    ImGui.OpenPopup("SelectModelPopup");
+                if (ImGui.BeginPopup("SelectModelPopup"))
+                {
+                    if (ImGui.MenuItem("None", "", meshRenderer.Model == null))
+                    {
+                        meshRenderer.Model = null;
+                        meshRenderer.ModelPath = null;
+                    }
+                    ImGui.Separator();
+                    if (ImGui.MenuItem("Cube", "", meshRenderer.ModelPath == "primitive:Cube")) { meshRenderer.ModelPath = "primitive:Cube"; meshRenderer.Model = Model.Load("primitive:Cube"); }
+                    if (ImGui.MenuItem("Plane", "", meshRenderer.ModelPath == "primitive:Plane")) { meshRenderer.ModelPath = "primitive:Plane"; meshRenderer.Model = Model.Load("primitive:Plane"); }
+                    if (ImGui.MenuItem("Quad", "", meshRenderer.ModelPath == "primitive:Quad")) { meshRenderer.ModelPath = "primitive:Quad"; meshRenderer.Model = Model.Load("primitive:Quad"); }
+                    if (ImGui.MenuItem("Sphere", "", meshRenderer.ModelPath == "primitive:Sphere")) { meshRenderer.ModelPath = "primitive:Sphere"; meshRenderer.Model = Model.Load("primitive:Sphere"); }
+                    ImGui.EndPopup();
+                }
+
+                ImGui.Spacing();
+                ImGui.TextUnformatted("Material");
+                string materialLabel = meshRenderer.Material != null
+                    ? System.IO.Path.GetFileName(meshRenderer.MaterialPath) ?? "Material"
+                    : "Select Material...";
+                bool materialClicked = ImGui.Button(materialLabel, new System.Numerics.Vector2(-1, 30));
+
+                // Also accept a material dragged from the Asset Browser.
+                if (ImGui.BeginDragDropTarget())
+                {
+                    unsafe
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("MATERIAL_FILE");
+                        if (payload.NativePtr != null)
+                        {
+                            string filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                            if (filepath != null)
+                            {
+                                AssignMaterial(meshRenderer, filepath);
+                            }
+                        }
+                    }
+                    ImGui.EndDragDropTarget();
+                }
+
+                // Clicking the slot opens a picker listing every material asset in the project.
+                if (materialClicked)
+                    ImGui.OpenPopup("SelectMaterialPopup");
+                if (ImGui.BeginPopup("SelectMaterialPopup"))
+                {
+                    if (ImGui.MenuItem("None", "", meshRenderer.Material == null))
+                    {
+                        meshRenderer.Material = null;
+                        meshRenderer.MaterialPath = null;
+                    }
+                    if (ImGui.MenuItem("Checkerboard", "", meshRenderer.MaterialPath == "editor:Checkerboard"))
+                    {
+                        AssignMaterial(meshRenderer, "editor:Checkerboard");
+                    }
+
+                    var materials = EnumerateProjectMaterials();
+                    if (materials.Count > 0)
+                        ImGui.Separator();
+                    foreach (var matPath in materials)
+                    {
+                        bool isSelected = string.Equals(meshRenderer.MaterialPath, matPath, StringComparison.OrdinalIgnoreCase);
+                        if (ImGui.MenuItem(System.IO.Path.GetFileName(matPath), "", isSelected))
+                            AssignMaterial(meshRenderer, matPath);
+                    }
+                    if (materials.Count == 0)
+                        ImGui.TextDisabled("No materials in project.");
+
+                    ImGui.EndPopup();
                 }
 
                 ImGui.TreePop();
@@ -391,6 +558,49 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<BoxCollider2DComponent>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<DirectionalLightComponent>())
+        {
+            ImGui.PushID("DirectionalLightComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(DirectionalLightComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Directional Light");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var light = entity.GetComponent<DirectionalLightComponent>();
+                
+                var color = light.Color;
+                if (ImGui.ColorEdit3("Color", ref color))
+                    light.Color = color;
+                    
+                float intensity = light.Intensity;
+                if (ImGui.DragFloat("Intensity", ref intensity, 0.05f, 0.0f, 10.0f))
+                    light.Intensity = intensity;
+                    
+                float ambientIntensity = light.AmbientIntensity;
+                if (ImGui.DragFloat("Ambient Intensity", ref ambientIntensity, 0.01f, 0.0f, 1.0f))
+                    light.AmbientIntensity = ambientIntensity;
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<DirectionalLightComponent>();
                 
             ImGui.PopID();
         }

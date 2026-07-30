@@ -174,6 +174,13 @@ public class Application
     }
 
     /// <summary>
+    /// An optional gate invoked when a window close is requested. Return <see langword="false"/> to
+    /// veto the close (for example to first confirm unsaved changes); the application keeps running.
+    /// Call <see cref="Quit"/> to close unconditionally once the user confirms.
+    /// </summary>
+    public Func<bool>? CanClose { get; set; }
+
+    /// <summary>
     /// Requests the application to stop after the current frame.
     /// </summary>
     public void Quit() => _running = false;
@@ -210,6 +217,13 @@ public class Application
 
     private bool OnWindowClose(WindowCloseEvent e)
     {
+        // Let the application veto the close (for example to confirm unsaved changes).
+        if (CanClose != null && !CanClose())
+        {
+            _window?.CancelClose();
+            return true;
+        }
+
         _running = false;
         return true;
     }

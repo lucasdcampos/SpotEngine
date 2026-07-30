@@ -11,7 +11,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Other }
 
     private readonly struct AssetEntry
     {
@@ -54,6 +54,8 @@ public class AssetBrowserPanel
     private string _deleteTarget = "";
     private bool _isCreatingScene;
     private string _newSceneName = "";
+    private bool _isCreatingMaterial;
+    private string _newMaterialName = "";
 
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
@@ -204,6 +206,7 @@ public class AssetBrowserPanel
         if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered())
         {
             _selectedPath = null;
+            _context.SelectedAssetPath = null;
         }
     }
 
@@ -229,10 +232,21 @@ public class AssetBrowserPanel
             {
                 _pendingNavigate = entry.FullPath;
             }
-            else
+            else if (entry.Kind == AssetKind.Material)
+            {
+                // Open the material in the Inspector for editing (mirrors how scenes open on double-click).
+                _context.Selection = null;
+                _context.SelectedAssetPath = entry.FullPath;
+            }
+            else if (entry.Kind == AssetKind.Scene)
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
+            }
+            else
+            {
+                // Anything else (scripts, images, models, ...) opens in the OS default app.
+                OpenExternally(entry.FullPath);
             }
         }
 
@@ -258,6 +272,17 @@ public class AssetBrowserPanel
                     fixed (byte* p = payloadBytes)
                     {
                         ImGui.SetDragDropPayload("MODEL_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
+            else if (entry.Kind == AssetKind.Material)
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("MATERIAL_FILE", (IntPtr)p, (uint)payloadBytes.Length);
                     }
                 }
             }
@@ -354,6 +379,7 @@ public class AssetBrowserPanel
             AssetKind.Scene => ("SCENE", new Vector4(0.66f, 0.40f, 0.98f, 1.0f)),
             AssetKind.Image => ("IMG", new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
             AssetKind.Model => ("3D", new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
+            AssetKind.Material => ("MAT", new Vector4(0.36f, 0.66f, 0.98f, 1.0f)),
             _ => (BadgeFor(entry.Name), palette.TextDisabled),
         };
 
@@ -371,11 +397,27 @@ public class AssetBrowserPanel
 
         _selectedPath = entry.FullPath;
 
-        if (ImGui.MenuItem(entry.IsDirectory ? "Open" : "Open Externally"))
+        if (entry.Kind == AssetKind.Material && ImGui.MenuItem("Edit Material"))
         {
-            if (entry.IsDirectory) _pendingNavigate = entry.FullPath;
-            else if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
-            else OpenExternally(entry.FullPath);
+            _context.Selection = null;
+            _context.SelectedAssetPath = entry.FullPath;
+        }
+
+        if (entry.IsDirectory)
+        {
+            if (ImGui.MenuItem("Open")) _pendingNavigate = entry.FullPath;
+        }
+        else if (entry.Kind == AssetKind.Scene)
+        {
+            if (ImGui.MenuItem("Open Scene"))
+            {
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
+            }
+        }
+        else
+        {
+            if (ImGui.MenuItem("Open Externally")) OpenExternally(entry.FullPath);
         }
         if (ImGui.MenuItem("Show in Explorer"))
         {
@@ -419,6 +461,11 @@ public class AssetBrowserPanel
             _isCreatingScene = true;
             _newSceneName = "NewScene.sptscene";
         }
+        if (ImGui.MenuItem("New Material"))
+        {
+            _isCreatingMaterial = true;
+            _newMaterialName = "NewMaterial.sptmat";
+        }
         ImGui.Separator();
         if (ImGui.MenuItem("Open in Explorer"))
         {
@@ -432,12 +479,14 @@ public class AssetBrowserPanel
         if (_isCreatingScript) ImGui.OpenPopup("Create New Script");
         if (_isCreatingFolder) ImGui.OpenPopup("Create New Folder");
         if (_isCreatingScene) ImGui.OpenPopup("Create New Scene");
+        if (_isCreatingMaterial) ImGui.OpenPopup("Create New Material");
         if (_isRenaming) ImGui.OpenPopup("Rename");
         if (_isDeleting) ImGui.OpenPopup("Delete Asset");
 
         DrawTextEntryModal("Create New Script", "Name", ref _isCreatingScript, ref _newScriptName, CreateScript);
         DrawTextEntryModal("Create New Folder", "Name", ref _isCreatingFolder, ref _newFolderName, CreateFolder);
         DrawTextEntryModal("Create New Scene", "Name", ref _isCreatingScene, ref _newSceneName, CreateScene);
+        DrawTextEntryModal("Create New Material", "Name", ref _isCreatingMaterial, ref _newMaterialName, CreateMaterial);
         DrawTextEntryModal("Rename", "New name", ref _isRenaming, ref _renameBuffer, name => RenameEntry(_renameTarget, name));
 
         bool deleteOpen = true;
@@ -532,6 +581,7 @@ public class AssetBrowserPanel
         if (ext == ".sptscene") return AssetKind.Scene;
         if (ImageExtensions.Contains(ext)) return AssetKind.Image;
         if (ModelExtensions.Contains(ext)) return AssetKind.Model;
+        if (ext == ".sptmat") return AssetKind.Material;
         return AssetKind.Other;
     }
 
@@ -616,6 +666,17 @@ public class {className} : EntityBehaviour
         new Spot.Scenes.SceneSerializer(newScene).Serialize(filepath);
     }
 
+    private void CreateMaterial(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptmat")) name += ".sptmat";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+
+        new Spot.Assets.Material().Save(filepath);
+    }
+
     private void RenameEntry(string fullPath, string newName)
     {
         newName = newName?.Trim() ?? "";
@@ -631,6 +692,7 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Move(fullPath, dest);
             else if (File.Exists(fullPath)) File.Move(fullPath, dest);
             if (_selectedPath == fullPath) _selectedPath = dest;
+            if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = dest;
         }
         catch (Exception ex)
         {
@@ -646,6 +708,7 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Delete(fullPath, recursive: true);
             else if (File.Exists(fullPath)) File.Delete(fullPath);
             if (_selectedPath == fullPath) _selectedPath = null;
+            if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = null;
         }
         catch (Exception ex)
         {

@@ -61,6 +61,14 @@ public sealed class Shader : IDisposable
     public void SetUniform(string name, float value) => _gl.Uniform1(GetUniformLocation(name), value);
 
     /// <summary>
+    /// Sets a <see cref="Vector3"/> uniform.
+    /// </summary>
+    /// <param name="name">The uniform name.</param>
+    /// <param name="value">The value to set.</param>
+    public void SetUniform(string name, Vector3 value) =>
+        _gl.Uniform3(GetUniformLocation(name), value.X, value.Y, value.Z);
+
+    /// <summary>
     /// Sets a <see cref="Vector4"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>

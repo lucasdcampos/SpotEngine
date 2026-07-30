@@ -19,7 +19,7 @@ public class CameraComponent
 {
     public bool Primary { get; set; } = true;
     public bool FixedAspectRatio { get; set; } = false;
-    public Vector4 BackgroundColor { get; set; } = new Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+    public Vector4 BackgroundColor { get; set; } = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
     private SceneCameraProjection _projectionType = SceneCameraProjection.Orthographic;
     public SceneCameraProjection ProjectionType

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using ImGuiNET;
 using Spot.Scenes;
+using Spot.Rendering;
 
 namespace Spot.Editor.Panels;
 
@@ -66,6 +67,18 @@ public class HierarchyPanel
                 {
                     CreateSprite();
                 }
+                if (ImGui.MenuItem("Create Directional Light"))
+                {
+                    CreateDirectionalLight();
+                }
+                if (ImGui.BeginMenu("3D Object"))
+                {
+                    if (ImGui.MenuItem("Cube")) CreatePrimitive("Cube");
+                    if (ImGui.MenuItem("Plane")) CreatePrimitive("Plane");
+                    if (ImGui.MenuItem("Quad")) CreatePrimitive("Quad");
+                    if (ImGui.MenuItem("Sphere")) CreatePrimitive("Sphere");
+                    ImGui.EndMenu();
+                }
                 ImGui.EndPopup();
             }
         }
@@ -97,6 +110,34 @@ public class HierarchyPanel
     {
         var entity = CreateEntity("Mesh");
         entity.AddComponent(new MeshRenderer());
+        return entity;
+    }
+
+    /// <summary>Creates an entity with a <see cref="DirectionalLightComponent"/>, selects it, and returns it.</summary>
+    public Entity CreateDirectionalLight()
+    {
+        var entity = CreateEntity("Directional Light");
+        // Usually lights point slightly downwards by default, we can set rotation
+        var transform = entity.GetComponent<Transform>();
+        transform.Rotation = new System.Numerics.Vector3(-45.0f, 45.0f, 0.0f);
+        entity.AddComponent(new DirectionalLightComponent());
+        return entity;
+    }
+
+    /// <summary>Creates an entity with a procedural primitive <see cref="MeshRenderer"/>, selects it, and returns it.</summary>
+    public Entity CreatePrimitive(string typeName)
+    {
+        var entity = CreateEntity(typeName);
+        var meshRenderer = new MeshRenderer { ModelPath = $"primitive:{typeName}" };
+        try
+        {
+            meshRenderer.Model = Spot.Assets.Model.Load(meshRenderer.ModelPath);
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to load primitive '{0}': {1}", typeName, ex.Message);
+        }
+        entity.AddComponent(meshRenderer);
         return entity;
     }
 

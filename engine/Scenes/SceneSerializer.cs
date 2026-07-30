@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Spot.Core;
 using Spot.Rendering;
 using Spot.Physics;
 using Spot.Assets;
@@ -24,7 +25,15 @@ public class EntityData
     public CameraComponentData? Camera { get; set; }
     public PhysicsBody2DData? PhysicsBody2D { get; set; }
     public BoxCollider2DData? BoxCollider2D { get; set; }
+    public DirectionalLightData? DirectionalLight { get; set; }
     public List<EntityData>? Children { get; set; }
+}
+
+public class DirectionalLightData
+{
+    public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
+    public float Intensity { get; set; } = 1.0f;
+    public float AmbientIntensity { get; set; } = 0.3f;
 }
 
 public class CameraComponentData
@@ -72,6 +81,7 @@ public class MeshRendererData
 {
     public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
     public string? ModelPath { get; set; }
+    public string? MaterialPath { get; set; }
 }
 
 public class SceneSerializer
@@ -132,7 +142,8 @@ public class SceneSerializer
             entityData.MeshRenderer = new MeshRendererData
             {
                 Color = new[] { meshRenderer.Color.X, meshRenderer.Color.Y, meshRenderer.Color.Z, meshRenderer.Color.W },
-                ModelPath = meshRenderer.ModelPath
+                ModelPath = meshRenderer.ModelPath,
+                MaterialPath = meshRenderer.MaterialPath
             };
         }
 
@@ -171,6 +182,17 @@ public class SceneSerializer
             };
         }
 
+        if (entity.HasComponent<DirectionalLightComponent>())
+        {
+            var light = entity.GetComponent<DirectionalLightComponent>();
+            entityData.DirectionalLight = new DirectionalLightData
+            {
+                Color = new[] { light.Color.X, light.Color.Y, light.Color.Z },
+                Intensity = light.Intensity,
+                AmbientIntensity = light.AmbientIntensity
+            };
+        }
+
         if (entity.HasComponent<ScriptComponent>())
         {
             var scriptComp = entity.GetComponent<ScriptComponent>();
@@ -193,14 +215,39 @@ public class SceneSerializer
 
     public void Serialize(string filepath)
     {
-        string json = SerializeToString();
-        File.WriteAllText(filepath, json);
+        try
+        {
+            string json = SerializeToString();
+            File.WriteAllText(filepath, json);
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to save scene '{0}': {1}", filepath, ex.Message);
+        }
     }
 
     public bool DeserializeFromString(string json)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var data = JsonSerializer.Deserialize<SceneData>(json, options);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            Log.CoreError("Failed to load scene: the file is empty.");
+            return false;
+        }
+
+        // Some editors save JSON with a leading UTF-8 BOM; strip it so the parser doesn't choke.
+        json = json.TrimStart('\uFEFF');
+
+        SceneData? data;
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            data = JsonSerializer.Deserialize<SceneData>(json, options);
+        }
+        catch (JsonException ex)
+        {
+            Log.CoreError("Failed to parse scene: {0}", ex.Message);
+            return false;
+        }
 
         if (data == null)
         {
@@ -246,7 +293,7 @@ public class SceneSerializer
                 }
                 catch (Exception ex)
                 {
-                    System.Console.WriteLine($"Failed to load texture '{sprite.TexturePath}': {ex.Message}");
+                    Log.CoreError("Failed to load texture '{0}': {1}", sprite.TexturePath, ex.Message);
                 }
             }
             entity.AddComponent(sprite);
@@ -265,7 +312,19 @@ public class SceneSerializer
                 }
                 catch (Exception ex)
                 {
-                    System.Console.WriteLine($"Failed to load model '{meshRenderer.ModelPath}': {ex.Message}");
+                    Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
+                }
+            }
+            if (!string.IsNullOrEmpty(entityData.MeshRenderer.MaterialPath))
+            {
+                meshRenderer.MaterialPath = entityData.MeshRenderer.MaterialPath;
+                try
+                {
+                    meshRenderer.Material = Material.Load(meshRenderer.MaterialPath);
+                }
+                catch (Exception ex)
+                {
+                    Log.CoreError("Failed to load material '{0}': {1}", meshRenderer.MaterialPath, ex.Message);
                 }
             }
             entity.AddComponent(meshRenderer);
@@ -308,6 +367,15 @@ public class SceneSerializer
             entity.AddComponent(collider);
         }
 
+        if (entityData.DirectionalLight != null)
+        {
+            var light = new DirectionalLightComponent();
+            light.Color = new System.Numerics.Vector3(entityData.DirectionalLight.Color[0], entityData.DirectionalLight.Color[1], entityData.DirectionalLight.Color[2]);
+            light.Intensity = entityData.DirectionalLight.Intensity;
+            light.AmbientIntensity = entityData.DirectionalLight.AmbientIntensity;
+            entity.AddComponent(light);
+        }
+
         if (entityData.Scripts != null)
         {
             var scriptComp = new ScriptComponent();
@@ -339,12 +407,12 @@ public class SceneSerializer
                     }
                     catch (Exception ex)
                     {
-                        System.Console.WriteLine($"Failed to instantiate script '{scriptName}': {ex.Message}");
+                        Log.CoreError("Failed to instantiate script '{0}': {1}", scriptName, ex.Message);
                     }
                 }
                 else
                 {
-                    System.Console.WriteLine($"Failed to load script '{scriptName}'. Type not found.");
+                    Log.CoreWarn("Failed to load script '{0}'. Type not found.", scriptName);
                 }
             }
         }
@@ -365,7 +433,17 @@ public class SceneSerializer
             return false;
         }
 
-        string json = File.ReadAllText(filepath);
+        string json;
+        try
+        {
+            json = File.ReadAllText(filepath);
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to read scene '{0}': {1}", filepath, ex.Message);
+            return false;
+        }
+
         return DeserializeFromString(json);
     }
 }
