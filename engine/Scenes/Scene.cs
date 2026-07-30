@@ -58,8 +58,9 @@ public class Scene
     /// </summary>
     public virtual void OnRender()
     {
-        OrthographicCamera? gameCamera = null;
+        System.Numerics.Matrix4x4? viewProjection = null;
         System.Numerics.Vector4 clearColor = new System.Numerics.Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+        bool is3D = false;
         
         foreach (var entity in View<CameraComponent>())
         {
@@ -69,22 +70,28 @@ public class Scene
                 if (HasComponent<Transform>(entity))
                 {
                     var transform = GetComponent<Transform>(entity);
-                    cc.Camera.Position = transform.WorldPosition;
-                    cc.Camera.Rotation = transform.WorldRotation.Z;
+                    viewProjection = cc.GetViewProjection(transform);
+                    is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
                 }
-                gameCamera = cc.Camera;
                 clearColor = cc.BackgroundColor;
                 break;
             }
         }
         
-        if (gameCamera != null)
+        if (viewProjection.HasValue)
         {
             Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
             // Renderer.Clear() is already called in Application.cs loop before SceneManager.Render, 
             // but we want to clear with our own color, so we call it again.
             Renderer.Clear();
-            RenderSystem.Render(this, gameCamera);
+            
+            if (is3D)
+                Renderer.SetDepthTest(true);
+                
+            RenderSystem.Render(this, viewProjection.Value);
+            
+            if (is3D)
+                Renderer.SetDepthTest(false);
         }
     }
 

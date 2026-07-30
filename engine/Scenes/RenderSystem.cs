@@ -1,3 +1,4 @@
+using System.Numerics;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -18,10 +19,10 @@ public static class RenderSystem
     /// Draws all sprite entities in the scene through the given camera.
     /// </summary>
     /// <param name="scene">The scene whose sprites are drawn.</param>
-    /// <param name="camera">The camera to render with.</param>
-    public static void Render(Scene scene, OrthographicCamera camera)
+    /// <param name="viewProjection">The view-projection matrix to render with.</param>
+    public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
-        Renderer2D.BeginScene(camera);
+        Renderer2D.BeginScene(viewProjection);
 
         foreach (Entity entity in scene.View<Transform, Sprite2D>())
         {

@@ -164,13 +164,29 @@ public class InspectorPanel
                 if (ImGui.Checkbox("Primary", ref primary))
                     cameraComp.Primary = primary;
                     
+                string[] projectionTypes = { "Orthographic", "Perspective" };
+                int currentProjection = (int)cameraComp.ProjectionType;
+                if (ImGui.Combo("Projection", ref currentProjection, projectionTypes, projectionTypes.Length))
+                {
+                    cameraComp.ProjectionType = (SceneCameraProjection)currentProjection;
+                }
+                    
+                if (cameraComp.ProjectionType == SceneCameraProjection.Perspective)
+                {
+                    float fov = cameraComp.FieldOfView;
+                    if (ImGui.DragFloat("Field Of View", ref fov, 1.0f, 1.0f, 180.0f))
+                        cameraComp.FieldOfView = fov;
+                }
+                else
+                {
+                    float zoom = cameraComp.ZoomLevel;
+                    if (ImGui.DragFloat("Zoom Level", ref zoom, 0.1f, 0.1f, 100.0f))
+                        cameraComp.ZoomLevel = zoom;
+                }
+                    
                 bool fixedAspect = cameraComp.FixedAspectRatio;
                 if (ImGui.Checkbox("Fixed Aspect Ratio", ref fixedAspect))
                     cameraComp.FixedAspectRatio = fixedAspect;
-                    
-                float zoom = cameraComp.ZoomLevel;
-                if (ImGui.DragFloat("Zoom Level", ref zoom, 0.1f, 0.1f, 100.0f))
-                    cameraComp.ZoomLevel = zoom;
 
                 var bgColor = cameraComp.BackgroundColor;
                 if (ImGui.ColorEdit4("Background", ref bgColor))

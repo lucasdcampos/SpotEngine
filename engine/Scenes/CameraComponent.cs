@@ -4,30 +4,35 @@ using System.Numerics;
 namespace Spot.Scenes;
 
 /// <summary>
+/// Defines the projection type of a Scene Camera.
+/// </summary>
+public enum SceneCameraProjection
+{
+    Orthographic = 0,
+    Perspective = 1
+}
+
+/// <summary>
 /// A component that acts as a camera for the scene.
 /// </summary>
 public class CameraComponent
 {
-    public OrthographicCamera Camera { get; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether this is the primary camera.
-    /// </summary>
     public bool Primary { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets the fixed aspect ratio. If false, the camera's aspect ratio will automatically resize with the viewport.
-    /// </summary>
     public bool FixedAspectRatio { get; set; } = false;
-
-    /// <summary>
-    /// Gets or sets the background clear color for this camera.
-    /// </summary>
     public Vector4 BackgroundColor { get; set; } = new Vector4(0.1f, 0.1f, 0.1f, 1.0f);
 
-    private float _zoomLevel = 5.0f;
-    private float _aspectRatio = 1.0f;
+    private SceneCameraProjection _projectionType = SceneCameraProjection.Orthographic;
+    public SceneCameraProjection ProjectionType
+    {
+        get => _projectionType;
+        set
+        {
+            _projectionType = value;
+            RecalculateProjection();
+        }
+    }
 
+    private float _zoomLevel = 5.0f;
     public float ZoomLevel
     {
         get => _zoomLevel;
@@ -38,9 +43,23 @@ public class CameraComponent
         }
     }
 
+    private float _fieldOfView = 45.0f;
+    public float FieldOfView
+    {
+        get => _fieldOfView;
+        set
+        {
+            _fieldOfView = value;
+            RecalculateProjection();
+        }
+    }
+
+    private float _aspectRatio = 1.0f;
+    public Matrix4x4 Projection { get; private set; }
+
     public CameraComponent()
     {
-        Camera = new OrthographicCamera(-_aspectRatio * _zoomLevel, _aspectRatio * _zoomLevel, -_zoomLevel, _zoomLevel);
+        RecalculateProjection();
     }
 
     public void SetViewportSize(float width, float height)
@@ -56,6 +75,34 @@ public class CameraComponent
 
     private void RecalculateProjection()
     {
-        Camera.SetProjection(-_aspectRatio * _zoomLevel, _aspectRatio * _zoomLevel, -_zoomLevel, _zoomLevel);
+        if (ProjectionType == SceneCameraProjection.Perspective)
+        {
+            Projection = Matrix4x4.CreatePerspectiveFieldOfView(_fieldOfView * (MathF.PI / 180.0f), _aspectRatio, 0.1f, 1000.0f);
+        }
+        else
+        {
+            Projection = Matrix4x4.CreateOrthographicOffCenter(-_aspectRatio * _zoomLevel, _aspectRatio * _zoomLevel, -_zoomLevel, _zoomLevel, -1.0f, 1.0f);
+        }
+    }
+
+    public Matrix4x4 GetViewProjection(Transform transform)
+    {
+        Matrix4x4 view;
+        if (ProjectionType == SceneCameraProjection.Perspective)
+        {
+            // The view matrix is the inverse of the transform's matrix (ignoring scale)
+            Vector3 position = transform.WorldPosition;
+            Vector3 rotation = transform.WorldRotation * (MathF.PI / 180.0f);
+            
+            Matrix4x4 t = Matrix4x4.CreateFromYawPitchRoll(rotation.Y, rotation.X, rotation.Z) * Matrix4x4.CreateTranslation(position);
+            Matrix4x4.Invert(t, out view);
+        }
+        else
+        {
+            Vector3 position = transform.WorldPosition;
+            Matrix4x4 t = Matrix4x4.CreateRotationZ(transform.WorldRotation.Z * (MathF.PI / 180.0f)) * Matrix4x4.CreateTranslation(position);
+            Matrix4x4.Invert(t, out view);
+        }
+        return view * Projection;
     }
 }

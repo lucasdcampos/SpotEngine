@@ -31,6 +31,8 @@ public class CameraComponentData
     public bool FixedAspectRatio { get; set; }
     public float ZoomLevel { get; set; }
     public float[]? BackgroundColor { get; set; }
+    public int ProjectionType { get; set; } = 0;
+    public float FieldOfView { get; set; } = 45.0f;
 }
 
 public class PhysicsBody2DData
@@ -122,7 +124,9 @@ public class SceneSerializer
                 Primary = camera.Primary,
                 FixedAspectRatio = camera.FixedAspectRatio,
                 ZoomLevel = camera.ZoomLevel,
-                BackgroundColor = new[] { camera.BackgroundColor.X, camera.BackgroundColor.Y, camera.BackgroundColor.Z, camera.BackgroundColor.W }
+                BackgroundColor = new[] { camera.BackgroundColor.X, camera.BackgroundColor.Y, camera.BackgroundColor.Z, camera.BackgroundColor.W },
+                ProjectionType = (int)camera.ProjectionType,
+                FieldOfView = camera.FieldOfView
             };
         }
 
@@ -222,6 +226,8 @@ public class SceneSerializer
             camera.Primary = entityData.Camera.Primary;
             camera.FixedAspectRatio = entityData.Camera.FixedAspectRatio;
             camera.ZoomLevel = entityData.Camera.ZoomLevel;
+            camera.ProjectionType = (SceneCameraProjection)entityData.Camera.ProjectionType;
+            camera.FieldOfView = entityData.Camera.FieldOfView;
             if (entityData.Camera.BackgroundColor != null && entityData.Camera.BackgroundColor.Length == 4)
             {
                 camera.BackgroundColor = new System.Numerics.Vector4(
