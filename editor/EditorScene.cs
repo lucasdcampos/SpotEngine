@@ -300,7 +300,7 @@ public class EditorScene : Scene
         
         Project.New();
         Project.Active!.Config.Name = name;
-        Project.Active.Config.StartScene = "Scenes/Main.sptscene";
+        Project.Active.Config.StartScene = "Assets/Scenes/Main.sptscene";
         Project.Active.ProjectDirectory = projDir;
         
         Project.SaveActive(sptprojPath); // Saves project config and generates .csproj
