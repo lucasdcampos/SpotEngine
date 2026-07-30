@@ -49,6 +49,34 @@ public class Scene
     /// </summary>
     public virtual void OnRender()
     {
+        OrthographicCamera? gameCamera = null;
+        System.Numerics.Vector4 clearColor = new System.Numerics.Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+        
+        foreach (var entity in View<CameraComponent>())
+        {
+            var cc = entity.GetComponent<CameraComponent>();
+            if (cc.Primary)
+            {
+                if (HasComponent<Transform>(entity))
+                {
+                    var transform = GetComponent<Transform>(entity);
+                    cc.Camera.Position = transform.WorldPosition;
+                    cc.Camera.Rotation = transform.WorldRotation.Z;
+                }
+                gameCamera = cc.Camera;
+                clearColor = cc.BackgroundColor;
+                break;
+            }
+        }
+        
+        if (gameCamera != null)
+        {
+            Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
+            // Renderer.Clear() is already called in Application.cs loop before SceneManager.Render, 
+            // but we want to clear with our own color, so we call it again.
+            Renderer.Clear();
+            RenderSystem.Render(this, gameCamera);
+        }
     }
 
     /// <summary>
