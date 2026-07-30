@@ -29,7 +29,7 @@ public sealed class Texture2D : IDisposable
 
         fixed (byte* pixels = image.Data)
         {
-            Upload(pixels);
+            Upload(pixels, false);
         }
     }
 
@@ -39,7 +39,8 @@ public sealed class Texture2D : IDisposable
     /// <param name="width">The texture width in pixels.</param>
     /// <param name="height">The texture height in pixels.</param>
     /// <param name="rgbaPixels">The pixel data, four bytes (R, G, B, A) per pixel.</param>
-    public unsafe Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels)
+    /// <param name="pointFilter">If true, uses nearest neighbor filtering instead of linear.</param>
+    public unsafe Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels, bool pointFilter = false)
     {
         _gl = Renderer.Gl;
         Width = width;
@@ -47,7 +48,7 @@ public sealed class Texture2D : IDisposable
 
         fixed (byte* pixels = rgbaPixels)
         {
-            Upload(pixels);
+            Upload(pixels, pointFilter);
         }
     }
 
@@ -56,6 +57,33 @@ public sealed class Texture2D : IDisposable
     /// ImGui (for example as an asset thumbnail via <c>ImGui.Image</c>).
     /// </summary>
     public uint Handle => _handle;
+
+    /// <summary>
+    /// Creates a simple checkerboard texture for debugging.
+    /// </summary>
+    public static Texture2D CreateCheckerboard()
+    {
+        uint width = 8;
+        uint height = 8;
+        byte[] pixels = new byte[width * height * 4];
+        
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                bool isLight = (x + y) % 2 == 0;
+                byte color = isLight ? (byte)60 : (byte)25;
+                
+                int index = (y * (int)width + x) * 4;
+                pixels[index] = color;
+                pixels[index + 1] = color;
+                pixels[index + 2] = color;
+                pixels[index + 3] = 255;
+            }
+        }
+        
+        return new Texture2D(width, height, pixels, pointFilter: true);
+    }
 
     /// <summary>
     /// Gets the texture width in pixels.
@@ -80,15 +108,35 @@ public sealed class Texture2D : IDisposable
     /// <inheritdoc />
     public void Dispose() => _gl.DeleteTexture(_handle);
 
-    private unsafe void Upload(byte* pixels)
+    private unsafe void Upload(byte* pixels, bool pointFilter)
     {
         _handle = _gl.GenTexture();
         Bind();
 
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.Repeat);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.Repeat);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+        
+        if (pointFilter)
+        {
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+        }
+        else
+        {
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+        }
+
+        // Anisotropic filtering keeps textures on surfaces viewed at grazing angles (a ground plane,
+        // for example) crisp instead of blurring toward a flat average color. Guarded to a no-op where
+        // the extension is unsupported. 0x84FF = GL_MAX_TEXTURE_MAX_ANISOTROPY, 0x84FE = GL_TEXTURE_MAX_ANISOTROPY.
+        Span<float> maxAnisotropy = stackalloc float[1];
+        maxAnisotropy[0] = 0.0f;
+        _gl.GetFloat((GLEnum)0x84FF, maxAnisotropy);
+        if (maxAnisotropy[0] > 1.0f)
+        {
+            _gl.TexParameter(TextureTarget.Texture2D, (GLEnum)0x84FE, Math.Min(8.0f, maxAnisotropy[0]));
+        }
 
         _gl.TexImage2D(
             TextureTarget.Texture2D,

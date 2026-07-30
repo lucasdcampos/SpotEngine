@@ -117,6 +117,12 @@ public sealed class Window : IDisposable
     /// <returns><see langword="true"/> if the window should close; otherwise, <see langword="false"/>.</returns>
     public bool ShouldClose() => _window.IsClosing;
 
+    /// <summary>
+    /// Cancels a pending close request, keeping the window open (for example after the user declines
+    /// to close with unsaved changes).
+    /// </summary>
+    public void CancelClose() => _window.IsClosing = false;
+
     /// <inheritdoc />
     public void Dispose()
     {

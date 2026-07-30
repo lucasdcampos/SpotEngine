@@ -1,5 +1,6 @@
 using System.Numerics;
 using Silk.NET.Assimp;
+using Spot.Core;
 using AssimpApi = Silk.NET.Assimp.Assimp;
 using RenderMesh = Spot.Rendering.Mesh;
 
@@ -61,6 +62,11 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
     {
         uint vertexCount = mesh->MNumVertices;
         var vertices = new float[vertexCount * RenderMesh.FloatsPerVertex];
+
+        if (mesh->MTextureCoords[0] == null)
+        {
+            Log.CoreWarn("Imported mesh has no texture coordinates (UVs); a material texture will show as a flat color.");
+        }
 
         int cursor = 0;
         for (uint i = 0; i < vertexCount; i++)

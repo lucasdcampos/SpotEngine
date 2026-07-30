@@ -72,6 +72,10 @@ public class EditorScene : Scene
     private OpenSceneData? _activeSceneData = null;
     private OpenSceneData? _lastEditedSceneData = null;
 
+    // Unsaved-changes confirmation state: a scene panel pending close, and the app-quit prompt.
+    private OpenSceneData? _pendingCloseScene;
+    private bool _showQuitConfirm;
+
     private string? _lastWindowTitle;
 
     // Per-panel visibility, toggled from View > Panels and by each window's close button.
@@ -109,6 +113,9 @@ public class EditorScene : Scene
         Spot.Editor.Utils.EditorSettings.LoadAndApply(Spot.Core.Application.Instance.Window.NativeWindow);
         ImGui.LoadIniSettingsFromDisk("imgui.ini");
 
+        // Intercept window-close requests so we can confirm unsaved changes first.
+        Spot.Core.Application.Instance.CanClose = CanCloseApp;
+
         _gameFramebuffer = new Framebuffer(1280, 720);
         _gamePanel.SetFramebuffer(_gameFramebuffer);
 
@@ -119,6 +126,12 @@ public class EditorScene : Scene
     // is none), so the editor opens on whatever the launcher selected.
     private void OpenSceneAsset(string filepath)
     {
+        if (!filepath.EndsWith(".sptscene", System.StringComparison.OrdinalIgnoreCase))
+        {
+            Log.CoreWarn("Cannot open '{0}' as a scene: not a .sptscene file.", System.IO.Path.GetFileName(filepath));
+            return;
+        }
+
         string normPath = System.IO.Path.GetFullPath(filepath).ToLowerInvariant();
         var existing = _openScenes.FirstOrDefault(s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == normPath);
         if (existing != null)
@@ -142,6 +155,10 @@ public class EditorScene : Scene
             _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
             _context.Selection = null;
+        }
+        else
+        {
+            Log.CoreError("Failed to open scene '{0}'. See the console for details.", System.IO.Path.GetFileName(filepath));
         }
     }
 
@@ -206,7 +223,7 @@ public class EditorScene : Scene
             if (!sceneData.IsOpen) continue;
             
             sceneData.Framebuffer.Bind();
-            Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             Renderer.Clear();
             
             if (sceneData.EditorCamera.Is3D)
@@ -229,28 +246,19 @@ public class EditorScene : Scene
                 axisThickness = Math.Max(0.01f, sceneData.EditorCamera.ZoomLevel * 0.005f);
             }
             
-            Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
             Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
-            if (sceneData.EditorCamera.Is3D)
+            if (!sceneData.EditorCamera.Is3D)
             {
-                Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, axisThickness);
-                
-                int gridSize = 100;
-                float gridThickness = axisThickness * 0.2f;
-                Vector4 gridColor = new Vector4(0.3f, 0.3f, 0.3f, 1.0f);
-                
-                float camX = MathF.Round(sceneData.EditorCamera.Position.X);
-                float camZ = MathF.Round(sceneData.EditorCamera.Position.Z);
-                
-                for (int i = -gridSize; i <= gridSize; i++)
-                {
-                    float z = camZ + i;
-                    float x = camX + i;
-                    if (MathF.Abs(z) > 0.01f) Renderer2D.DrawLine(new Vector3(camX - gridSize, 0, z), new Vector3(camX + gridSize, 0, z), gridColor, gridThickness);
-                    if (MathF.Abs(x) > 0.01f) Renderer2D.DrawLine(new Vector3(x, 0, camZ - gridSize), new Vector3(x, 0, camZ + gridSize), gridColor, gridThickness);
-                }
+                Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
             }
             Renderer2D.EndScene();
+
+            if (sceneData.EditorCamera.Is3D)
+            {
+                Renderer3D.BeginScene(sceneData.EditorCamera.ViewProjection);
+                Renderer3D.DrawEditorGrid(sceneData.EditorCamera.Position);
+                Renderer3D.EndScene();
+            }
 
             if (sceneData.EditorCamera.Is3D)
                 Renderer.SetDepthTest(false);
@@ -301,7 +309,7 @@ public class EditorScene : Scene
         
         // Render Game View
         _gameFramebuffer.Bind();
-        Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         Renderer.Clear();
         
         var gameScene = _state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene;
@@ -309,7 +317,7 @@ public class EditorScene : Scene
         if (gameScene != null)
         {
             System.Numerics.Matrix4x4? viewProjection = null;
-            Vector4 clearColor = new Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+            Vector4 clearColor = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
             bool is3D = false;
             
             foreach (var entity in gameScene.View<CameraComponent>())
@@ -347,7 +355,7 @@ public class EditorScene : Scene
 
         var window = Spot.Core.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
-        Renderer.SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
     public override void OnImGuiRender()
     {
@@ -400,9 +408,17 @@ public class EditorScene : Scene
                 sceneData.FirstFrame = false;
             }
 
+            bool wasOpen = sceneData.IsOpen;
             bool open = ImGui.Begin(title, ref sceneData.IsOpen, ImGuiWindowFlags.NoCollapse);
             ImGui.PopStyleVar();
-            
+
+            // Closing a scene with unsaved changes: keep it open and confirm first.
+            if (wasOpen && !sceneData.IsOpen && sceneData.IsDirty)
+            {
+                sceneData.IsOpen = true;
+                _pendingCloseScene = sceneData;
+            }
+
             bool isFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow);
             bool isHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows | ImGuiHoveredFlags.RootWindow);
             
@@ -550,6 +566,8 @@ public class EditorScene : Scene
             _showAbout = false;
         }
 
+        DrawUnsavedChangesModals();
+
         UpdateSceneStatus();
 
         var lastLine = Spot.Core.Application.Instance.Console.LastLine;
@@ -632,6 +650,7 @@ public class EditorScene : Scene
 
     public override void OnExit()
     {
+        Spot.Core.Application.Instance.CanClose = null;
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
 
         foreach (var sceneData in _openScenes) sceneData.Dispose();
@@ -710,7 +729,7 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
             if (ImGui.MenuItem("Save All Scenes", "Ctrl+Shift+S")) SaveAllScenes();
             ImGui.Separator();
-            if (ImGui.MenuItem("Exit")) Spot.Core.Application.Instance.Quit();
+            if (ImGui.MenuItem("Exit")) RequestExit();
             ImGui.EndMenu();
         }
 
@@ -739,6 +758,21 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Create Camera", "", false, hasScene)) _hierarchyPanel.CreateCamera();
             if (ImGui.MenuItem("Create Sprite", "", false, hasScene)) _hierarchyPanel.CreateSprite();
             if (ImGui.MenuItem("Create Mesh", "", false, hasScene)) _hierarchyPanel.CreateMesh();
+            if (ImGui.MenuItem("Create Directional Light", "", false, hasScene)) _hierarchyPanel.CreateDirectionalLight();
+            
+            if (hasScene && ImGui.BeginMenu("3D Object"))
+            {
+                if (ImGui.MenuItem("Cube")) _hierarchyPanel.CreatePrimitive("Cube");
+                if (ImGui.MenuItem("Plane")) _hierarchyPanel.CreatePrimitive("Plane");
+                if (ImGui.MenuItem("Quad")) _hierarchyPanel.CreatePrimitive("Quad");
+                if (ImGui.MenuItem("Sphere")) _hierarchyPanel.CreatePrimitive("Sphere");
+                ImGui.EndMenu();
+            }
+            else if (!hasScene)
+            {
+                ImGui.MenuItem("3D Object", "", false, false);
+            }
+            
             ImGui.Separator();
             if (ImGui.MenuItem("Import 3D Model...", "", false, hasScene)) ImportModel();
             ImGui.EndMenu();
@@ -908,20 +942,134 @@ public class EditorScene : Scene
 
     private void SaveScene()
     {
-        if (_activeSceneData == null) return;
+        if (_activeSceneData != null) SaveSceneData(_activeSceneData);
+    }
 
-        if (_activeSceneData.FilePath == null)
+    // Saves one scene, prompting for a path when it has never been saved. Returns false only if the
+    // user cancelled the Save As dialog, so callers can abort a pending close/quit.
+    private bool SaveSceneData(OpenSceneData sceneData)
+    {
+        if (sceneData.FilePath == null)
         {
             string initialDir = Project.Active != null ? Project.Active.GetAssetDirectory() : "";
-            _activeSceneData.FilePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
-            if (_activeSceneData.FilePath == null) return;
+            sceneData.FilePath = Spot.Editor.Utils.FileDialogs.SaveFile("Spot Scene (*.sptscene)|*.sptscene", "sptscene", initialDir);
+            if (sceneData.FilePath == null) return false;
         }
 
-        new SceneSerializer(_activeSceneData.Scene).Serialize(_activeSceneData.FilePath);
-        EnsureStartScene(_activeSceneData.FilePath);
-        _activeSceneData.SavedSnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
-        _activeSceneData.IsDirty = false;
-        _activeSceneData.DirtyCheckCounter = 0;
+        new SceneSerializer(sceneData.Scene).Serialize(sceneData.FilePath);
+        EnsureStartScene(sceneData.FilePath);
+        sceneData.SavedSnapshot = new SceneSerializer(sceneData.Scene).SerializeToString();
+        sceneData.IsDirty = false;
+        sceneData.DirtyCheckCounter = 0;
+        return true;
+    }
+
+    // Invoked when the window's close button is pressed. Vetoes the close (returning false) when any
+    // scene has unsaved changes, raising the quit-confirmation dialog instead.
+    private bool CanCloseApp()
+    {
+        if (_openScenes.Any(s => s.IsDirty))
+        {
+            _showQuitConfirm = true;
+            return false;
+        }
+        return true;
+    }
+
+    private void RequestExit()
+    {
+        if (_openScenes.Any(s => s.IsDirty)) _showQuitConfirm = true;
+        else Spot.Core.Application.Instance.Quit();
+    }
+
+    // Saves every dirty scene, prompting for a path where needed. Returns false if the user cancelled.
+    private bool SaveAllDirtyWithPrompts()
+    {
+        foreach (var sceneData in _openScenes)
+        {
+            if (sceneData.IsDirty && !SaveSceneData(sceneData))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void DrawUnsavedChangesModals()
+    {
+        // Closing a single scene panel with unsaved changes.
+        if (_pendingCloseScene != null) ImGui.OpenPopup("Unsaved Changes##scene");
+
+        bool sceneModalOpen = true;
+        if (ImGui.BeginPopupModal("Unsaved Changes##scene", ref sceneModalOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            var scene = _pendingCloseScene;
+            string name = scene?.FilePath != null ? System.IO.Path.GetFileNameWithoutExtension(scene.FilePath) : "Untitled";
+            ImGui.TextUnformatted($"Save changes to '{name}' before closing?");
+            ImGui.Spacing();
+            if (ImGui.Button("Save", new Vector2(110, 0)))
+            {
+                if (scene != null && SaveSceneData(scene)) scene.IsOpen = false;
+                _pendingCloseScene = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Don't Save", new Vector2(110, 0)))
+            {
+                if (scene != null) scene.IsOpen = false;
+                _pendingCloseScene = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(110, 0)))
+            {
+                _pendingCloseScene = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+        else if (!sceneModalOpen)
+        {
+            _pendingCloseScene = null;
+        }
+
+        // Closing the whole application with unsaved changes.
+        if (_showQuitConfirm) ImGui.OpenPopup("Unsaved Changes##quit");
+
+        bool quitModalOpen = true;
+        if (ImGui.BeginPopupModal("Unsaved Changes##quit", ref quitModalOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            int dirtyCount = _openScenes.Count(s => s.IsDirty);
+            ImGui.TextUnformatted($"{dirtyCount} scene(s) have unsaved changes. Exit anyway?");
+            ImGui.Spacing();
+            if (ImGui.Button("Save All & Exit", new Vector2(140, 0)))
+            {
+                if (SaveAllDirtyWithPrompts())
+                {
+                    _showQuitConfirm = false;
+                    ImGui.CloseCurrentPopup();
+                    Spot.Core.Application.Instance.Quit();
+                }
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Exit Without Saving", new Vector2(160, 0)))
+            {
+                _showQuitConfirm = false;
+                ImGui.CloseCurrentPopup();
+                Spot.Core.Application.Instance.Quit();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(110, 0)))
+            {
+                _showQuitConfirm = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+        else if (!quitModalOpen)
+        {
+            _showQuitConfirm = false;
+        }
     }
 
     private void SaveAllScenes()

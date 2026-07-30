@@ -23,7 +23,27 @@ public static class RenderSystem
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
     public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
-        Renderer3D.BeginScene(viewProjection);
+        bool hasLight = false;
+        Vector3 lightDir = new Vector3(0, -1, 0);
+        Vector3 lightColor = Vector3.One;
+        float ambientIntensity = 0.3f;
+
+        foreach (Entity entity in scene.View<Transform, DirectionalLightComponent>())
+        {
+            var transform = entity.GetComponent<Transform>();
+            var light = entity.GetComponent<DirectionalLightComponent>();
+            hasLight = true;
+            lightColor = light.Color * light.Intensity;
+            ambientIntensity = light.AmbientIntensity;
+            
+            // We want lightDir to point TOWARDS the light source for shader math.
+            // If the entity's forward (-Z) is where it shines, then the source is in the opposite direction (+Z).
+            lightDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
+            break; // only use the first one for now
+        }
+
+        Renderer3D.BeginScene(viewProjection, hasLight, lightDir, lightColor, ambientIntensity);
+        Renderer3D.DrawSkybox();
 
         foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
@@ -34,9 +54,11 @@ public static class RenderSystem
             }
 
             Matrix4x4 world = entity.GetComponent<Transform>().Matrix;
+            Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
+            Texture2D? texture = meshRenderer.Material?.Texture;
             foreach (Mesh mesh in meshRenderer.Model.Meshes)
             {
-                Renderer3D.DrawMesh(world, mesh, meshRenderer.Color);
+                Renderer3D.DrawMesh(world, mesh, color, texture);
             }
         }
 
