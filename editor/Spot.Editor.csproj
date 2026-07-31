@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\engine\Spot.Engine.csproj" />
+    <ProjectReference Include="..\tools\Spot.Build\Spot.Build.csproj" />
   </ItemGroup>
 
   <ItemGroup>
