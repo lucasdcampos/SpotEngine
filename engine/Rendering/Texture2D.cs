@@ -19,6 +19,10 @@ public sealed class Texture2D : IDisposable
     {
         _gl = Renderer.Gl;
 
+        // Resolve project-relative paths against the active project's asset directory so scenes and
+        // materials committed with relative texture paths load on any machine.
+        path = Spot.Assets.AssetPath.Resolve(path);
+
         // OpenGL's texture origin is the bottom-left, while image files start at the top-left,
         // so flip vertically on load to keep textures upright.
         StbImage.stbi_set_flip_vertically_on_load(1);

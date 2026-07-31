@@ -340,9 +340,17 @@ public class AssetBrowserPanel
         ImGui.PopID();
     }
 
+    // Per-kind accent colors for the asset icons.
+    private static readonly Vector4 ScriptColor = new(0.36f, 0.66f, 0.98f, 1.0f);
+    private static readonly Vector4 SceneColor = new(0.66f, 0.40f, 0.98f, 1.0f);
+    private static readonly Vector4 ImageColor = new(0.30f, 0.80f, 0.55f, 1.0f);
+    private static readonly Vector4 ModelColor = new(0.98f, 0.62f, 0.26f, 1.0f);
+    private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
+
     private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
     {
         Vector2 iconMax = iconMin + new Vector2(size, size);
+        Vector2 center = iconMin + new Vector2(size * 0.5f, size * 0.5f);
 
         if (entry.Kind == AssetKind.Folder)
         {
@@ -367,26 +375,154 @@ public class AssetBrowserPanel
             return;
         }
 
-        // File "page" with a type badge.
-        var pageMin = iconMin + new Vector2(size * 0.24f, size * 0.10f);
-        var pageMax = iconMin + new Vector2(size * 0.76f, size * 0.90f);
-        drawList.AddRectFilled(pageMin, pageMax, ImGui.GetColorU32(WithAlpha(palette.Text, 0.10f)), 4.0f);
-        drawList.AddRect(pageMin, pageMax, ImGui.GetColorU32(WithAlpha(palette.Text, 0.25f)), 4.0f);
-
-        (string badge, Vector4 color) = entry.Kind switch
+        switch (entry.Kind)
         {
-            AssetKind.Script => ("C#", palette.Accent),
-            AssetKind.Scene => ("SCENE", new Vector4(0.66f, 0.40f, 0.98f, 1.0f)),
-            AssetKind.Image => ("IMG", new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
-            AssetKind.Model => ("3D", new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
-            AssetKind.Material => ("MAT", new Vector4(0.36f, 0.66f, 0.98f, 1.0f)),
-            _ => (BadgeFor(entry.Name), palette.TextDisabled),
-        };
-
-        Vector2 badgeSize = ImGui.CalcTextSize(badge);
-        Vector2 center = (pageMin + pageMax) * 0.5f;
-        drawList.AddText(center - badgeSize * 0.5f, ImGui.GetColorU32(color), badge);
+            case AssetKind.Script: DrawScriptIcon(drawList, center, size); break;
+            case AssetKind.Scene: DrawSceneIcon(drawList, center, size); break;
+            case AssetKind.Image: DrawImageIcon(drawList, center, size); break;
+            case AssetKind.Model: DrawModelIcon(drawList, center, size); break;
+            case AssetKind.Material: DrawMaterialIcon(drawList, center, size); break;
+            default: DrawGenericFileIcon(drawList, center, size, palette); break;
+        }
     }
+
+    // ----- Asset type icons (drawn as vector primitives, sized relative to the icon box) -----------
+
+    // A document page with a folded corner. Returns the page rect so callers can add glyphs inside.
+    private static void DrawPage(ImDrawListPtr dl, Vector2 c, float size, Vector4 accent,
+                                 out Vector2 pageMin, out Vector2 pageMax)
+    {
+        float w = size * 0.50f;
+        float h = size * 0.66f;
+        pageMin = c - new Vector2(w * 0.5f, h * 0.5f);
+        pageMax = c + new Vector2(w * 0.5f, h * 0.5f);
+        float fold = size * 0.17f;
+        float rounding = size * 0.05f;
+        float thick = Thickness(size);
+
+        uint fill = ImGui.GetColorU32(new Vector4(1, 1, 1, 0.10f));
+        uint border = ImGui.GetColorU32(WithAlpha(accent, 0.95f));
+
+        // Body (leave the top-right corner squared so the fold reads cleanly).
+        dl.AddRectFilled(pageMin, pageMax, fill, rounding, ImDrawFlags.RoundCornersBottom | ImDrawFlags.RoundCornersTopLeft);
+        dl.AddRect(pageMin, pageMax, border, rounding, ImDrawFlags.RoundCornersBottom | ImDrawFlags.RoundCornersTopLeft, thick);
+
+        // Folded corner triangle.
+        Vector2 fA = new(pageMax.X - fold, pageMin.Y);
+        Vector2 fB = new(pageMax.X, pageMin.Y + fold);
+        Vector2 fC = new(pageMax.X - fold, pageMin.Y + fold);
+        dl.AddTriangleFilled(fA, fB, fC, ImGui.GetColorU32(WithAlpha(accent, 0.45f)));
+        dl.AddLine(fA, fC, border, thick);
+        dl.AddLine(fC, fB, border, thick);
+    }
+
+    private static void DrawScriptIcon(ImDrawListPtr dl, Vector2 c, float size)
+    {
+        DrawPage(dl, c, size, ScriptColor, out _, out _);
+        uint col = ImGui.GetColorU32(ScriptColor);
+        float th = Thickness(size);
+
+        // A "</>" code glyph centered on the page.
+        dl.AddLine(new Vector2(c.X - size * 0.06f, c.Y - size * 0.10f), new Vector2(c.X - size * 0.16f, c.Y), col, th);
+        dl.AddLine(new Vector2(c.X - size * 0.16f, c.Y), new Vector2(c.X - size * 0.06f, c.Y + size * 0.10f), col, th);
+        dl.AddLine(new Vector2(c.X + size * 0.06f, c.Y - size * 0.10f), new Vector2(c.X + size * 0.16f, c.Y), col, th);
+        dl.AddLine(new Vector2(c.X + size * 0.16f, c.Y), new Vector2(c.X + size * 0.06f, c.Y + size * 0.10f), col, th);
+        dl.AddLine(new Vector2(c.X - size * 0.02f, c.Y + size * 0.12f), new Vector2(c.X + size * 0.02f, c.Y - size * 0.12f), col, th);
+    }
+
+    private static void DrawGenericFileIcon(ImDrawListPtr dl, Vector2 c, float size, EditorPalette palette)
+    {
+        DrawPage(dl, c, size, palette.TextDisabled, out Vector2 pageMin, out Vector2 pageMax);
+        uint col = ImGui.GetColorU32(WithAlpha(palette.Text, 0.5f));
+        float th = Thickness(size);
+
+        // A few "text lines" to suggest a generic document.
+        float w = pageMax.X - pageMin.X;
+        float x0 = pageMin.X + w * 0.20f;
+        float x1 = pageMax.X - w * 0.20f;
+        for (int i = 0; i < 3; i++)
+        {
+            float y = c.Y - size * 0.06f + i * size * 0.10f;
+            dl.AddLine(new Vector2(x0, y), new Vector2(x1, y), col, th);
+        }
+    }
+
+    private static void DrawSceneIcon(ImDrawListPtr dl, Vector2 c, float size)
+    {
+        // A stack of layers (three isometric diamonds).
+        float hw = size * 0.28f;
+        float hh = size * 0.13f;
+        float th = Thickness(size);
+        uint line = ImGui.GetColorU32(SceneColor);
+        for (int k = 2; k >= 0; k--)
+        {
+            Vector2 dc = new(c.X, c.Y + (k - 1) * size * 0.14f);
+            Vector2 top = new(dc.X, dc.Y - hh);
+            Vector2 right = new(dc.X + hw, dc.Y);
+            Vector2 bottom = new(dc.X, dc.Y + hh);
+            Vector2 left = new(dc.X - hw, dc.Y);
+            uint fill = ImGui.GetColorU32(WithAlpha(SceneColor, k == 0 ? 0.6f : 0.22f));
+            dl.AddTriangleFilled(top, right, bottom, fill);
+            dl.AddTriangleFilled(top, bottom, left, fill);
+            dl.AddLine(top, right, line, th);
+            dl.AddLine(right, bottom, line, th);
+            dl.AddLine(bottom, left, line, th);
+            dl.AddLine(left, top, line, th);
+        }
+    }
+
+    private static void DrawModelIcon(ImDrawListPtr dl, Vector2 c, float size)
+    {
+        // A cube seen corner-on: hexagon silhouette with three inner edges.
+        float r = size * 0.30f;
+        float th = Thickness(size);
+        uint line = ImGui.GetColorU32(ModelColor);
+        uint fill = ImGui.GetColorU32(WithAlpha(ModelColor, 0.20f));
+
+        Span<Vector2> hex = stackalloc Vector2[6];
+        for (int i = 0; i < 6; i++)
+        {
+            float a = (MathF.PI / 180.0f) * (30.0f + 60.0f * i);
+            hex[i] = c + new Vector2(MathF.Cos(a), MathF.Sin(a)) * r;
+        }
+        for (int i = 0; i < 6; i++)
+            dl.AddTriangleFilled(c, hex[i], hex[(i + 1) % 6], fill);
+        for (int i = 0; i < 6; i++)
+            dl.AddLine(hex[i], hex[(i + 1) % 6], line, th);
+        dl.AddLine(c, hex[1], line, th);
+        dl.AddLine(c, hex[3], line, th);
+        dl.AddLine(c, hex[5], line, th);
+    }
+
+    private static void DrawMaterialIcon(ImDrawListPtr dl, Vector2 c, float size)
+    {
+        // A shaded sphere, the conventional material preview.
+        float r = size * 0.30f;
+        dl.AddCircleFilled(c, r, ImGui.GetColorU32(WithAlpha(MaterialColor, 0.9f)), 32);
+        dl.AddCircle(c, r, ImGui.GetColorU32(Darken(MaterialColor, 0.35f)), 32, Thickness(size));
+        dl.AddCircleFilled(c - new Vector2(r * 0.32f, r * 0.32f), r * 0.30f,
+            ImGui.GetColorU32(new Vector4(1, 1, 1, 0.45f)), 20);
+    }
+
+    private static void DrawImageIcon(ImDrawListPtr dl, Vector2 c, float size)
+    {
+        // A framed picture with a sun and mountains (used when a thumbnail is unavailable).
+        float w = size * 0.60f;
+        float h = size * 0.48f;
+        Vector2 mn = c - new Vector2(w * 0.5f, h * 0.5f);
+        Vector2 mx = c + new Vector2(w * 0.5f, h * 0.5f);
+        float th = Thickness(size);
+        uint col = ImGui.GetColorU32(ImageColor);
+
+        dl.AddRectFilled(mn, mx, ImGui.GetColorU32(WithAlpha(ImageColor, 0.16f)), size * 0.04f);
+        dl.AddRect(mn, mx, col, size * 0.04f, ImDrawFlags.None, th);
+        dl.AddCircleFilled(new Vector2(mn.X + w * 0.26f, mn.Y + h * 0.28f), size * 0.05f, col, 12);
+        uint hill = ImGui.GetColorU32(WithAlpha(ImageColor, 0.7f));
+        dl.AddTriangleFilled(new Vector2(mn.X + w * 0.08f, mx.Y), new Vector2(mn.X + w * 0.42f, mn.Y + h * 0.45f), new Vector2(mn.X + w * 0.72f, mx.Y), hill);
+        dl.AddTriangleFilled(new Vector2(mn.X + w * 0.5f, mx.Y), new Vector2(mn.X + w * 0.74f, mn.Y + h * 0.55f), new Vector2(mx.X - w * 0.04f, mx.Y), hill);
+    }
+
+    private static float Thickness(float size) => MathF.Max(1.3f, size * 0.022f);
 
     private void DrawItemContextMenu(AssetEntry entry)
     {
@@ -585,12 +721,6 @@ public class AssetBrowserPanel
         return AssetKind.Other;
     }
 
-    private static string BadgeFor(string name)
-    {
-        string ext = Path.GetExtension(name).TrimStart('.').ToUpperInvariant();
-        return string.IsNullOrEmpty(ext) ? "FILE" : ext;
-    }
-
     private bool TryGetThumbnail(string path, out Texture2D texture)
     {
         if (_thumbnails.TryGetValue(path, out texture!))
@@ -775,6 +905,12 @@ public class {className} : EntityBehaviour
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);
+
+    private static Vector4 Darken(Vector4 c, float amount) => new(
+        Math.Clamp(c.X - amount, 0.0f, 1.0f),
+        Math.Clamp(c.Y - amount, 0.0f, 1.0f),
+        Math.Clamp(c.Z - amount, 0.0f, 1.0f),
+        c.W);
 
     // Shortens text with a trailing ellipsis so it fits within maxWidth pixels.
     private static string Truncate(string text, float maxWidth)

@@ -151,7 +151,7 @@ public class SceneSerializer
             {
                 Enabled = sprite.Enabled,
                 Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W },
-                TexturePath = sprite.TexturePath
+                TexturePath = sprite.TexturePath != null ? Assets.AssetPath.MakeRelative(sprite.TexturePath) : null
             };
         }
 
@@ -162,8 +162,8 @@ public class SceneSerializer
             {
                 Enabled = meshRenderer.Enabled,
                 Color = new[] { meshRenderer.Color.X, meshRenderer.Color.Y, meshRenderer.Color.Z, meshRenderer.Color.W },
-                ModelPath = meshRenderer.ModelPath,
-                MaterialPath = meshRenderer.MaterialPath
+                ModelPath = meshRenderer.ModelPath != null ? Assets.AssetPath.MakeRelative(meshRenderer.ModelPath) : null,
+                MaterialPath = meshRenderer.MaterialPath != null ? Assets.AssetPath.MakeRelative(meshRenderer.MaterialPath) : null
             };
         }
 

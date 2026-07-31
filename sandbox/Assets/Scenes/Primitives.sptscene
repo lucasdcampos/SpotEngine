@@ -1,0 +1,39 @@
+{
+  "Entities": [
+    {
+      "Tag": { "Name": "Main Camera", "Enabled": true },
+      "Transform": { "Position": [0, 2.5, 9], "Rotation": [-12, 0, 0], "Scale": [1, 1, 1] },
+      "Camera": { "Primary": true, "FixedAspectRatio": false, "ZoomLevel": 5, "BackgroundColor": [0.53, 0.71, 0.92, 1], "ProjectionType": 1, "FieldOfView": 55 }
+    },
+    {
+      "Tag": { "Name": "Sun", "Enabled": true },
+      "Transform": { "Position": [0, 5, 3], "Rotation": [-50, -25, 0], "Scale": [1, 1, 1] },
+      "DirectionalLight": { "Color": [1, 1, 1], "Intensity": 1.2, "AmbientIntensity": 0.45 }
+    },
+    {
+      "Tag": { "Name": "Ground", "Enabled": true },
+      "Transform": { "Position": [0, 0, 0], "Rotation": [0, 0, 0], "Scale": [1.6, 1, 1.6] },
+      "MeshRenderer": { "Color": [0.28, 0.3, 0.36, 1], "ModelPath": "primitive:plane", "MaterialPath": null }
+    },
+    {
+      "Tag": { "Name": "Cube", "Enabled": true },
+      "Transform": { "Position": [-3, 0.5, 0], "Rotation": [0, 20, 0], "Scale": [1, 1, 1] },
+      "MeshRenderer": { "Color": [0.85, 0.32, 0.3, 1], "ModelPath": "primitive:cube", "MaterialPath": null }
+    },
+    {
+      "Tag": { "Name": "Sphere", "Enabled": true },
+      "Transform": { "Position": [-0.5, 0.6, 0], "Rotation": [0, 0, 0], "Scale": [1.2, 1.2, 1.2] },
+      "MeshRenderer": { "Color": [0.35, 0.75, 0.4, 1], "ModelPath": "primitive:sphere", "MaterialPath": null }
+    },
+    {
+      "Tag": { "Name": "Quad", "Enabled": true },
+      "Transform": { "Position": [2, 1, 0], "Rotation": [0, 0, 0], "Scale": [1.3, 1.3, 1] },
+      "MeshRenderer": { "Color": [0.8, 0.4, 0.8, 1], "ModelPath": "primitive:quad", "MaterialPath": null }
+    },
+    {
+      "Tag": { "Name": "Tall Cube", "Enabled": true },
+      "Transform": { "Position": [4, 1, 0], "Rotation": [0, 0, 0], "Scale": [0.7, 2, 0.7] },
+      "MeshRenderer": { "Color": [0.9, 0.78, 0.35, 1], "ModelPath": "primitive:cube", "MaterialPath": null }
+    }
+  ]
+}

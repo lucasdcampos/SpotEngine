@@ -4,7 +4,7 @@ This file provides guidance to AI Agents when working with code in this reposito
 
 ## What this is
 
-Spot is a 2D/3D game engine written in C# (.NET 10), built on Silk.NET (windowing, OpenGL, input, Assimp) and Dear ImGui (via ImGuiNET). It ships an ImGui-based editor, a sample game, and a project/build toolchain. There is no test suite (`tests/` is empty).
+Spot is a 2D/3D game engine written in C# (.NET 10), built on Silk.NET (windowing, OpenGL, input, Assimp) and Dear ImGui (via ImGuiNET). It ships an ImGui-based editor, a sandbox project, and a project/build toolchain. There is no test suite (`tests/` is empty).
 
 ## Commands
 
@@ -13,7 +13,7 @@ Build/run everything from the repo root. The solution is `SpotEngine.slnx` (the 
 ```bash
 dotnet build SpotEngine.slnx        # build all five projects
 dotnet run --project editor         # launch the ImGui editor (starts on LauncherScene)
-dotnet run --project game           # run the sample game
+dotnet run --project sandbox        # run the sandbox project (data-driven .sptscene showcase)
 dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>   # `spot` CLI (assembly name: spot)
 dotnet run --project tools/Spot.Cli -- build windows --project <path>
 ```
@@ -22,7 +22,7 @@ dotnet run --project tools/Spot.Cli -- build windows --project <path>
 
 ### Warnings are errors
 
-`Spot.Engine`, `Spot.Game`, and `Spot.Build` set `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — any warning fails the build. New code in those projects must be warning-clean (nullable annotations, unused usings, etc.). The editor and CLI do not enforce this. Nullable reference types and `ImplicitUsings` are enabled everywhere.
+`Spot.Engine`, `Sandbox`, and `Spot.Build` set `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — any warning fails the build. New code in those projects must be warning-clean (nullable annotations, unused usings, etc.). The editor and CLI do not enforce this. Nullable reference types and `ImplicitUsings` are enabled everywhere.
 
 ## Hard rule: the engine must never crash
 
@@ -70,6 +70,7 @@ Rendering is deliberately layered so callers choose their altitude:
 
 - `ModelImporter` is a registry; `AssimpModelImporter` is registered at startup. `Model`/`Mesh`, `Material`, `PrimitiveModelFactory` (cube/plane/quad/sphere), `Texture2D` (StbImageSharp).
 - `SceneSerializer` reads/writes `.sptscene` JSON via `SceneData`/`EntityData` DTOs (one nullable DTO per component type; hierarchy stored as nested `Children`). BOM-tolerant, catches parse errors.
+- `AssetPath` keeps stored asset references portable: paths in scenes/materials are relative to the project's `Assets/` dir (`AssetPath.Root`, set by `Project.Load`/`SaveActive`). Loaders (`Texture2D`, `Model.Load`, `Material.Load`) resolve them to absolute at load; the serializer relativizes on save. Absolute paths and the `primitive:`/`editor:` pseudo-paths pass through unchanged, so a committed project loads on any machine.
 - `Project`/`ProjectConfig` model a `.sptproj` JSON file (`Name`, `StartScene`, `AssetDirectory`). `Project.Active` is the loaded project. `Project` deliberately does **not** depend on the build tooling.
 
 ### Editor (`editor/`)
@@ -91,6 +92,6 @@ ImGui docking-based. `EditorScene` is the shell: multiple open scenes as dockabl
 |---|---|---|
 | `engine/Spot.Engine` | library (namespace `Spot`) | Silk.NET, Serilog, StbImageSharp |
 | `editor/Spot.Editor` | exe | engine, Spot.Build |
-| `game/Spot.Game` | exe (sample) | engine |
+| `sandbox/Sandbox` | exe (sandbox project) | engine, Spot.Build |
 | `tools/Spot.Build` | library | engine |
 | `tools/Spot.Cli` | exe (`spot`) | Spot.Build |

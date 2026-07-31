@@ -1,0 +1,314 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Main Camera",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          4,
+          12
+        ],
+        "Rotation": [
+          -15,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": {
+        "Primary": true,
+        "FixedAspectRatio": false,
+        "ZoomLevel": 5,
+        "BackgroundColor": [
+          0.53,
+          0.71,
+          0.92,
+          1
+        ],
+        "ProjectionType": 1,
+        "FieldOfView": 55,
+        "Enabled": true
+      },
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Sun",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          5,
+          2
+        ],
+        "Rotation": [
+          -55,
+          -35,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": {
+        "Color": [
+          1,
+          0.97,
+          0.9
+        ],
+        "Intensity": 1.3,
+        "AmbientIntensity": 0.45,
+        "Enabled": true
+      },
+      "DynamicClouds": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Sky",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": {
+        "ColorTop": [
+          1,
+          1,
+          1
+        ],
+        "ColorBottom": [
+          0.75,
+          0.82,
+          0.9
+        ],
+        "Speed": 0.5,
+        "Density": 0.5,
+        "Height": 0.3,
+        "Opacity": 0.7,
+        "Volume": 1.3,
+        "Enabled": true
+      },
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Ground",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          0.047970854,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2.4,
+          1,
+          2.4
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": {
+        "Color": [
+          0.38,
+          0.5,
+          0.34,
+          1
+        ],
+        "ModelPath": "primitive:plane",
+        "MaterialPath": null,
+        "Enabled": true
+      },
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Red Cube",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          -2.2,
+          0.5,
+          0
+        ],
+        "Rotation": [
+          0,
+          25,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": {
+        "Color": [
+          0.85,
+          0.3,
+          0.28,
+          1
+        ],
+        "ModelPath": "primitive:cube",
+        "MaterialPath": null,
+        "Enabled": true
+      },
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Blue Sphere",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          2,
+          0.7,
+          0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1.4,
+          1.4,
+          1.4
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": {
+        "Color": [
+          0.3,
+          0.5,
+          0.85,
+          1
+        ],
+        "ModelPath": "primitive:sphere",
+        "MaterialPath": null,
+        "Enabled": true
+      },
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Pillar",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0.2,
+          1,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.6,
+          2,
+          0.6
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": {
+        "Color": [
+          0.82,
+          0.72,
+          0.35,
+          1
+        ],
+        "ModelPath": "primitive:cube",
+        "MaterialPath": null,
+        "Enabled": true
+      },
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "DynamicClouds": null,
+      "Children": null
+    }
+  ]
+}

@@ -97,7 +97,7 @@ public sealed class Material
             return checker;
         }
 
-        string full = Path.GetFullPath(path);
+        string full = Path.GetFullPath(AssetPath.Resolve(path));
         if (s_cache.TryGetValue(full, out Material? cached))
         {
             return cached;
@@ -157,7 +157,7 @@ public sealed class Material
         var data = new MaterialData
         {
             Color = new[] { Color.X, Color.Y, Color.Z, Color.W },
-            TexturePath = TexturePath,
+            TexturePath = TexturePath != null ? AssetPath.MakeRelative(TexturePath) : null,
             ShaderType = ShaderType.ToString(),
             WaveSpeed = WaveSpeed,
             WaveScale = WaveScale,

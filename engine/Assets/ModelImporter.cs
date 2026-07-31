@@ -49,7 +49,7 @@ public static class ModelImporter
             return primitive;
         }
 
-        string fullPath = Path.GetFullPath(path);
+        string fullPath = Path.GetFullPath(AssetPath.Resolve(path));
         if (s_cache.TryGetValue(fullPath, out Model? cached))
         {
             return cached;

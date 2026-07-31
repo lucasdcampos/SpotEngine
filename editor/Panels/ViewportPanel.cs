@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Rendering;
+using Spot.Scenes;
 using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
@@ -13,6 +14,7 @@ public class ViewportPanel
     private Framebuffer? _cameraPreviewFramebuffer;
     private EditorCamera? _camera;
     private readonly TransformGizmo _gizmo = new();
+    private readonly SceneIcons _sceneIcons = new();
 
     public ViewportPanel(EditorContext context)
     {
@@ -83,7 +85,16 @@ public class ViewportPanel
                 }
 
                 var io = ImGui.GetIO();
-                
+
+                // --- EDITOR ICONS (billboards for invisible entities: cameras, lights, sky) ---
+                // Drawn before the gizmo so gizmo handles render on top; the hovered icon (if any) is
+                // preferred over mesh picking when the user clicks.
+                Entity? hoveredIcon = null;
+                if (_context.ActiveScene != null)
+                {
+                    hoveredIcon = _sceneIcons.Draw(_context.ActiveScene, _camera, cursorPos, viewportSize, isHovered);
+                }
+
                 // --- TRANSFORM GIZMO (2D & 3D: translate / rotate / scale) ---
                 if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
                 {
@@ -107,7 +118,9 @@ public class ViewportPanel
                 if (isHovered && !_gizmo.IsUsing && _context.ActiveScene != null
                     && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
-                    _context.Selection = ScenePicker.Pick(
+                    // An editor icon under the cursor takes priority over mesh picking, so invisible
+                    // entities (cameras, lights, sky) can be selected by clicking their billboard.
+                    _context.Selection = hoveredIcon ?? ScenePicker.Pick(
                         _context.ActiveScene, _camera.ViewProjection, io.MousePos, cursorPos, viewportSize);
                 }
 

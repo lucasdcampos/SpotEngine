@@ -1,0 +1,9 @@
+{
+  "Color": [0.1, 0.35, 0.55, 1.0],
+  "TexturePath": null,
+  "ShaderType": "Water",
+  "WaveSpeed": 0.6,
+  "WaveScale": 3.0,
+  "WaveStrength": 0.25,
+  "SpecularPower": 80.0
+}
