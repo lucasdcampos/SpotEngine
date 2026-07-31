@@ -7,6 +7,8 @@ using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Core.Services;
+using Spot.Assets;
+using System.IO;
 
 namespace Spot.Core;
 
@@ -35,6 +37,16 @@ public class ApplicationSpec
     /// Gets or sets the pixel size used when loading <see cref="FontPath"/>.
     /// </summary>
     public int FontSize { get; set; } = 16;
+
+    /// <summary>
+    /// Gets or sets the root directory for assets.
+    /// </summary>
+    public string? AssetDirectory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the path to the start scene to load automatically on startup.
+    /// </summary>
+    public string? StartScene { get; set; }
 }
 
 /// <summary>
@@ -150,6 +162,31 @@ public class Application
         if (startScene is not null)
         {
             SceneManager.Load(startScene);
+        }
+        else if (!string.IsNullOrEmpty(_spec.StartScene))
+        {
+            if (!string.IsNullOrEmpty(_spec.AssetDirectory))
+            {
+                AssetPath.Root = _spec.AssetDirectory;
+            }
+            
+            string scenePath = _spec.StartScene;
+            if (!string.IsNullOrEmpty(_spec.AssetDirectory))
+            {
+                scenePath = Path.Combine(_spec.AssetDirectory, scenePath);
+            }
+
+            if (File.Exists(scenePath))
+            {
+                var realScene = new Scene();
+                var serializer = new SceneSerializer(realScene);
+                serializer.Deserialize(scenePath);
+                SceneManager.Load(realScene);
+            }
+            else
+            {
+                Log.CoreError("Start scene not found: {0}", scenePath);
+            }
         }
 
         _stopwatch = Stopwatch.StartNew();
