@@ -1,30 +1,37 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Sandbox</RootNamespace>
-    <AssemblyName>Sandbox</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <!--
-    In-repo sandbox: references the engine (and Spot.Build, for Project loading) as live source, so it
-    compiles against the current engine and doubles as a build-time smoke test of the public API. This
-    is intentionally NOT the copied-DLL layout that `spot new` generates for distributable projects.
-  -->
   <ItemGroup>
-    <ProjectReference Include="..\engine\Spot.Engine.csproj" />
-    <ProjectReference Include="..\tools\Spot.Build\Spot.Build.csproj" />
+    <Reference Include="Spot.Engine">
+      <HintPath>EngineBin\Spot.Engine.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
-  <!-- The .sptproj and all assets are copied next to the executable so paths resolve identically
-       whether launched via `dotnet run` (any working directory) or from a published build. -->
   <ItemGroup>
-    <None Include="Sandbox.sptproj" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Silk.NET.Assimp" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Build\**" />
+    <None Remove="Build\**" />
+    <Content Remove="Build\**" />
+    <EmbeddedResource Remove="Build\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

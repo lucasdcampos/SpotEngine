@@ -69,6 +69,7 @@ public static class ProjectGenerator
   <ItemGroup>
     <PackageReference Include=""Serilog"" Version=""4.4.0"" />
     <PackageReference Include=""Serilog.Sinks.Console"" Version=""6.1.1"" />
+    <PackageReference Include=""Silk.NET.Assimp"" Version=""2.23.0"" />
     <PackageReference Include=""Silk.NET.Input"" Version=""2.23.0"" />
     <PackageReference Include=""Silk.NET.OpenGL"" Version=""2.23.0"" />
     <PackageReference Include=""Silk.NET.OpenGL.Extensions.ImGui"" Version=""2.23.0"" />
@@ -79,11 +80,11 @@ public static class ProjectGenerator
   <ItemGroup>
     <Compile Remove=""Build\**"" />
     <None Remove=""Build\**"" />
+    <Content Remove=""Build\**"" />
     <EmbeddedResource Remove=""Build\**"" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=""**\*.sptproj"" CopyToOutputDirectory=""PreserveNewest"" Exclude=""Build\**;bin\**;obj\**"" />
     <None Include=""Assets\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
   </ItemGroup>
 </Project>";
@@ -127,10 +128,14 @@ EndGlobal
         if (!overwriteProgram && File.Exists(programPath)) return;
 
         string name = project.Config.Name;
+        string assetDir = project.Config.AssetDirectory.Replace("\\", "/");
+        string startScene = project.Config.StartScene.Replace("\\", "/");
+
         string programContent = $@"using System;
 using System.IO;
 using Spot.Core;
 using Spot.Scenes;
+using Spot.Assets;
 
 namespace {name.Replace(" ", "")};
 
@@ -138,25 +143,18 @@ class LoaderScene : Scene
 {{
     public override void OnEnter()
     {{
-        string projectPath = ""{name}.sptproj"";
-        if (Project.Load(projectPath) != null && Project.Active != null)
+        AssetPath.Root = ""{assetDir}"";
+        string startScenePath = Path.Combine(AssetPath.Root, ""{startScene}"");
+        if (File.Exists(startScenePath))
         {{
-            string startScenePath = Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
-            if (File.Exists(startScenePath))
-            {{
-                var realScene = new Scene();
-                var serializer = new SceneSerializer(realScene);
-                serializer.Deserialize(startScenePath);
-                SceneManager.Load(realScene);
-            }}
-            else
-            {{
-                Console.WriteLine($""Start scene not found: {{startScenePath}}"");
-            }}
+            var realScene = new Scene();
+            var serializer = new SceneSerializer(realScene);
+            serializer.Deserialize(startScenePath);
+            SceneManager.Load(realScene);
         }}
         else
         {{
-            Console.WriteLine(""Warning: Could not load project configuration."");
+            Log.Error($""Start scene not found: {{startScenePath}}"");
         }}
     }}
 }}

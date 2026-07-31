@@ -2,9 +2,7 @@
   <Folder Name="/engine/">
     <Project Path="engine/Spot.Engine.csproj" />
   </Folder>
-  <Folder Name="/sandbox/">
-    <Project Path="sandbox/Sandbox.csproj" />
-  </Folder>
+  <Folder Name="/sandbox/" />
   <Folder Name="/editor/">
     <Project Path="editor/Spot.Editor.csproj" />
   </Folder>
