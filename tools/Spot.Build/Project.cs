@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Spot.Assets;
 
 namespace Spot.Build;
 
@@ -41,6 +42,7 @@ public class Project
             if (config != null)
             {
                 Active = new Project(config, Path.GetDirectoryName(filepath) ?? string.Empty);
+                AssetPath.Root = Active.GetAssetDirectory();
                 return Active;
             }
         }
@@ -63,6 +65,7 @@ public class Project
         string json = JsonSerializer.Serialize(Active.Config, options);
         File.WriteAllText(filepath, json);
         Active.ProjectDirectory = Path.GetDirectoryName(filepath) ?? string.Empty;
+        AssetPath.Root = Active.GetAssetDirectory();
     }
 
     public string GetAssetDirectory()

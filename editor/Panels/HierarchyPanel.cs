@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using ImGuiNET;
 using Spot.Scenes;
 using Spot.Rendering;
+using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
 
@@ -180,12 +182,25 @@ public class HierarchyPanel
             flags |= ImGuiTreeNodeFlags.Leaf;
         }
         
+        // Reserve room at the start of the label for a type icon, drawn afterwards over that space.
+        var iconKind = EditorGui.IconFor(entity);
+        float iconSize = ImGui.GetTextLineHeight();
+        string label = EditorGui.IconPadding(iconSize + 4.0f) + name;
+
         bool active = entity.IsActiveInHierarchy();
-        if (!active) ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.5f, 0.5f, 0.5f, 1.0f));
-        
-        bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, name);
-        
+        if (!active) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+
+        bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, label);
+
         if (!active) ImGui.PopStyleColor();
+
+        // Draw the type icon just after the tree arrow, vertically centered on the row.
+        var drawList = ImGui.GetWindowDrawList();
+        Vector2 rectMin = ImGui.GetItemRectMin();
+        float rowHeight = ImGui.GetItemRectSize().Y;
+        float iconLeft = rectMin.X + ImGui.GetTreeNodeToLabelSpacing();
+        Vector2 iconCenter = new(iconLeft + iconSize * 0.5f, rectMin.Y + rowHeight * 0.5f);
+        EditorGui.DrawEntityIcon(drawList, iconKind, iconCenter, iconSize * 0.42f, active ? 1.0f : 0.5f);
 
         if (ImGui.IsItemClicked())
         {
