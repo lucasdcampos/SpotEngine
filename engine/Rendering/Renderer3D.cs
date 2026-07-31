@@ -172,20 +172,22 @@ public static class Renderer3D
 
         vec4 grid(vec3 fragPos3D, float scale, bool drawAxis) {
             vec2 coord = fragPos3D.xz * scale;
-            vec2 derivative = fwidth(coord);
+            vec2 derivative = max(fwidth(coord), vec2(1e-5));
             vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
             float line = min(grid.x, grid.y);
-            float minimumz = min(derivative.y, 1.0) / scale;
-            float minimumx = min(derivative.x, 1.0) / scale;
             vec4 color = vec4(0.3, 0.3, 0.3, 1.0 - min(line, 1.0));
             
             if (drawAxis) {
-                // z axis
-                if(fragPos3D.x > -0.1 * minimumx && fragPos3D.x < 0.1 * minimumx)
-                    color.xyz = vec3(0.0, 0.0, 1.0);
-                // x axis
-                if(fragPos3D.z > -0.1 * minimumz && fragPos3D.z < 0.1 * minimumz)
-                    color.xyz = vec3(1.0, 0.0, 0.0);
+                // z axis (blue)
+                float zAxis = abs(coord.x) / derivative.x;
+                if (zAxis < 1.0) {
+                    color.xyz = mix(vec3(0.0, 0.0, 1.0), color.xyz, zAxis);
+                }
+                // x axis (red)
+                float xAxis = abs(coord.y) / derivative.y;
+                if (xAxis < 1.0) {
+                    color.xyz = mix(vec3(1.0, 0.0, 0.0), color.xyz, xAxis);
+                }
             }
             return color;
         }
