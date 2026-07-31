@@ -132,32 +132,9 @@ EndGlobal
         string startScene = project.Config.StartScene.Replace("\\", "/");
 
         string programContent = $@"using System;
-using System.IO;
 using Spot.Core;
-using Spot.Scenes;
-using Spot.Assets;
 
 namespace {name.Replace(" ", "")};
-
-class LoaderScene : Scene
-{{
-    public override void OnEnter()
-    {{
-        AssetPath.Root = ""{assetDir}"";
-        string startScenePath = Path.Combine(AssetPath.Root, ""{startScene}"");
-        if (File.Exists(startScenePath))
-        {{
-            var realScene = new Scene();
-            var serializer = new SceneSerializer(realScene);
-            serializer.Deserialize(startScenePath);
-            SceneManager.Load(realScene);
-        }}
-        else
-        {{
-            Log.Error($""Start scene not found: {{startScenePath}}"");
-        }}
-    }}
-}}
 
 class Program
 {{
@@ -165,14 +142,16 @@ class Program
     {{
         var spec = new ApplicationSpec
         {{
-            Name = ""{name}""
+            Name = ""{name}"",
+            AssetDirectory = ""{assetDir}"",
+            StartScene = ""{startScene}""
         }};
         spec.Window.Title = ""{name}"";
         spec.Window.Width = 1280;
         spec.Window.Height = 720;
 
         var app = new Application(spec);
-        app.Run(new LoaderScene());
+        app.Run();
     }}
 }}
 ";
