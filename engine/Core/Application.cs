@@ -1,12 +1,12 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using ImGuiNET;
-using Silk.NET.OpenGL;
 using Spot.Console;
 using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
-using ImGuiController = Silk.NET.OpenGL.Extensions.ImGui.ImGuiController;
-using ImGuiFontConfig = Silk.NET.OpenGL.Extensions.ImGui.ImGuiFontConfig;
+using Spot.Core.Services;
 
 namespace Spot.Core;
 
@@ -46,13 +46,17 @@ public class Application
 
     private readonly ApplicationSpec _spec;
     private readonly DevConsole _console = new();
+    private readonly List<IEngineService> _services = new();
     private Window? _window;
-    private GL? _gl;
-    private ImGuiController? _imguiController;
+    
     private bool _running;
     private float _deltaTime;
     private string? _lastFrameError;
     private bool _frameFaulted;
+    private Stopwatch? _stopwatch;
+    private TimeSpan _lastTime;
+
+    private ImGuiService? _imguiService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
@@ -84,18 +88,16 @@ public class Application
         _window ?? throw new InvalidOperationException("The window has not been created yet.");
 
     /// <summary>
-    /// Gets the OpenGL API for the current context. Used internally by the engine; game code
-    /// renders through <see cref="Renderer"/> and the rendering resource types instead.
-    /// </summary>
-    internal GL Gl =>
-        _gl ?? throw new InvalidOperationException("The OpenGL context has not been created yet.");
-
-    /// <summary>
     /// Gets the developer console.
     /// </summary>
     public DevConsole Console => _console;
 
     public string EngineVersion => SpotEngine.GetVersion();
+
+    public void AddService(IEngineService service)
+    {
+        _services.Add(service);
+    }
 
     /// <summary>
     /// Runs the main application loop until the application stops.
@@ -103,36 +105,41 @@ public class Application
     /// <param name="startScene">The scene to load first (for example a menu).</param>
     public void Run(Scene? startScene = null)
     {
+        Initialize(startScene);
+
+        while (_running)
+        {
+            try
+            {
+                PollEvents();
+                Update();
+                Render();
+            }
+            catch (Exception ex)
+            {
+                ReportFrameError("frame", ex);
+            }
+        }
+
+        Shutdown();
+    }
+
+    private void Initialize(Scene? startScene)
+    {
         Log.Init(new DevConsoleSink(_console));
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
         _window = new Window(_spec.Window);
         _window.SetEventCallback(OnEvent);
 
-        _gl = GL.GetApi(_window.NativeWindow);
-        Renderer.Init(_gl);
-        Renderer2D.Init();
-        Renderer3D.Init();
-        Spot.Assets.ModelImporter.Register(new Spot.Assets.AssimpModelImporter());
-        Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-        Log.CoreInfo("OpenGL {0}", _gl.GetStringS(StringName.Version));
+        AddService(new GraphicsService());
+        _imguiService = new ImGuiService(_spec);
+        AddService(_imguiService);
 
-        // Load a custom UI font when one is configured and present; otherwise fall back gracefully to
-        // ImGui's default font. The font must be supplied at controller construction because that is
-        // when the font atlas texture is built.
-        ImGuiFontConfig? fontConfig = null;
-        if (!string.IsNullOrEmpty(_spec.FontPath) && File.Exists(_spec.FontPath))
+        foreach (var service in _services)
         {
-            fontConfig = new ImGuiFontConfig(_spec.FontPath, _spec.FontSize);
+            service.Init(this);
         }
-        else if (!string.IsNullOrEmpty(_spec.FontPath))
-        {
-            Log.CoreWarn("UI font not found at '{0}', using the default font.", _spec.FontPath);
-        }
-
-        _imguiController = new ImGuiController(_gl, _window.NativeWindow, _window.Input, fontConfig);
-        ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        ImGui.StyleColorsDark();
 
         _running = true;
         if (startScene is not null)
@@ -140,78 +147,88 @@ public class Application
             SceneManager.Load(startScene);
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        TimeSpan lastTime = stopwatch.Elapsed;
-        while (_running)
+        _stopwatch = Stopwatch.StartNew();
+        _lastTime = _stopwatch.Elapsed;
+    }
+
+    private void PollEvents()
+    {
+        _frameFaulted = false;
+        Input.NewFrame();
+        _window!.PollEvents();
+    }
+
+    private void Update()
+    {
+        TimeSpan now = _stopwatch!.Elapsed;
+        _deltaTime = (float)(now - _lastTime).TotalSeconds;
+        _lastTime = now;
+
+        try
         {
-            _frameFaulted = false;
+            SceneManager.ApplyPendingSwitch();
+            SceneManager.Update(_deltaTime);
 
-            // Top-level safety net: no single frame — game logic, a UI panel, an input/event handler,
-            // or the window's own bookkeeping — is allowed to take the whole engine down. Anything that
-            // throws here is logged and the loop continues. Only failures during startup, before this
-            // loop (window/GL/ImGui creation), are treated as unrecoverable and left to stop the app.
-            try
+            foreach (var service in _services)
             {
-                Input.NewFrame();
-                _window.PollEvents();
-
-                TimeSpan now = stopwatch.Elapsed;
-                _deltaTime = (float)(now - lastTime).TotalSeconds;
-                lastTime = now;
-
-                // Apply any pending scene switch at the frame boundary, then run the active scene.
-                try
-                {
-                    SceneManager.ApplyPendingSwitch();
-                    SceneManager.Update(_deltaTime);
-
-                    Renderer.Clear();
-                    SceneManager.Render();
-                }
-                catch (Exception ex)
-                {
-                    ReportFrameError("scene update/render", ex);
-                }
-
-                // NewFrame (Update) must always be matched by Render so ImGui's frame stays balanced;
-                // the finally guarantees that even when the scene-supplied UI in between throws.
-                _imguiController.Update(_deltaTime);
-                try
-                {
-                    SceneManager.ImGuiRender();
-                    _console.OnImGuiRender();
-                }
-                catch (Exception ex)
-                {
-                    ReportFrameError("UI render", ex);
-                }
-                finally
-                {
-                    _imguiController.Render();
-                }
-
-                _window.SwapBuffers();
-            }
-            catch (Exception ex)
-            {
-                ReportFrameError("frame", ex);
-            }
-
-            // A clean frame clears the de-dup latch so the same fault is reported again if it returns.
-            if (!_frameFaulted)
-            {
-                _lastFrameError = null;
+                service.Update(_deltaTime);
             }
         }
+        catch (Exception ex)
+        {
+            ReportFrameError("scene update", ex);
+        }
+    }
 
+    private void Render()
+    {
+        try
+        {
+            Renderer.Clear();
+            SceneManager.Render();
+        }
+        catch (Exception ex)
+        {
+            ReportFrameError("scene render", ex);
+        }
+
+        try
+        {
+            SceneManager.ImGuiRender();
+            _console.OnImGuiRender();
+            foreach (var service in _services)
+            {
+                service.ImGuiRender();
+            }
+        }
+        catch (Exception ex)
+        {
+            ReportFrameError("UI render", ex);
+        }
+        finally
+        {
+            _imguiService?.RenderFrame();
+        }
+
+        _window!.SwapBuffers();
+
+        if (!_frameFaulted)
+        {
+            _lastFrameError = null;
+        }
+    }
+
+    private void Shutdown()
+    {
         Log.CoreInfo("Shutting down '{0}'", _spec.Name);
         SceneManager.Shutdown();
 
-        Renderer2D.Shutdown();
-        _imguiController.Dispose();
-        _window.Dispose();
-        _imguiController = null;
-        _gl = null;
+        foreach (var service in _services)
+        {
+            service.Shutdown();
+        }
+
+        _window?.Dispose();
         _window = null;
     }
 
@@ -248,12 +265,8 @@ public class Application
 
     private void OnEvent(Event e)
     {
-        // Event handlers run arbitrary game and editor code — button clicks, key bindings, the
-        // CanClose gate. A fault in any one of them must not crash the engine, so each event is
-        // isolated here (and kept independent of others in the same poll) and merely logged.
         try
         {
-            // The input state always sees every event, even ones handled below.
             Input.OnEvent(e);
 
             var dispatcher = new EventDispatcher(e);
@@ -261,7 +274,6 @@ public class Application
             dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
             dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
 
-            // Forward anything the engine did not consume to the active scene.
             if (!e.Handled)
             {
                 SceneManager.DispatchEvent(e);
@@ -275,8 +287,6 @@ public class Application
 
     private bool OnKeyTyped(KeyTypedEvent e)
     {
-        // The console toggles on the apostrophe character. Using the typed character (rather than the
-        // physical key) keeps the behavior correct regardless of the keyboard layout.
         if (e.Character == '\'' && !ImGui.GetIO().WantTextInput)
         {
             _console.Toggle();
@@ -288,7 +298,6 @@ public class Application
 
     private bool OnWindowClose(WindowCloseEvent e)
     {
-        // Let the application veto the close (for example to confirm unsaved changes).
         if (CanClose != null && !CanClose())
         {
             _window?.CancelClose();
@@ -301,7 +310,7 @@ public class Application
 
     private bool OnWindowResize(WindowResizeEvent e)
     {
-        _gl?.Viewport(0, 0, (uint)e.Width, (uint)e.Height);
+        Renderer.Api.Viewport(0, 0, (uint)e.Width, (uint)e.Height);
         Log.CoreInfo("Window resized: {0}x{1}", e.Width, e.Height);
         return false;
     }

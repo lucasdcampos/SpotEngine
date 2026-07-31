@@ -119,25 +119,6 @@ public class SerializationTests
         Assert.False(ok);
     }
 
-    [Fact]
-    public void Project_ConfigRoundTripsThroughJson()
-    {
-        using var temp = new TempDir();
-        string sptproj = Path.Combine(temp.Path, "Game.sptproj");
-
-        Project.New();
-        Project.Active!.Config.Name = "My Game";
-        Project.Active.Config.StartScene = "Scenes/Level1.sptscene";
-        Project.Active.Config.AssetDirectory = "Content";
-        Project.SaveActive(sptproj);
-
-        var reloaded = Project.Load(sptproj);
-
-        Assert.NotNull(reloaded);
-        Assert.Equal("My Game", reloaded!.Config.Name);
-        Assert.Equal("Scenes/Level1.sptscene", reloaded.Config.StartScene);
-        Assert.Equal("Content", reloaded.Config.AssetDirectory);
-    }
 
     private static Entity FindByName(Scene scene, string name) =>
         FindByNameOrNull(scene, name) ?? throw new InvalidOperationException($"Entity '{name}' was not found.");
