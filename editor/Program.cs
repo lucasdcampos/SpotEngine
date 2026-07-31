@@ -9,7 +9,8 @@ public static class Program
         var spec = new ApplicationSpec
         {
             Name = "Spot.Editor",
-            Window = new WindowSpec { Title = "Spot.Editor", Width = 1280, Height = 720 },
+            // Start at the launcher's compact size; the editor restores its own size when it loads.
+            Window = new WindowSpec { Title = "Spot Launcher", Width = 1000, Height = 620 },
             FontPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Fonts", "Inter-Regular.ttf"),
             FontSize = 16
         };

@@ -73,6 +73,12 @@ public class InspectorPanel
                         _context.Selection.Value.AddComponent(new DirectionalLightComponent());
                     ImGui.CloseCurrentPopup();
                 }
+                if (ImGui.MenuItem("Dynamic Clouds"))
+                {
+                    if (!_context.Selection.Value.HasComponent<DynamicCloudsComponent>())
+                        _context.Selection.Value.AddComponent(new DynamicCloudsComponent());
+                    ImGui.CloseCurrentPopup();
+                }
                 if (ImGui.MenuItem("Script Component"))
                 {
                     if (!_context.Selection.Value.HasComponent<ScriptComponent>())
@@ -100,6 +106,45 @@ public class InspectorPanel
             material.Color = color;
         if (ImGui.IsItemDeactivatedAfterEdit())
             material.Save(path);
+
+        string[] shaderTypes = Enum.GetNames(typeof(Spot.Assets.MaterialShaderType));
+        int currentShader = (int)material.ShaderType;
+        if (ImGui.Combo("Shader Type", ref currentShader, shaderTypes, shaderTypes.Length))
+        {
+            material.ShaderType = (Spot.Assets.MaterialShaderType)currentShader;
+            material.Save(path);
+        }
+
+        if (material.ShaderType == Spot.Assets.MaterialShaderType.Water)
+        {
+            bool waterChanged = false;
+            float waveSpeed = material.WaveSpeed;
+            if (ImGui.DragFloat("Wave Speed", ref waveSpeed, 0.01f, 0.0f, 10.0f))
+            {
+                material.WaveSpeed = waveSpeed;
+                waterChanged = true;
+            }
+            float waveScale = material.WaveScale;
+            if (ImGui.DragFloat("Wave Scale", ref waveScale, 0.01f, 0.0f, 10.0f))
+            {
+                material.WaveScale = waveScale;
+                waterChanged = true;
+            }
+            float waveStrength = material.WaveStrength;
+            if (ImGui.DragFloat("Wave Strength", ref waveStrength, 0.01f, 0.0f, 5.0f))
+            {
+                material.WaveStrength = waveStrength;
+                waterChanged = true;
+            }
+            float specPower = material.SpecularPower;
+            if (ImGui.DragFloat("Specular Power", ref specPower, 1.0f, 1.0f, 512.0f))
+            {
+                material.SpecularPower = specPower;
+                waterChanged = true;
+            }
+            
+            if (waterChanged) material.Save(path);
+        }
 
         ImGui.Spacing();
         ImGui.TextUnformatted("Texture");
@@ -626,6 +671,69 @@ public class InspectorPanel
             
             if (removeComponent)
                 entity.RemoveComponent<DirectionalLightComponent>();
+                
+            ImGui.PopID();
+        }
+
+        if (entity.HasComponent<DynamicCloudsComponent>())
+        {
+            ImGui.PushID("DynamicCloudsComponent");
+            bool opened = ImGui.TreeNodeEx((IntPtr)typeof(DynamicCloudsComponent).GetHashCode(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowOverlap, "Dynamic Clouds");
+            ImGui.SameLine(ImGui.GetWindowWidth() - 30.0f);
+            if (ImGui.Button("..."))
+            {
+                ImGui.OpenPopup("ComponentSettings");
+            }
+            
+            bool removeComponent = false;
+            if (ImGui.BeginPopup("ComponentSettings"))
+            {
+                if (ImGui.MenuItem("Remove component"))
+                    removeComponent = true;
+                ImGui.EndPopup();
+            }
+
+            if (opened)
+            {
+                var clouds = entity.GetComponent<DynamicCloudsComponent>();
+                
+                bool enabled = clouds.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    clouds.Enabled = enabled;
+                
+                var topColor = clouds.ColorTop;
+                if (ImGui.ColorEdit3("Color Top", ref topColor))
+                    clouds.ColorTop = topColor;
+
+                var botColor = clouds.ColorBottom;
+                if (ImGui.ColorEdit3("Color Bottom", ref botColor))
+                    clouds.ColorBottom = botColor;
+                    
+                float speed = clouds.Speed;
+                if (ImGui.DragFloat("Speed", ref speed, 0.01f, 0.0f, 10.0f))
+                    clouds.Speed = speed;
+
+                float density = clouds.Density;
+                if (ImGui.DragFloat("Density", ref density, 0.01f, 0.0f, 1.0f))
+                    clouds.Density = density;
+
+                float height = clouds.Height;
+                if (ImGui.DragFloat("Height", ref height, 0.01f, 0.0f, 10.0f))
+                    clouds.Height = height;
+
+                float opacity = clouds.Opacity;
+                if (ImGui.DragFloat("Opacity", ref opacity, 0.01f, 0.0f, 1.0f))
+                    clouds.Opacity = opacity;
+                    
+                float volume = clouds.Volume;
+                if (ImGui.DragFloat("Volume", ref volume, 0.01f, 0.0f, 5.0f))
+                    clouds.Volume = volume;
+
+                ImGui.TreePop();
+            }
+            
+            if (removeComponent)
+                entity.RemoveComponent<DynamicCloudsComponent>();
                 
             ImGui.PopID();
         }

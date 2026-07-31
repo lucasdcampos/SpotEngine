@@ -5,6 +5,13 @@ using Spot.Rendering;
 
 namespace Spot.Assets;
 
+public enum MaterialShaderType
+{
+    Standard = 0,
+    Water = 1
+}
+
+
 /// <summary>
 /// A simple surface material: a base color and an optional texture. Materials are assets on disk
 /// (".sptmat" JSON) that can be shared by many models. When a texture is set the surface samples it
@@ -21,12 +28,26 @@ public sealed class Material
     {
         public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
         public string? TexturePath { get; set; }
+        public string? ShaderType { get; set; }
+        public float WaveSpeed { get; set; } = 1.0f;
+        public float WaveScale { get; set; } = 1.0f;
+        public float WaveStrength { get; set; } = 0.3f;
+        public float SpecularPower { get; set; } = 64.0f;
     }
 
     private static readonly Dictionary<string, Material> s_cache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Gets or sets the base color, multiplied with the texture when one is set. Defaults to opaque white.</summary>
     public Vector4 Color { get; set; } = Vector4.One;
+    
+    /// <summary>Gets or sets the shader used for rendering this material.</summary>
+    public MaterialShaderType ShaderType { get; set; } = MaterialShaderType.Standard;
+
+    // Water specific properties
+    public float WaveSpeed { get; set; } = 1.0f;
+    public float WaveScale { get; set; } = 1.0f;
+    public float WaveStrength { get; set; } = 0.3f;
+    public float SpecularPower { get; set; } = 64.0f;
 
     /// <summary>Gets the texture sampled across the surface, or <see langword="null"/> for a solid color.</summary>
     public Texture2D? Texture { get; private set; }
@@ -104,6 +125,16 @@ public sealed class Material
                         Log.CoreError("Failed to load material texture '{0}': {1}", data.TexturePath, ex.Message);
                     }
                 }
+                
+                if (Enum.TryParse<MaterialShaderType>(data.ShaderType, out var type))
+                {
+                    material.ShaderType = type;
+                }
+                
+                material.WaveSpeed = data.WaveSpeed;
+                material.WaveScale = data.WaveScale;
+                material.WaveStrength = data.WaveStrength;
+                material.SpecularPower = data.SpecularPower;
             }
         }
         catch (Exception ex)
@@ -126,7 +157,12 @@ public sealed class Material
         var data = new MaterialData
         {
             Color = new[] { Color.X, Color.Y, Color.Z, Color.W },
-            TexturePath = TexturePath
+            TexturePath = TexturePath,
+            ShaderType = ShaderType.ToString(),
+            WaveSpeed = WaveSpeed,
+            WaveScale = WaveScale,
+            WaveStrength = WaveStrength,
+            SpecularPower = SpecularPower
         };
 
         File.WriteAllText(full, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));

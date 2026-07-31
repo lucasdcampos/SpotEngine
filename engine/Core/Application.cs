@@ -88,6 +88,11 @@ public class Application
         _window ?? throw new InvalidOperationException("The window has not been created yet.");
 
     /// <summary>
+    /// Gets the total time in seconds since the application started.
+    /// </summary>
+    public float Time => (float)(_stopwatch?.Elapsed.TotalSeconds ?? 0.0);
+
+    /// <summary>
     /// Gets the developer console.
     /// </summary>
     public DevConsole Console => _console;
