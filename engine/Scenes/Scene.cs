@@ -51,6 +51,7 @@ public class Scene
     {
         OnUpdate(deltaTime);
         Spot.Physics.Physics2DSystem.Update(this, deltaTime);
+        Spot.Physics.Physics3DSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
     }

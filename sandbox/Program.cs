@@ -11,7 +11,7 @@ class Program
         {
             Name = "Sandbox",
             AssetDirectory = "Assets",
-            StartScene = "Scenes/Main.sptscene"
+            StartScene = "Scenes/FirstPersonSandbox.sptscene"
         };
         spec.Window.Title = "Sandbox";
         spec.Window.Width = 1280;

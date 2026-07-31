@@ -27,6 +27,8 @@ public class EntityData
     public BoxCollider2DData? BoxCollider2D { get; set; }
     public DirectionalLightData? DirectionalLight { get; set; }
     public DynamicCloudsData? DynamicClouds { get; set; }
+    public PhysicsBody3DData? PhysicsBody3D { get; set; }
+    public BoxCollider3DData? BoxCollider3D { get; set; }
     public List<EntityData>? Children { get; set; }
 }
 
@@ -74,6 +76,19 @@ public class BoxCollider2DData : ComponentData
 {
     public float[] Size { get; set; } = new float[2];
     public float[] Offset { get; set; } = new float[2];
+}
+
+public class PhysicsBody3DData : ComponentData
+{
+    public float[] Velocity { get; set; } = new float[3];
+    public float GravityScale { get; set; } = 1.0f;
+    public bool IsDynamic { get; set; } = true;
+}
+
+public class BoxCollider3DData : ComponentData
+{
+    public float[] Size { get; set; } = new float[3];
+    public float[] Offset { get; set; } = new float[3];
 }
 
 public class ScriptComponentData : ComponentData
@@ -202,6 +217,29 @@ public class SceneSerializer
                 Enabled = collider.Enabled,
                 Size = new[] { collider.Size.X, collider.Size.Y },
                 Offset = new[] { collider.Offset.X, collider.Offset.Y }
+            };
+        }
+
+        if (entity.HasComponent<PhysicsBody3DComponent>())
+        {
+            var body = entity.GetComponent<PhysicsBody3DComponent>();
+            entityData.PhysicsBody3D = new PhysicsBody3DData
+            {
+                Enabled = body.Enabled,
+                Velocity = new[] { body.Velocity.X, body.Velocity.Y, body.Velocity.Z },
+                GravityScale = body.GravityScale,
+                IsDynamic = body.IsDynamic
+            };
+        }
+
+        if (entity.HasComponent<BoxCollider3DComponent>())
+        {
+            var collider = entity.GetComponent<BoxCollider3DComponent>();
+            entityData.BoxCollider3D = new BoxCollider3DData
+            {
+                Enabled = collider.Enabled,
+                Size = new[] { collider.Size.X, collider.Size.Y, collider.Size.Z },
+                Offset = new[] { collider.Offset.X, collider.Offset.Y, collider.Offset.Z }
             };
         }
 
@@ -412,6 +450,25 @@ public class SceneSerializer
             collider.Enabled = entityData.BoxCollider2D.Enabled;
             collider.Size = new System.Numerics.Vector2(entityData.BoxCollider2D.Size[0], entityData.BoxCollider2D.Size[1]);
             collider.Offset = new System.Numerics.Vector2(entityData.BoxCollider2D.Offset[0], entityData.BoxCollider2D.Offset[1]);
+            entity.AddComponent(collider);
+        }
+
+        if (entityData.PhysicsBody3D != null)
+        {
+            var body = new PhysicsBody3DComponent();
+            body.Enabled = entityData.PhysicsBody3D.Enabled;
+            body.Velocity = new System.Numerics.Vector3(entityData.PhysicsBody3D.Velocity[0], entityData.PhysicsBody3D.Velocity[1], entityData.PhysicsBody3D.Velocity[2]);
+            body.GravityScale = entityData.PhysicsBody3D.GravityScale;
+            body.IsDynamic = entityData.PhysicsBody3D.IsDynamic;
+            entity.AddComponent(body);
+        }
+
+        if (entityData.BoxCollider3D != null)
+        {
+            var collider = new BoxCollider3DComponent();
+            collider.Enabled = entityData.BoxCollider3D.Enabled;
+            collider.Size = new System.Numerics.Vector3(entityData.BoxCollider3D.Size[0], entityData.BoxCollider3D.Size[1], entityData.BoxCollider3D.Size[2]);
+            collider.Offset = new System.Numerics.Vector3(entityData.BoxCollider3D.Offset[0], entityData.BoxCollider3D.Offset[1], entityData.BoxCollider3D.Offset[2]);
             entity.AddComponent(collider);
         }
 
