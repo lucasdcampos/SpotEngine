@@ -89,6 +89,11 @@ public class EditorScene : Scene
     // When set, the default docked layout is rebuilt on the next frame (first launch / Reset Layout).
     private bool _rebuildDefaultLayout = !System.IO.File.Exists("imgui.ini");
 
+    // Number of initial frames to keep the loading cover up, hiding the dock layout and framebuffers
+    // as they settle (and the heavy first render) so the editor never flashes a half-built UI. Seeded
+    // in OnEnter and counted down in OnImGuiRender.
+    private int _warmupFrames;
+
     public EditorScene()
     {
         _hierarchyPanel = new HierarchyPanel(_context);
@@ -110,6 +115,7 @@ public class EditorScene : Scene
 
     public override void OnEnter()
     {
+        _warmupFrames = 3;
         EditorThemeManager.SetTheme(EditorThemes.SpotDark);
         Spot.Editor.Utils.EditorSettings.LoadAndApply(Spot.Core.Application.Instance.Window.NativeWindow);
         ImGui.LoadIniSettingsFromDisk("imgui.ini");
@@ -579,6 +585,16 @@ public class EditorScene : Scene
             ImGui.Begin("StatusOverlay", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs);
             ImGui.TextColored(lastLine.Value.Color, lastLine.Value.Text);
             ImGui.End();
+        }
+
+        // Cover the first few frames so the settling dock layout / framebuffers are never seen. Drawn
+        // on the foreground draw list (above every panel and the menu bar), matching the launcher's
+        // loading screen so the hand-off from launcher to editor looks like one continuous load.
+        if (_warmupFrames > 0)
+        {
+            _warmupFrames--;
+            string title = Project.Active?.Config.Name ?? "Loading";
+            LoadingScreen.Present(EditorThemeManager.Current.Palette, title, "Loading project...");
         }
     }
 

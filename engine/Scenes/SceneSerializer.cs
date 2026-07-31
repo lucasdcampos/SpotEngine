@@ -26,6 +26,7 @@ public class EntityData
     public PhysicsBody2DData? PhysicsBody2D { get; set; }
     public BoxCollider2DData? BoxCollider2D { get; set; }
     public DirectionalLightData? DirectionalLight { get; set; }
+    public DynamicCloudsData? DynamicClouds { get; set; }
     public List<EntityData>? Children { get; set; }
 }
 
@@ -39,6 +40,17 @@ public class DirectionalLightData : ComponentData
     public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
     public float Intensity { get; set; } = 1.0f;
     public float AmbientIntensity { get; set; } = 0.3f;
+}
+
+public class DynamicCloudsData : ComponentData
+{
+    public float[] ColorTop { get; set; } = new float[3] { 1, 1, 1 };
+    public float[] ColorBottom { get; set; } = new float[3] { 0.8f, 0.85f, 0.9f };
+    public float Speed { get; set; } = 1.0f;
+    public float Density { get; set; } = 0.57f;
+    public float Height { get; set; } = 0.3f;
+    public float Opacity { get; set; } = 0.6f;
+    public float Volume { get; set; } = 1.35f;
 }
 
 public class CameraComponentData : ComponentData
@@ -202,6 +214,22 @@ public class SceneSerializer
                 Color = new[] { light.Color.X, light.Color.Y, light.Color.Z },
                 Intensity = light.Intensity,
                 AmbientIntensity = light.AmbientIntensity
+            };
+        }
+
+        if (entity.HasComponent<DynamicCloudsComponent>())
+        {
+            var clouds = entity.GetComponent<DynamicCloudsComponent>();
+            entityData.DynamicClouds = new DynamicCloudsData
+            {
+                Enabled = clouds.Enabled,
+                ColorTop = new[] { clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z },
+                ColorBottom = new[] { clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z },
+                Speed = clouds.Speed,
+                Density = clouds.Density,
+                Height = clouds.Height,
+                Opacity = clouds.Opacity,
+                Volume = clouds.Volume
             };
         }
 
@@ -395,6 +423,20 @@ public class SceneSerializer
             light.Intensity = entityData.DirectionalLight.Intensity;
             light.AmbientIntensity = entityData.DirectionalLight.AmbientIntensity;
             entity.AddComponent(light);
+        }
+
+        if (entityData.DynamicClouds != null)
+        {
+            var clouds = new DynamicCloudsComponent();
+            clouds.Enabled = entityData.DynamicClouds.Enabled;
+            clouds.ColorTop = new System.Numerics.Vector3(entityData.DynamicClouds.ColorTop[0], entityData.DynamicClouds.ColorTop[1], entityData.DynamicClouds.ColorTop[2]);
+            clouds.ColorBottom = new System.Numerics.Vector3(entityData.DynamicClouds.ColorBottom[0], entityData.DynamicClouds.ColorBottom[1], entityData.DynamicClouds.ColorBottom[2]);
+            clouds.Speed = entityData.DynamicClouds.Speed;
+            clouds.Density = entityData.DynamicClouds.Density;
+            clouds.Height = entityData.DynamicClouds.Height;
+            clouds.Opacity = entityData.DynamicClouds.Opacity;
+            clouds.Volume = entityData.DynamicClouds.Volume;
+            entity.AddComponent(clouds);
         }
 
         if (entityData.Scripts != null)

@@ -47,6 +47,20 @@ public static class RenderSystem
         Renderer3D.BeginScene(viewProjection, hasLight, lightDir, lightColor, ambientIntensity);
         Renderer3D.DrawSkybox();
 
+        foreach (Entity entity in scene.View<DynamicCloudsComponent>())
+        {
+            if (!entity.IsActiveInHierarchy()) continue;
+            var clouds = entity.GetComponent<DynamicCloudsComponent>();
+            if (!clouds.Enabled) continue;
+            
+            Renderer3D.DrawDynamicClouds(
+                clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z,
+                clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z,
+                clouds.Speed, clouds.Density, clouds.Height, 
+                clouds.Opacity, clouds.Volume, Spot.Core.Application.Instance.Time);
+            break; // only draw the first one
+        }
+
         foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
@@ -62,9 +76,10 @@ public static class RenderSystem
             Matrix4x4 world = entity.GetComponent<Transform>().Matrix;
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
+            int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
             foreach (Mesh mesh in meshRenderer.Model.Meshes)
             {
-                Renderer3D.DrawMesh(world, mesh, color, texture);
+                Renderer3D.DrawMesh(world, mesh, color, texture, shaderType, meshRenderer.Material);
             }
         }
 

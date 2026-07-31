@@ -71,6 +71,153 @@ public static class Renderer3D
         }
         """;
 
+    private const string WaterVertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoord;
+
+        uniform mat4 uViewProjection;
+        uniform mat4 uModel;
+        uniform float uTime;
+        uniform float uWaveSpeed;
+        uniform float uWaveScale;
+        uniform float uWaveStrength;
+
+        out vec3 vFragPos;
+        out vec3 vNormal;
+        out vec2 vTexCoord;
+
+        void main()
+        {
+            // Simple low-frequency vertex displacement (Gerstner-lite)
+            vec3 pos = aPosition;
+            float time = uTime * uWaveSpeed;
+            // Only displace Y if normal points up
+            if (aNormal.y > 0.5) {
+                float wave = sin(pos.x * uWaveScale * 2.0 + time) * 0.1 
+                           + cos(pos.z * uWaveScale * 1.5 + time * 1.2) * 0.1;
+                pos.y += wave * uWaveStrength;
+            }
+            
+            vec4 worldPos = uModel * vec4(pos, 1.0);
+            vFragPos = worldPos.xyz;
+            vNormal = mat3(transpose(inverse(uModel))) * aNormal;
+            vTexCoord = aTexCoord;
+            gl_Position = uViewProjection * worldPos;
+        }
+        """;
+
+    private const string WaterFragmentShaderSource =
+        """
+        #version 330 core
+        in vec3 vFragPos;
+        in vec3 vNormal;
+        in vec2 vTexCoord;
+
+        uniform vec4 uColor;
+        uniform sampler2D uTexture;
+        uniform float uTime;
+        uniform mat4 uInverseViewProjection;
+        
+        uniform float uWaveSpeed;
+        uniform float uWaveScale;
+        uniform float uWaveStrength;
+        uniform float uSpecularPower;
+
+        uniform int uHasDirectionalLight;
+        uniform vec3 uLightDir;
+        uniform vec3 uLightColor;
+        uniform float uAmbientIntensity;
+
+        out vec4 fragColor;
+        
+        float hash(vec2 p) {
+            vec3 p3  = fract(vec3(p.xyx) * .1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
+        float noise(vec2 x) {
+            vec2 i = floor(x);
+            vec2 f = fract(x);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            vec2 u = f * f * (3.0 - 2.0 * f);
+            return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+        
+        float fbm(vec2 p) {
+            float v = 0.0;
+            float a = 0.5;
+            for(int i=0; i<3; i++) {
+                v += a * noise(p);
+                p *= 2.0;
+                a *= 0.5;
+            }
+            return v;
+        }
+
+        void main()
+        {
+            float time = uTime * uWaveSpeed;
+            float scale = uWaveScale * 2.0;
+            
+            // Create layered ripples using FBM
+            vec2 uv1 = vFragPos.xz * scale + vec2(time * 0.5, time * 0.3);
+            vec2 uv2 = vFragPos.xz * (scale * 2.0) - vec2(time * 0.3, time * 0.6);
+            
+            float n1 = fbm(uv1);
+            float n2 = fbm(uv2);
+            
+            // Perturb normal
+            vec3 normal = normalize(vNormal);
+            vec3 perturbedNormal = normalize(normal + vec3(n1 - 0.5, 0.0, n2 - 0.5) * (uWaveStrength * 1.5));
+            
+            vec4 texColor = texture(uTexture, vTexCoord);
+            vec4 albedo = texColor * uColor;
+            
+            // Calculate approximate camera position from uInverseViewProjection
+            vec4 camPos4 = uInverseViewProjection * vec4(0.0, 0.0, -1.0, 1.0);
+            vec3 cameraPos = camPos4.xyz / camPos4.w;
+            vec3 viewDir = normalize(cameraPos - vFragPos);
+            
+            if (uHasDirectionalLight == 1)
+            {
+                vec3 lightDir = normalize(uLightDir);
+                
+                // Diffuse
+                float diff = max(dot(perturbedNormal, lightDir), 0.0);
+                vec3 diffuse = diff * uLightColor;
+                
+                // Specular
+                vec3 reflectDir = reflect(-lightDir, perturbedNormal);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), uSpecularPower);
+                vec3 specular = spec * uLightColor * (uWaveStrength * 2.0 + 0.5);
+                
+                // Fake reflection / fresnel
+                float fresnel = pow(1.0 - max(dot(viewDir, perturbedNormal), 0.0), 3.0);
+                vec3 skyColor = vec3(0.5, 0.7, 0.9);
+                
+                // Fake sub-surface scattering color (cyan tint on waves)
+                vec3 scatterColor = mix(albedo.rgb, vec3(0.2, 0.8, 0.9), fresnel * 0.5 * uWaveStrength);
+                vec3 waterBase = mix(scatterColor, skyColor, fresnel * 0.6);
+                
+                vec3 ambient = uAmbientIntensity * uLightColor;
+                vec3 finalColor = (ambient + diffuse) * waterBase + specular;
+                
+                fragColor = vec4(finalColor, albedo.a);
+            }
+            else
+            {
+                fragColor = albedo;
+            }
+        }
+        """;
+
     private const string SkyboxVertexShaderSource =
         """
         #version 330 core
@@ -99,9 +246,15 @@ public static class Renderer3D
         
         void main()
         {
-            vec4 ndc = vec4(vUV * 2.0 - 1.0, 1.0, 1.0);
-            vec4 worldPos = uInverseViewProjection * ndc;
-            vec3 rayDir = normalize(worldPos.xyz / worldPos.w);
+            vec4 ndcNear = vec4(vUV * 2.0 - 1.0, -1.0, 1.0);
+            vec4 ndcFar  = vec4(vUV * 2.0 - 1.0, 1.0, 1.0);
+            
+            vec4 nearPos = uInverseViewProjection * ndcNear;
+            vec4 farPos  = uInverseViewProjection * ndcFar;
+            nearPos.xyz /= nearPos.w;
+            farPos.xyz  /= farPos.w;
+            
+            vec3 rayDir = normalize(farPos.xyz - nearPos.xyz);
             
             vec3 skyColorTop = vec3(0.1, 0.4, 0.8) * uLightColor;
             vec3 skyColorBottom = vec3(0.6, 0.8, 1.0) * uLightColor;
@@ -131,6 +284,121 @@ public static class Renderer3D
             finalSky += uLightColor * sunDisc * 2.0 * sunHeight;
             
             fragColor = vec4(finalSky, 1.0);
+        }
+        """;
+
+    private const string CloudsVertexShaderSource =
+        """
+        #version 330 core
+        
+        out vec2 vUV;
+        void main() 
+        {
+            float x = -1.0 + float((gl_VertexID & 1) << 2);
+            float y = -1.0 + float((gl_VertexID & 2) << 1);
+            vUV.x = (x+1.0)*0.5;
+            vUV.y = (y+1.0)*0.5;
+            gl_Position = vec4(x, y, 1.0, 1.0);
+        }
+        """;
+
+    private const string CloudsFragmentShaderSource =
+        """
+        #version 330 core
+        
+        in vec2 vUV;
+        out vec4 fragColor;
+        
+        uniform mat4 uInverseViewProjection;
+        uniform vec3 uColorTop;
+        uniform vec3 uColorBottom;
+        uniform float uSpeed;
+        uniform float uDensity;
+        uniform float uHeight;
+        uniform float uTime;
+        uniform float uOpacity;
+        uniform float uVolume;
+        
+        // Better noise without high frequency floating point breakdown
+        float hash(vec2 p) {
+            vec3 p3  = fract(vec3(p.xyx) * .1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
+        float noise(vec2 x) {
+            vec2 i = floor(x);
+            vec2 f = fract(x);
+            
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            
+            vec2 u = f * f * (3.0 - 2.0 * f);
+            return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        }
+
+        float fbm(vec2 x) {
+            float v = 0.0;
+            float a = 0.5;
+            vec2 shift = vec2(100.0);
+            mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
+            for (int i = 0; i < 5; ++i) {
+                v += a * noise(x);
+                x = rot * x * 2.0 + shift;
+                a *= 0.5;
+            }
+            return v;
+        }
+
+        void main()
+        {
+            vec4 ndcNear = vec4(vUV * 2.0 - 1.0, -1.0, 1.0);
+            vec4 ndcFar  = vec4(vUV * 2.0 - 1.0, 1.0, 1.0);
+            
+            vec4 nearPos = uInverseViewProjection * ndcNear;
+            vec4 farPos  = uInverseViewProjection * ndcFar;
+            nearPos.xyz /= nearPos.w;
+            farPos.xyz  /= farPos.w;
+            
+            vec3 rayDir = normalize(farPos.xyz - nearPos.xyz);
+            
+            // Only draw clouds in the sky, above the horizon
+            if (rayDir.y < 0.02) {
+                discard;
+            }
+
+            // Map to a sky dome to avoid infinity / floating point precision breakdown at the horizon
+            vec2 skyUV = rayDir.xz / (rayDir.y + 0.2);
+            skyUV *= (max(uHeight, 0.1) * 3.0);
+            
+            // Apply time for movement (scaled down heavily so speed 1.0 is reasonable)
+            skyUV += vec2(uTime * uSpeed * 0.02, uTime * uSpeed * 0.01);
+            
+            // Base cloud structure
+            float n = fbm(skyUV * 2.0);
+            
+            // Subtract detail noise to carve out fluffy edges
+            float detail = fbm(skyUV * 6.0 + uTime * uSpeed * 0.05);
+            n = n - (1.0 - detail) * 0.3;
+            
+            // Calculate cloud coverage based on density parameter
+            float coverage = uDensity * 1.5 - 0.2;
+            float edgeSoftness = 0.2;
+            float cloudMask = smoothstep(1.0 - coverage, 1.0 - coverage + edgeSoftness, n);
+            
+            // Add volumetric-like shading based on thickness and uVolume
+            float localThickness = max(0.0, n - (1.0 - coverage));
+            float shading = clamp(localThickness * (2.0 * max(uVolume, 0.1)), 0.0, 1.0);
+            shading = pow(shading, 0.8); // Nice volumetric curve
+            
+            vec3 color = mix(uColorBottom, uColorTop, shading);
+            
+            // Smooth fade at the horizon
+            float fade = smoothstep(0.02, 0.2, rayDir.y);
+            
+            fragColor = vec4(color, cloudMask * fade * uOpacity);
         }
         """;
 
@@ -240,7 +508,9 @@ public static class Renderer3D
         """;
 
     private static Shader? s_shader;
+    private static Shader? s_waterShader;
     private static Shader? s_skyboxShader;
+    private static Shader? s_cloudsShader;
     private static Shader? s_gridShader;
     private static VertexArray? s_emptyVao;
     private static Texture2D? s_whiteTexture;
@@ -254,10 +524,12 @@ public static class Renderer3D
     /// <summary>
     /// Creates the shared shader and fallback texture. Called once by the application after the renderer is ready.
     /// </summary>
-    internal static void Init()
+    public static void Init()
     {
         s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
+        s_waterShader = new Shader(WaterVertexShaderSource, WaterFragmentShaderSource);
         s_skyboxShader = new Shader(SkyboxVertexShaderSource, SkyboxFragmentShaderSource);
+        s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
         s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
         s_emptyVao = new VertexArray();
 
@@ -285,27 +557,46 @@ public static class Renderer3D
     /// <param name="mesh">The mesh to draw.</param>
     /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
     /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
-    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null)
+    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null, int shaderType = 0, Spot.Assets.Material? material = null)
     {
-        if (s_shader is null || s_whiteTexture is null)
+        Shader? activeShader = shaderType == 1 ? s_waterShader : s_shader;
+        
+        if (activeShader is null || s_whiteTexture is null)
         {
             return;
         }
 
         (texture ?? s_whiteTexture).Bind(0);
 
-        s_shader.Use();
-        s_shader.SetUniform("uViewProjection", s_viewProjection);
-        s_shader.SetUniform("uModel", model);
-        s_shader.SetUniform("uColor", color);
-        s_shader.SetUniform("uTexture", 0);
+        activeShader.Use();
+        activeShader.SetUniform("uViewProjection", s_viewProjection);
+        activeShader.SetUniform("uModel", model);
+        activeShader.SetUniform("uColor", color);
+        activeShader.SetUniform("uTexture", 0);
+        
+        if (shaderType == 1) // Water
+        {
+            activeShader.SetUniform("uTime", Spot.Core.Application.Instance.Time);
+            Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
+            activeShader.SetUniform("uInverseViewProjection", invViewProj);
+            
+            float speed = material?.WaveSpeed ?? 1.0f;
+            float scale = material?.WaveScale ?? 1.0f;
+            float strength = material?.WaveStrength ?? 0.3f;
+            float specPower = material?.SpecularPower ?? 64.0f;
+            
+            activeShader.SetUniform("uWaveSpeed", speed);
+            activeShader.SetUniform("uWaveScale", scale);
+            activeShader.SetUniform("uWaveStrength", strength);
+            activeShader.SetUniform("uSpecularPower", specPower);
+        }
 
-        s_shader.SetUniform("uHasDirectionalLight", s_hasDirLight);
+        activeShader.SetUniform("uHasDirectionalLight", s_hasDirLight);
         if (s_hasDirLight == 1)
         {
-            s_shader.SetUniform("uLightDir", s_lightDir);
-            s_shader.SetUniform("uLightColor", s_lightColor);
-            s_shader.SetUniform("uAmbientIntensity", s_ambientIntensity);
+            activeShader.SetUniform("uLightDir", s_lightDir);
+            activeShader.SetUniform("uLightColor", s_lightColor);
+            activeShader.SetUniform("uAmbientIntensity", s_ambientIntensity);
         }
 
         Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
@@ -330,6 +621,35 @@ public static class Renderer3D
         s_skyboxShader.SetUniform("uInverseViewProjection", invViewProj);
         s_skyboxShader.SetUniform("uLightDir", s_lightDir);
         s_skyboxShader.SetUniform("uLightColor", s_lightColor);
+
+        Renderer.SetDepthTest(false);
+        Renderer.DrawArrays(s_emptyVao, 3);
+        Renderer.SetDepthTest(true);
+    }
+
+    /// <summary>
+    /// Draws procedural dynamic clouds over the sky.
+    /// </summary>
+    public static void DrawDynamicClouds(float colorTopX, float colorTopY, float colorTopZ, 
+        float colorBotX, float colorBotY, float colorBotZ, 
+        float speed, float density, float height, float opacity, float volume, float time)
+    {
+        if (s_cloudsShader == null || s_emptyVao == null) return;
+
+        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
+        s_cloudsShader.Use();
+        s_cloudsShader.SetUniform("uInverseViewProjection", invViewProj);
+        s_cloudsShader.SetUniform("uColorTop", new Vector3(colorTopX, colorTopY, colorTopZ));
+        s_cloudsShader.SetUniform("uColorBottom", new Vector3(colorBotX, colorBotY, colorBotZ));
+        s_cloudsShader.SetUniform("uSpeed", speed);
+        s_cloudsShader.SetUniform("uDensity", density);
+        s_cloudsShader.SetUniform("uHeight", height);
+        s_cloudsShader.SetUniform("uOpacity", opacity);
+        s_cloudsShader.SetUniform("uVolume", volume);
+        s_cloudsShader.SetUniform("uTime", time);
+
+        Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);
+        Renderer.Api.BlendFunc(Silk.NET.OpenGL.BlendingFactor.SrcAlpha, Silk.NET.OpenGL.BlendingFactor.OneMinusSrcAlpha);
 
         Renderer.SetDepthTest(false);
         Renderer.DrawArrays(s_emptyVao, 3);
