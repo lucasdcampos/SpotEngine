@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace Spot.Core;
+namespace Spot.Build;
 
 public class ProjectConfig
 {

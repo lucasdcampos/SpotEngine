@@ -1,6 +1,7 @@
 using System.Numerics;
 using ImGuiNET;
 using Spot.Core;
+using Spot.Build;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
