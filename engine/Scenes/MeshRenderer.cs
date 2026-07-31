@@ -8,7 +8,7 @@ namespace Spot.Scenes;
 /// data-only: it holds what to draw (a <see cref="Assets.Model"/> and a color) and a render system
 /// draws it together with the entity's <see cref="Rendering.Transform"/>.
 /// </summary>
-public sealed class MeshRenderer
+public sealed class MeshRenderer : Component
 {
     /// <summary>
     /// Gets or sets the model to draw. When <see langword="null"/>, nothing is drawn.

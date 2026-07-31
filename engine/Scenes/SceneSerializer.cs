@@ -29,14 +29,19 @@ public class EntityData
     public List<EntityData>? Children { get; set; }
 }
 
-public class DirectionalLightData
+public abstract class ComponentData
+{
+    public bool Enabled { get; set; } = true;
+}
+
+public class DirectionalLightData : ComponentData
 {
     public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
     public float Intensity { get; set; } = 1.0f;
     public float AmbientIntensity { get; set; } = 0.3f;
 }
 
-public class CameraComponentData
+public class CameraComponentData : ComponentData
 {
     public bool Primary { get; set; }
     public bool FixedAspectRatio { get; set; }
@@ -46,38 +51,38 @@ public class CameraComponentData
     public float FieldOfView { get; set; } = 45.0f;
 }
 
-public class PhysicsBody2DData
+public class PhysicsBody2DData : ComponentData
 {
     public float[] Velocity { get; set; } = new float[2];
     public float GravityScale { get; set; } = 1.0f;
     public bool IsDynamic { get; set; } = true;
 }
 
-public class BoxCollider2DData
+public class BoxCollider2DData : ComponentData
 {
     public float[] Size { get; set; } = new float[2];
     public float[] Offset { get; set; } = new float[2];
 }
 
-public class ScriptComponentData
+public class ScriptComponentData : ComponentData
 {
     public List<string> ScriptNames { get; set; } = new();
 }
 
-public class TransformData
+public class TransformData : ComponentData
 {
     public float[] Position { get; set; } = new float[3];
     public float[] Rotation { get; set; } = new float[3];
     public float[] Scale { get; set; } = new float[3] { 1, 1, 1 };
 }
 
-public class Sprite2DData
+public class Sprite2DData : ComponentData
 {
     public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
     public string? TexturePath { get; set; }
 }
 
-public class MeshRendererData
+public class MeshRendererData : ComponentData
 {
     public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
     public string? ModelPath { get; set; }
@@ -120,6 +125,7 @@ public class SceneSerializer
             var transform = entity.GetComponent<Transform>();
             entityData.Transform = new TransformData
             {
+                Enabled = transform.Enabled,
                 Position = new[] { transform.Position.X, transform.Position.Y, transform.Position.Z },
                 Rotation = new[] { transform.Rotation.X, transform.Rotation.Y, transform.Rotation.Z },
                 Scale = new[] { transform.Scale.X, transform.Scale.Y, transform.Scale.Z }
@@ -131,6 +137,7 @@ public class SceneSerializer
             var sprite = entity.GetComponent<Sprite2D>();
             entityData.Sprite = new Sprite2DData
             {
+                Enabled = sprite.Enabled,
                 Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W },
                 TexturePath = sprite.TexturePath
             };
@@ -141,6 +148,7 @@ public class SceneSerializer
             var meshRenderer = entity.GetComponent<MeshRenderer>();
             entityData.MeshRenderer = new MeshRendererData
             {
+                Enabled = meshRenderer.Enabled,
                 Color = new[] { meshRenderer.Color.X, meshRenderer.Color.Y, meshRenderer.Color.Z, meshRenderer.Color.W },
                 ModelPath = meshRenderer.ModelPath,
                 MaterialPath = meshRenderer.MaterialPath
@@ -152,6 +160,7 @@ public class SceneSerializer
             var camera = entity.GetComponent<CameraComponent>();
             entityData.Camera = new CameraComponentData
             {
+                Enabled = camera.Enabled,
                 Primary = camera.Primary,
                 FixedAspectRatio = camera.FixedAspectRatio,
                 ZoomLevel = camera.ZoomLevel,
@@ -166,6 +175,7 @@ public class SceneSerializer
             var body = entity.GetComponent<PhysicsBody2DComponent>();
             entityData.PhysicsBody2D = new PhysicsBody2DData
             {
+                Enabled = body.Enabled,
                 Velocity = new[] { body.Velocity.X, body.Velocity.Y },
                 GravityScale = body.GravityScale,
                 IsDynamic = body.IsDynamic
@@ -177,6 +187,7 @@ public class SceneSerializer
             var collider = entity.GetComponent<BoxCollider2DComponent>();
             entityData.BoxCollider2D = new BoxCollider2DData
             {
+                Enabled = collider.Enabled,
                 Size = new[] { collider.Size.X, collider.Size.Y },
                 Offset = new[] { collider.Offset.X, collider.Offset.Y }
             };
@@ -187,6 +198,7 @@ public class SceneSerializer
             var light = entity.GetComponent<DirectionalLightComponent>();
             entityData.DirectionalLight = new DirectionalLightData
             {
+                Enabled = light.Enabled,
                 Color = new[] { light.Color.X, light.Color.Y, light.Color.Z },
                 Intensity = light.Intensity,
                 AmbientIntensity = light.AmbientIntensity
@@ -197,7 +209,8 @@ public class SceneSerializer
         {
             var scriptComp = entity.GetComponent<ScriptComponent>();
             var scriptNames = new List<string>(scriptComp.ClassNames);
-            entityData.Scripts = new ScriptComponentData { ScriptNames = scriptNames };
+            entityData.Scripts = new ScriptComponentData { Enabled = scriptComp.Enabled,
+                ScriptNames = scriptNames };
         }
 
         var children = entity.Children.ToList();
@@ -267,6 +280,8 @@ public class SceneSerializer
         string name = entityData.Tag?.Name ?? "Entity";
         var entity = _scene.Instantiate(name);
 
+        if (entityData.Tag != null) { entity.Enabled = entityData.Tag.Enabled; }
+
         if (parent != null)
         {
             entity.SetParent(parent);
@@ -283,6 +298,7 @@ public class SceneSerializer
         if (entityData.Sprite != null)
         {
             var sprite = new Sprite2D();
+            sprite.Enabled = entityData.Sprite.Enabled;
             sprite.Color = new System.Numerics.Vector4(entityData.Sprite.Color[0], entityData.Sprite.Color[1], entityData.Sprite.Color[2], entityData.Sprite.Color[3]);
             if (!string.IsNullOrEmpty(entityData.Sprite.TexturePath))
             {
@@ -302,6 +318,7 @@ public class SceneSerializer
         if (entityData.MeshRenderer != null)
         {
             var meshRenderer = new MeshRenderer();
+            meshRenderer.Enabled = entityData.MeshRenderer.Enabled;
             meshRenderer.Color = new System.Numerics.Vector4(entityData.MeshRenderer.Color[0], entityData.MeshRenderer.Color[1], entityData.MeshRenderer.Color[2], entityData.MeshRenderer.Color[3]);
             if (!string.IsNullOrEmpty(entityData.MeshRenderer.ModelPath))
             {
@@ -333,6 +350,7 @@ public class SceneSerializer
         if (entityData.Camera != null)
         {
             var camera = new CameraComponent();
+            camera.Enabled = entityData.Camera.Enabled;
             camera.Primary = entityData.Camera.Primary;
             camera.FixedAspectRatio = entityData.Camera.FixedAspectRatio;
             camera.ZoomLevel = entityData.Camera.ZoomLevel;
@@ -353,6 +371,7 @@ public class SceneSerializer
         if (entityData.PhysicsBody2D != null)
         {
             var body = new PhysicsBody2DComponent();
+            body.Enabled = entityData.PhysicsBody2D.Enabled;
             body.Velocity = new System.Numerics.Vector2(entityData.PhysicsBody2D.Velocity[0], entityData.PhysicsBody2D.Velocity[1]);
             body.GravityScale = entityData.PhysicsBody2D.GravityScale;
             body.IsDynamic = entityData.PhysicsBody2D.IsDynamic;
@@ -362,6 +381,7 @@ public class SceneSerializer
         if (entityData.BoxCollider2D != null)
         {
             var collider = new BoxCollider2DComponent();
+            collider.Enabled = entityData.BoxCollider2D.Enabled;
             collider.Size = new System.Numerics.Vector2(entityData.BoxCollider2D.Size[0], entityData.BoxCollider2D.Size[1]);
             collider.Offset = new System.Numerics.Vector2(entityData.BoxCollider2D.Offset[0], entityData.BoxCollider2D.Offset[1]);
             entity.AddComponent(collider);
@@ -370,6 +390,7 @@ public class SceneSerializer
         if (entityData.DirectionalLight != null)
         {
             var light = new DirectionalLightComponent();
+            light.Enabled = entityData.DirectionalLight.Enabled;
             light.Color = new System.Numerics.Vector3(entityData.DirectionalLight.Color[0], entityData.DirectionalLight.Color[1], entityData.DirectionalLight.Color[2]);
             light.Intensity = entityData.DirectionalLight.Intensity;
             light.AmbientIntensity = entityData.DirectionalLight.AmbientIntensity;
@@ -379,6 +400,7 @@ public class SceneSerializer
         if (entityData.Scripts != null)
         {
             var scriptComp = new ScriptComponent();
+            scriptComp.Enabled = entityData.Scripts.Enabled;
             entity.AddComponent(scriptComp);
             
             foreach (var scriptName in entityData.Scripts.ScriptNames)

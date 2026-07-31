@@ -176,6 +176,10 @@ public class InspectorPanel
         if (entity.HasComponent<TagComponent>())
         {
             var tag = entity.GetComponent<TagComponent>();
+            bool active = tag.Enabled;
+            if (ImGui.Checkbox("##Active", ref active))
+                tag.Enabled = active;
+            ImGui.SameLine();
             string name = tag.Name;
             if (ImGui.InputText("Tag", ref name, 256))
             {
@@ -189,6 +193,9 @@ public class InspectorPanel
             {
                 var transform = entity.GetComponent<Transform>();
                 
+                bool enabled = transform.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    transform.Enabled = enabled;
                 var position = transform.Position;
                 if (ImGui.DragFloat3("Position", ref position, 0.1f))
                     transform.Position = position;
@@ -227,6 +234,9 @@ public class InspectorPanel
             {
                 var sprite = entity.GetComponent<Sprite2D>();
                 
+                bool enabled = sprite.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    sprite.Enabled = enabled;
                 var color = sprite.Color;
                 if (ImGui.ColorEdit4("Color", ref color))
                     sprite.Color = color;
@@ -303,6 +313,9 @@ public class InspectorPanel
             {
                 var meshRenderer = entity.GetComponent<MeshRenderer>();
 
+                bool enabled = meshRenderer.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    meshRenderer.Enabled = enabled;
                 var color = meshRenderer.Color;
                 if (ImGui.ColorEdit4("Color", ref color))
                     meshRenderer.Color = color;
@@ -439,6 +452,9 @@ public class InspectorPanel
             {
                 var cameraComp = entity.GetComponent<CameraComponent>();
                 
+                bool enabled = cameraComp.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    cameraComp.Enabled = enabled;
                 bool primary = cameraComp.Primary;
                 if (ImGui.Checkbox("Primary", ref primary))
                     cameraComp.Primary = primary;
@@ -502,6 +518,9 @@ public class InspectorPanel
             {
                 var body = entity.GetComponent<PhysicsBody2DComponent>();
                 
+                bool enabled = body.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    body.Enabled = enabled;
                 var velocity = body.Velocity;
                 if (ImGui.DragFloat2("Velocity", ref velocity, 0.1f))
                     body.Velocity = velocity;
@@ -545,6 +564,9 @@ public class InspectorPanel
             {
                 var collider = entity.GetComponent<BoxCollider2DComponent>();
                 
+                bool enabled = collider.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    collider.Enabled = enabled;
                 var size = collider.Size;
                 if (ImGui.DragFloat2("Size", ref size, 0.1f))
                     collider.Size = size;
@@ -584,6 +606,9 @@ public class InspectorPanel
             {
                 var light = entity.GetComponent<DirectionalLightComponent>();
                 
+                bool enabled = light.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    light.Enabled = enabled;
                 var color = light.Color;
                 if (ImGui.ColorEdit3("Color", ref color))
                     light.Color = color;
@@ -627,6 +652,9 @@ public class InspectorPanel
             {
                 var scriptComp = entity.GetComponent<ScriptComponent>();
                 
+                bool enabled = scriptComp.Enabled;
+                if (ImGui.Checkbox("Enabled", ref enabled))
+                    scriptComp.Enabled = enabled;
                 int scriptToRemove = -1;
                 for (int i = 0; i < scriptComp.ClassNames.Count; i++)
                 {

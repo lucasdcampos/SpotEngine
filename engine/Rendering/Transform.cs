@@ -11,7 +11,7 @@ namespace Spot.Rendering;
 /// usage, keep <see cref="Position"/>.Z at zero, rotate only around Z via <see cref="Rotation"/>.Z,
 /// and leave <see cref="Scale"/>.Z at one.
 /// </remarks>
-public sealed class Transform
+public sealed class Transform : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
 

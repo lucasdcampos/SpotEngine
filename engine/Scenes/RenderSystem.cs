@@ -30,8 +30,10 @@ public static class RenderSystem
 
         foreach (Entity entity in scene.View<Transform, DirectionalLightComponent>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             var transform = entity.GetComponent<Transform>();
             var light = entity.GetComponent<DirectionalLightComponent>();
+            if (!transform.Enabled || !light.Enabled) continue;
             hasLight = true;
             lightColor = light.Color * light.Intensity;
             ambientIntensity = light.AmbientIntensity;
@@ -47,7 +49,11 @@ public static class RenderSystem
 
         foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
+            var transform = entity.GetComponent<Transform>();
+            if (!meshRenderer.Enabled || !transform.Enabled) continue;
+            
             if (meshRenderer.Model is null)
             {
                 continue;
@@ -68,8 +74,10 @@ public static class RenderSystem
 
         foreach (Entity entity in scene.View<Transform, Sprite2D>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             Transform transform = entity.GetComponent<Transform>();
             Sprite2D sprite = entity.GetComponent<Sprite2D>();
+            if (!transform.Enabled || !sprite.Enabled) continue;
 
             if (sprite.Texture is not null)
             {

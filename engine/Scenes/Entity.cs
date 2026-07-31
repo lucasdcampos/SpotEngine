@@ -36,6 +36,31 @@ public readonly struct Entity : IEquatable<Entity>
     }
 
     /// <summary>
+    /// Gets or sets a value indicating whether this entity is enabled.
+    /// If disabled, it and its children will not be updated or rendered.
+    /// </summary>
+    public bool Enabled
+    {
+        get => GetComponent<TagComponent>().Enabled;
+        set => GetComponent<TagComponent>().Enabled = value;
+    }
+
+    /// <summary>
+    /// Checks if this entity and all its ancestors are enabled.
+    /// </summary>
+    public bool IsActiveInHierarchy()
+    {
+        if (!Enabled) return false;
+        var current = Parent;
+        while (current != null)
+        {
+            if (!current.Value.Enabled) return false;
+            current = current.Value.Parent;
+        }
+        return true;
+    }
+
+    /// <summary>
     /// Gets the scene this entity belongs to.
     /// </summary>
     public Scene Scene => OwningScene;

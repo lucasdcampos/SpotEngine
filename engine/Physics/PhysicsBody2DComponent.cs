@@ -1,11 +1,13 @@
+using System;
 using System.Numerics;
+using Spot.Scenes;
 
 namespace Spot.Physics;
 
 /// <summary>
 /// A component to handle velocity and gravity for 2D physics.
 /// </summary>
-public class PhysicsBody2DComponent
+public class PhysicsBody2DComponent : Component
 {
     /// <summary>
     /// Gets or sets the linear velocity.
