@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using Spot.Assets;
 
-namespace Spot.Build;
+namespace Spot.Core;
 
 public class ProjectConfig
 {

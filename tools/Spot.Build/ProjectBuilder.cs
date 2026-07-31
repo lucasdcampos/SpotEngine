@@ -61,7 +61,7 @@ public static class ProjectBuilder
         var processInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"publish \"{csprojFile}\" -c Release -r {rid} --self-contained true -o \"{outputDir}\"",
+            Arguments = $"publish \"{csprojFile}\" -c Release -r {rid} --self-contained true -p:PublishSingleFile=true -o \"{outputDir}\"",
             WorkingDirectory = project.ProjectDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,

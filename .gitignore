@@ -4,3 +4,7 @@ obj/
 imgui.ini
 *.log
 editor_window.json
+
+EngineBin/
+
+Build/

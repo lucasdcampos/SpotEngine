@@ -66,7 +66,7 @@ public class AssetBrowserPanel
     public AssetBrowserPanel(EditorContext context)
     {
         _context = context;
-        _baseDirectory = Spot.Build.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        _baseDirectory = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         EnsureDirectory(_baseDirectory);
         _currentDirectory = _baseDirectory;
     }
@@ -74,7 +74,7 @@ public class AssetBrowserPanel
     public void OnImGuiRender(bool asWindow = false)
     {
         // Track project changes and reset to its asset directory.
-        var currentProjectAssetDir = Spot.Build.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        var currentProjectAssetDir = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         if (_baseDirectory != currentProjectAssetDir)
         {
             _baseDirectory = currentProjectAssetDir;

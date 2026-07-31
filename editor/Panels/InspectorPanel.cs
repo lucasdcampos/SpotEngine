@@ -474,7 +474,7 @@ public class InspectorPanel
     private static System.Collections.Generic.List<string> EnumerateProjectMaterials()
     {
         var result = new System.Collections.Generic.List<string>();
-        string? dir = Spot.Build.Project.Active?.GetAssetDirectory();
+        string? dir = Spot.Core.Project.Active?.GetAssetDirectory();
         if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
         {
             try
