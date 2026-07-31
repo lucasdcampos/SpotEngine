@@ -251,6 +251,7 @@ public class EditorScene : Scene
             else
             {
                 axisThickness = Math.Max(0.01f, sceneData.EditorCamera.ZoomLevel * 0.005f);
+                Renderer2D.DrawEditorGrid(sceneData.EditorCamera.ZoomLevel);
             }
             
             Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
