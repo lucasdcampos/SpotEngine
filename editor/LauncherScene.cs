@@ -198,7 +198,7 @@ public class LauncherScene : Scene
     {
         try
         {
-            string sptproj = ProjectFactory.Create(name, location);
+            string sptproj = Spot.Build.ProjectScaffolder.Create(name, location);
             RecentProjects.Add(sptproj);
             OpenEditor();
         }

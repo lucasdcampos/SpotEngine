@@ -583,7 +583,7 @@ public class EditorScene : Scene
 
     private void CreateProject(string name, string location)
     {
-        string sptprojPath = ProjectFactory.Create(name, location);
+        string sptprojPath = Spot.Build.ProjectScaffolder.Create(name, location);
         Spot.Editor.Utils.RecentProjects.Add(sptprojPath);
         
         _openScenes.Clear();
@@ -595,55 +595,30 @@ public class EditorScene : Scene
         _context.Selection = null;
     }
 
-    private void BuildProject()
+    private void BuildProject(Spot.Build.BuildPlatform platform)
     {
-        if (Project.Active == null || string.IsNullOrEmpty(Project.Active.ProjectDirectory)) return;
-        
-        Spot.Core.Log.Info("Starting build process...");
-        Project.GenerateCSProject();
-        string buildDir = System.IO.Path.Combine(Project.Active.ProjectDirectory, "Build");
-        
+        var project = Project.Active;
+        if (project == null || string.IsNullOrEmpty(project.ProjectDirectory)) return;
+
+        Spot.Core.Log.Info($"Starting build process for {platform}...");
+
         System.Threading.Tasks.Task.Run(() =>
         {
-            try
+            var result = Spot.Build.ProjectBuilder.Build(project, platform,
+                onOutput: msg => Spot.Core.Log.Info(msg),
+                onError: msg => Spot.Core.Log.Error(msg));
+
+            if (result.Success)
             {
-                string csprojFile = $"{Project.Active.Config.Name}.csproj";
-                var processInfo = new System.Diagnostics.ProcessStartInfo
+                Spot.Core.Log.Info("Build completed successfully!");
+                if (System.OperatingSystem.IsWindows())
                 {
-                    FileName = "dotnet",
-                    Arguments = $"publish \"{csprojFile}\" -c Release -o \"{buildDir}\"",
-                    WorkingDirectory = Project.Active.ProjectDirectory,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                processInfo.RedirectStandardOutput = true;
-                processInfo.RedirectStandardError = true;
-
-                var process = new System.Diagnostics.Process { StartInfo = processInfo };
-                process.OutputDataReceived += (sender, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) Spot.Core.Log.Info(e.Data); };
-                process.ErrorDataReceived += (sender, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) Spot.Core.Log.Error(e.Data); };
-
-                if (process.Start())
-                {
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-                    process.WaitForExit();
-
-                    if (process.ExitCode == 0)
-                    {
-                        Spot.Core.Log.Info("Build completed successfully!");
-                        System.Diagnostics.Process.Start("explorer.exe", $"\"{buildDir}\"");
-                    }
-                    else
-                    {
-                        Spot.Core.Log.Error($"Build failed with exit code {process.ExitCode}. See above for details.");
-                    }
+                    try { System.Diagnostics.Process.Start("explorer.exe", $"\"{result.OutputDir}\""); } catch { }
                 }
             }
-            catch (System.Exception ex)
+            else
             {
-                Spot.Core.Log.Error($"Failed to build project: {ex.Message}");
+                Spot.Core.Log.Error($"Build failed with exit code {result.ExitCode}. See above for details.");
             }
         });
     }
@@ -740,11 +715,16 @@ public class EditorScene : Scene
             if (Project.Active != null)
             {
                 ImGui.Separator();
-                if (ImGui.MenuItem("Build Game (Release)")) BuildProject();
+                if (ImGui.BeginMenu("Build Game (Release)"))
+                {
+                    if (ImGui.MenuItem("Windows")) BuildProject(Spot.Build.BuildPlatform.Windows);
+                    if (ImGui.MenuItem("Linux")) BuildProject(Spot.Build.BuildPlatform.Linux);
+                    ImGui.EndMenu();
+                }
                 if (ImGui.BeginMenu("Regenerate Project Files"))
                 {
-                    if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)")) Project.GenerateCSProject(overwriteProgram: false);
-                    if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Project.GenerateCSProject(overwriteProgram: true);
+                    if (ImGui.MenuItem("Update Build Files (.csproj, DLLs)")) Spot.Build.ProjectGenerator.Generate(Project.Active!, overwriteProgram: false);
+                    if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Spot.Build.ProjectGenerator.Generate(Project.Active!, overwriteProgram: true);
                     ImGui.EndMenu();
                 }
             }
