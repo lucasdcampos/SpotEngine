@@ -17,7 +17,11 @@ internal static class ScriptSystem
         // engine nor stops the others.
         foreach (Entity entity in scene.View<ScriptComponent>().ToList())
         {
-            foreach (EntityBehaviour script in entity.GetComponent<ScriptComponent>().Scripts.ToList())
+            if (!entity.IsActiveInHierarchy()) continue;
+            var scriptComp = entity.GetComponent<ScriptComponent>();
+            if (!scriptComp.Enabled) continue;
+
+            foreach (EntityBehaviour script in scriptComp.Scripts.ToList())
             {
                 if (script.Faulted)
                 {

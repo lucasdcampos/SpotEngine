@@ -1,11 +1,13 @@
+using System;
 using System.Numerics;
+using Spot.Scenes;
 
 namespace Spot.Physics;
 
 /// <summary>
 /// A component to define a simple rectangle for AABB collisions.
 /// </summary>
-public class BoxCollider2DComponent
+public class BoxCollider2DComponent : Component
 {
     /// <summary>
     /// The full width and height of the box.

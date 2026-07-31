@@ -12,4 +12,8 @@
     <Project Path="tools/Spot.Build/Spot.Build.csproj" />
     <Project Path="tools/Spot.Cli/Spot.Cli.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Spot.Engine.Tests/Spot.Engine.Tests.csproj" />
+    <Project Path="tests/Spot.Build.Tests/Spot.Build.Tests.csproj" />
+  </Folder>
 </Solution>

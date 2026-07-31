@@ -95,6 +95,8 @@ public class Application
     /// </summary>
     public DevConsole Console => _console;
 
+    public string EngineVersion => SpotEngine.GetVersion();
+
     /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>

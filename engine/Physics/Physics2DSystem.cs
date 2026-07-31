@@ -17,8 +17,10 @@ internal static class Physics2DSystem
         // 1. Update velocities and positions for dynamic bodies
         foreach (var entity in scene.View<PhysicsBody2DComponent, Transform>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             var body = entity.GetComponent<PhysicsBody2DComponent>();
             var transform = entity.GetComponent<Transform>();
+            if (!body.Enabled || !transform.Enabled) continue;
 
             if (body.IsDynamic)
             {
@@ -33,18 +35,22 @@ internal static class Physics2DSystem
         for (int i = 0; i < colliders.Count; i++)
         {
             var e1 = colliders[i];
+            if (!e1.IsActiveInHierarchy()) continue;
             var col1 = e1.GetComponent<BoxCollider2DComponent>();
             var t1 = e1.GetComponent<Transform>();
+            if (!col1.Enabled || !t1.Enabled) continue;
             var b1 = col1.GetWorldBounds(new Vector2(t1.Position.X, t1.Position.Y));
-            bool isDynamic1 = e1.TryGetComponent(out PhysicsBody2DComponent? body1) && body1.IsDynamic;
+            bool isDynamic1 = e1.TryGetComponent(out PhysicsBody2DComponent? body1) && body1.Enabled && body1.IsDynamic;
 
             for (int j = i + 1; j < colliders.Count; j++)
             {
                 var e2 = colliders[j];
+                if (!e2.IsActiveInHierarchy()) continue;
                 var col2 = e2.GetComponent<BoxCollider2DComponent>();
                 var t2 = e2.GetComponent<Transform>();
+                if (!col2.Enabled || !t2.Enabled) continue;
                 var b2 = col2.GetWorldBounds(new Vector2(t2.Position.X, t2.Position.Y));
-                bool isDynamic2 = e2.TryGetComponent(out PhysicsBody2DComponent? body2) && body2.IsDynamic;
+                bool isDynamic2 = e2.TryGetComponent(out PhysicsBody2DComponent? body2) && body2.Enabled && body2.IsDynamic;
 
                 if (!isDynamic1 && !isDynamic2) continue; // Static vs Static
 

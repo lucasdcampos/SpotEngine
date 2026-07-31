@@ -180,7 +180,13 @@ public class HierarchyPanel
             flags |= ImGuiTreeNodeFlags.Leaf;
         }
         
+        bool active = entity.IsActiveInHierarchy();
+        if (!active) ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+        
         bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, name);
+        
+        if (!active) ImGui.PopStyleColor();
+
         if (ImGui.IsItemClicked())
         {
             _context.Selection = entity;

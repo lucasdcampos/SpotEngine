@@ -12,7 +12,7 @@ namespace Spot.Scenes;
 /// This is the data-only counterpart to Unity's SpriteRenderer. It deliberately holds no drawing
 /// logic — the engine's renderer does the drawing.
 /// </remarks>
-public sealed class Sprite2D
+public sealed class Sprite2D : Component
 {
     /// <summary>
     /// Gets or sets the texture to draw. When <see langword="null"/>, the sprite is a solid

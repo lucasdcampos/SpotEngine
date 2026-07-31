@@ -26,7 +26,9 @@ public class Scene
         var window = Spot.Core.Application.Instance.Window;
         foreach (var entity in View<CameraComponent>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             var cc = GetComponent<CameraComponent>(entity);
+            if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
                 cc.SetViewportSize(window.Width, window.Height);
@@ -64,12 +66,15 @@ public class Scene
         
         foreach (var entity in View<CameraComponent>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             var cc = entity.GetComponent<CameraComponent>();
+            if (!cc.Enabled) continue;
             if (cc.Primary)
             {
                 if (HasComponent<Transform>(entity))
                 {
                     var transform = GetComponent<Transform>(entity);
+                    if (!transform.Enabled) continue;
                     viewProjection = cc.GetViewProjection(transform);
                     is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
                 }
@@ -118,7 +123,9 @@ public class Scene
     {
         foreach (var entity in View<CameraComponent>())
         {
+            if (!entity.IsActiveInHierarchy()) continue;
             var cc = GetComponent<CameraComponent>(entity);
+            if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
                 cc.SetViewportSize(e.Width, e.Height);

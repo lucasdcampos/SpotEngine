@@ -105,15 +105,21 @@ public static class Renderer3D
             
             vec3 skyColorTop = vec3(0.1, 0.4, 0.8) * uLightColor;
             vec3 skyColorBottom = vec3(0.6, 0.8, 1.0) * uLightColor;
+            vec3 groundColorDay = vec3(0.15, 0.15, 0.15) * uLightColor;
             
             vec3 nightSkyTop = vec3(0.01, 0.02, 0.05);
             vec3 nightSkyBottom = vec3(0.05, 0.05, 0.1);
+            vec3 groundColorNight = vec3(0.01, 0.01, 0.01);
             
             float sunHeight = smoothstep(-0.2, 0.2, uLightDir.y);
             
-            float gradient = smoothstep(-0.2, 1.0, rayDir.y);
-            vec3 dayColor = mix(skyColorBottom, skyColorTop, gradient);
-            vec3 nightColor = mix(nightSkyBottom, nightSkyTop, gradient);
+            float skyGradient = smoothstep(0.0, 1.0, rayDir.y);
+            vec3 daySky = mix(skyColorBottom, skyColorTop, skyGradient);
+            vec3 nightSky = mix(nightSkyBottom, nightSkyTop, skyGradient);
+            
+            float groundMix = 1.0 - smoothstep(-0.05, 0.0, rayDir.y);
+            vec3 dayColor = mix(daySky, groundColorDay, groundMix);
+            vec3 nightColor = mix(nightSky, groundColorNight, groundMix);
             
             vec3 finalSky = mix(nightColor, dayColor, sunHeight);
             
