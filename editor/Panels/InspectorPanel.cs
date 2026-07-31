@@ -59,6 +59,8 @@ public class InspectorPanel
         EditorGui.Component<CameraComponent>(entity, "Camera", DrawCamera);
         EditorGui.Component<PhysicsBody2DComponent>(entity, "Physics Body 2D", DrawPhysicsBody);
         EditorGui.Component<BoxCollider2DComponent>(entity, "Box Collider 2D", DrawBoxCollider);
+        EditorGui.Component<PhysicsBody3DComponent>(entity, "Physics Body 3D", DrawPhysicsBody3D);
+        EditorGui.Component<BoxCollider3DComponent>(entity, "Box Collider 3D", DrawBoxCollider3D);
         EditorGui.Component<DirectionalLightComponent>(entity, "Directional Light", DrawDirectionalLight);
         EditorGui.Component<DynamicCloudsComponent>(entity, "Dynamic Clouds", DrawDynamicClouds);
         EditorGui.Component<ScriptComponent>(entity, "Script Component", DrawScripts);
@@ -89,6 +91,8 @@ public class InspectorPanel
             EditorGui.AddComponentItem<CameraComponent>(entity, "Camera");
             EditorGui.AddComponentItem<PhysicsBody2DComponent>(entity, "Physics Body 2D");
             EditorGui.AddComponentItem<BoxCollider2DComponent>(entity, "Box Collider 2D");
+            EditorGui.AddComponentItem<PhysicsBody3DComponent>(entity, "Physics Body 3D");
+            EditorGui.AddComponentItem<BoxCollider3DComponent>(entity, "Box Collider 3D");
             EditorGui.AddComponentItem<DirectionalLightComponent>(entity, "Directional Light");
             EditorGui.AddComponentItem<DynamicCloudsComponent>(entity, "Dynamic Clouds");
             EditorGui.AddComponentItem<ScriptComponent>(entity, "Script Component");
@@ -303,6 +307,28 @@ public class InspectorPanel
         if (EditorGui.Vector2Control("Size", ref size)) collider.Size = size;
         var offset = collider.Offset;
         if (EditorGui.Vector2Control("Offset", ref offset)) collider.Offset = offset;
+    }
+
+    private static void DrawPhysicsBody3D(PhysicsBody3DComponent body)
+    {
+        bool enabled = body.Enabled;
+        if (EditorGui.Checkbox("Enabled", ref enabled)) body.Enabled = enabled;
+        var velocity = body.Velocity;
+        if (EditorGui.Vector3Control("Velocity", ref velocity)) body.Velocity = velocity;
+        float gravity = body.GravityScale;
+        if (EditorGui.DragFloat("Gravity Scale", ref gravity)) body.GravityScale = gravity;
+        bool isDynamic = body.IsDynamic;
+        if (EditorGui.Checkbox("Is Dynamic", ref isDynamic)) body.IsDynamic = isDynamic;
+    }
+
+    private static void DrawBoxCollider3D(BoxCollider3DComponent collider)
+    {
+        bool enabled = collider.Enabled;
+        if (EditorGui.Checkbox("Enabled", ref enabled)) collider.Enabled = enabled;
+        var size = collider.Size;
+        if (EditorGui.Vector3Control("Size", ref size)) collider.Size = size;
+        var offset = collider.Offset;
+        if (EditorGui.Vector3Control("Offset", ref offset)) collider.Offset = offset;
     }
 
     private static void DrawDirectionalLight(DirectionalLightComponent light)
