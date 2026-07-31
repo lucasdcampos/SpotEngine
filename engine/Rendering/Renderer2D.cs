@@ -71,11 +71,74 @@ public static class Renderer2D
         }
         """;
 
+    private const string GridVertexShaderSource =
+        """
+        #version 330 core
+        
+        out vec2 vWorldPos;
+
+        uniform mat4 uInverseViewProjection;
+
+        void main() 
+        {
+            float x = -1.0 + float((gl_VertexID & 1) << 2);
+            float y = -1.0 + float((gl_VertexID & 2) << 1);
+            gl_Position = vec4(x, y, 0.0, 1.0);
+            
+            vec4 unprojectedPoint = uInverseViewProjection * vec4(x, y, 0.0, 1.0);
+            vWorldPos = unprojectedPoint.xy / unprojectedPoint.w;
+        }
+        """;
+
+    private const string GridFragmentShaderSource =
+        """
+        #version 330 core
+        
+        in vec2 vWorldPos;
+        out vec4 fragColor;
+
+        uniform float uZoom;
+
+        vec4 grid(vec2 fragPos2D, float scale) {
+            vec2 coord = fragPos2D * scale;
+            vec2 derivative = max(fwidth(coord), vec2(1e-5));
+            vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
+            float line = min(grid.x, grid.y);
+            vec4 color = vec4(0.3, 0.3, 0.3, 1.0 - min(line, 1.0));
+            return color;
+        }
+
+        void main() {
+            float logZoom = log(max(uZoom * 0.2, 0.001)) / log(10.0);
+            float lod = floor(logZoom);
+            float lodFade = fract(logZoom);
+            
+            float scale0 = 1.0 / pow(10.0, lod);
+            float scale1 = 1.0 / pow(10.0, lod + 1.0);
+            float scale2 = 1.0 / pow(10.0, lod + 2.0);
+            
+            vec4 grid0 = grid(vWorldPos, scale0);
+            vec4 grid1 = grid(vWorldPos, scale1);
+            vec4 grid2 = grid(vWorldPos, scale2);
+            
+            grid0.a *= (1.0 - lodFade);
+            
+            vec4 c = grid0;
+            c = mix(c, grid1, grid1.a);
+            c = mix(c, grid2, grid2.a);
+
+            fragColor = c;
+            if (fragColor.a <= 0.0) discard;
+        }
+        """;
+
     private static VertexArray? s_vao;
     private static VertexBuffer? s_vbo;
     private static IndexBuffer? s_ibo;
     private static Shader? s_shader;
     private static Texture2D? s_whiteTexture;
+    private static Shader? s_gridShader;
+    private static VertexArray? s_emptyVao;
 
     private static float[] s_vertices = Array.Empty<float>();
     private static int s_vertexCursor;
@@ -115,6 +178,8 @@ public static class Renderer2D
         s_vao.SetIndexBuffer(s_ibo);
 
         s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
+        s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
+        s_emptyVao = new VertexArray();
 
         // A 1x1 white texture lets colored quads reuse the textured path: texture * color == color.
         ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
@@ -127,10 +192,12 @@ public static class Renderer2D
     internal static void Shutdown()
     {
         s_shader?.Dispose();
+        s_gridShader?.Dispose();
         s_whiteTexture?.Dispose();
         s_vbo?.Dispose();
         s_ibo?.Dispose();
         s_vao?.Dispose();
+        s_emptyVao?.Dispose();
     }
 
     /// <summary>
@@ -141,6 +208,26 @@ public static class Renderer2D
     {
         s_viewProjection = viewProjection;
         StartBatch();
+    }
+
+    /// <summary>
+    /// Draws an infinite 2D grid plane for the editor.
+    /// </summary>
+    public static void DrawEditorGrid(float zoom)
+    {
+        Flush(); // Ensure previous geometry is drawn
+
+        if (s_gridShader == null || s_emptyVao == null) return;
+
+        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
+        s_gridShader.Use();
+        s_gridShader.SetUniform("uInverseViewProjection", invViewProj);
+        s_gridShader.SetUniform("uZoom", zoom);
+
+        Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);
+        Renderer.Api.BlendFunc(Silk.NET.OpenGL.BlendingFactor.SrcAlpha, Silk.NET.OpenGL.BlendingFactor.OneMinusSrcAlpha);
+
+        Renderer.DrawArrays(s_emptyVao, 3);
     }
 
     /// <summary>
