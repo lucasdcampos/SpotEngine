@@ -756,7 +756,16 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Create Camera", "", false, hasScene)) _hierarchyPanel.CreateCamera();
             if (ImGui.MenuItem("Create Sprite", "", false, hasScene)) _hierarchyPanel.CreateSprite();
             if (ImGui.MenuItem("Create Mesh", "", false, hasScene)) _hierarchyPanel.CreateMesh();
-            if (ImGui.MenuItem("Create Directional Light", "", false, hasScene)) _hierarchyPanel.CreateDirectionalLight();
+            if (hasScene && ImGui.BeginMenu("Light"))
+            {
+                if (ImGui.MenuItem("Directional Light")) _hierarchyPanel.CreateLight(Spot.Scenes.LightType.Directional);
+                if (ImGui.MenuItem("Point Light")) _hierarchyPanel.CreateLight(Spot.Scenes.LightType.Point);
+                ImGui.EndMenu();
+            }
+            else if (!hasScene)
+            {
+                ImGui.MenuItem("Light", "", false, false);
+            }
             
             if (hasScene && ImGui.BeginMenu("3D Object"))
             {

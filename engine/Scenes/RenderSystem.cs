@@ -23,28 +23,85 @@ public static class RenderSystem
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
     public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
-        bool hasLight = false;
-        Vector3 lightDir = new Vector3(0, -1, 0);
-        Vector3 lightColor = Vector3.One;
+        bool hasDirLight = false;
+        Vector3 dirLightDir = new Vector3(0, -1, 0);
+        Vector3 dirLightColor = Vector3.One;
         float ambientIntensity = 0.3f;
+        bool castShadows = false;
+        Matrix4x4 lightSpaceMatrix = Matrix4x4.Identity;
+        
+        Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[4];
+        int pointLightCount = 0;
 
-        foreach (Entity entity in scene.View<Transform, DirectionalLightComponent>())
+        foreach (Entity entity in scene.View<Transform, LightComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
             var transform = entity.GetComponent<Transform>();
-            var light = entity.GetComponent<DirectionalLightComponent>();
+            var light = entity.GetComponent<LightComponent>();
             if (!transform.Enabled || !light.Enabled) continue;
-            hasLight = true;
-            lightColor = light.Color * light.Intensity;
-            ambientIntensity = light.AmbientIntensity;
             
-            // We want lightDir to point TOWARDS the light source for shader math.
-            // If the entity's forward (-Z) is where it shines, then the source is in the opposite direction (+Z).
-            lightDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
-            break; // only use the first one for now
+            if (light.Type == LightType.Directional)
+            {
+                if (!hasDirLight)
+                {
+                    hasDirLight = true;
+                    dirLightColor = light.Color * light.Intensity;
+                    ambientIntensity = light.AmbientIntensity;
+                    
+                    // We want lightDir to point TOWARDS the light source for shader math.
+                    dirLightDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
+                    
+                    if (light.CastShadows)
+                    {
+                        castShadows = true;
+                        Vector3 lightPos = dirLightDir * 100.0f; 
+                        Matrix4x4 lightView = Matrix4x4.CreateLookAt(lightPos, Vector3.Zero, Vector3.UnitY);
+                        if (MathF.Abs(dirLightDir.Y) >= 0.999f) 
+                        {
+                            lightView = Matrix4x4.CreateLookAt(lightPos, Vector3.Zero, Vector3.UnitZ);
+                        }
+                        
+                        Matrix4x4 lightProj = Matrix4x4.CreateOrthographic(100.0f, 100.0f, 1.0f, 200.0f);
+                        lightSpaceMatrix = lightView * lightProj;
+                    }
+                }
+            }
+            else if (light.Type == LightType.Point)
+            {
+                if (pointLightCount < 4)
+                {
+                    pointLights[pointLightCount] = new Renderer3D.PointLightData
+                    {
+                        Position = transform.WorldPosition,
+                        Color = light.Color,
+                        Intensity = light.Intensity,
+                        Range = light.Range
+                    };
+                    pointLightCount++;
+                }
+            }
+        }
+        
+        if (castShadows)
+        {
+            Renderer3D.BeginShadowPass(lightSpaceMatrix);
+            foreach (Entity entity in scene.View<Transform, MeshRenderer>())
+            {
+                if (!entity.IsActiveInHierarchy()) continue;
+                MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
+                var transform = entity.GetComponent<Transform>();
+                if (!meshRenderer.Enabled || !transform.Enabled || meshRenderer.Model is null) continue;
+                
+                Matrix4x4 world = transform.Matrix;
+                foreach (Mesh mesh in meshRenderer.Model.Meshes)
+                {
+                    Renderer3D.DrawShadowMesh(world, mesh);
+                }
+            }
+            Renderer3D.EndShadowPass();
         }
 
-        Renderer3D.BeginScene(viewProjection, hasLight, lightDir, lightColor, ambientIntensity);
+        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount));
         Renderer3D.DrawSkybox();
 
         foreach (Entity entity in scene.View<DynamicCloudsComponent>())

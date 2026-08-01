@@ -44,6 +44,11 @@ public static class Renderer
     public static void Clear() => Gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
     /// <summary>
+    /// Clears only the depth buffer.
+    /// </summary>
+    public static void ClearDepth() => Gl.Clear(ClearBufferMask.DepthBufferBit);
+
+    /// <summary>
     /// Enables or disables depth testing.
     /// </summary>
     /// <param name="enable">Whether depth testing should be enabled.</param>

@@ -69,9 +69,11 @@ public class HierarchyPanel
                 {
                     CreateSprite();
                 }
-                if (ImGui.MenuItem("Create Directional Light"))
+                if (ImGui.BeginMenu("Light"))
                 {
-                    CreateDirectionalLight();
+                    if (ImGui.MenuItem("Directional Light")) CreateLight(LightType.Directional);
+                    if (ImGui.MenuItem("Point Light")) CreateLight(LightType.Point);
+                    ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("3D Object"))
                 {
@@ -115,14 +117,17 @@ public class HierarchyPanel
         return entity;
     }
 
-    /// <summary>Creates an entity with a <see cref="DirectionalLightComponent"/>, selects it, and returns it.</summary>
-    public Entity CreateDirectionalLight()
+    /// <summary>Creates an entity with a <see cref="LightComponent"/>, selects it, and returns it.</summary>
+    public Entity CreateLight(LightType type)
     {
-        var entity = CreateEntity("Directional Light");
-        // Usually lights point slightly downwards by default, we can set rotation
+        var entity = CreateEntity(type == LightType.Directional ? "Directional Light" : "Point Light");
         var transform = entity.GetComponent<Transform>();
-        transform.Rotation = new System.Numerics.Vector3(-45.0f, 45.0f, 0.0f);
-        entity.AddComponent(new DirectionalLightComponent());
+        if (type == LightType.Directional)
+        {
+            transform.Rotation = new System.Numerics.Vector3(-45.0f, 45.0f, 0.0f);
+        }
+        var light = new LightComponent { Type = type };
+        entity.AddComponent(light);
         return entity;
     }
 

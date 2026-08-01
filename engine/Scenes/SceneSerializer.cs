@@ -26,6 +26,7 @@ public class EntityData
     public PhysicsBody2DData? PhysicsBody2D { get; set; }
     public BoxCollider2DData? BoxCollider2D { get; set; }
     public DirectionalLightData? DirectionalLight { get; set; }
+    public LightData? Light { get; set; }
     public DynamicCloudsData? DynamicClouds { get; set; }
     public PhysicsBody3DData? PhysicsBody3D { get; set; }
     public BoxCollider3DData? BoxCollider3D { get; set; }
@@ -42,6 +43,16 @@ public class DirectionalLightData : ComponentData
     public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
     public float Intensity { get; set; } = 1.0f;
     public float AmbientIntensity { get; set; } = 0.3f;
+}
+
+public class LightData : ComponentData
+{
+    public int Type { get; set; } = 0;
+    public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
+    public float Intensity { get; set; } = 1.0f;
+    public float AmbientIntensity { get; set; } = 0.3f;
+    public bool CastShadows { get; set; } = true;
+    public float Range { get; set; } = 10.0f;
 }
 
 public class DynamicCloudsData : ComponentData
@@ -243,15 +254,18 @@ public class SceneSerializer
             };
         }
 
-        if (entity.HasComponent<DirectionalLightComponent>())
+        if (entity.HasComponent<LightComponent>())
         {
-            var light = entity.GetComponent<DirectionalLightComponent>();
-            entityData.DirectionalLight = new DirectionalLightData
+            var light = entity.GetComponent<LightComponent>();
+            entityData.Light = new LightData
             {
                 Enabled = light.Enabled,
+                Type = (int)light.Type,
                 Color = new[] { light.Color.X, light.Color.Y, light.Color.Z },
                 Intensity = light.Intensity,
-                AmbientIntensity = light.AmbientIntensity
+                AmbientIntensity = light.AmbientIntensity,
+                CastShadows = light.CastShadows,
+                Range = light.Range
             };
         }
 
@@ -472,9 +486,21 @@ public class SceneSerializer
             entity.AddComponent(collider);
         }
 
-        if (entityData.DirectionalLight != null)
+        if (entityData.Light != null)
         {
-            var light = new DirectionalLightComponent();
+            var light = new LightComponent();
+            light.Enabled = entityData.Light.Enabled;
+            light.Type = (LightType)entityData.Light.Type;
+            light.Color = new System.Numerics.Vector3(entityData.Light.Color[0], entityData.Light.Color[1], entityData.Light.Color[2]);
+            light.Intensity = entityData.Light.Intensity;
+            light.AmbientIntensity = entityData.Light.AmbientIntensity;
+            light.CastShadows = entityData.Light.CastShadows;
+            light.Range = entityData.Light.Range;
+            entity.AddComponent(light);
+        }
+        else if (entityData.DirectionalLight != null)
+        {
+            var light = new LightComponent { Type = LightType.Directional };
             light.Enabled = entityData.DirectionalLight.Enabled;
             light.Color = new System.Numerics.Vector3(entityData.DirectionalLight.Color[0], entityData.DirectionalLight.Color[1], entityData.DirectionalLight.Color[2]);
             light.Intensity = entityData.DirectionalLight.Intensity;

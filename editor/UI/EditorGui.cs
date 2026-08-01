@@ -210,7 +210,7 @@ public static class EditorGui
     public static EntityIcon IconFor(Entity entity)
     {
         if (entity.HasComponent<CameraComponent>()) return EntityIcon.Camera;
-        if (entity.HasComponent<DirectionalLightComponent>()) return EntityIcon.Light;
+        if (entity.HasComponent<LightComponent>()) return EntityIcon.Light;
         if (entity.HasComponent<DynamicCloudsComponent>()) return EntityIcon.Skybox;
         if (entity.HasComponent<MeshRenderer>()) return EntityIcon.Mesh;
         if (entity.HasComponent<Sprite2D>()) return EntityIcon.Sprite;
