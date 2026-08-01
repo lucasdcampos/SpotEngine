@@ -60,6 +60,7 @@ public class AssetBrowserPanel
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
+    private readonly Dictionary<string, Spot.Rendering.Framebuffer> _materialPreviews = new();
 
     public Action<string>? OnAssetOpened;
 
@@ -383,6 +384,13 @@ public class AssetBrowserPanel
             float h = tex.Height * scale;
             Vector2 imgMin = iconMin + new Vector2((size - w) * 0.5f, (size - h) * 0.5f);
             drawList.AddImage((IntPtr)tex.Handle, imgMin, imgMin + new Vector2(w, h), new Vector2(0, 1), new Vector2(1, 0));
+            return;
+        }
+
+        if (entry.Kind == AssetKind.Material && TryGetMaterialPreview(entry.FullPath, out var matFb))
+        {
+            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
+            drawList.AddImage((IntPtr)matFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
@@ -756,6 +764,31 @@ public class AssetBrowserPanel
         }
     }
 
+    private bool TryGetMaterialPreview(string path, out Spot.Rendering.Framebuffer fb)
+    {
+        if (_materialPreviews.TryGetValue(path, out fb!))
+        {
+            return true;
+        }
+        if (_materialPreviews.Count >= MaxThumbnails)
+        {
+            return false;
+        }
+
+        try
+        {
+            fb = new Spot.Rendering.Framebuffer(128, 128);
+            var material = Spot.Assets.Material.Load(path);
+            Spot.Editor.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb);
+            _materialPreviews[path] = fb;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void CreateScript(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return;
@@ -877,6 +910,12 @@ public class {className} : EntityBehaviour
         }
         _thumbnails.Clear();
         _thumbFailed.Clear();
+
+        foreach (var fb in _materialPreviews.Values)
+        {
+            fb.Dispose();
+        }
+        _materialPreviews.Clear();
     }
 
     private static void EnsureDirectory(string path)

@@ -10,6 +10,7 @@ namespace Spot.Editor.Panels;
 public class InspectorPanel
 {
     private readonly EditorContext _context;
+    private Spot.Rendering.Framebuffer? _materialPreviewFb;
 
     public InspectorPanel(EditorContext context)
     {
@@ -106,6 +107,25 @@ public class InspectorPanel
         var material = Material.Load(path);
 
         ImGui.TextDisabled(System.IO.Path.GetFileName(path));
+        ImGui.Separator();
+
+        // Draw preview
+        uint previewSize = 200;
+        if (_materialPreviewFb == null)
+        {
+            _materialPreviewFb = new Spot.Rendering.Framebuffer(previewSize, previewSize);
+        }
+        
+        Spot.Editor.UI.MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
+        
+        float availX = ImGui.GetContentRegionAvail().X;
+        float xOffset = (availX - previewSize) * 0.5f;
+        if (xOffset > 0)
+        {
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + xOffset);
+        }
+        
+        ImGui.Image((IntPtr)_materialPreviewFb.ColorAttachment, new Vector2(previewSize, previewSize), new Vector2(0, 1), new Vector2(1, 0));
         ImGui.Separator();
 
         var color = material.Color;
