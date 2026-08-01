@@ -33,6 +33,8 @@ public sealed class Material
         public float WaveScale { get; set; } = 1.0f;
         public float WaveStrength { get; set; } = 0.3f;
         public float SpecularPower { get; set; } = 64.0f;
+        public float Metallic { get; set; } = 0.0f;
+        public string? NormalMapPath { get; set; }
     }
 
     private static readonly Dictionary<string, Material> s_cache = new(StringComparer.OrdinalIgnoreCase);
@@ -42,6 +44,9 @@ public sealed class Material
     
     /// <summary>Gets or sets the shader used for rendering this material.</summary>
     public MaterialShaderType ShaderType { get; set; } = MaterialShaderType.Standard;
+
+    /// <summary>Gets or sets the metallic property for the material.</summary>
+    public float Metallic { get; set; } = 0.0f;
 
     // Water specific properties
     public float WaveSpeed { get; set; } = 1.0f;
@@ -54,6 +59,12 @@ public sealed class Material
 
     /// <summary>Gets the path to the texture file, used for serialization.</summary>
     public string? TexturePath { get; private set; }
+
+    /// <summary>Gets the normal map sampled across the surface, or <see langword="null"/>.</summary>
+    public Texture2D? NormalMap { get; private set; }
+
+    /// <summary>Gets the path to the normal map file, used for serialization.</summary>
+    public string? NormalMapPath { get; private set; }
 
     /// <summary>Gets the file this material was loaded from or last saved to, if any.</summary>
     public string? SourcePath { get; internal set; }
@@ -75,6 +86,25 @@ public sealed class Material
 
         Texture = new Texture2D(path);
         TexturePath = path;
+    }
+
+    /// <summary>
+    /// Sets the material's normal map from an image file, replacing and disposing any previous normal map.
+    /// Pass <see langword="null"/> or an empty path to clear the normal map.
+    /// </summary>
+    /// <param name="path">The image file path, or <see langword="null"/> to clear.</param>
+    public void SetNormalMap(string? path)
+    {
+        NormalMap?.Dispose();
+        if (string.IsNullOrEmpty(path))
+        {
+            NormalMap = null;
+            NormalMapPath = null;
+            return;
+        }
+
+        NormalMap = new Texture2D(path);
+        NormalMapPath = path;
     }
 
     /// <summary>
@@ -130,6 +160,20 @@ public sealed class Material
                 {
                     material.ShaderType = type;
                 }
+
+                if (!string.IsNullOrEmpty(data.NormalMapPath))
+                {
+                    try
+                    {
+                        material.SetNormalMap(data.NormalMapPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.CoreError("Failed to load material normal map '{0}': {1}", data.NormalMapPath, ex.Message);
+                    }
+                }
+                
+                material.Metallic = data.Metallic;
                 
                 material.WaveSpeed = data.WaveSpeed;
                 material.WaveScale = data.WaveScale;
@@ -162,7 +206,9 @@ public sealed class Material
             WaveSpeed = WaveSpeed,
             WaveScale = WaveScale,
             WaveStrength = WaveStrength,
-            SpecularPower = SpecularPower
+            SpecularPower = SpecularPower,
+            Metallic = Metallic,
+            NormalMapPath = NormalMapPath != null ? AssetPath.MakeRelative(NormalMapPath) : null
         };
 
         File.WriteAllText(full, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));

@@ -469,7 +469,16 @@ public class InspectorPanel
             material.Save(path);
         }
 
-        if (material.ShaderType == MaterialShaderType.Water)
+        if (material.ShaderType == MaterialShaderType.Standard)
+        {
+            float metallic = material.Metallic;
+            if (EditorGui.DragFloat("Metallic", ref metallic, 0.01f, 0.0f, 1.0f))
+            {
+                material.Metallic = metallic;
+                material.Save(path);
+            }
+        }
+        else if (material.ShaderType == MaterialShaderType.Water)
         {
             bool waterChanged = false;
             float waveSpeed = material.WaveSpeed;
@@ -519,6 +528,45 @@ public class InspectorPanel
             if (ImGui.Button("Remove Texture", new Vector2(-1, 24)))
             {
                 material.SetTexture(null);
+                material.Save(path);
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Normal Map");
+        ImGui.Button(material.NormalMap != null
+            ? $"{System.IO.Path.GetFileName(material.NormalMapPath) ?? "Normal Map"} (Drop to change)"
+            : "Drop Normal Map Here", new Vector2(-1, 30));
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
+                if (payload.NativePtr != null)
+                {
+                    string? filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                    if (filepath != null)
+                    {
+                        try
+                        {
+                            material.SetNormalMap(filepath);
+                            material.Save(path);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Console.WriteLine($"Failed to set material normal map: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            ImGui.EndDragDropTarget();
+        }
+
+        if (material.NormalMap != null)
+        {
+            if (ImGui.Button("Remove Normal Map", new Vector2(-1, 24)))
+            {
+                material.SetNormalMap(null);
                 material.Save(path);
             }
         }
