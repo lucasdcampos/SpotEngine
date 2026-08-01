@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Scenes;
+using Spot.Core;
 
 namespace Spot.Editor.UI;
 
@@ -392,4 +393,151 @@ public static class EditorGui
         Math.Clamp(c.Y + amount, 0.0f, 1.0f),
         Math.Clamp(c.Z + amount, 0.0f, 1.0f),
         c.W);
+
+    // ----- Asset Slots -----------------------------------------------------------------------------
+
+    private static string _assetSearchFilter = string.Empty;
+
+    public delegate void AssetSlotCustomItems(ref string? selectedPath, ref bool changed);
+
+    /// <summary>
+    /// A generic slot for an asset reference. Shows the current asset name, allows drag-and-drop of the
+    /// specified payload type, and provides a button to open a project-wide selection popup.
+    /// </summary>
+    public static bool AssetSlot(
+        string label,
+        string payloadType,
+        string[] searchPatterns,
+        string? currentPath,
+        out string? outPath,
+        AssetSlotCustomItems? drawCustomItems = null)
+    {
+        outPath = currentPath;
+        bool changed = false;
+
+        ImGui.PushID(label);
+        BeginLabel(label);
+
+        string displayLabel = "None";
+        if (!string.IsNullOrEmpty(currentPath))
+        {
+            displayLabel = System.IO.Path.GetFileName(currentPath) ?? "None";
+        }
+
+        bool clicked = ImGui.Button($"{displayLabel}##btn", new Vector2(-1, 0)); // button filling width
+        
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                var payload = ImGui.AcceptDragDropPayload(payloadType);
+                if (payload.NativePtr != null)
+                {
+                    string? filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                    if (filepath != null)
+                    {
+                        outPath = filepath;
+                        changed = true;
+                    }
+                }
+            }
+            ImGui.EndDragDropTarget();
+        }
+
+        string popupName = "SelectAssetPopup_" + label;
+        if (clicked)
+        {
+            _assetSearchFilter = string.Empty;
+            ImGui.OpenPopup(popupName);
+        }
+
+        if (ImGui.BeginPopup(popupName))
+        {
+            ImGui.SetNextItemWidth(250);
+            ImGui.InputTextWithHint("##Search", "Search assets...", ref _assetSearchFilter, 128);
+            ImGui.Separator();
+
+            ImGui.BeginChild("AssetList", new Vector2(250, 300), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
+
+            if (ImGui.MenuItem("None", "", string.IsNullOrEmpty(currentPath)))
+            {
+                outPath = null;
+                changed = true;
+                ImGui.CloseCurrentPopup();
+            }
+
+            drawCustomItems?.Invoke(ref outPath, ref changed);
+            if (changed) ImGui.CloseCurrentPopup();
+
+            var assets = EnumerateProjectAssets(searchPatterns);
+            if (assets.Count > 0)
+                ImGui.Separator();
+
+            bool foundAny = false;
+            foreach (string path in assets)
+            {
+                string filename = System.IO.Path.GetFileName(path);
+                
+                if (!string.IsNullOrEmpty(_assetSearchFilter) && 
+                    !filename.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                foundAny = true;
+                bool isSelected = string.Equals(currentPath, path, StringComparison.OrdinalIgnoreCase);
+                if (ImGui.MenuItem(filename, "", isSelected))
+                {
+                    outPath = path;
+                    changed = true;
+                    ImGui.CloseCurrentPopup();
+                }
+                
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.TextUnformatted(path);
+                    ImGui.EndTooltip();
+                }
+            }
+
+            if (!foundAny && assets.Count > 0)
+            {
+                ImGui.TextDisabled("No matching assets.");
+            }
+            else if (assets.Count == 0)
+            {
+                ImGui.TextDisabled("No assets found.");
+            }
+
+            ImGui.EndChild();
+            ImGui.EndPopup();
+        }
+
+        EndLabel();
+        ImGui.PopID();
+        
+        return changed;
+    }
+
+    private static System.Collections.Generic.List<string> EnumerateProjectAssets(string[] patterns)
+    {
+        var result = new System.Collections.Generic.List<string>();
+        string? dir = Project.Active?.GetAssetDirectory();
+        if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+        {
+            try
+            {
+                foreach (string pattern in patterns)
+                {
+                    result.AddRange(System.IO.Directory.EnumerateFiles(dir, pattern, System.IO.SearchOption.AllDirectories));
+                }
+            }
+            catch
+            {
+                // Enumeration failures (permissions, race with deletion) just yield no assets.
+            }
+        }
+        return result;
+    }
 }
