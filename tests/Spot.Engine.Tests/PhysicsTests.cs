@@ -32,7 +32,7 @@ public class PhysicsTests
     [Fact]
     public void FromTransform_UsesPositionAndScale()
     {
-        var t = new Transform { Position = new Vector3(3, 4, 0), Scale = new Vector3(2, 2, 1) };
+        var t = new TransformComponent { Position = new Vector3(3, 4, 0), Scale = new Vector3(2, 2, 1) };
 
         var box = Aabb.FromTransform(t);
 
@@ -46,7 +46,7 @@ public class PhysicsTests
         var scene = new Scene();
         var e = scene.Instantiate();
         var body = e.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-        var t = e.GetComponent<Transform>();
+        var t = e.GetComponent<TransformComponent>();
 
         Physics2DSystem.Update(scene, 0.1f);
 
@@ -60,7 +60,7 @@ public class PhysicsTests
         var scene = new Scene();
         var e = scene.Instantiate();
         var body = e.AddComponent(new PhysicsBody2DComponent { IsDynamic = false });
-        var t = e.GetComponent<Transform>();
+        var t = e.GetComponent<TransformComponent>();
 
         Physics2DSystem.Update(scene, 0.1f);
 
@@ -80,21 +80,21 @@ public class PhysicsTests
             var floor = scene.Instantiate("static");
             floor.AddComponent(new BoxCollider2DComponent { Size = Vector2.One });
             floor.AddComponent(new PhysicsBody2DComponent { IsDynamic = false });
-            floor.GetComponent<Transform>().Position = Vector3.Zero;
+            floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
 
             var mover = scene.Instantiate("dynamic");
             mover.AddComponent(new BoxCollider2DComponent { Size = Vector2.One });
             mover.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-            mover.GetComponent<Transform>().Position = new Vector3(0.4f, 0, 0);
+            mover.GetComponent<TransformComponent>().Position = new Vector3(0.4f, 0, 0);
 
             Physics2DSystem.Update(scene, 0.016f);
 
             // Penetration along X (0.6) is smaller than along Y (1.0), so the dynamic box is pushed out
             // along +X until the two unit boxes just touch (centers one full width apart).
-            float x = mover.GetComponent<Transform>().Position.X;
+            float x = mover.GetComponent<TransformComponent>().Position.X;
             Assert.True(x > 0.4f, "the dynamic collider should be pushed away from the static one");
             Assert.Equal(1.0, x, 3);
-            Assert.Equal(Vector3.Zero, floor.GetComponent<Transform>().Position); // static body unmoved
+            Assert.Equal(Vector3.Zero, floor.GetComponent<TransformComponent>().Position); // static body unmoved
         }
         finally
         {

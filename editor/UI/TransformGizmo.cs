@@ -16,12 +16,12 @@ public enum GizmoMode
 /// A hand-rolled transform gizmo (translate / rotate / scale) that works with both the 2D
 /// orthographic and the 3D perspective editor cameras. Handles are placed in world space and
 /// projected through the camera's view-projection so they line up with the rendered scene, then
-/// drawn with the ImGui draw list. Editing writes straight back to the selected <see cref="Transform"/>.
+/// drawn with the ImGui draw list. Editing writes straight back to the selected <see cref="TransformComponent"/>.
 /// </summary>
 /// <remarks>
 /// In 2D only the X and Y axes are shown (rotation is around Z); in 3D all three axes / rings are
 /// shown. Handle geometry is sized in screen pixels so the gizmo keeps a constant size regardless
-/// of zoom or camera distance. Deltas are applied to the Transform's local fields, matching the
+/// of zoom or camera distance. Deltas are applied to the TransformComponent's local fields, matching the
 /// engine's existing convention (parent transforms are not compensated for).
 /// </remarks>
 public sealed class TransformGizmo
@@ -55,7 +55,7 @@ public sealed class TransformGizmo
     private ImDrawListPtr _draw;
     private EditorPalette _pal = null!;
 
-    public void Draw(Transform transform, EditorCamera camera, Vector2 viewportPos, Vector2 viewportSize, bool viewportHovered)
+    public void Draw(TransformComponent transform, EditorCamera camera, Vector2 viewportPos, Vector2 viewportSize, bool viewportHovered)
     {
         _cam = camera;
         _vp = camera.ViewProjection;
@@ -87,7 +87,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Translate
 
-    private void DoTranslate(Transform t, bool viewportHovered)
+    private void DoTranslate(TransformComponent t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
 
@@ -151,7 +151,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Rotate
 
-    private void DoRotate(Transform t, bool viewportHovered)
+    private void DoRotate(TransformComponent t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
         float worldRadius = WorldRadius(RingRadiusPx);
@@ -201,7 +201,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Scale
 
-    private void DoScale(Transform t, bool viewportHovered)
+    private void DoScale(TransformComponent t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
 
@@ -364,3 +364,4 @@ public sealed class TransformGizmo
         return a;
     }
 }
+

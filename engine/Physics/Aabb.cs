@@ -46,7 +46,7 @@ public readonly struct Aabb
     /// </summary>
     /// <param name="transform">The transform to build the box from.</param>
     /// <returns>The bounding box.</returns>
-    public static Aabb FromTransform(Transform transform) => new(
+    public static Aabb FromTransform(TransformComponent transform) => new(
         new Vector2(transform.Position.X, transform.Position.Y),
         new Vector2(transform.Scale.X, transform.Scale.Y));
 

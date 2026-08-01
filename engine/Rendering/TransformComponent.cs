@@ -11,7 +11,7 @@ namespace Spot.Rendering;
 /// usage, keep <see cref="Position"/>.Z at zero, rotate only around Z via <see cref="Rotation"/>.Z,
 /// and leave <see cref="Scale"/>.Z at one.
 /// </remarks>
-public sealed class Transform : Component
+public sealed class TransformComponent : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
 
@@ -41,7 +41,7 @@ public sealed class Transform : Component
         {
             Vector3 worldRot = Rotation;
             Entity? parentEntity = Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) ? rel.Parent : null;
-            if (parentEntity != null && parentEntity.Value.TryGetComponent(out Transform? parentTransform))
+            if (parentEntity != null && parentEntity.Value.TryGetComponent(out TransformComponent? parentTransform))
             {
                 worldRot += parentTransform.WorldRotation;
             }
@@ -79,7 +79,7 @@ public sealed class Transform : Component
 
             if (Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
             {
-                if (rel.Parent.Value.TryGetComponent(out Transform? parentTransform))
+                if (rel.Parent.Value.TryGetComponent(out TransformComponent? parentTransform))
                 {
                     return local * parentTransform.Matrix;
                 }

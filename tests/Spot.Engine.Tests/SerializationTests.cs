@@ -21,7 +21,7 @@ public class SerializationTests
     {
         var scene = new Scene();
         var hero = scene.Instantiate("Hero");
-        var t = hero.GetComponent<Transform>();
+        var t = hero.GetComponent<TransformComponent>();
         t.Position = new Vector3(1, 2, 3);
         t.Rotation = new Vector3(0, 45, 0);
         t.Scale = new Vector3(2, 2, 2);
@@ -39,7 +39,7 @@ public class SerializationTests
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
         var loadedHero = FindByName(loaded, "Hero");
-        var ht = loadedHero.GetComponent<Transform>();
+        var ht = loadedHero.GetComponent<TransformComponent>();
         Assert.Equal(new Vector3(1, 2, 3), ht.Position);
         Assert.Equal(new Vector3(0, 45, 0), ht.Rotation);
         Assert.Equal(new Vector3(2, 2, 2), ht.Scale);

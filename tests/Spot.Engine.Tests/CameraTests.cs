@@ -52,7 +52,7 @@ public class CameraTests
     {
         var cam = new CameraComponent { ProjectionType = SceneCameraProjection.Orthographic };
         var scene = new Scene();
-        var transform = scene.Instantiate().GetComponent<Transform>(); // identity at origin
+        var transform = scene.Instantiate().GetComponent<TransformComponent>(); // identity at origin
 
         Matrix4x4 vp = cam.GetViewProjection(transform);
 

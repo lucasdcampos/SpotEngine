@@ -101,19 +101,19 @@ public class HierarchyPanel
         return entity;
     }
 
-    /// <summary>Creates an entity with a <see cref="Sprite2D"/> component, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with a <see cref="Sprite2DComponent"/> component, selects it, and returns it.</summary>
     public Entity CreateSprite()
     {
         var entity = CreateEntity("Sprite");
-        entity.AddComponent(new Sprite2D());
+        entity.AddComponent(new Sprite2DComponent());
         return entity;
     }
 
-    /// <summary>Creates an entity with an empty <see cref="MeshRenderer"/> component, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with an empty <see cref="MeshComponent"/> component, selects it, and returns it.</summary>
     public Entity CreateMesh()
     {
         var entity = CreateEntity("Mesh");
-        entity.AddComponent(new MeshRenderer());
+        entity.AddComponent(new MeshComponent());
         return entity;
     }
 
@@ -121,7 +121,7 @@ public class HierarchyPanel
     public Entity CreateLight(LightType type)
     {
         var entity = CreateEntity(type == LightType.Directional ? "Directional Light" : "Point Light");
-        var transform = entity.GetComponent<Transform>();
+        var transform = entity.GetComponent<TransformComponent>();
         if (type == LightType.Directional)
         {
             transform.Rotation = new System.Numerics.Vector3(-45.0f, 45.0f, 0.0f);
@@ -131,11 +131,11 @@ public class HierarchyPanel
         return entity;
     }
 
-    /// <summary>Creates an entity with a procedural primitive <see cref="MeshRenderer"/>, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with a procedural primitive <see cref="MeshComponent"/>, selects it, and returns it.</summary>
     public Entity CreatePrimitive(string typeName)
     {
         var entity = CreateEntity(typeName);
-        var meshRenderer = new MeshRenderer { ModelPath = $"primitive:{typeName}" };
+        var meshRenderer = new MeshComponent { ModelPath = $"primitive:{typeName}" };
         try
         {
             meshRenderer.Model = Spot.Assets.Model.Load(meshRenderer.ModelPath);
@@ -149,13 +149,13 @@ public class HierarchyPanel
     }
 
     /// <summary>
-    /// Creates an entity with a <see cref="MeshRenderer"/> loaded from the given model file, selects it,
+    /// Creates an entity with a <see cref="MeshComponent"/> loaded from the given model file, selects it,
     /// and returns it. The model is loaded eagerly; failures are logged and leave the renderer empty.
     /// </summary>
     public Entity CreateMeshFromModel(string modelPath)
     {
         var entity = CreateEntity(System.IO.Path.GetFileNameWithoutExtension(modelPath));
-        var meshRenderer = new MeshRenderer { ModelPath = modelPath };
+        var meshRenderer = new MeshComponent { ModelPath = modelPath };
         try
         {
             meshRenderer.Model = Spot.Assets.Model.Load(modelPath);

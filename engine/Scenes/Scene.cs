@@ -72,9 +72,9 @@ public class Scene
             if (!cc.Enabled) continue;
             if (cc.Primary)
             {
-                if (HasComponent<Transform>(entity))
+                if (HasComponent<TransformComponent>(entity))
                 {
-                    var transform = GetComponent<Transform>(entity);
+                    var transform = GetComponent<TransformComponent>(entity);
                     if (!transform.Enabled) continue;
                     viewProjection = cc.GetViewProjection(transform);
                     is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
@@ -143,7 +143,7 @@ public class Scene
     }
 
     /// <summary>
-    /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="Transform"/>. Safe to
+    /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="TransformComponent"/>. Safe to
     /// call at any time, including from a script.
     /// </summary>
     /// <param name="name">The entity name.</param>
@@ -156,7 +156,7 @@ public class Scene
         var entity = new Entity(id, this);
         entity.AddComponent(new TagComponent(name));
         entity.AddComponent(new RelationshipComponent());
-        entity.AddComponent(new Transform());
+        entity.AddComponent(new TransformComponent());
         return entity;
     }
 
@@ -274,7 +274,7 @@ public class Scene
     internal T AddComponent<T>(Entity entity, T component)
         where T : class
     {
-        if (component is Transform transform)
+        if (component is TransformComponent transform)
         {
             transform.Entity = entity;
         }

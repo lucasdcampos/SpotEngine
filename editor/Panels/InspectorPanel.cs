@@ -44,7 +44,7 @@ public class InspectorPanel
         DrawTagRow(entity);
         ImGui.Spacing();
 
-        EditorGui.Component<Transform>(entity, "Transform", t =>
+        EditorGui.Component<TransformComponent>(entity, "Transform", t =>
         {
             var position = t.Position;
             if (EditorGui.Vector3Control("Position", ref position)) t.Position = position;
@@ -54,8 +54,8 @@ public class InspectorPanel
             if (EditorGui.Vector3Control("Scale", ref scale, resetValue: 1.0f)) t.Scale = scale;
         }, removable: false);
 
-        EditorGui.Component<Sprite2D>(entity, "Sprite2D", DrawSprite);
-        EditorGui.Component<MeshRenderer>(entity, "Mesh Renderer", DrawMeshRenderer);
+        EditorGui.Component<Sprite2DComponent>(entity, "Sprite 2D", DrawSprite);
+        EditorGui.Component<MeshComponent>(entity, "Mesh Renderer", DrawMeshRenderer);
         EditorGui.Component<CameraComponent>(entity, "Camera", DrawCamera);
         EditorGui.Component<PhysicsBody2DComponent>(entity, "Physics Body 2D", DrawPhysicsBody);
         EditorGui.Component<BoxCollider2DComponent>(entity, "Box Collider 2D", DrawBoxCollider);
@@ -63,7 +63,7 @@ public class InspectorPanel
         EditorGui.Component<BoxCollider3DComponent>(entity, "Box Collider 3D", DrawBoxCollider3D);
         EditorGui.Component<LightComponent>(entity, "Light", DrawLight);
         EditorGui.Component<DynamicCloudsComponent>(entity, "Dynamic Clouds", DrawDynamicClouds);
-        EditorGui.Component<ScriptComponent>(entity, "Script Component", DrawScripts);
+        EditorGui.Component<ScriptComponent>(entity, "Script", DrawScripts);
         EditorGui.Component<PostProcessingComponent>(entity, "Post Processing", DrawPostProcessing);
     }
 
@@ -87,8 +87,8 @@ public class InspectorPanel
 
         if (ImGui.BeginPopup("AddComponent"))
         {
-            EditorGui.AddComponentItem<Sprite2D>(entity, "Sprite2D");
-            EditorGui.AddComponentItem<MeshRenderer>(entity, "Mesh Renderer");
+            EditorGui.AddComponentItem<Sprite2DComponent>(entity, "Sprite 2D");
+            EditorGui.AddComponentItem<MeshComponent>(entity, "Mesh Renderer");
             EditorGui.AddComponentItem<CameraComponent>(entity, "Camera");
             EditorGui.AddComponentItem<PhysicsBody2DComponent>(entity, "Physics Body 2D");
             EditorGui.AddComponentItem<BoxCollider2DComponent>(entity, "Box Collider 2D");
@@ -96,7 +96,7 @@ public class InspectorPanel
             EditorGui.AddComponentItem<BoxCollider3DComponent>(entity, "Box Collider 3D");
             EditorGui.AddComponentItem<LightComponent>(entity, "Light");
             EditorGui.AddComponentItem<DynamicCloudsComponent>(entity, "Dynamic Clouds");
-            EditorGui.AddComponentItem<ScriptComponent>(entity, "Script Component");
+            EditorGui.AddComponentItem<ScriptComponent>(entity, "Script");
             EditorGui.AddComponentItem<PostProcessingComponent>(entity, "Post Processing");
             ImGui.EndPopup();
         }
@@ -104,7 +104,7 @@ public class InspectorPanel
 
     // ----- Per-component bodies --------------------------------------------------------------------
 
-    private static void DrawSprite(Sprite2D sprite)
+    private static void DrawSprite(Sprite2DComponent sprite)
     {
         bool enabled = sprite.Enabled;
         if (EditorGui.Checkbox("Enabled", ref enabled)) sprite.Enabled = enabled;
@@ -150,7 +150,7 @@ public class InspectorPanel
         }
     }
 
-    private static void DrawMeshRenderer(MeshRenderer meshRenderer)
+    private static void DrawMeshRenderer(MeshComponent meshRenderer)
     {
         bool enabled = meshRenderer.Enabled;
         if (EditorGui.Checkbox("Enabled", ref enabled)) meshRenderer.Enabled = enabled;
@@ -582,7 +582,7 @@ public class InspectorPanel
         }
     }
 
-    private static void AssignMaterial(MeshRenderer meshRenderer, string path)
+    private static void AssignMaterial(MeshComponent meshRenderer, string path)
     {
         try
         {

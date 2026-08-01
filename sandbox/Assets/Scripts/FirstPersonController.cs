@@ -10,7 +10,7 @@ using MouseButton = Spot.Core.MouseButton;
 
 public class FirstPersonController : EntityBehaviour
 {
-    private Transform? _transform;
+    private TransformComponent? _transform;
     private PhysicsBody3DComponent? _body;
     
     private float _yaw = 0f;
@@ -27,7 +27,7 @@ public class FirstPersonController : EntityBehaviour
 
     public override void OnCreate()
     {
-        _transform = Entity.GetComponent<Transform>();
+        _transform = Entity.GetComponent<TransformComponent>();
 
         if (!Entity.HasComponent<PhysicsBody3DComponent>())
         {
@@ -162,3 +162,4 @@ public class FirstPersonController : EntityBehaviour
         _body.Velocity = new Vector3(currentVelXZ.X, _body.Velocity.Y, currentVelXZ.Y);
     }
 }
+

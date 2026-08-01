@@ -9,7 +9,7 @@ public class TransformTests
     [Fact]
     public void LocalMatrix_EncodesTranslationAndScale()
     {
-        var t = new Transform { Position = new Vector3(1, 2, 3), Scale = new Vector3(2, 2, 2) };
+        var t = new TransformComponent { Position = new Vector3(1, 2, 3), Scale = new Vector3(2, 2, 2) };
         Matrix4x4 m = t.LocalMatrix;
 
         Assert.Equal(1.0, m.Translation.X, 3);
@@ -24,11 +24,11 @@ public class TransformTests
         var scene = new Scene();
         var parent = scene.Instantiate();
         var child = scene.Instantiate();
-        parent.GetComponent<Transform>().Position = new Vector3(10, 0, 0);
-        child.GetComponent<Transform>().Position = new Vector3(5, 0, 0);
+        parent.GetComponent<TransformComponent>().Position = new Vector3(10, 0, 0);
+        child.GetComponent<TransformComponent>().Position = new Vector3(5, 0, 0);
         child.SetParent(parent);
 
-        Vector3 world = child.GetComponent<Transform>().WorldPosition;
+        Vector3 world = child.GetComponent<TransformComponent>().WorldPosition;
 
         Assert.Equal(15.0, world.X, 3);
         Assert.Equal(0.0, world.Y, 3);
@@ -40,11 +40,11 @@ public class TransformTests
         var scene = new Scene();
         var parent = scene.Instantiate();
         var child = scene.Instantiate();
-        parent.GetComponent<Transform>().Rotation = new Vector3(0, 0, 90);
-        child.GetComponent<Transform>().Rotation = new Vector3(0, 0, 30);
+        parent.GetComponent<TransformComponent>().Rotation = new Vector3(0, 0, 90);
+        child.GetComponent<TransformComponent>().Rotation = new Vector3(0, 0, 30);
         child.SetParent(parent);
 
-        Assert.Equal(120.0, child.GetComponent<Transform>().WorldRotation.Z, 3);
+        Assert.Equal(120.0, child.GetComponent<TransformComponent>().WorldRotation.Z, 3);
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class TransformTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        var t = e.GetComponent<Transform>();
+        var t = e.GetComponent<TransformComponent>();
         t.Position = new Vector3(3, 4, 5);
 
         Assert.Equal(t.LocalMatrix, t.Matrix);
