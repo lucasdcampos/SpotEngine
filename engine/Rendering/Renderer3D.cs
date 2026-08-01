@@ -53,7 +53,12 @@ public static class Renderer3D
 
         uniform vec4 uColor;
         uniform sampler2D uTexture;
+        uniform sampler2D uNormalMap;
         uniform sampler2D uShadowMap;
+        
+        uniform int uHasNormalMap;
+        uniform float uMetallic;
+        uniform mat4 uInverseViewProjection;
 
         uniform int uHasDirectionalLight;
         uniform int uCastShadows;
@@ -96,19 +101,47 @@ public static class Renderer3D
             return shadow;
         }
 
+        vec3 getNormalFromMap() {
+            vec3 tangentNormal = texture(uNormalMap, vTexCoord).xyz * 2.0 - 1.0;
+
+            vec3 Q1  = dFdx(vFragPos);
+            vec3 Q2  = dFdy(vFragPos);
+            vec2 st1 = dFdx(vTexCoord);
+            vec2 st2 = dFdy(vTexCoord);
+
+            vec3 N   = normalize(vNormal);
+            vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+            vec3 B  = -normalize(cross(N, T));
+            mat3 TBN = mat3(T, B, N);
+
+            return normalize(TBN * tangentNormal);
+        }
+
         void main()
         {
             vec4 albedo = texture(uTexture, vTexCoord) * uColor;
-            vec3 normal = normalize(vNormal);
+            vec3 normal = uHasNormalMap == 1 ? getNormalFromMap() : normalize(vNormal);
+            
+            vec4 camPos4 = uInverseViewProjection * vec4(0.0, 0.0, -1.0, 1.0);
+            vec3 cameraPos = camPos4.xyz / camPos4.w;
+            vec3 viewDir = normalize(cameraPos - vFragPos);
+            
+            vec3 F0 = vec3(0.04);
+            F0 = mix(F0, albedo.rgb, uMetallic);
+            
             vec3 lighting = vec3(0.0);
             
             if (uHasDirectionalLight == 1)
             {
                 vec3 lightDir = normalize(uLightDir);
+                vec3 halfVector = normalize(lightDir + viewDir);
+                
                 float diffuse = max(dot(normal, lightDir), 0.0);
+                float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
+                vec3 specular = uLightColor * spec * F0;
                 
                 float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPosLightSpace) : 0.0;
-                lighting += (uAmbientIntensity + (1.0 - shadow) * diffuse) * uLightColor;
+                lighting += (uAmbientIntensity + (1.0 - shadow) * diffuse) * uLightColor + (1.0 - shadow) * specular;
             }
             else
             {
@@ -122,10 +155,16 @@ public static class Renderer3D
                 if(distance < uPointLights[i].range)
                 {
                     lightDir = normalize(lightDir);
+                    vec3 halfVector = normalize(lightDir + viewDir);
+                    
                     float diff = max(dot(normal, lightDir), 0.0);
+                    float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
+                    vec3 specular = uPointLights[i].color * spec * F0;
+                    
                     float attenuation = 1.0 - (distance / uPointLights[i].range);
                     attenuation = attenuation * attenuation;
-                    lighting += uPointLights[i].color * uPointLights[i].intensity * diff * attenuation;
+                    
+                    lighting += (uPointLights[i].color * diff + specular) * uPointLights[i].intensity * attenuation;
                 }
             }
             
@@ -798,11 +837,27 @@ public static class Renderer3D
         activeShader.SetUniform("uColor", color);
         activeShader.SetUniform("uTexture", 0);
         
-        if (shaderType == 1) // Water
+        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
+        activeShader.SetUniform("uInverseViewProjection", invViewProj);
+        
+        if (shaderType == 0) // Standard
+        {
+            activeShader.SetUniform("uMetallic", material?.Metallic ?? 0.0f);
+            
+            if (material?.NormalMap != null)
+            {
+                material.NormalMap.Bind(2);
+                activeShader.SetUniform("uNormalMap", 2);
+                activeShader.SetUniform("uHasNormalMap", 1);
+            }
+            else
+            {
+                activeShader.SetUniform("uHasNormalMap", 0);
+            }
+        }
+        else if (shaderType == 1) // Water
         {
             activeShader.SetUniform("uTime", Spot.Core.Application.Instance.Time);
-            Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
-            activeShader.SetUniform("uInverseViewProjection", invViewProj);
             
             float speed = material?.WaveSpeed ?? 1.0f;
             float scale = material?.WaveScale ?? 1.0f;
