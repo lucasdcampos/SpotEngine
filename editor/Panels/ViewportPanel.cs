@@ -94,6 +94,7 @@ public class ViewportPanel
                 }
 
                 var io = ImGui.GetIO();
+                bool isFlyingCamera = _camera.Is3D && ImGui.IsMouseDown(ImGuiMouseButton.Right) && (isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0));
 
                 // --- EDITOR ICONS (billboards for invisible entities: cameras, lights, sky) ---
                 // Drawn before the gizmo so gizmo handles render on top; the hovered icon (if any) is
@@ -108,7 +109,7 @@ public class ViewportPanel
                 if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<TransformComponent>())
                 {
                     var transform = _context.Selection.Value.GetComponent<TransformComponent>();
-                    _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered);
+                    _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered && !isFlyingCamera);
 
                     // Unity-style mode switch. Guarded so it does not fire while flying the 3D
                     // camera with the right mouse button (which uses W/A/S/D for movement).
@@ -124,7 +125,7 @@ public class ViewportPanel
                 // A left click that is not consumed by a gizmo handle picks the entity under the
                 // cursor (or clears the selection when nothing is hit). The camera uses the middle/
                 // right buttons, so the left button is free for selection.
-                if (isHovered && !_gizmo.IsUsing && _context.ActiveScene != null
+                if (isHovered && !_gizmo.IsUsing && !isFlyingCamera && _context.ActiveScene != null
                     && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
                     // An editor icon under the cursor takes priority over mesh picking, so invisible
@@ -134,7 +135,7 @@ public class ViewportPanel
                 }
 
                 // --- CAMERA CONTROLS ---
-                if (isHovered && !_gizmo.IsUsing)
+                if (isHovered && !_gizmo.IsUsing && !isFlyingCamera)
                 {
                     if (io.MouseWheel != 0.0f)
                     {
@@ -142,42 +143,47 @@ public class ViewportPanel
                     }
                 }
 
-                if (!_gizmo.IsUsing)
+                if (isFlyingCamera)
                 {
-                    if (_camera.Is3D && ImGui.IsMouseDown(ImGuiMouseButton.Right) && (isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0)))
+                    // Lock cursor
+                    var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+                    if (mice.Count > 0 && mice[0].Cursor.CursorMode != Silk.NET.Input.CursorMode.Raw)
                     {
-                        // Lock cursor
-                        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
-                        if (mice.Count > 0) mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Raw;
-
-                        // 3D Mouselook
-                        _camera.MouseLook(io.MouseDelta);
-                        
-                        // 3D Movement
-                        Vector3 moveDir = Vector3.Zero;
-                        if (ImGui.IsKeyDown(ImGuiKey.W)) moveDir.Z += 1;
-                        if (ImGui.IsKeyDown(ImGuiKey.S)) moveDir.Z -= 1;
-                        if (ImGui.IsKeyDown(ImGuiKey.A)) moveDir.X -= 1;
-                        if (ImGui.IsKeyDown(ImGuiKey.D)) moveDir.X += 1;
-                        if (ImGui.IsKeyDown(ImGuiKey.E)) moveDir.Y += 1;
-                        if (ImGui.IsKeyDown(ImGuiKey.Q)) moveDir.Y -= 1;
-                        
-                        if (moveDir != Vector3.Zero)
-                        {
-                            float speed = 5.0f; // units per second
-                            if (ImGui.IsKeyDown(ImGuiKey.LeftShift)) speed = 20.0f;
-                            _camera.Move(moveDir, speed * io.DeltaTime);
-                        }
+                        mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Raw;
                     }
-                    else
-                    {
-                        // Unlock cursor
-                        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
-                        if (mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw)
-                        {
-                            mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Normal;
-                        }
+                    io.ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
 
+                    // 3D Mouselook
+                    _camera.MouseLook(io.MouseDelta);
+                    
+                    // 3D Movement
+                    Vector3 moveDir = Vector3.Zero;
+                    if (ImGui.IsKeyDown(ImGuiKey.W)) moveDir.Z += 1;
+                    if (ImGui.IsKeyDown(ImGuiKey.S)) moveDir.Z -= 1;
+                    if (ImGui.IsKeyDown(ImGuiKey.A)) moveDir.X -= 1;
+                    if (ImGui.IsKeyDown(ImGuiKey.D)) moveDir.X += 1;
+                    if (ImGui.IsKeyDown(ImGuiKey.E)) moveDir.Y += 1;
+                    if (ImGui.IsKeyDown(ImGuiKey.Q)) moveDir.Y -= 1;
+                    
+                    if (moveDir != Vector3.Zero)
+                    {
+                        float speed = 5.0f; // units per second
+                        if (ImGui.IsKeyDown(ImGuiKey.LeftShift)) speed = 20.0f;
+                        _camera.Move(moveDir, speed * io.DeltaTime);
+                    }
+                }
+                else
+                {
+                    // Unlock cursor
+                    var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+                    if (mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw)
+                    {
+                        mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Normal;
+                    }
+                    io.ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
+
+                    if (!_gizmo.IsUsing)
+                    {
                         if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) && 
                             (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (! _camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
                         {
