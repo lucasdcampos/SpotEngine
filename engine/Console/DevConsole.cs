@@ -57,6 +57,13 @@ public sealed class DevConsole
     /// <summary>Gets or sets the color used for error output.</summary>
     public static Vector4 ErrorColor { get; set; } = new(1.0f, 0.35f, 0.35f, 1.0f);
 
+    /// <summary>
+    /// Gets or sets an optional monospaced font for the console body and input. Exposed so the editor
+    /// can hand the console a mono face from its atlas (the engine keeps this null, using the default
+    /// font, so the console still works standalone).
+    /// </summary>
+    public static ImFontPtr? MonospaceFont { get; set; }
+
     private readonly Dictionary<string, CommandInfo> _commands = new();
     private readonly List<ConsoleLine> _lines = new();
 
@@ -225,6 +232,14 @@ public sealed class DevConsole
     /// </summary>
     public void DrawContents()
     {
+        // A monospaced face (when the host provides one) makes logs, timestamps and typed commands line
+        // up like a terminal. Pushed around the whole body so the output and input share it.
+        bool pushedFont = MonospaceFont.HasValue;
+        if (pushedFont)
+        {
+            ImGui.PushFont(MonospaceFont!.Value);
+        }
+
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing();
         ImGui.BeginChild("##output", new Vector2(0.0f, -footerHeight), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
 
@@ -236,12 +251,15 @@ public sealed class DevConsole
             _renderBuffer.AddRange(_lines);
         }
 
+        // A touch more vertical spacing between log lines keeps a busy console legible.
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(ImGui.GetStyle().ItemSpacing.X, 3.0f));
         foreach (ConsoleLine line in _renderBuffer)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, line.Color);
             ImGui.TextUnformatted(line.Text);
             ImGui.PopStyleColor();
         }
+        ImGui.PopStyleVar();
 
         if (_scrollToBottom)
         {
@@ -281,6 +299,11 @@ public sealed class DevConsole
 
             _inputBuf[0] = 0;
             ImGui.SetKeyboardFocusHere(-1);
+        }
+
+        if (pushedFont)
+        {
+            ImGui.PopFont();
         }
     }
 

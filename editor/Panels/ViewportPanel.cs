@@ -50,6 +50,11 @@ public class ViewportPanel
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
             bool isHovered = ImGui.IsItemHovered();
 
+            // Non-interactive HUD (orientation gizmo, FPS, camera readout), drawn on every scene
+            // viewport whether focused or not so the overlays stay stable while you work.
+            if (_camera != null)
+                DrawViewportOverlays(cursorPos, viewportSize);
+
             if (handleInput && _camera != null)
             {
                 // Toolbar overlay: camera mode toggle followed by the gizmo mode buttons.
@@ -62,11 +67,11 @@ public class ViewportPanel
                 ImGui.SameLine();
                 ImGui.Dummy(new Vector2(8, 0));
                 ImGui.SameLine();
-                DrawGizmoModeButton("Move", GizmoMode.Translate);
+                DrawGizmoModeButton(EditorIcons.Move, "Move (W)", GizmoMode.Translate);
                 ImGui.SameLine();
-                DrawGizmoModeButton("Rotate", GizmoMode.Rotate);
+                DrawGizmoModeButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate);
                 ImGui.SameLine();
-                DrawGizmoModeButton("Scale", GizmoMode.Scale);
+                DrawGizmoModeButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale);
 
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
                 {
@@ -75,13 +80,17 @@ public class ViewportPanel
                     float previewHeight = 180;
                     
                     var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 20, previewHeight + 20);
-                    
-                    // Draw a small background/border for it
+
+                    // A framed, labeled preview card that matches the editor's surface treatment.
+                    var palette = EditorThemeManager.Current.Palette;
                     var drawList = ImGui.GetWindowDrawList();
-                    drawList.AddRectFilled(previewPos - new Vector2(2, 2), previewPos + new Vector2(previewWidth + 2, previewHeight + 2), ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f)));
+                    Vector2 bgMin = previewPos - new Vector2(2, 2);
+                    Vector2 bgMax = previewPos + new Vector2(previewWidth + 2, previewHeight + 2);
+                    drawList.AddRectFilled(bgMin, bgMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.55f)), 4.0f);
                     drawList.AddImage((IntPtr)_cameraPreviewFramebuffer.ColorAttachment, previewPos, previewPos + new Vector2(previewWidth, previewHeight), new Vector2(0, 1), new Vector2(1, 0));
-                    
-                    drawList.AddText(previewPos + new Vector2(5, 5), ImGui.GetColorU32(new Vector4(1, 1, 1, 1)), "Camera Preview");
+                    drawList.AddRect(bgMin, bgMax, ImGui.GetColorU32(palette.Border), 4.0f, ImDrawFlags.None, 1.0f);
+
+                    drawList.AddText(previewPos + new Vector2(6, 4), ImGui.GetColorU32(palette.Text), "Camera Preview");
                 }
 
                 var io = ImGui.GetIO();
@@ -185,8 +194,69 @@ public class ViewportPanel
         }
     }
 
-    // A gizmo-mode toolbar button that stays highlighted while its mode is the active one.
-    private void DrawGizmoModeButton(string label, GizmoMode mode)
+    // Subtle top-right HUD: a camera-orientation gizmo with an FPS and camera readout beneath it. All
+    // of it is painted on the window draw list (no interactive widgets) so it never steals input from
+    // the viewport, and it mirrors the axis colors used by the transform gizmo and property fields.
+    private void DrawViewportOverlays(Vector2 cursorPos, Vector2 viewportSize)
+    {
+        if (_camera == null || viewportSize.X < 160.0f || viewportSize.Y < 120.0f)
+            return;
+
+        var palette = EditorThemeManager.Current.Palette;
+        var drawList = ImGui.GetWindowDrawList();
+
+        // --- Orientation gizmo ---
+        float axisLen = 20.0f;
+        Vector2 center = new(cursorPos.X + viewportSize.X - axisLen - 18.0f, cursorPos.Y + axisLen + 16.0f);
+        drawList.AddCircleFilled(center, axisLen + 8.0f, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.22f)), 24);
+
+        DrawOrientationAxis(drawList, center, Vector3.UnitX, "X", palette.AxisX, axisLen);
+        DrawOrientationAxis(drawList, center, Vector3.UnitY, "Y", palette.AxisY, axisLen);
+        DrawOrientationAxis(drawList, center, Vector3.UnitZ, "Z", palette.AxisZ, axisLen);
+
+        // --- FPS + camera readout, right-aligned under the gizmo ---
+        float rightEdge = cursorPos.X + viewportSize.X - 12.0f;
+        float y = center.Y + axisLen + 12.0f;
+
+        float fps = ImGui.GetIO().Framerate;
+        DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS", palette.Text);
+
+        DrawRightText(drawList, rightEdge, ref y, _camera.Is3D ? "Perspective" : "Orthographic", palette.TextDisabled);
+
+        Vector3 p = _camera.Position;
+        string pos = _camera.Is3D
+            ? $"{p.X:0.0}, {p.Y:0.0}, {p.Z:0.0}"
+            : $"{p.X:0.0}, {p.Y:0.0}";
+        DrawRightText(drawList, rightEdge, ref y, pos, palette.TextDisabled);
+    }
+
+    private void DrawOrientationAxis(ImDrawListPtr drawList, Vector2 center, Vector3 worldDir, string label, Vector4 color, float length)
+    {
+        // Project the world axis onto the screen using the camera basis (translation-independent), so
+        // the gizmo spins to match the view. Axes pointing toward the camera render brighter.
+        Vector2 screenDir = new(Vector3.Dot(_camera!.Right, worldDir), -Vector3.Dot(_camera.Up, worldDir));
+        Vector2 tip = center + screenDir * length;
+        bool towards = Vector3.Dot(_camera.Forward, worldDir) <= 0.0f;
+
+        uint col = ImGui.GetColorU32(new Vector4(color.X, color.Y, color.Z, towards ? 1.0f : 0.45f));
+        drawList.AddLine(center, tip, col, 2.0f);
+        drawList.AddCircleFilled(tip, towards ? 4.0f : 3.0f, col, 12);
+        if (towards)
+        {
+            Vector2 ts = ImGui.CalcTextSize(label);
+            drawList.AddText(tip - ts * 0.5f, ImGui.GetColorU32(new Vector4(1, 1, 1, 0.95f)), label);
+        }
+    }
+
+    private static void DrawRightText(ImDrawListPtr drawList, float rightEdge, ref float y, string text, Vector4 color)
+    {
+        Vector2 size = ImGui.CalcTextSize(text);
+        drawList.AddText(new Vector2(rightEdge - size.X, y), ImGui.GetColorU32(color), text);
+        y += size.Y + 2.0f;
+    }
+
+    // A gizmo-mode toolbar button (icon glyph + tooltip) that stays highlighted while its mode is active.
+    private void DrawGizmoModeButton(string glyph, string tooltip, GizmoMode mode)
     {
         bool active = _gizmo.Mode == mode;
         if (active)
@@ -195,13 +265,17 @@ public class ViewportPanel
             ImGui.PushStyleColor(ImGuiCol.Button, accent);
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, accent);
         }
-        if (ImGui.Button(label))
+        if (ImGui.Button(glyph))
         {
             _gizmo.Mode = mode;
         }
         if (active)
         {
             ImGui.PopStyleColor(2);
+        }
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(tooltip);
         }
     }
 }

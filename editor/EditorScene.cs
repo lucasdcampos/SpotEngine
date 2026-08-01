@@ -237,30 +237,39 @@ public class EditorScene : Scene
             Renderer.Clear();
             
             if (sceneData.EditorCamera.Is3D)
+            {
                 Renderer.SetDepthTest(true);
+                Renderer.SetFaceCulling(true);
+            }
                 
             RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection);
-            
-            // Draw Axes
+
+            // The editor grid and world axes are screen-aligned / crossed-quad overlays with no single
+            // front-face winding, so culling must be off while drawing them. Otherwise the back-face
+            // culling enabled above for the scene meshes discards them and the grid/axes vanish.
+            if (sceneData.EditorCamera.Is3D)
+                Renderer.SetFaceCulling(false);
+
+            // Draw Axes. Drawn before the grid so that, at the ground plane, the axis lines win the
+            // equal-depth test against the grid's own centre lines and read as crisp coloured lines.
             var palette = EditorThemeManager.Current.Palette;
             Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
-            
-            float axisThickness;
+
             if (sceneData.EditorCamera.Is3D)
             {
-                float dist = sceneData.EditorCamera.Position.Length();
-                axisThickness = Math.Max(0.01f, dist * 0.005f);
+                // Full X/Y/Z origin axes. Thin lines whose thickness scales with camera distance so
+                // they hold a steady, understated on-screen weight as the camera dollies in and out.
+                float axisThickness = Math.Max(0.004f, sceneData.EditorCamera.Position.Length() * 0.0018f);
+                Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
+                Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
+                Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, axisThickness);
             }
             else
             {
-                axisThickness = Math.Max(0.01f, sceneData.EditorCamera.ZoomLevel * 0.005f);
+                float axisThickness = Math.Max(0.006f, sceneData.EditorCamera.ZoomLevel * 0.003f);
                 Renderer2D.DrawEditorGrid(sceneData.EditorCamera.ZoomLevel);
-            }
-            
-            Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
-            if (!sceneData.EditorCamera.Is3D)
-            {
                 Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
+                Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
             }
             Renderer2D.EndScene();
 
@@ -272,7 +281,10 @@ public class EditorScene : Scene
             }
 
             if (sceneData.EditorCamera.Is3D)
+            {
                 Renderer.SetDepthTest(false);
+                Renderer.SetFaceCulling(false);
+            }
             
             // Debug Physics Rendering
             if (_context.Selection.HasValue && sceneData == _activeSceneData)
@@ -307,12 +319,18 @@ public class EditorScene : Scene
                     Renderer.Clear();
                     
                     if (is3DPrev)
+                    {
                         Renderer.SetDepthTest(true);
+                        Renderer.SetFaceCulling(true);
+                    }
                         
                     RenderSystem.Render(sceneData.Scene, viewProj);
                     
                     if (is3DPrev)
+                    {
                         Renderer.SetDepthTest(false);
+                        Renderer.SetFaceCulling(false);
+                    }
                 }
                 sceneData.CameraPreviewFramebuffer.Unbind();
             }
@@ -353,12 +371,18 @@ public class EditorScene : Scene
             if (viewProjection.HasValue)
             {
                 if (is3D)
+                {
                     Renderer.SetDepthTest(true);
+                    Renderer.SetFaceCulling(true);
+                }
                     
                 RenderSystem.Render(gameScene, viewProjection.Value);
                 
                 if (is3D)
+                {
                     Renderer.SetDepthTest(false);
+                    Renderer.SetFaceCulling(false);
+                }
             }
         }
         
@@ -716,10 +740,20 @@ public class EditorScene : Scene
 
     private void DrawMenuBar()
     {
+        var palette = EditorThemeManager.Current.Palette;
+
+        // A slightly taller bar with more generous item spacing so the top strip reads as part of the
+        // editor chrome rather than a stock menu. The vars stay pushed for the whole bar so the menu
+        // items inherit the same rhythm.
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10.0f, 7.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10.0f, 6.0f));
         if (!ImGui.BeginMainMenuBar())
         {
+            ImGui.PopStyleVar(2);
             return;
         }
+
+        DrawBrandMark(palette);
 
         if (ImGui.BeginMenu("Scene"))
         {
@@ -835,6 +869,30 @@ public class EditorScene : Scene
         DrawPlayControl();
 
         ImGui.EndMainMenuBar();
+        ImGui.PopStyleVar(2);
+    }
+
+    // A small brand mark at the far left of the menu bar: an accent diamond plus the wordmark, drawn
+    // into the menu-bar draw list so it reads as a logo without behaving like a clickable menu.
+    private void DrawBrandMark(EditorPalette palette)
+    {
+        float h = ImGui.GetFrameHeight();
+        var drawList = ImGui.GetWindowDrawList();
+        Vector2 origin = ImGui.GetCursorScreenPos();
+        float cy = origin.Y + h * 0.5f;
+        float r = 5.0f;
+        Vector2 c = new(origin.X + 8.0f + r, cy);
+        uint accent = ImGui.GetColorU32(palette.Accent);
+        drawList.AddQuadFilled(
+            c + new Vector2(0.0f, -r), c + new Vector2(r, 0.0f),
+            c + new Vector2(0.0f, r), c + new Vector2(-r, 0.0f), accent);
+
+        // Reserve the glyph's footprint, then draw the wordmark aligned to the bar.
+        ImGui.Dummy(new Vector2(8.0f + r * 2.0f, h));
+        ImGui.SameLine(0.0f, 8.0f);
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Spot");
+        ImGui.SameLine(0.0f, 14.0f);
     }
 
     // Draws the centered play/stop icon button inside the main menu bar.

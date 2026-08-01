@@ -81,6 +81,14 @@ void main()
     {
         if (s_shader == null || s_quadVAO == null) return;
 
+        // This is a screen-space composite of the already-lit scene, so it must not test or write
+        // depth. If it did, the full-screen quad (clip z = 0) would stamp its depth across the whole
+        // target buffer and anything drawn afterwards into the same buffer that sits behind that
+        // depth — most visibly the editor grid and world axes — would fail the depth test and vanish.
+        bool depthTest = Renderer.Gl.IsEnabled(EnableCap.DepthTest);
+        Renderer.Gl.Disable(EnableCap.DepthTest);
+        Renderer.Gl.DepthMask(false);
+
         s_shader.Use();
         s_shader.SetUniform("uExposure", config.Exposure);
         s_shader.SetUniform("uGamma", config.Gamma);
@@ -93,7 +101,11 @@ void main()
 
         s_quadVAO.Bind();
         Renderer.Gl.DrawArrays(PrimitiveType.Triangles, 0, 6);
-        
+
         Renderer.Gl.BindTexture(TextureTarget.Texture2D, 0);
+
+        // Restore the caller's depth state; depth writes default to on, so re-enable the mask.
+        Renderer.Gl.DepthMask(true);
+        if (depthTest) Renderer.Gl.Enable(EnableCap.DepthTest);
     }
 }

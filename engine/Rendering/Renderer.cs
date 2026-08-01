@@ -61,6 +61,18 @@ public static class Renderer
     }
 
     /// <summary>
+    /// Enables or disables face culling.
+    /// </summary>
+    /// <param name="enable">Whether face culling should be enabled.</param>
+    public static void SetFaceCulling(bool enable)
+    {
+        if (enable)
+            Gl.Enable(EnableCap.CullFace);
+        else
+            Gl.Disable(EnableCap.CullFace);
+    }
+
+    /// <summary>
     /// Sets the rendering viewport.
     /// </summary>
     /// <param name="x">The lower-left x coordinate, in pixels.</param>

@@ -39,6 +39,20 @@ public class ApplicationSpec
     public int FontSize { get; set; } = 16;
 
     /// <summary>
+    /// Extra fonts to bake into the ImGui atlas alongside the primary <see cref="FontPath"/> — for
+    /// example a heavier weight for titles or a monospaced face for the console. They are exposed, in
+    /// order, via <see cref="Application.Fonts"/> (after index 0, the primary). A missing file is
+    /// skipped and the primary font substituted in its slot, so indices stay stable for callers.
+    /// </summary>
+    public List<FontSpec> AdditionalFonts { get; set; } = new();
+
+    /// <summary>
+    /// An optional icon font merged into the primary font, so its glyphs render inline with text at
+    /// the same baseline (toolbar/menu/tree icons). When null, no icon glyphs are available.
+    /// </summary>
+    public IconFontSpec? IconFont { get; set; }
+
+    /// <summary>
     /// Gets or sets the root directory for assets.
     /// </summary>
     public string? AssetDirectory { get; set; }
@@ -47,6 +61,53 @@ public class ApplicationSpec
     /// Gets or sets the path to the start scene to load automatically on startup.
     /// </summary>
     public string? StartScene { get; set; }
+}
+
+/// <summary>
+/// Describes one extra TrueType font to load into the ImGui atlas (see
+/// <see cref="ApplicationSpec.AdditionalFonts"/>).
+/// </summary>
+public sealed class FontSpec
+{
+    /// <summary>Creates a font spec from a <c>.ttf</c> path and a pixel size.</summary>
+    public FontSpec(string path, float size)
+    {
+        Path = path;
+        Size = size;
+    }
+
+    /// <summary>The path to the <c>.ttf</c> file.</summary>
+    public string Path { get; }
+
+    /// <summary>The pixel size to rasterize the font at.</summary>
+    public float Size { get; }
+}
+
+/// <summary>
+/// Describes an icon font to merge into the primary UI font (see <see cref="ApplicationSpec.IconFont"/>).
+/// </summary>
+public sealed class IconFontSpec
+{
+    /// <summary>
+    /// Creates an icon-font spec. <paramref name="glyphRanges"/> is an ImGui glyph-range array
+    /// (<c>[lo, hi, lo, hi, …, 0]</c>) listing only the codepoints to bake, keeping the atlas small; it
+    /// must stay referenced by the caller (the engine pins it while the atlas is built).
+    /// </summary>
+    public IconFontSpec(string path, float size, ushort[] glyphRanges)
+    {
+        Path = path;
+        Size = size;
+        GlyphRanges = glyphRanges;
+    }
+
+    /// <summary>The path to the icon <c>.ttf</c> file.</summary>
+    public string Path { get; }
+
+    /// <summary>The pixel size to rasterize the icons at.</summary>
+    public float Size { get; }
+
+    /// <summary>The ImGui glyph-range array (<c>[lo, hi, …, 0]</c>) of icons to bake.</summary>
+    public ushort[] GlyphRanges { get; }
 }
 
 /// <summary>
@@ -108,6 +169,13 @@ public class Application
     /// Gets the developer console.
     /// </summary>
     public DevConsole Console => _console;
+
+    /// <summary>
+    /// The fonts loaded into the ImGui atlas: index 0 is the primary UI font, followed by each entry
+    /// of <see cref="ApplicationSpec.AdditionalFonts"/> in order. Empty until the ImGui service has
+    /// initialized. Use with <see cref="ImGui.PushFont"/> to render titles, monospaced text, etc.
+    /// </summary>
+    public IReadOnlyList<ImFontPtr> Fonts => _imguiService?.Fonts ?? Array.Empty<ImFontPtr>();
 
     public string EngineVersion => SpotEngine.GetVersion();
 
