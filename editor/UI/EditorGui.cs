@@ -146,8 +146,21 @@ public static class EditorGui
     {
         if (!entity.HasComponent<T>()) return;
         T component = entity.GetComponent<T>();
+        Component(entity, typeof(T), title, removable, () => drawContents(component), defaultOpen);
+    }
 
-        ImGui.PushID(typeof(T).Name);
+    /// <summary>
+    /// Type-erased counterpart of <see cref="Component{T}"/>, for callers that only know the component's
+    /// <see cref="Type"/> at runtime (the reflection-based inspector). Draws the collapsible header (with an
+    /// optional remove menu) and invokes <paramref name="drawContents"/> when expanded. Does nothing if the
+    /// entity has no component of <paramref name="type"/>.
+    /// </summary>
+    public static void Component(Entity entity, Type type, string title, bool removable, Action drawContents,
+                                 bool defaultOpen = true)
+    {
+        if (!entity.HasComponent(type)) return;
+
+        ImGui.PushID(type.Name);
 
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.AllowOverlap
             | ImGuiTreeNodeFlags.Framed | ImGuiTreeNodeFlags.FramePadding;
@@ -177,12 +190,12 @@ public static class EditorGui
 
         if (opened)
         {
-            drawContents(component);
+            drawContents();
             ImGui.TreePop();
         }
 
         if (removeRequested)
-            entity.RemoveComponent<T>();
+            entity.RemoveComponent(type);
 
         ImGui.PopID();
     }

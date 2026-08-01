@@ -15,10 +15,14 @@ public enum SceneCameraProjection
 /// <summary>
 /// A component that acts as a camera for the scene.
 /// </summary>
+[ComponentMenu("Camera", Order = 30)]
 public class CameraComponent : Component
 {
     public bool Primary { get; set; } = true;
     public bool FixedAspectRatio { get; set; } = false;
+
+    [InspectorColor]
+    [InspectorLabel("Background")]
     public Vector4 BackgroundColor { get; set; } = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
     private SceneCameraProjection _projectionType = SceneCameraProjection.Orthographic;
@@ -33,6 +37,8 @@ public class CameraComponent : Component
     }
 
     private float _zoomLevel = 5.0f;
+    [InspectorRange(0.1f, 100.0f, 0.1f)]
+    [ShowIf(nameof(ProjectionType), SceneCameraProjection.Orthographic)]
     public float ZoomLevel
     {
         get => _zoomLevel;
@@ -44,6 +50,9 @@ public class CameraComponent : Component
     }
 
     private float _fieldOfView = 45.0f;
+    [InspectorRange(1.0f, 180.0f, 1.0f)]
+    [InspectorLabel("Field Of View")]
+    [ShowIf(nameof(ProjectionType), SceneCameraProjection.Perspective)]
     public float FieldOfView
     {
         get => _fieldOfView;
@@ -55,6 +64,7 @@ public class CameraComponent : Component
     }
 
     private float _aspectRatio = 1.0f;
+    [HideInInspector]
     public Matrix4x4 Projection { get; private set; }
 
     public CameraComponent()

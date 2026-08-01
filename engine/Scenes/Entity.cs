@@ -175,6 +175,33 @@ public readonly struct Entity : IEquatable<Entity>
         where T : class => OwningScene.RemoveComponent<T>(this);
 
     /// <summary>
+    /// Determines whether the entity has a component of the given runtime type.
+    /// </summary>
+    /// <param name="type">The component type.</param>
+    /// <returns><see langword="true"/> if the component is present; otherwise, <see langword="false"/>.</returns>
+    public bool HasComponent(Type type) => OwningScene.HasComponent(this, type);
+
+    /// <summary>
+    /// Gets the entity's component of the given runtime type, or <see langword="null"/> if absent.
+    /// </summary>
+    /// <param name="type">The component type.</param>
+    /// <returns>The component, or <see langword="null"/>.</returns>
+    public object? GetComponent(Type type) => OwningScene.GetComponent(this, type);
+
+    /// <summary>
+    /// Attaches a component to the entity, replacing any existing component of the same runtime type.
+    /// </summary>
+    /// <param name="component">The component instance.</param>
+    /// <returns>The attached component.</returns>
+    public Component AddComponent(Component component) => OwningScene.AddComponent(this, component);
+
+    /// <summary>
+    /// Removes the entity's component of the given runtime type, if present.
+    /// </summary>
+    /// <param name="type">The component type.</param>
+    public void RemoveComponent(Type type) => OwningScene.RemoveComponent(this, type);
+
+    /// <summary>
     /// Attaches a new script of the given type to the entity.
     /// </summary>
     /// <typeparam name="T">The script type.</typeparam>
