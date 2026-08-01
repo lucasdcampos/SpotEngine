@@ -494,6 +494,16 @@ public class InspectorPanel
         }
 
         ImGui.Spacing();
+        bool changedTiling = false;
+        var tiling = material.Tiling;
+        if (EditorGui.Vector2Control("Tiling", ref tiling, resetValue: 1.0f)) { material.Tiling = tiling; changedTiling = true; }
+        
+        bool autoTile = material.AutoTile;
+        if (EditorGui.Checkbox("Auto Tile (Repeat)", ref autoTile)) { material.AutoTile = autoTile; changedTiling = true; }
+        
+        if (changedTiling) material.Save(path);
+
+        ImGui.Spacing();
         ImGui.TextUnformatted("Texture");
         ImGui.Button(material.Texture != null
             ? $"{System.IO.Path.GetFileName(material.TexturePath) ?? "Texture"} (Drop to change)"

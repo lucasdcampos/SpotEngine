@@ -35,6 +35,8 @@ public sealed class Material
         public float SpecularPower { get; set; } = 64.0f;
         public float Metallic { get; set; } = 0.0f;
         public string? NormalMapPath { get; set; }
+        public float[] Tiling { get; set; } = new float[2] { 1.0f, 1.0f };
+        public bool AutoTile { get; set; } = false;
     }
 
     private static readonly Dictionary<string, Material> s_cache = new(StringComparer.OrdinalIgnoreCase);
@@ -47,6 +49,12 @@ public sealed class Material
 
     /// <summary>Gets or sets the metallic property for the material.</summary>
     public float Metallic { get; set; } = 0.0f;
+
+    /// <summary>Gets or sets the UV tiling (scale) for the texture and normal map.</summary>
+    public Vector2 Tiling { get; set; } = Vector2.One;
+
+    /// <summary>If true, automatically tiles the texture based on the object's scale to prevent stretching.</summary>
+    public bool AutoTile { get; set; } = false;
 
     // Water specific properties
     public float WaveSpeed { get; set; } = 1.0f;
@@ -179,6 +187,12 @@ public sealed class Material
                 material.WaveScale = data.WaveScale;
                 material.WaveStrength = data.WaveStrength;
                 material.SpecularPower = data.SpecularPower;
+                
+                if (data.Tiling != null && data.Tiling.Length == 2)
+                {
+                    material.Tiling = new Vector2(data.Tiling[0], data.Tiling[1]);
+                }
+                material.AutoTile = data.AutoTile;
             }
         }
         catch (Exception ex)
@@ -208,7 +222,9 @@ public sealed class Material
             WaveStrength = WaveStrength,
             SpecularPower = SpecularPower,
             Metallic = Metallic,
-            NormalMapPath = NormalMapPath != null ? AssetPath.MakeRelative(NormalMapPath) : null
+            NormalMapPath = NormalMapPath != null ? AssetPath.MakeRelative(NormalMapPath) : null,
+            Tiling = new float[] { Tiling.X, Tiling.Y },
+            AutoTile = AutoTile
         };
 
         File.WriteAllText(full, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
