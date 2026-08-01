@@ -29,7 +29,9 @@
       "Camera": null,
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
-      "DirectionalLight": {
+      "DirectionalLight": null,
+      "Light": {
+        "Type": 0,
         "Color": [
           1,
           1,
@@ -37,6 +39,8 @@
         ],
         "Intensity": 1,
         "AmbientIntensity": 0.3,
+        "CastShadows": true,
+        "Range": 10,
         "Enabled": true
       },
       "DynamicClouds": {
@@ -59,6 +63,7 @@
       },
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "PostProcessing": null,
       "Children": null
     },
     {
@@ -69,7 +74,7 @@
       "Transform": {
         "Position": [
           0,
-          -1,
+          -0.3289967,
           0
         ],
         "Rotation": [
@@ -101,6 +106,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -125,6 +131,7 @@
         ],
         "Enabled": true
       },
+      "PostProcessing": null,
       "Children": null
     },
     {
@@ -175,9 +182,11 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "PostProcessing": null,
       "Children": null
     },
     {
@@ -188,8 +197,8 @@
       "Transform": {
         "Position": [
           3,
-          0.5,
-          -5
+          0.76462775,
+          -3.8860166
         ],
         "Rotation": [
           0,
@@ -220,6 +229,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -244,6 +254,7 @@
         ],
         "Enabled": true
       },
+      "PostProcessing": null,
       "Children": null
     },
     {
@@ -254,7 +265,7 @@
       "Transform": {
         "Position": [
           -4,
-          -0.20401397,
+          0.6076538,
           -8
         ],
         "Rotation": [
@@ -286,6 +297,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -310,6 +322,7 @@
         ],
         "Enabled": true
       },
+      "PostProcessing": null,
       "Children": null
     },
     {
@@ -352,9 +365,106 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "PostProcessing": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Point Light",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          -3.3429677,
+          1.7256578,
+          -5.0472097
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "Light": {
+        "Type": 1,
+        "Color": [
+          0.87229425,
+          0.9390681,
+          0.52507025
+        ],
+        "Intensity": 3.6,
+        "AmbientIntensity": 0.3,
+        "CastShadows": true,
+        "Range": 29,
+        "Enabled": true
+      },
+      "DynamicClouds": null,
+      "PhysicsBody3D": null,
+      "BoxCollider3D": null,
+      "PostProcessing": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Post Processing",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "Light": null,
+      "DynamicClouds": null,
+      "PhysicsBody3D": null,
+      "BoxCollider3D": null,
+      "PostProcessing": {
+        "Exposure": 1.05,
+        "Gamma": 1,
+        "EnableVignette": true,
+        "VignetteIntensity": 0.06,
+        "EnableBloom": true,
+        "BloomThreshold": 1,
+        "BloomIntensity": 1,
+        "Enabled": true
+      },
       "Children": null
     }
   ]

@@ -64,6 +64,7 @@ public class InspectorPanel
         EditorGui.Component<LightComponent>(entity, "Light", DrawLight);
         EditorGui.Component<DynamicCloudsComponent>(entity, "Dynamic Clouds", DrawDynamicClouds);
         EditorGui.Component<ScriptComponent>(entity, "Script Component", DrawScripts);
+        EditorGui.Component<PostProcessingComponent>(entity, "Post Processing", DrawPostProcessing);
     }
 
     private static void DrawTagRow(Entity entity)
@@ -96,6 +97,7 @@ public class InspectorPanel
             EditorGui.AddComponentItem<LightComponent>(entity, "Light");
             EditorGui.AddComponentItem<DynamicCloudsComponent>(entity, "Dynamic Clouds");
             EditorGui.AddComponentItem<ScriptComponent>(entity, "Script Component");
+            EditorGui.AddComponentItem<PostProcessingComponent>(entity, "Post Processing");
             ImGui.EndPopup();
         }
     }
@@ -418,6 +420,27 @@ public class InspectorPanel
                 }
             }
             ImGui.EndDragDropTarget();
+        }
+    }
+
+    private static void DrawPostProcessing(PostProcessingComponent pp)
+    {
+        bool enabled = pp.Enabled;
+        if (EditorGui.Checkbox("Enabled", ref enabled)) pp.Enabled = enabled;
+        
+        float exposure = pp.Exposure;
+        if (EditorGui.DragFloat("Exposure", ref exposure, 0.05f, 0.0f, 10.0f)) pp.Exposure = exposure;
+        
+        float gamma = pp.Gamma;
+        if (EditorGui.DragFloat("Gamma", ref gamma, 0.05f, 0.0f, 10.0f)) pp.Gamma = gamma;
+        
+        bool enableVignette = pp.EnableVignette;
+        if (EditorGui.Checkbox("Enable Vignette", ref enableVignette)) pp.EnableVignette = enableVignette;
+        
+        if (pp.EnableVignette)
+        {
+            float intensity = pp.VignetteIntensity;
+            if (EditorGui.DragFloat("Vignette Intensity", ref intensity, 0.01f, 0.0f, 5.0f)) pp.VignetteIntensity = intensity;
         }
     }
 

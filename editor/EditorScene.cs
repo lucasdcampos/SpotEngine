@@ -66,6 +66,7 @@ public class EditorScene : Scene
     private readonly ViewportPanel _gamePanel;
     private readonly ConsolePanel _consolePanel;
     private readonly AssetBrowserPanel _assetBrowserPanel;
+    private readonly ProjectSettingsPanel _projectSettingsPanel;
 
     private Framebuffer? _gameFramebuffer;
 
@@ -85,6 +86,7 @@ public class EditorScene : Scene
     private bool _showInspector = true;
     private bool _showConsole = true;
     private bool _showAssetBrowser = true;
+    private bool _showProjectSettings = false;
 
     // When set, the default docked layout is rebuilt on the next frame (first launch / Reset Layout).
     private bool _rebuildDefaultLayout = !System.IO.File.Exists("imgui.ini");
@@ -102,6 +104,7 @@ public class EditorScene : Scene
         _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
+        _projectSettingsPanel = new ProjectSettingsPanel();
         _assetBrowserPanel.OnAssetOpened += OpenSceneAsset;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
@@ -501,6 +504,8 @@ public class EditorScene : Scene
             ImGui.End();
         }
 
+        _projectSettingsPanel.OnImGuiRender(ref _showProjectSettings);
+
         if (_showAssetBrowser)
         {
             bool open = ImGui.Begin("Asset Browser", ref _showAssetBrowser, ImGuiWindowFlags.NoCollapse);
@@ -732,6 +737,8 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Open Project...")) OpenProject();
             if (Project.Active != null)
             {
+                ImGui.Separator();
+                ImGui.MenuItem("Project Settings", "", ref _showProjectSettings);
                 ImGui.Separator();
                 if (ImGui.BeginMenu("Build Game (Release)"))
                 {

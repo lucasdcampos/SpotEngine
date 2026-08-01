@@ -286,6 +286,17 @@ public class AssetBrowserPanel
                     }
                 }
             }
+            else if (entry.Kind == AssetKind.Scene)
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("SCENE_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
             else
             {
                 var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");

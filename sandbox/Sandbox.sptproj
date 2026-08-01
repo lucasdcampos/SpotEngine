@@ -1,5 +1,5 @@
 {
   "Name": "Sandbox",
-  "StartScene": "Scenes/FirstPersonSandbox.sptscene",
+  "StartScene": "Scenes/Main.sptscene",
   "AssetDirectory": "Assets"
 }

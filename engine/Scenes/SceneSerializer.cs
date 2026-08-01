@@ -30,6 +30,7 @@ public class EntityData
     public DynamicCloudsData? DynamicClouds { get; set; }
     public PhysicsBody3DData? PhysicsBody3D { get; set; }
     public BoxCollider3DData? BoxCollider3D { get; set; }
+    public PostProcessingData? PostProcessing { get; set; }
     public List<EntityData>? Children { get; set; }
 }
 
@@ -105,6 +106,17 @@ public class BoxCollider3DData : ComponentData
 public class ScriptComponentData : ComponentData
 {
     public List<string> ScriptNames { get; set; } = new();
+}
+
+public class PostProcessingData : ComponentData
+{
+    public float Exposure { get; set; } = 1.0f;
+    public float Gamma { get; set; } = 2.2f;
+    public bool EnableVignette { get; set; } = true;
+    public float VignetteIntensity { get; set; } = 0.25f;
+    public bool EnableBloom { get; set; } = true;
+    public float BloomThreshold { get; set; } = 1.0f;
+    public float BloomIntensity { get; set; } = 1.0f;
 }
 
 public class TransformData : ComponentData
@@ -291,6 +303,22 @@ public class SceneSerializer
             var scriptNames = new List<string>(scriptComp.ClassNames);
             entityData.Scripts = new ScriptComponentData { Enabled = scriptComp.Enabled,
                 ScriptNames = scriptNames };
+        }
+
+        if (entity.HasComponent<PostProcessingComponent>())
+        {
+            var pp = entity.GetComponent<PostProcessingComponent>();
+            entityData.PostProcessing = new PostProcessingData
+            {
+                Enabled = pp.Enabled,
+                Exposure = pp.Exposure,
+                Gamma = pp.Gamma,
+                EnableVignette = pp.EnableVignette,
+                VignetteIntensity = pp.VignetteIntensity,
+                EnableBloom = pp.EnableBloom,
+                BloomThreshold = pp.BloomThreshold,
+                BloomIntensity = pp.BloomIntensity
+            };
         }
 
         var children = entity.Children.ToList();
@@ -562,6 +590,20 @@ public class SceneSerializer
                     Log.CoreWarn("Failed to load script '{0}'. Type not found.", scriptName);
                 }
             }
+        }
+
+        if (entityData.PostProcessing != null)
+        {
+            var pp = new PostProcessingComponent();
+            pp.Enabled = entityData.PostProcessing.Enabled;
+            pp.Exposure = entityData.PostProcessing.Exposure;
+            pp.Gamma = entityData.PostProcessing.Gamma;
+            pp.EnableVignette = entityData.PostProcessing.EnableVignette;
+            pp.VignetteIntensity = entityData.PostProcessing.VignetteIntensity;
+            pp.EnableBloom = entityData.PostProcessing.EnableBloom;
+            pp.BloomThreshold = entityData.PostProcessing.BloomThreshold;
+            pp.BloomIntensity = entityData.PostProcessing.BloomIntensity;
+            entity.AddComponent(pp);
         }
 
         if (entityData.Children != null)
