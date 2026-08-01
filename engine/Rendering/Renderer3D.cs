@@ -59,6 +59,10 @@ public static class Renderer3D
         uniform int uHasNormalMap;
         uniform float uMetallic;
         uniform mat4 uInverseViewProjection;
+        
+        uniform vec2 uTiling;
+        uniform int uAutoTile;
+        uniform vec3 uModelScale;
 
         uniform int uHasDirectionalLight;
         uniform int uCastShadows;
@@ -101,13 +105,13 @@ public static class Renderer3D
             return shadow;
         }
 
-        vec3 getNormalFromMap() {
-            vec3 tangentNormal = texture(uNormalMap, vTexCoord).xyz * 2.0 - 1.0;
+        vec3 getNormalFromMap(vec2 uv) {
+            vec3 tangentNormal = texture(uNormalMap, uv).xyz * 2.0 - 1.0;
 
             vec3 Q1  = dFdx(vFragPos);
             vec3 Q2  = dFdy(vFragPos);
-            vec2 st1 = dFdx(vTexCoord);
-            vec2 st2 = dFdy(vTexCoord);
+            vec2 st1 = dFdx(uv);
+            vec2 st2 = dFdy(uv);
 
             vec3 N   = normalize(vNormal);
             vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
@@ -119,8 +123,17 @@ public static class Renderer3D
 
         void main()
         {
-            vec4 albedo = texture(uTexture, vTexCoord) * uColor;
-            vec3 normal = uHasNormalMap == 1 ? getNormalFromMap() : normalize(vNormal);
+            vec2 scale2D = vec2(1.0);
+            if (uAutoTile == 1) {
+                vec3 n = abs(normalize(vNormal));
+                if (n.x > n.y && n.x > n.z) scale2D = uModelScale.zy;
+                else if (n.y > n.x && n.y > n.z) scale2D = uModelScale.xz;
+                else scale2D = uModelScale.xy;
+            }
+            vec2 finalUV = vTexCoord * uTiling * scale2D;
+
+            vec4 albedo = texture(uTexture, finalUV) * uColor;
+            vec3 normal = uHasNormalMap == 1 ? getNormalFromMap(finalUV) : normalize(vNormal);
             
             vec4 camPos4 = uInverseViewProjection * vec4(0.0, 0.0, -1.0, 1.0);
             vec3 cameraPos = camPos4.xyz / camPos4.w;
@@ -238,6 +251,10 @@ public static class Renderer3D
         uniform float uWaveScale;
         uniform float uWaveStrength;
         uniform float uSpecularPower;
+        
+        uniform vec2 uTiling;
+        uniform int uAutoTile;
+        uniform vec3 uModelScale;
 
         uniform int uHasDirectionalLight;
         uniform int uCastShadows;
@@ -323,7 +340,16 @@ public static class Renderer3D
             vec3 normal = normalize(vNormal);
             vec3 perturbedNormal = normalize(normal + vec3(n1 - 0.5, 0.0, n2 - 0.5) * (uWaveStrength * 1.5));
             
-            vec4 texColor = texture(uTexture, vTexCoord);
+            vec2 scale2D = vec2(1.0);
+            if (uAutoTile == 1) {
+                vec3 n = abs(normal);
+                if (n.x > n.y && n.x > n.z) scale2D = uModelScale.zy;
+                else if (n.y > n.x && n.y > n.z) scale2D = uModelScale.xz;
+                else scale2D = uModelScale.xy;
+            }
+            vec2 finalUV = vTexCoord * uTiling * scale2D;
+            
+            vec4 texColor = texture(uTexture, finalUV);
             vec4 albedo = texColor * uColor;
             
             // Calculate approximate camera position from uInverseViewProjection
@@ -840,6 +866,19 @@ public static class Renderer3D
         Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
         activeShader.SetUniform("uInverseViewProjection", invViewProj);
         
+        Vector2 tiling = material?.Tiling ?? Vector2.One;
+        int autoTile = (material?.AutoTile ?? false) ? 1 : 0;
+        activeShader.SetUniform("uTiling", tiling);
+        activeShader.SetUniform("uAutoTile", autoTile);
+        
+        if (autoTile == 1)
+        {
+            float scaleX = new Vector3(model.M11, model.M12, model.M13).Length();
+            float scaleY = new Vector3(model.M21, model.M22, model.M23).Length();
+            float scaleZ = new Vector3(model.M31, model.M32, model.M33).Length();
+            activeShader.SetUniform("uModelScale", new Vector3(scaleX, scaleY, scaleZ));
+        }
+
         if (shaderType == 0) // Standard
         {
             activeShader.SetUniform("uMetallic", material?.Metallic ?? 0.0f);

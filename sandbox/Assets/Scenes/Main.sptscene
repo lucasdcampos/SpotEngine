@@ -12,9 +12,9 @@
           0
         ],
         "Rotation": [
-          -45,
+          -72,
           45,
-          0
+          -1.2698746
         ],
         "Scale": [
           1,
@@ -33,12 +33,12 @@
       "Light": {
         "Type": 0,
         "Color": [
-          1,
-          1,
-          1
+          0.9749104,
+          0.9617222,
+          0.8805642
         ],
-        "Intensity": 1,
-        "AmbientIntensity": 0.3,
+        "Intensity": 1.2,
+        "AmbientIntensity": 0.1,
         "CastShadows": true,
         "Range": 10,
         "Enabled": true
@@ -55,8 +55,8 @@
           0.9
         ],
         "Speed": 1,
-        "Density": 0.57,
-        "Height": 0.3,
+        "Density": 0.6,
+        "Height": 0.25,
         "Opacity": 0.6,
         "Volume": 1.35,
         "Enabled": true
@@ -74,7 +74,7 @@
       "Transform": {
         "Position": [
           0,
-          -0.3289967,
+          -6.3039484,
           0
         ],
         "Rotation": [
@@ -83,9 +83,9 @@
           0
         ],
         "Scale": [
-          50,
+          100,
           1,
-          50
+          100
         ],
         "Enabled": true
       },
@@ -98,7 +98,7 @@
           1
         ],
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "editor:Checkerboard",
+        "MaterialPath": "Materials/Grass.sptmat",
         "Enabled": true
       },
       "Scripts": null,
@@ -142,7 +142,7 @@
       "Transform": {
         "Position": [
           0,
-          5,
+          -4.6939235,
           0
         ],
         "Rotation": [
@@ -191,14 +191,14 @@
     },
     {
       "Tag": {
-        "Name": "Obstacle 1",
+        "Name": "Cube",
         "Enabled": true
       },
       "Transform": {
         "Position": [
-          3,
-          0.76462775,
-          -3.8860166
+          0,
+          -5.961839,
+          0
         ],
         "Rotation": [
           0,
@@ -206,22 +206,22 @@
           0
         ],
         "Scale": [
-          1.5,
-          1.5,
-          1.5
+          10,
+          1,
+          10
         ],
         "Enabled": true
       },
       "Sprite": null,
       "MeshRenderer": {
         "Color": [
-          0.8,
-          0.2,
-          0.2,
+          1,
+          1,
+          1,
           1
         ],
         "ModelPath": "primitive:Cube",
-        "MaterialPath": null,
+        "MaterialPath": "Materials/Bricks.sptmat",
         "Enabled": true
       },
       "Scripts": null,
@@ -231,89 +231,12 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
-      "PhysicsBody3D": {
-        "Velocity": [
-          0,
-          0,
-          0
-        ],
-        "GravityScale": 1,
-        "IsDynamic": false,
-        "Enabled": true
-      },
+      "PhysicsBody3D": null,
       "BoxCollider3D": {
         "Size": [
-          2,
-          2,
-          2
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ],
-        "Enabled": true
-      },
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
-        "Name": "Obstacle 2",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          -4,
-          0.6076538,
-          -8
-        ],
-        "Rotation": [
-          0,
-          45,
-          0
-        ],
-        "Scale": [
-          2,
+          10,
           1,
-          2
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": {
-        "Color": [
-          0.2,
-          0.8,
-          0.2,
-          1
-        ],
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": null,
-        "Enabled": true
-      },
-      "Scripts": null,
-      "Camera": null,
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": {
-        "Velocity": [
-          0,
-          0,
-          0
-        ],
-        "GravityScale": 1,
-        "IsDynamic": false,
-        "Enabled": true
-      },
-      "BoxCollider3D": {
-        "Size": [
-          3,
-          1,
-          3
+          10
         ],
         "Offset": [
           0,
@@ -374,55 +297,6 @@
     },
     {
       "Tag": {
-        "Name": "Point Light",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          -3.3429677,
-          1.7256578,
-          -5.0472097
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          1,
-          1,
-          1
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": null,
-      "Scripts": null,
-      "Camera": null,
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": {
-        "Type": 1,
-        "Color": [
-          0.87229425,
-          0.9390681,
-          0.52507025
-        ],
-        "Intensity": 3.6,
-        "AmbientIntensity": 0.3,
-        "CastShadows": true,
-        "Range": 29,
-        "Enabled": true
-      },
-      "DynamicClouds": null,
-      "PhysicsBody3D": null,
-      "BoxCollider3D": null,
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
         "Name": "Post Processing",
         "Enabled": true
       },
@@ -456,10 +330,10 @@
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
       "PostProcessing": {
-        "Exposure": 1.05,
+        "Exposure": 1,
         "Gamma": 1,
         "EnableVignette": true,
-        "VignetteIntensity": 0.06,
+        "VignetteIntensity": 0.1,
         "EnableBloom": true,
         "BloomThreshold": 1,
         "BloomIntensity": 1,
