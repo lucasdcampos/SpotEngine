@@ -72,6 +72,8 @@ public class AssetBrowserPanel
         _currentDirectory = _baseDirectory;
     }
 
+    public string CurrentDirectory => _currentDirectory;
+
     public void OnImGuiRender(bool asWindow = false)
     {
         // Track project changes and reset to its asset directory.

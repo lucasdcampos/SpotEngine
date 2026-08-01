@@ -7,6 +7,7 @@ using Spot.Scenes;
 using Spot.Editor.Panels;
 using Spot.Editor.Scenes;
 using Spot.Editor.UI;
+using Spot.Events;
 
 namespace Spot.Editor;
 
@@ -668,6 +669,46 @@ public class EditorScene : Scene
                 Spot.Core.Log.Error($"Build failed with exit code {result.ExitCode}. See above for details.");
             }
         });
+    }
+
+    public override void OnEvent(Event e)
+    {
+        base.OnEvent(e);
+
+        var dispatcher = new EventDispatcher(e);
+        dispatcher.Dispatch<WindowDropEvent>(OnWindowDrop);
+    }
+
+    private bool OnWindowDrop(WindowDropEvent e)
+    {
+        string targetDir = _assetBrowserPanel.CurrentDirectory;
+        if (!System.IO.Directory.Exists(targetDir))
+        {
+            return false;
+        }
+
+        foreach (string file in e.Paths)
+        {
+            try
+            {
+                if (System.IO.File.Exists(file))
+                {
+                    string destFile = System.IO.Path.Combine(targetDir, System.IO.Path.GetFileName(file));
+                    System.IO.File.Copy(file, destFile, overwrite: true);
+                    Spot.Core.Log.CoreInfo($"Copied '{file}' to '{destFile}'");
+                }
+                else if (System.IO.Directory.Exists(file))
+                {
+                    // Basic copy for directory could be recursive, but let's just log for now
+                    Spot.Core.Log.CoreWarn($"Dropping directories is not fully supported yet: '{file}'");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Spot.Core.Log.CoreError($"Failed to copy dropped file '{file}': {ex.Message}");
+            }
+        }
+        return true;
     }
 
     public override void OnExit()

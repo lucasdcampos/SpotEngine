@@ -143,6 +143,8 @@ public sealed class Window : IDisposable
             _callback?.Invoke(new WindowResizeEvent(size.X, size.Y));
         };
 
+        _window.FileDrop += paths => _callback?.Invoke(new WindowDropEvent(paths));
+
         foreach (IKeyboard keyboard in _input.Keyboards)
         {
             keyboard.KeyDown += (_, key, _) => _callback?.Invoke(new KeyPressedEvent((Key)(int)key));
