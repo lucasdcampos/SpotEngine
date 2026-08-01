@@ -345,42 +345,20 @@ internal static class ComponentInspector
         var texture = (Texture2D?)meta.Prop.GetValue(component);
         string? path = (string?)meta.AssetPathProp!.GetValue(component);
 
-        ImGui.TextUnformatted(meta.Label);
-        ImGui.Button(texture != null
-            ? $"{System.IO.Path.GetFileName(path) ?? "Texture"} (Drop to change)"
-            : "Drop Texture Here", new Vector2(-1, 30));
-        if (ImGui.BeginDragDropTarget())
+        string[] patterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
+        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, path, out string? newPath))
         {
-            unsafe
+            try
             {
-                var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filepath = Marshal.PtrToStringUTF8(payload.Data);
-                    if (filepath != null)
-                    {
-                        try
-                        {
-                            var newTexture = new Texture2D(filepath);
-                            texture?.Dispose();
-                            meta.Prop.SetValue(component, newTexture);
-                            meta.AssetPathProp.SetValue(component, filepath);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error("Failed to load texture: {0}", ex.Message);
-                        }
-                    }
-                }
+                var newTexture = newPath != null ? new Texture2D(newPath) : null;
+                texture?.Dispose();
+                meta.Prop.SetValue(component, newTexture);
+                meta.AssetPathProp!.SetValue(component, newPath);
             }
-            ImGui.EndDragDropTarget();
-        }
-
-        if (texture != null && ImGui.Button($"Remove {meta.Label}", new Vector2(-1, 24)))
-        {
-            texture.Dispose();
-            meta.Prop.SetValue(component, null);
-            meta.AssetPathProp.SetValue(component, null);
+            catch (Exception ex)
+            {
+                Log.Error("Failed to load texture: {0}", ex.Message);
+            }
         }
     }
 
@@ -389,61 +367,44 @@ internal static class ComponentInspector
         var model = (Model?)meta.Prop.GetValue(component);
         string? path = (string?)meta.AssetPathProp!.GetValue(component);
 
-        ImGui.TextUnformatted(meta.Label);
-        string modelLabel = model != null
-            ? $"{System.IO.Path.GetFileName(path) ?? "Model"} (Drop to change)"
-            : "Drop 3D Model Here";
-        bool clicked = ImGui.Button(modelLabel, new Vector2(-1, 30));
-        if (ImGui.BeginDragDropTarget())
+        string[] patterns = { "*.obj", "*.fbx", "*.gltf", "*.glb", "*.dae" };
+        
+        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) => 
         {
-            unsafe
+            if (ImGui.MenuItem("Cube", "", path == "primitive:Cube"))
             {
-                var payload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filepath = Marshal.PtrToStringUTF8(payload.Data);
-                    if (filepath != null)
-                    {
-                        try
-                        {
-                            meta.Prop.SetValue(component, Model.Load(filepath));
-                            meta.AssetPathProp.SetValue(component, filepath);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error("Failed to load model: {0}", ex.Message);
-                        }
-                    }
-                }
+                selectedPath = "primitive:Cube";
+                changed = true;
             }
-            ImGui.EndDragDropTarget();
-        }
-
-        if (clicked)
-            ImGui.OpenPopup("SelectModelPopup");
-        if (ImGui.BeginPopup("SelectModelPopup"))
-        {
-            if (ImGui.MenuItem("None", "", model == null))
+            if (ImGui.MenuItem("Plane", "", path == "primitive:Plane"))
             {
-                meta.Prop.SetValue(component, null);
-                meta.AssetPathProp.SetValue(component, null);
+                selectedPath = "primitive:Plane";
+                changed = true;
             }
-            ImGui.Separator();
-            DrawPrimitiveItem(component, meta, "Cube", path);
-            DrawPrimitiveItem(component, meta, "Plane", path);
-            DrawPrimitiveItem(component, meta, "Quad", path);
-            DrawPrimitiveItem(component, meta, "Sphere", path);
-            ImGui.EndPopup();
-        }
-    }
+            if (ImGui.MenuItem("Quad", "", path == "primitive:Quad"))
+            {
+                selectedPath = "primitive:Quad";
+                changed = true;
+            }
+            if (ImGui.MenuItem("Sphere", "", path == "primitive:Sphere"))
+            {
+                selectedPath = "primitive:Sphere";
+                changed = true;
+            }
+        };
 
-    private static void DrawPrimitiveItem(object component, PropertyMeta meta, string name, string? currentPath)
-    {
-        string primPath = "primitive:" + name;
-        if (ImGui.MenuItem(name, "", currentPath == primPath))
+        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, path, out string? newPath, customItems))
         {
-            meta.AssetPathProp!.SetValue(component, primPath);
-            meta.Prop.SetValue(component, Model.Load(primPath));
+            try
+            {
+                var newModel = newPath != null ? Model.Load(newPath) : null;
+                meta.Prop.SetValue(component, newModel);
+                meta.AssetPathProp!.SetValue(component, newPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to load model: {0}", ex.Message);
+            }
         }
     }
 
@@ -452,84 +413,30 @@ internal static class ComponentInspector
         var material = (Material?)meta.Prop.GetValue(component);
         string? path = (string?)meta.AssetPathProp!.GetValue(component);
 
-        ImGui.TextUnformatted(meta.Label);
-        string materialLabel = material != null
-            ? System.IO.Path.GetFileName(path) ?? "Material"
-            : "Select Material...";
-        bool clicked = ImGui.Button(materialLabel, new Vector2(-1, 30));
-
-        if (ImGui.BeginDragDropTarget())
+        string[] patterns = { "*.sptmat" };
+        
+        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) => 
         {
-            unsafe
-            {
-                var payload = ImGui.AcceptDragDropPayload("MATERIAL_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filepath = Marshal.PtrToStringUTF8(payload.Data);
-                    if (filepath != null)
-                        AssignMaterial(component, meta, filepath);
-                }
-            }
-            ImGui.EndDragDropTarget();
-        }
-
-        if (clicked)
-            ImGui.OpenPopup("SelectMaterialPopup");
-        if (ImGui.BeginPopup("SelectMaterialPopup"))
-        {
-            if (ImGui.MenuItem("None", "", material == null))
-            {
-                meta.Prop.SetValue(component, null);
-                meta.AssetPathProp.SetValue(component, null);
-            }
             if (ImGui.MenuItem("Checkerboard", "", path == "editor:Checkerboard"))
-                AssignMaterial(component, meta, "editor:Checkerboard");
-
-            List<string> materials = EnumerateProjectMaterials();
-            if (materials.Count > 0)
-                ImGui.Separator();
-            foreach (string matPath in materials)
             {
-                bool isSelected = string.Equals(path, matPath, StringComparison.OrdinalIgnoreCase);
-                if (ImGui.MenuItem(System.IO.Path.GetFileName(matPath), "", isSelected))
-                    AssignMaterial(component, meta, matPath);
+                selectedPath = "editor:Checkerboard";
+                changed = true;
             }
-            if (materials.Count == 0)
-                ImGui.TextDisabled("No materials in project.");
+        };
 
-            ImGui.EndPopup();
-        }
-    }
-
-    private static void AssignMaterial(object component, PropertyMeta meta, string path)
-    {
-        try
-        {
-            meta.Prop.SetValue(component, Material.Load(path));
-            meta.AssetPathProp!.SetValue(component, path);
-        }
-        catch (Exception ex)
-        {
-            Log.Error("Failed to load material '{0}': {1}", path, ex.Message);
-        }
-    }
-
-    private static List<string> EnumerateProjectMaterials()
-    {
-        var result = new List<string>();
-        string? dir = Project.Active?.GetAssetDirectory();
-        if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
+        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, path, out string? newPath, customItems))
         {
             try
             {
-                result.AddRange(System.IO.Directory.EnumerateFiles(dir, "*.sptmat", System.IO.SearchOption.AllDirectories));
+                var newMaterial = newPath != null ? Material.Load(newPath) : null;
+                meta.Prop.SetValue(component, newMaterial);
+                meta.AssetPathProp!.SetValue(component, newPath);
             }
-            catch
+            catch (Exception ex)
             {
-                // Enumeration failures (permissions, race with deletion) just yield no materials.
+                Log.Error("Failed to load material '{0}': {1}", newPath, ex.Message);
             }
         }
-        return result;
     }
 
     private static void DrawScriptComponent(Entity entity, object component)
