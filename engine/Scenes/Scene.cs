@@ -321,6 +321,38 @@ public class Scene
         }
     }
 
+    // Non-generic component access, keyed by runtime type. These mirror the generic API for callers
+    // that only know a component's Type at runtime (e.g. the editor's reflection-based inspector).
+    // Components are always stored under their concrete type, so keying by Type/GetType() is consistent
+    // with the generic path.
+
+    internal bool HasComponent(Entity entity, Type type) =>
+        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.ContainsKey(entity.Id);
+
+    internal object? GetComponent(Entity entity, Type type) =>
+        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out object? value)
+            ? value
+            : null;
+
+    internal Component AddComponent(Entity entity, Component component)
+    {
+        if (component is TransformComponent transform)
+        {
+            transform.Entity = entity;
+        }
+
+        PoolFor(component.GetType())[entity.Id] = component;
+        return component;
+    }
+
+    internal void RemoveComponent(Entity entity, Type type)
+    {
+        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool))
+        {
+            pool.Remove(entity.Id);
+        }
+    }
+
     private Dictionary<int, object> PoolFor(Type type)
     {
         if (!_pools.TryGetValue(type, out Dictionary<int, object>? pool))

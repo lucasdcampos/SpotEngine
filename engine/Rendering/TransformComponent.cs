@@ -11,6 +11,7 @@ namespace Spot.Rendering;
 /// usage, keep <see cref="Position"/>.Z at zero, rotate only around Z via <see cref="Rotation"/>.Z,
 /// and leave <see cref="Scale"/>.Z at one.
 /// </remarks>
+[ComponentMenu("Transform", Addable = false, Removable = false, Order = 0)]
 public sealed class TransformComponent : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
@@ -25,6 +26,7 @@ public sealed class TransformComponent : Component
     /// <summary>
     /// Gets the world position.
     /// </summary>
+    [HideInInspector]
     public Vector3 WorldPosition => Matrix.Translation;
 
     /// <summary>
@@ -35,6 +37,7 @@ public sealed class TransformComponent : Component
     /// <summary>
     /// Gets the world rotation as Euler angles in degrees.
     /// </summary>
+    [HideInInspector]
     public Vector3 WorldRotation
     {
         get
@@ -52,11 +55,13 @@ public sealed class TransformComponent : Component
     /// <summary>
     /// Gets or sets the scale along each axis.
     /// </summary>
+    [InspectorReset(1.0f)]
     public Vector3 Scale { get; set; } = Vector3.One;
 
     /// <summary>
     /// Gets the local model matrix.
     /// </summary>
+    [HideInInspector]
     public Matrix4x4 LocalMatrix
     {
         get
@@ -71,6 +76,7 @@ public sealed class TransformComponent : Component
     /// <summary>
     /// Gets the model matrix that maps local space to world space.
     /// </summary>
+    [HideInInspector]
     public Matrix4x4 Matrix
     {
         get
