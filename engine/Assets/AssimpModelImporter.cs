@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Numerics;
 using Silk.NET.Assimp;
 using Spot.Core;
@@ -33,7 +35,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         const uint flags = (uint)(
             PostProcessSteps.Triangulate |
             PostProcessSteps.GenerateSmoothNormals |
-            PostProcessSteps.FlipUVs |
             PostProcessSteps.JoinIdenticalVertices);
 
         Scene* scene = s_assimp.ImportFile(path, flags);
@@ -106,5 +107,79 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         }
 
         return new RenderMesh(vertices, indices.ToArray());
+    }
+
+    /// <summary>
+    /// Parses the model file and extracts any embedded textures to the same directory, generating 
+    /// a corresponding .sptmat material file for each.
+    /// </summary>
+    public static void ExtractMaterials(string path)
+    {
+        string directory = Path.GetDirectoryName(path) ?? string.Empty;
+        string modelName = Path.GetFileNameWithoutExtension(path);
+
+        const uint flags = 0;
+        Scene* scene = s_assimp.ImportFile(path, flags);
+        if (scene == null)
+        {
+            Log.CoreError($"Failed to read file for extraction '{path}': {s_assimp.GetErrorStringS()}");
+            return;
+        }
+
+        try
+        {
+            for (uint i = 0; i < scene->MNumTextures; i++)
+            {
+                Texture* tex = scene->MTextures[i];
+                if (tex->MHeight == 0) // Compressed texture (PNG, JPG, etc)
+                {
+                    string texName = tex->MFilename.AsString;
+                    if (string.IsNullOrWhiteSpace(texName) || texName.StartsWith("*"))
+                    {
+                        texName = $"{modelName}_Texture_{i}";
+                    }
+                    else
+                    {
+                        texName = Path.GetFileNameWithoutExtension(texName);
+                    }
+                    
+                    // Sanitize name
+                    foreach (char c in Path.GetInvalidFileNameChars())
+                        texName = texName.Replace(c, '_');
+
+                    string imagePath = Path.Combine(directory, texName + ".png");
+                    
+                    int byteCount = (int)tex->MWidth;
+                    if (byteCount > 0)
+                    {
+                        byte[] data = new byte[byteCount];
+                        fixed (byte* pData = data)
+                        {
+                            System.Buffer.MemoryCopy(tex->PcData, pData, byteCount, byteCount);
+                        }
+                        System.IO.File.WriteAllBytes(imagePath, data);
+                        Log.CoreInfo($"Extracted embedded texture: {imagePath}");
+
+                        // Create a corresponding material
+                        string matPath = Path.Combine(directory, texName + ".sptmat");
+                        if (!System.IO.File.Exists(matPath))
+                        {
+                            var mat = new Material();
+                            mat.SetTexture(imagePath);
+                            mat.Save(matPath);
+                            Log.CoreInfo($"Created material: {matPath}");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError($"Error extracting materials from '{path}': {ex.Message}");
+        }
+        finally
+        {
+            s_assimp.ReleaseImport(scene);
+        }
     }
 }

@@ -564,6 +564,11 @@ public class AssetBrowserPanel
             _context.SelectedAssetPath = entry.FullPath;
         }
 
+        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
+        {
+            Spot.Assets.AssimpModelImporter.ExtractMaterials(entry.FullPath);
+        }
+
         if (entry.IsDirectory)
         {
             if (ImGui.MenuItem("Open")) _pendingNavigate = entry.FullPath;
