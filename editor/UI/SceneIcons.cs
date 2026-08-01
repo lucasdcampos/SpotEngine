@@ -75,7 +75,7 @@ public sealed class SceneIcons
     private static bool TryPickIcon(Entity entity, out EditorGui.EntityIcon kind)
     {
         if (entity.HasComponent<CameraComponent>()) { kind = EditorGui.EntityIcon.Camera; return true; }
-        if (entity.HasComponent<DirectionalLightComponent>()) { kind = EditorGui.EntityIcon.Light; return true; }
+        if (entity.HasComponent<LightComponent>()) { kind = EditorGui.EntityIcon.Light; return true; }
         if (entity.HasComponent<DynamicCloudsComponent>()) { kind = EditorGui.EntityIcon.Skybox; return true; }
         kind = EditorGui.EntityIcon.Empty;
         return false;

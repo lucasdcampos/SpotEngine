@@ -28,7 +28,7 @@ public class SerializationTests
         hero.AddComponent(new CameraComponent { Primary = true, ZoomLevel = 7f, ProjectionType = SceneCameraProjection.Perspective });
         hero.AddComponent(new PhysicsBody2DComponent { GravityScale = 0.5f, IsDynamic = false, Velocity = new Vector2(1, 2) });
         hero.AddComponent(new BoxCollider2DComponent { Size = new Vector2(3, 4), Offset = new Vector2(1, 1) });
-        hero.AddComponent(new DirectionalLightComponent { Intensity = 2f, AmbientIntensity = 0.1f, Color = new Vector3(1, 0, 0) });
+        hero.AddComponent(new LightComponent { Type = LightType.Directional, Intensity = 2f, AmbientIntensity = 0.1f, Color = new Vector3(1, 0, 0) });
 
         var sidekick = scene.Instantiate("Sidekick");
         sidekick.SetParent(hero);
@@ -57,9 +57,10 @@ public class SerializationTests
         Assert.Equal(new Vector2(3, 4), collider.Size);
         Assert.Equal(new Vector2(1, 1), collider.Offset);
 
-        var light = loadedHero.GetComponent<DirectionalLightComponent>();
+        var light = loadedHero.GetComponent<LightComponent>();
         Assert.Equal(2f, light.Intensity);
         Assert.Equal(new Vector3(1, 0, 0), light.Color);
+        Assert.Equal(LightType.Directional, light.Type);
 
         // Parent/child hierarchy is preserved through the nested Children shape.
         var loadedSidekick = FindByName(loaded, "Sidekick");

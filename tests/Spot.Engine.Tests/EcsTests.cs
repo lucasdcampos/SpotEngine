@@ -58,10 +58,10 @@ public class EcsTests
         var a = scene.Instantiate();
         var b = scene.Instantiate();
         scene.Instantiate(); // no light component
-        a.AddComponent(new DirectionalLightComponent());
-        b.AddComponent(new DirectionalLightComponent());
+        a.AddComponent(new LightComponent());
+        b.AddComponent(new LightComponent());
 
-        Assert.Equal(2, scene.View<DirectionalLightComponent>().Count);
+        Assert.Equal(2, scene.View<LightComponent>().Count);
     }
 
     [Fact]
@@ -86,15 +86,15 @@ public class EcsTests
         var scene = new Scene();
         for (int i = 0; i < 3; i++)
         {
-            scene.Instantiate().AddComponent(new DirectionalLightComponent());
+            scene.Instantiate().AddComponent(new LightComponent());
         }
 
         // The view is a materialized snapshot, so adding/destroying during iteration must not throw.
         var exception = Record.Exception(() =>
         {
-            foreach (var e in scene.View<DirectionalLightComponent>())
+            foreach (var e in scene.View<LightComponent>())
             {
-                scene.Instantiate().AddComponent(new DirectionalLightComponent());
+                scene.Instantiate().AddComponent(new LightComponent());
                 scene.Destroy(e);
             }
             scene.FlushDestroyed();

@@ -29,7 +29,9 @@
       "Camera": null,
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
-      "DirectionalLight": {
+      "DirectionalLight": null,
+      "Light": {
+        "Type": 0,
         "Color": [
           1,
           1,
@@ -37,6 +39,8 @@
         ],
         "Intensity": 1,
         "AmbientIntensity": 0.3,
+        "CastShadows": true,
+        "Range": 10,
         "Enabled": true
       },
       "DynamicClouds": {
@@ -69,7 +73,7 @@
       "Transform": {
         "Position": [
           0,
-          -1,
+          -0.4506618,
           0
         ],
         "Rotation": [
@@ -101,6 +105,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -110,7 +115,7 @@
         ],
         "GravityScale": 1,
         "IsDynamic": false,
-        "Enabled": true
+        "Enabled": false
       },
       "BoxCollider3D": {
         "Size": [
@@ -175,6 +180,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
@@ -188,8 +194,8 @@
       "Transform": {
         "Position": [
           3,
-          0.5,
-          -5
+          0.47273156,
+          -2.590512
         ],
         "Rotation": [
           0,
@@ -220,6 +226,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -254,7 +261,7 @@
       "Transform": {
         "Position": [
           -4,
-          0,
+          0.5326069,
           -8
         ],
         "Rotation": [
@@ -286,6 +293,7 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
       "DynamicClouds": null,
       "PhysicsBody3D": {
         "Velocity": [
@@ -352,6 +360,55 @@
       "PhysicsBody2D": null,
       "BoxCollider2D": null,
       "DirectionalLight": null,
+      "Light": null,
+      "DynamicClouds": null,
+      "PhysicsBody3D": null,
+      "BoxCollider3D": null,
+      "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Point Light",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          -2.635606,
+          1.217078,
+          10.204092
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "Light": {
+        "Type": 1,
+        "Color": [
+          0.71945995,
+          0.8673835,
+          0.3171079
+        ],
+        "Intensity": 2.7,
+        "AmbientIntensity": 0.3,
+        "CastShadows": true,
+        "Range": 10,
+        "Enabled": true
+      },
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,

@@ -24,49 +24,118 @@ public static class Renderer3D
 
         uniform mat4 uViewProjection;
         uniform mat4 uModel;
+        uniform mat4 uLightSpaceMatrix;
 
+        out vec3 vFragPos;
+        out vec4 vFragPosLightSpace;
         out vec3 vNormal;
         out vec2 vTexCoord;
 
         void main()
         {
+            vec4 worldPos = uModel * vec4(aPosition, 1.0);
+            vFragPos = worldPos.xyz;
+            vFragPosLightSpace = uLightSpaceMatrix * worldPos;
+            
             vNormal = mat3(uModel) * aNormal;
             vTexCoord = aTexCoord;
-            gl_Position = uViewProjection * uModel * vec4(aPosition, 1.0);
+            gl_Position = uViewProjection * worldPos;
         }
         """;
 
     private const string FragmentShaderSource =
         """
         #version 330 core
+        in vec3 vFragPos;
+        in vec4 vFragPosLightSpace;
         in vec3 vNormal;
         in vec2 vTexCoord;
 
         uniform vec4 uColor;
         uniform sampler2D uTexture;
+        uniform sampler2D uShadowMap;
 
         uniform int uHasDirectionalLight;
+        uniform int uCastShadows;
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
+        struct PointLight {
+            vec3 position;
+            vec3 color;
+            float intensity;
+            float range;
+        };
+        uniform int uPointLightCount;
+        uniform PointLight uPointLights[4];
+
         out vec4 fragColor;
+
+        float ShadowCalculation(vec4 fragPosLightSpace)
+        {
+            vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+            projCoords = projCoords * 0.5 + 0.5;
+            if (projCoords.z > 1.0) return 0.0;
+            
+            float currentDepth = projCoords.z;
+            float bias = max(0.005 * (1.0 - dot(normalize(vNormal), normalize(uLightDir))), 0.001);
+            
+            float shadow = 0.0;
+            vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+            for(int x = -1; x <= 1; ++x)
+            {
+                for(int y = -1; y <= 1; ++y)
+                {
+                    float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+                    shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+                }    
+            }
+            shadow /= 9.0;
+            
+            return shadow;
+        }
 
         void main()
         {
             vec4 albedo = texture(uTexture, vTexCoord) * uColor;
+            vec3 normal = normalize(vNormal);
+            vec3 lighting = vec3(0.0);
             
             if (uHasDirectionalLight == 1)
             {
-                vec3 normal = normalize(vNormal);
                 vec3 lightDir = normalize(uLightDir);
                 float diffuse = max(dot(normal, lightDir), 0.0);
-                vec3 lighting = (uAmbientIntensity + diffuse) * uLightColor;
-                fragColor = vec4(albedo.rgb * lighting, albedo.a);
+                
+                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPosLightSpace) : 0.0;
+                lighting += (uAmbientIntensity + (1.0 - shadow) * diffuse) * uLightColor;
             }
             else
             {
+                lighting += uAmbientIntensity * uLightColor;
+            }
+            
+            for(int i = 0; i < uPointLightCount && i < 4; i++)
+            {
+                vec3 lightDir = uPointLights[i].position - vFragPos;
+                float distance = length(lightDir);
+                if(distance < uPointLights[i].range)
+                {
+                    lightDir = normalize(lightDir);
+                    float diff = max(dot(normal, lightDir), 0.0);
+                    float attenuation = 1.0 - (distance / uPointLights[i].range);
+                    attenuation = attenuation * attenuation;
+                    lighting += uPointLights[i].color * uPointLights[i].intensity * diff * attenuation;
+                }
+            }
+            
+            if (uHasDirectionalLight == 0 && uPointLightCount == 0)
+            {
                 fragColor = albedo; // Unlit
+            }
+            else
+            {
+                fragColor = vec4(albedo.rgb * lighting, albedo.a);
             }
         }
         """;
@@ -80,12 +149,14 @@ public static class Renderer3D
 
         uniform mat4 uViewProjection;
         uniform mat4 uModel;
+        uniform mat4 uLightSpaceMatrix;
         uniform float uTime;
         uniform float uWaveSpeed;
         uniform float uWaveScale;
         uniform float uWaveStrength;
 
         out vec3 vFragPos;
+        out vec4 vFragPosLightSpace;
         out vec3 vNormal;
         out vec2 vTexCoord;
 
@@ -103,6 +174,7 @@ public static class Renderer3D
             
             vec4 worldPos = uModel * vec4(pos, 1.0);
             vFragPos = worldPos.xyz;
+            vFragPosLightSpace = uLightSpaceMatrix * worldPos;
             vNormal = mat3(transpose(inverse(uModel))) * aNormal;
             vTexCoord = aTexCoord;
             gl_Position = uViewProjection * worldPos;
@@ -113,11 +185,13 @@ public static class Renderer3D
         """
         #version 330 core
         in vec3 vFragPos;
+        in vec4 vFragPosLightSpace;
         in vec3 vNormal;
         in vec2 vTexCoord;
 
         uniform vec4 uColor;
         uniform sampler2D uTexture;
+        uniform sampler2D uShadowMap;
         uniform float uTime;
         uniform mat4 uInverseViewProjection;
         
@@ -127,9 +201,19 @@ public static class Renderer3D
         uniform float uSpecularPower;
 
         uniform int uHasDirectionalLight;
+        uniform int uCastShadows;
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
+
+        struct PointLight {
+            vec3 position;
+            vec3 color;
+            float intensity;
+            float range;
+        };
+        uniform int uPointLightCount;
+        uniform PointLight uPointLights[4];
 
         out vec4 fragColor;
         
@@ -160,6 +244,29 @@ public static class Renderer3D
             }
             return v;
         }
+        
+        float ShadowCalculation(vec4 fragPosLightSpace, vec3 perturbedNormal)
+        {
+            vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+            projCoords = projCoords * 0.5 + 0.5;
+            if (projCoords.z > 1.0) return 0.0;
+            
+            float currentDepth = projCoords.z;
+            float bias = max(0.005 * (1.0 - dot(perturbedNormal, normalize(uLightDir))), 0.001);
+            
+            float shadow = 0.0;
+            vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
+            for(int x = -1; x <= 1; ++x)
+            {
+                for(int y = -1; y <= 1; ++y)
+                {
+                    float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+                    shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+                }    
+            }
+            shadow /= 9.0;
+            return shadow;
+        }
 
         void main()
         {
@@ -185,35 +292,62 @@ public static class Renderer3D
             vec3 cameraPos = camPos4.xyz / camPos4.w;
             vec3 viewDir = normalize(cameraPos - vFragPos);
             
+            vec3 waterBase = vec3(0.0);
+            vec3 finalColor = vec3(0.0);
+            
+            // Fake reflection / fresnel
+            float fresnel = pow(1.0 - max(dot(viewDir, perturbedNormal), 0.0), 3.0);
+            vec3 skyColor = vec3(0.5, 0.7, 0.9);
+            // Fake sub-surface scattering color (cyan tint on waves)
+            vec3 scatterColor = mix(albedo.rgb, vec3(0.2, 0.8, 0.9), fresnel * 0.5 * uWaveStrength);
+            waterBase = mix(scatterColor, skyColor, fresnel * 0.6);
+
             if (uHasDirectionalLight == 1)
             {
                 vec3 lightDir = normalize(uLightDir);
+                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPosLightSpace, perturbedNormal) : 0.0;
                 
-                // Diffuse
                 float diff = max(dot(perturbedNormal, lightDir), 0.0);
                 vec3 diffuse = diff * uLightColor;
                 
-                // Specular
                 vec3 reflectDir = reflect(-lightDir, perturbedNormal);
                 float spec = pow(max(dot(viewDir, reflectDir), 0.0), uSpecularPower);
                 vec3 specular = spec * uLightColor * (uWaveStrength * 2.0 + 0.5);
                 
-                // Fake reflection / fresnel
-                float fresnel = pow(1.0 - max(dot(viewDir, perturbedNormal), 0.0), 3.0);
-                vec3 skyColor = vec3(0.5, 0.7, 0.9);
-                
-                // Fake sub-surface scattering color (cyan tint on waves)
-                vec3 scatterColor = mix(albedo.rgb, vec3(0.2, 0.8, 0.9), fresnel * 0.5 * uWaveStrength);
-                vec3 waterBase = mix(scatterColor, skyColor, fresnel * 0.6);
-                
                 vec3 ambient = uAmbientIntensity * uLightColor;
-                vec3 finalColor = (ambient + diffuse) * waterBase + specular;
-                
-                fragColor = vec4(finalColor, albedo.a);
+                finalColor += (ambient + (1.0 - shadow) * diffuse) * waterBase + (1.0 - shadow) * specular;
             }
             else
             {
+                finalColor += uAmbientIntensity * uLightColor * waterBase;
+            }
+            
+            for(int i = 0; i < uPointLightCount && i < 4; i++)
+            {
+                vec3 lightDir = uPointLights[i].position - vFragPos;
+                float distance = length(lightDir);
+                if(distance < uPointLights[i].range)
+                {
+                    lightDir = normalize(lightDir);
+                    float diff = max(dot(perturbedNormal, lightDir), 0.0);
+                    float attenuation = 1.0 - (distance / uPointLights[i].range);
+                    attenuation = attenuation * attenuation;
+                    
+                    vec3 reflectDir = reflect(-lightDir, perturbedNormal);
+                    float spec = pow(max(dot(viewDir, reflectDir), 0.0), uSpecularPower);
+                    vec3 specular = spec * uPointLights[i].color * (uWaveStrength * 2.0 + 0.5);
+                    
+                    finalColor += uPointLights[i].color * uPointLights[i].intensity * diff * attenuation * waterBase + specular * attenuation * uPointLights[i].intensity;
+                }
+            }
+
+            if (uHasDirectionalLight == 0 && uPointLightCount == 0)
+            {
                 fragColor = albedo;
+            }
+            else
+            {
+                fragColor = vec4(finalColor, albedo.a);
             }
         }
         """;
@@ -507,19 +641,56 @@ public static class Renderer3D
         }
         """;
 
+    private const string ShadowVertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        uniform mat4 uLightSpaceMatrix;
+        uniform mat4 uModel;
+        void main()
+        {
+            gl_Position = uLightSpaceMatrix * uModel * vec4(aPosition, 1.0);
+        }
+        """;
+
+    private const string ShadowFragmentShaderSource =
+        """
+        #version 330 core
+        void main()
+        {
+            // gl_FragDepth is written automatically
+        }
+        """;
+
+
     private static Shader? s_shader;
     private static Shader? s_waterShader;
     private static Shader? s_skyboxShader;
     private static Shader? s_cloudsShader;
     private static Shader? s_gridShader;
+    private static Shader? s_shadowShader;
     private static VertexArray? s_emptyVao;
     private static Texture2D? s_whiteTexture;
+    private static DepthFramebuffer? s_shadowMap;
     private static Matrix4x4 s_viewProjection = Matrix4x4.Identity;
+    private static Matrix4x4 s_lightSpaceMatrix = Matrix4x4.Identity;
+
+    public struct PointLightData
+    {
+        public Vector3 Position;
+        public Vector3 Color;
+        public float Intensity;
+        public float Range;
+    }
 
     private static int s_hasDirLight = 0;
+    private static int s_castShadows = 0;
     private static Vector3 s_lightDir = Vector3.UnitY;
     private static Vector3 s_lightColor = Vector3.One;
     private static float s_ambientIntensity = 0.3f;
+    
+    private static PointLightData[] s_pointLights = new PointLightData[4];
+    private static int s_pointLightCount = 0;
 
     /// <summary>
     /// Creates the shared shader and fallback texture. Called once by the application after the renderer is ready.
@@ -531,7 +702,10 @@ public static class Renderer3D
         s_skyboxShader = new Shader(SkyboxVertexShaderSource, SkyboxFragmentShaderSource);
         s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
         s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
+        s_shadowShader = new Shader(ShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_emptyVao = new VertexArray();
+        
+        s_shadowMap = new DepthFramebuffer(2048, 2048);
 
         // A 1x1 white texture lets untextured (solid-color) meshes reuse the textured path: texture * color == color.
         ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
@@ -541,13 +715,63 @@ public static class Renderer3D
     /// <summary>
     /// Begins a 3D scene. Meshes drawn until <see cref="EndScene"/> use this view-projection.
     /// </summary>
-    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f)
+    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default)
     {
         s_viewProjection = viewProjection;
         s_hasDirLight = hasLight ? 1 : 0;
         s_lightDir = hasLight ? lightDir : Vector3.UnitY;
         s_lightColor = hasLight ? lightColor : Vector3.One;
         s_ambientIntensity = ambientIntensity;
+        s_lightSpaceMatrix = lightSpaceMatrix;
+        s_castShadows = castShadows ? 1 : 0;
+        
+        s_pointLightCount = System.Math.Min(pointLights.Length, 4);
+        for (int i = 0; i < s_pointLightCount; i++)
+        {
+            s_pointLights[i] = pointLights[i];
+        }
+    }
+
+    private static int s_prevFramebuffer;
+    private static int[] s_prevViewport = new int[4];
+
+    /// <summary>
+    /// Begins a shadow map pass. Meshes drawn with <see cref="DrawShadowMesh"/> will be rendered to the shadow map.
+    /// </summary>
+    public static unsafe void BeginShadowPass(Matrix4x4 lightSpaceMatrix)
+    {
+        s_lightSpaceMatrix = lightSpaceMatrix;
+        
+        Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.FramebufferBinding, out s_prevFramebuffer);
+        fixed (int* vp = s_prevViewport)
+        {
+            Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, vp);
+        }
+        
+        s_shadowMap!.Bind();
+        Renderer.ClearDepth();
+        s_shadowShader!.Use();
+        s_shadowShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
+        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Front);
+    }
+
+    /// <summary>
+    /// Draws a mesh into the shadow map. Must be called between <see cref="BeginShadowPass"/> and <see cref="EndShadowPass"/>.
+    /// </summary>
+    public static void DrawShadowMesh(Matrix4x4 model, Mesh mesh)
+    {
+        s_shadowShader!.SetUniform("uModel", model);
+        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    /// <summary>
+    /// Ends the current shadow map pass.
+    /// </summary>
+    public static unsafe void EndShadowPass()
+    {
+        Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)s_prevFramebuffer);
+        Renderer.Api.Viewport(s_prevViewport[0], s_prevViewport[1], (uint)s_prevViewport[2], (uint)s_prevViewport[3]);
+        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Back);
     }
 
     /// <summary>
@@ -597,6 +821,27 @@ public static class Renderer3D
             activeShader.SetUniform("uLightDir", s_lightDir);
             activeShader.SetUniform("uLightColor", s_lightColor);
             activeShader.SetUniform("uAmbientIntensity", s_ambientIntensity);
+        }
+        
+        if (s_castShadows == 1)
+        {
+            s_shadowMap!.BindDepthTexture(1);
+            activeShader.SetUniform("uShadowMap", 1);
+            activeShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
+            activeShader.SetUniform("uCastShadows", 1);
+        }
+        else
+        {
+            activeShader.SetUniform("uCastShadows", 0);
+        }
+
+        activeShader.SetUniform("uPointLightCount", s_pointLightCount);
+        for (int i = 0; i < s_pointLightCount; i++)
+        {
+            activeShader.SetUniform($"uPointLights[{i}].position", s_pointLights[i].Position);
+            activeShader.SetUniform($"uPointLights[{i}].color", s_pointLights[i].Color);
+            activeShader.SetUniform($"uPointLights[{i}].intensity", s_pointLights[i].Intensity);
+            activeShader.SetUniform($"uPointLights[{i}].range", s_pointLights[i].Range);
         }
 
         Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);

@@ -61,7 +61,7 @@ public class InspectorPanel
         EditorGui.Component<BoxCollider2DComponent>(entity, "Box Collider 2D", DrawBoxCollider);
         EditorGui.Component<PhysicsBody3DComponent>(entity, "Physics Body 3D", DrawPhysicsBody3D);
         EditorGui.Component<BoxCollider3DComponent>(entity, "Box Collider 3D", DrawBoxCollider3D);
-        EditorGui.Component<DirectionalLightComponent>(entity, "Directional Light", DrawDirectionalLight);
+        EditorGui.Component<LightComponent>(entity, "Light", DrawLight);
         EditorGui.Component<DynamicCloudsComponent>(entity, "Dynamic Clouds", DrawDynamicClouds);
         EditorGui.Component<ScriptComponent>(entity, "Script Component", DrawScripts);
     }
@@ -93,7 +93,7 @@ public class InspectorPanel
             EditorGui.AddComponentItem<BoxCollider2DComponent>(entity, "Box Collider 2D");
             EditorGui.AddComponentItem<PhysicsBody3DComponent>(entity, "Physics Body 3D");
             EditorGui.AddComponentItem<BoxCollider3DComponent>(entity, "Box Collider 3D");
-            EditorGui.AddComponentItem<DirectionalLightComponent>(entity, "Directional Light");
+            EditorGui.AddComponentItem<LightComponent>(entity, "Light");
             EditorGui.AddComponentItem<DynamicCloudsComponent>(entity, "Dynamic Clouds");
             EditorGui.AddComponentItem<ScriptComponent>(entity, "Script Component");
             ImGui.EndPopup();
@@ -331,16 +331,33 @@ public class InspectorPanel
         if (EditorGui.Vector3Control("Offset", ref offset)) collider.Offset = offset;
     }
 
-    private static void DrawDirectionalLight(DirectionalLightComponent light)
+    private static void DrawLight(LightComponent light)
     {
         bool enabled = light.Enabled;
         if (EditorGui.Checkbox("Enabled", ref enabled)) light.Enabled = enabled;
+        
+        string[] lightTypes = Enum.GetNames(typeof(LightType));
+        int currentType = (int)light.Type;
+        if (EditorGui.Combo("Type", ref currentType, lightTypes))
+            light.Type = (LightType)currentType;
+            
         var color = light.Color;
         if (EditorGui.Color3("Color", ref color)) light.Color = color;
         float intensity = light.Intensity;
         if (EditorGui.DragFloat("Intensity", ref intensity, 0.05f, 0.0f, 10.0f)) light.Intensity = intensity;
-        float ambientIntensity = light.AmbientIntensity;
-        if (EditorGui.DragFloat("Ambient Intensity", ref ambientIntensity, 0.01f, 0.0f, 1.0f)) light.AmbientIntensity = ambientIntensity;
+        
+        if (light.Type == LightType.Directional)
+        {
+            float ambientIntensity = light.AmbientIntensity;
+            if (EditorGui.DragFloat("Ambient Intensity", ref ambientIntensity, 0.01f, 0.0f, 1.0f)) light.AmbientIntensity = ambientIntensity;
+            bool castShadows = light.CastShadows;
+            if (EditorGui.Checkbox("Cast Shadows", ref castShadows)) light.CastShadows = castShadows;
+        }
+        else if (light.Type == LightType.Point)
+        {
+            float range = light.Range;
+            if (EditorGui.DragFloat("Range", ref range, 0.1f, 0.0f, 100.0f)) light.Range = range;
+        }
     }
 
     private static void DrawDynamicClouds(DynamicCloudsComponent clouds)
