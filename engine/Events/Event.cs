@@ -11,6 +11,7 @@ public enum EventType
     WindowFocus,
     WindowLostFocus,
     WindowMoved,
+    WindowDrop,
     AppTick,
     AppUpdate,
     AppRender,

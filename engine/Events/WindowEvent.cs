@@ -53,3 +53,35 @@ public sealed class WindowResizeEvent : Event
     /// <inheritdoc />
     public override string ToString() => $"WindowResizeEvent: {Width}x{Height}";
 }
+
+/// <summary>
+/// Raised when files are dropped onto the window.
+/// </summary>
+public sealed class WindowDropEvent : Event
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WindowDropEvent"/> class.
+    /// </summary>
+    /// <param name="paths">The dropped file paths.</param>
+    public WindowDropEvent(string[] paths)
+    {
+        Paths = paths;
+    }
+
+    /// <summary>
+    /// Gets the paths of the dropped files.
+    /// </summary>
+    public string[] Paths { get; }
+
+    /// <inheritdoc />
+    public override EventType Type => EventType.WindowDrop;
+
+    /// <inheritdoc />
+    public override string Name => "WindowDrop";
+
+    /// <inheritdoc />
+    public override EventCategory CategoryFlags => EventCategory.Application;
+
+    /// <inheritdoc />
+    public override string ToString() => $"WindowDropEvent: {Paths.Length} files";
+}
