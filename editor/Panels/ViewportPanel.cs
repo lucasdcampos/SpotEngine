@@ -96,9 +96,9 @@ public class ViewportPanel
                 }
 
                 // --- TRANSFORM GIZMO (2D & 3D: translate / rotate / scale) ---
-                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
+                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<TransformComponent>())
                 {
-                    var transform = _context.Selection.Value.GetComponent<Transform>();
+                    var transform = _context.Selection.Value.GetComponent<TransformComponent>();
                     _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered);
 
                     // Unity-style mode switch. Guarded so it does not fire while flying the 3D

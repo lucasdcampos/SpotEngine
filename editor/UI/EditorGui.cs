@@ -212,8 +212,8 @@ public static class EditorGui
         if (entity.HasComponent<CameraComponent>()) return EntityIcon.Camera;
         if (entity.HasComponent<LightComponent>()) return EntityIcon.Light;
         if (entity.HasComponent<DynamicCloudsComponent>()) return EntityIcon.Skybox;
-        if (entity.HasComponent<MeshRenderer>()) return EntityIcon.Mesh;
-        if (entity.HasComponent<Sprite2D>()) return EntityIcon.Sprite;
+        if (entity.HasComponent<MeshComponent>()) return EntityIcon.Mesh;
+        if (entity.HasComponent<Sprite2DComponent>()) return EntityIcon.Sprite;
         return EntityIcon.Empty;
     }
 

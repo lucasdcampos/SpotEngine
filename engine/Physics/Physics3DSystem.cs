@@ -15,11 +15,11 @@ internal static class Physics3DSystem
     public static void Update(Scene scene, float deltaTime)
     {
         // 1. Update velocities and positions for dynamic bodies
-        foreach (var entity in scene.View<PhysicsBody3DComponent, Transform>())
+        foreach (var entity in scene.View<PhysicsBody3DComponent, TransformComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
             var body = entity.GetComponent<PhysicsBody3DComponent>();
-            var transform = entity.GetComponent<Transform>();
+            var transform = entity.GetComponent<TransformComponent>();
             if (!body.Enabled || !transform.Enabled) continue;
 
             if (body.IsDynamic)
@@ -30,14 +30,14 @@ internal static class Physics3DSystem
         }
 
         // 2. Resolve Collisions (Basic Iterative AABB resolution)
-        var colliders = scene.View<BoxCollider3DComponent, Transform>();
+        var colliders = scene.View<BoxCollider3DComponent, TransformComponent>();
         
         for (int i = 0; i < colliders.Count; i++)
         {
             var e1 = colliders[i];
             if (!e1.IsActiveInHierarchy()) continue;
             var col1 = e1.GetComponent<BoxCollider3DComponent>();
-            var t1 = e1.GetComponent<Transform>();
+            var t1 = e1.GetComponent<TransformComponent>();
             if (!col1.Enabled || !t1.Enabled) continue;
             var b1 = col1.GetWorldBounds(t1.Position);
             bool isDynamic1 = e1.TryGetComponent(out PhysicsBody3DComponent? body1) && body1.Enabled && body1.IsDynamic;
@@ -47,7 +47,7 @@ internal static class Physics3DSystem
                 var e2 = colliders[j];
                 if (!e2.IsActiveInHierarchy()) continue;
                 var col2 = e2.GetComponent<BoxCollider3DComponent>();
-                var t2 = e2.GetComponent<Transform>();
+                var t2 = e2.GetComponent<TransformComponent>();
                 if (!col2.Enabled || !t2.Enabled) continue;
                 var b2 = col2.GetWorldBounds(t2.Position);
                 bool isDynamic2 = e2.TryGetComponent(out PhysicsBody3DComponent? body2) && body2.Enabled && body2.IsDynamic;
@@ -65,8 +65,8 @@ internal static class Physics3DSystem
         }
     }
 
-    private static void ResolveCollision(Transform t1, PhysicsBody3DComponent? body1, Aabb3d b1, bool isDynamic1, 
-                                         Transform t2, PhysicsBody3DComponent? body2, Aabb3d b2, bool isDynamic2)
+    private static void ResolveCollision(TransformComponent t1, PhysicsBody3DComponent? body1, Aabb3d b1, bool isDynamic1, 
+                                         TransformComponent t2, PhysicsBody3DComponent? body2, Aabb3d b2, bool isDynamic2)
     {
         // Calculate penetration depths along X, Y and Z
         float dx1 = b2.Max.X - b1.Min.X;

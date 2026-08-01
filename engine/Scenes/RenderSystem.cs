@@ -4,8 +4,8 @@ using Spot.Rendering;
 namespace Spot.Scenes;
 
 /// <summary>
-/// Draws every entity's 3D mesh (<see cref="MeshRenderer"/>) and 2D sprite (<see cref="Sprite2D"/>),
-/// each together with its <see cref="Transform"/>.
+/// Draws every entity's 3D mesh (<see cref="MeshComponent"/>) and 2D sprite (<see cref="Sprite2DComponent"/>),
+/// each together with its <see cref="TransformComponent"/>.
 /// </summary>
 /// <remarks>
 /// This is the convenient, automatic path — the engine renders your meshes and sprites for you. It is
@@ -72,10 +72,10 @@ public static class RenderSystem
         Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[4];
         int pointLightCount = 0;
 
-        foreach (Entity entity in scene.View<Transform, LightComponent>())
+        foreach (Entity entity in scene.View<TransformComponent, LightComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var transform = entity.GetComponent<Transform>();
+            var transform = entity.GetComponent<TransformComponent>();
             var light = entity.GetComponent<LightComponent>();
             if (!transform.Enabled || !light.Enabled) continue;
             
@@ -124,11 +124,11 @@ public static class RenderSystem
         if (castShadows)
         {
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
-            foreach (Entity entity in scene.View<Transform, MeshRenderer>())
+            foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
-                MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
-                var transform = entity.GetComponent<Transform>();
+                MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
+                var transform = entity.GetComponent<TransformComponent>();
                 if (!meshRenderer.Enabled || !transform.Enabled || meshRenderer.Model is null) continue;
                 
                 Matrix4x4 world = transform.Matrix;
@@ -157,11 +157,11 @@ public static class RenderSystem
             break; // only draw the first one
         }
 
-        foreach (Entity entity in scene.View<Transform, MeshRenderer>())
+        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
-            var transform = entity.GetComponent<Transform>();
+            MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
+            var transform = entity.GetComponent<TransformComponent>();
             if (!meshRenderer.Enabled || !transform.Enabled) continue;
             
             if (meshRenderer.Model is null)
@@ -169,7 +169,7 @@ public static class RenderSystem
                 continue;
             }
 
-            Matrix4x4 world = entity.GetComponent<Transform>().Matrix;
+            Matrix4x4 world = entity.GetComponent<TransformComponent>().Matrix;
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
@@ -183,11 +183,11 @@ public static class RenderSystem
 
         Renderer2D.BeginScene(viewProjection);
 
-        foreach (Entity entity in scene.View<Transform, Sprite2D>())
+        foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            Transform transform = entity.GetComponent<Transform>();
-            Sprite2D sprite = entity.GetComponent<Sprite2D>();
+            TransformComponent transform = entity.GetComponent<TransformComponent>();
+            Sprite2DComponent sprite = entity.GetComponent<Sprite2DComponent>();
             if (!transform.Enabled || !sprite.Enabled) continue;
 
             if (sprite.Texture is not null)

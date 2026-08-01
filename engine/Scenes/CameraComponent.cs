@@ -85,7 +85,7 @@ public class CameraComponent : Component
         }
     }
 
-    public Matrix4x4 GetViewProjection(Transform transform)
+    public Matrix4x4 GetViewProjection(TransformComponent transform)
     {
         Matrix4x4 view;
         if (ProjectionType == SceneCameraProjection.Perspective)

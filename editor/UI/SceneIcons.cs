@@ -31,14 +31,14 @@ public sealed class SceneIcons
         Entity? hovered = null;
         float hoveredDist = DiscRadiusPx;
 
-        foreach (var entity in scene.View<Transform>())
+        foreach (var entity in scene.View<TransformComponent>())
         {
             if (!TryPickIcon(entity, out EditorGui.EntityIcon kind))
             {
                 continue;
             }
 
-            Vector3 world = entity.GetComponent<Transform>().WorldPosition;
+            Vector3 world = entity.GetComponent<TransformComponent>().WorldPosition;
             if (!WorldToScreen(vp, world, viewportPos, viewportSize, out Vector2 screen))
             {
                 continue; // behind the camera
@@ -96,3 +96,4 @@ public sealed class SceneIcons
         return true;
     }
 }
+

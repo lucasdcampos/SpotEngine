@@ -109,9 +109,9 @@ public class EditorScene : Scene
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
         {
-            if (entity.HasComponent<Transform>() && _activeSceneData != null)
+            if (entity.HasComponent<TransformComponent>() && _activeSceneData != null)
             {
-                _activeSceneData.EditorCamera.Focus(entity.GetComponent<Transform>().WorldPosition);
+                _activeSceneData.EditorCamera.Focus(entity.GetComponent<TransformComponent>().WorldPosition);
             }
         };
     }
@@ -278,10 +278,10 @@ public class EditorScene : Scene
             if (_context.Selection.HasValue && sceneData == _activeSceneData)
             {
                 var selectedEntity = _context.Selection.Value;
-                if (selectedEntity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && selectedEntity.HasComponent<Transform>())
+                if (selectedEntity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && selectedEntity.HasComponent<TransformComponent>())
                 {
                     Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
-                    var transform = selectedEntity.GetComponent<Transform>();
+                    var transform = selectedEntity.GetComponent<TransformComponent>();
                     var collider = selectedEntity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
                     var bounds = collider.GetWorldBounds(new Vector2(transform.Position.X, transform.Position.Y));
                     Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
@@ -297,9 +297,9 @@ public class EditorScene : Scene
                 sceneData.CameraPreviewFramebuffer.Bind();
                 var entity = _context.Selection.Value;
                 var cc = entity.GetComponent<CameraComponent>();
-                if (entity.HasComponent<Transform>())
+                if (entity.HasComponent<TransformComponent>())
                 {
-                    var transform = entity.GetComponent<Transform>();
+                    var transform = entity.GetComponent<TransformComponent>();
                     var viewProj = cc.GetViewProjection(transform);
                     var is3DPrev = cc.ProjectionType == SceneCameraProjection.Perspective;
                     
@@ -336,9 +336,9 @@ public class EditorScene : Scene
                 var cc = entity.GetComponent<CameraComponent>();
                 if (cc.Primary)
                 {
-                    if (entity.HasComponent<Transform>())
+                    if (entity.HasComponent<TransformComponent>())
                     {
-                        var transform = entity.GetComponent<Transform>();
+                        var transform = entity.GetComponent<TransformComponent>();
                         viewProjection = cc.GetViewProjection(transform);
                         is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
                     }

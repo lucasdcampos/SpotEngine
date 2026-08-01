@@ -12,7 +12,7 @@ public class DemoScene : Scene
         camera.AddComponent(new CameraComponent());
         
         var square = Instantiate("Square");
-        square.AddComponent(new Sprite2D { Color = new Vector4(0.2f, 0.8f, 0.3f, 1.0f) });
+        square.AddComponent(new Sprite2DComponent { Color = new Vector4(0.2f, 0.8f, 0.3f, 1.0f) });
         square.AddScript<RotatorScript>();
     }
 }
@@ -23,7 +23,7 @@ public class RotatorScript : EntityBehaviour
 
     public override void OnUpdate(float deltaTime)
     {
-        var transform = GetComponent<Transform>();
+        var transform = GetComponent<TransformComponent>();
         var rotation = transform.Rotation;
         rotation.Z += Speed * deltaTime;
         transform.Rotation = rotation;

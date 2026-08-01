@@ -386,3 +386,4 @@ public static class Renderer2D
         Renderer.DrawIndexed(s_vao, s_indexCount);
     }
 }
+

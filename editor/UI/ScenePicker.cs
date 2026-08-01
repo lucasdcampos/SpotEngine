@@ -8,7 +8,7 @@ namespace Spot.Editor.UI;
 /// <summary>
 /// Mouse picking for the editor viewport. Casts a ray from the cursor through the camera and finds
 /// the entity under it. Works identically for the 2D orthographic and 3D perspective cameras because
-/// the scene is made of unit quads (<see cref="Sprite2D"/> + <see cref="Transform"/>): the ray is
+/// the scene is made of unit quads (<see cref="Sprite2DComponent"/> + <see cref="TransformComponent"/>): the ray is
 /// tested against each quad in its own local space, so rotation and scale are handled for free.
 /// </summary>
 public static class ScenePicker
@@ -55,9 +55,9 @@ public static class ScenePicker
         Entity? best = null;
         float bestDist = float.MaxValue;
 
-        foreach (Entity entity in scene.View<Transform, Sprite2D>())
+        foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
         {
-            Transform t = entity.GetComponent<Transform>();
+            TransformComponent t = entity.GetComponent<TransformComponent>();
             if (!Matrix4x4.Invert(t.Matrix, out Matrix4x4 invModel))
                 continue;
 
@@ -91,12 +91,12 @@ public static class ScenePicker
         Entity? bestIcon = null;
         float bestPix = IconRadiusPx;
 
-        foreach (Entity entity in scene.View<Transform>())
+        foreach (Entity entity in scene.View<TransformComponent>())
         {
-            if (entity.HasComponent<Sprite2D>())
+            if (entity.HasComponent<Sprite2DComponent>())
                 continue;
 
-            Transform t = entity.GetComponent<Transform>();
+            TransformComponent t = entity.GetComponent<TransformComponent>();
             if (!Project(t.WorldPosition, viewProjection, viewportPos, viewportSize, out Vector2 screen))
                 continue;
 
@@ -138,3 +138,4 @@ public static class ScenePicker
         return true;
     }
 }
+

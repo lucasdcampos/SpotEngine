@@ -170,9 +170,9 @@ public class SceneSerializer
 
         entityData.Tag = entity.GetComponent<TagComponent>();
 
-        if (entity.HasComponent<Transform>())
+        if (entity.HasComponent<TransformComponent>())
         {
-            var transform = entity.GetComponent<Transform>();
+            var transform = entity.GetComponent<TransformComponent>();
             entityData.Transform = new TransformData
             {
                 Enabled = transform.Enabled,
@@ -182,9 +182,9 @@ public class SceneSerializer
             };
         }
 
-        if (entity.HasComponent<Sprite2D>())
+        if (entity.HasComponent<Sprite2DComponent>())
         {
-            var sprite = entity.GetComponent<Sprite2D>();
+            var sprite = entity.GetComponent<Sprite2DComponent>();
             entityData.Sprite = new Sprite2DData
             {
                 Enabled = sprite.Enabled,
@@ -193,9 +193,9 @@ public class SceneSerializer
             };
         }
 
-        if (entity.HasComponent<MeshRenderer>())
+        if (entity.HasComponent<MeshComponent>())
         {
-            var meshRenderer = entity.GetComponent<MeshRenderer>();
+            var meshRenderer = entity.GetComponent<MeshComponent>();
             entityData.MeshRenderer = new MeshRendererData
             {
                 Enabled = meshRenderer.Enabled,
@@ -397,7 +397,7 @@ public class SceneSerializer
 
         if (entityData.Transform != null)
         {
-            var transform = entity.GetComponent<Transform>();
+            var transform = entity.GetComponent<TransformComponent>();
             transform.Position = new System.Numerics.Vector3(entityData.Transform.Position[0], entityData.Transform.Position[1], entityData.Transform.Position[2]);
             transform.Rotation = new System.Numerics.Vector3(entityData.Transform.Rotation[0], entityData.Transform.Rotation[1], entityData.Transform.Rotation[2]);
             transform.Scale = new System.Numerics.Vector3(entityData.Transform.Scale[0], entityData.Transform.Scale[1], entityData.Transform.Scale[2]);
@@ -405,7 +405,7 @@ public class SceneSerializer
 
         if (entityData.Sprite != null)
         {
-            var sprite = new Sprite2D();
+            var sprite = new Sprite2DComponent();
             sprite.Enabled = entityData.Sprite.Enabled;
             sprite.Color = new System.Numerics.Vector4(entityData.Sprite.Color[0], entityData.Sprite.Color[1], entityData.Sprite.Color[2], entityData.Sprite.Color[3]);
             if (!string.IsNullOrEmpty(entityData.Sprite.TexturePath))
@@ -425,7 +425,7 @@ public class SceneSerializer
 
         if (entityData.MeshRenderer != null)
         {
-            var meshRenderer = new MeshRenderer();
+            var meshRenderer = new MeshComponent();
             meshRenderer.Enabled = entityData.MeshRenderer.Enabled;
             meshRenderer.Color = new System.Numerics.Vector4(entityData.MeshRenderer.Color[0], entityData.MeshRenderer.Color[1], entityData.MeshRenderer.Color[2], entityData.MeshRenderer.Color[3]);
             if (!string.IsNullOrEmpty(entityData.MeshRenderer.ModelPath))

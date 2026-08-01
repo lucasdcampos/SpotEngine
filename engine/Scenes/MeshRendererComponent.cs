@@ -4,11 +4,11 @@ using Spot.Assets;
 namespace Spot.Scenes;
 
 /// <summary>
-/// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2D"/> it is
+/// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2DComponent"/> it is
 /// data-only: it holds what to draw (a <see cref="Assets.Model"/> and a color) and a render system
-/// draws it together with the entity's <see cref="Rendering.Transform"/>.
+/// draws it together with the entity's <see cref="Rendering.TransformComponent"/>.
 /// </summary>
-public sealed class MeshRenderer : Component
+public sealed class MeshComponent : Component
 {
     /// <summary>
     /// Gets or sets the model to draw. When <see langword="null"/>, nothing is drawn.
