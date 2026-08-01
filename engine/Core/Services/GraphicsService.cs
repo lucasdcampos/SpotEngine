@@ -14,6 +14,7 @@ public class GraphicsService : IEngineService
         Renderer.Init(gl);
         Renderer2D.Init();
         Renderer3D.Init();
+        PostProcessingRenderer.Init();
         ModelImporter.Register(new AssimpModelImporter());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     }

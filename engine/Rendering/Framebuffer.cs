@@ -3,6 +3,12 @@ using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
 
+public enum FramebufferFormat
+{
+    RGBA8,
+    RGBA16F
+}
+
 /// <summary>
 /// A rendering target that allows rendering a scene to a texture instead of the screen.
 /// </summary>
@@ -13,16 +19,18 @@ public sealed class Framebuffer : IDisposable
     private uint _colorAttachment;
     private uint _depthAttachment;
 
-    public Framebuffer(uint width, uint height)
+    public Framebuffer(uint width, uint height, FramebufferFormat format = FramebufferFormat.RGBA8)
     {
         _gl = Renderer.Gl;
         Width = width;
         Height = height;
+        Format = format;
         Invalidate();
     }
 
     public uint Width { get; private set; }
     public uint Height { get; private set; }
+    public FramebufferFormat Format { get; private set; }
 
     /// <summary>
     /// Gets the OpenGL texture handle for the color attachment.
@@ -74,7 +82,11 @@ public sealed class Framebuffer : IDisposable
 
         _colorAttachment = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, _colorAttachment);
-        _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, Width, Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, null);
+        
+        InternalFormat internalFmt = Format == FramebufferFormat.RGBA16F ? InternalFormat.Rgba16f : InternalFormat.Rgba8;
+        PixelType pixelType = Format == FramebufferFormat.RGBA16F ? PixelType.Float : PixelType.UnsignedByte;
+        
+        _gl.TexImage2D(TextureTarget.Texture2D, 0, internalFmt, Width, Height, 0, PixelFormat.Rgba, pixelType, null);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
         _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, _colorAttachment, 0);

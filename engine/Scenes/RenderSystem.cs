@@ -16,6 +16,8 @@ namespace Spot.Scenes;
 /// </remarks>
 public static class RenderSystem
 {
+    private static Framebuffer? s_hdrFramebuffer;
+
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
     /// </summary>
@@ -23,6 +25,43 @@ public static class RenderSystem
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
     public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
+        PostProcessingComponent? postProcess = null;
+        foreach (Entity entity in scene.View<PostProcessingComponent>())
+        {
+            if (!entity.IsActiveInHierarchy()) continue;
+            var pp = entity.GetComponent<PostProcessingComponent>();
+            if (pp.Enabled)
+            {
+                postProcess = pp;
+                break;
+            }
+        }
+
+        int[] currentFbo = new int[1];
+        int[] viewport = new int[4];
+        float[] clearColor = new float[4];
+
+        if (postProcess != null)
+        {
+            unsafe
+            {
+                fixed (int* ptr = currentFbo) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.FramebufferBinding, ptr);
+                fixed (int* ptr = viewport) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, ptr);
+                fixed (float* ptr = clearColor) Renderer.Api.GetFloat(Silk.NET.OpenGL.GLEnum.ColorClearValue, ptr);
+            }
+
+            if (s_hdrFramebuffer == null || s_hdrFramebuffer.Width != viewport[2] || s_hdrFramebuffer.Height != viewport[3])
+            {
+                s_hdrFramebuffer?.Dispose();
+                s_hdrFramebuffer = new Framebuffer((uint)viewport[2], (uint)viewport[3], FramebufferFormat.RGBA16F);
+            }
+
+            s_hdrFramebuffer.Bind();
+            Renderer.SetClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+            Renderer.Clear();
+            Renderer.Api.Viewport(0, 0, (uint)viewport[2], (uint)viewport[3]);
+        }
+
         bool hasDirLight = false;
         Vector3 dirLightDir = new Vector3(0, -1, 0);
         Vector3 dirLightColor = Vector3.One;
@@ -162,5 +201,13 @@ public static class RenderSystem
         }
 
         Renderer2D.EndScene();
+
+        if (postProcess != null && s_hdrFramebuffer != null)
+        {
+            Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)currentFbo[0]);
+            Renderer.Api.Viewport(viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
+            
+            PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess);
+        }
     }
 }
