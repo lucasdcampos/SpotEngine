@@ -48,6 +48,27 @@ public sealed class Framebuffer : IDisposable
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
+    /// <summary>
+    /// Copies this framebuffer's depth buffer into another framebuffer. Use this after compositing an
+    /// offscreen render (e.g. post-processing) back into a target so that geometry drawn into the
+    /// target afterwards is correctly occluded by what was rendered here.
+    /// </summary>
+    /// <param name="targetFramebuffer">The destination framebuffer object handle.</param>
+    /// <param name="x">Destination viewport x origin.</param>
+    /// <param name="y">Destination viewport y origin.</param>
+    /// <param name="width">Destination region width.</param>
+    /// <param name="height">Destination region height.</param>
+    public void BlitDepthTo(uint targetFramebuffer, int x, int y, uint width, uint height)
+    {
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _rendererId);
+        _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, targetFramebuffer);
+        _gl.BlitFramebuffer(
+            0, 0, (int)Width, (int)Height,
+            x, y, x + (int)width, y + (int)height,
+            ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, targetFramebuffer);
+    }
+
     public void Resize(uint width, uint height)
     {
         if (width == 0 || height == 0 || (Width == width && Height == height))

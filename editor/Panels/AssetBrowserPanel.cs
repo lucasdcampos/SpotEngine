@@ -38,7 +38,7 @@ public class AssetBrowserPanel
     private string _baseDirectory;
 
     private string _searchQuery = "";
-    private float _iconSize = 72.0f;
+    private float _iconSize = 84.0f;
     private string? _selectedPath;
     private string? _pendingNavigate;
 
@@ -121,7 +121,7 @@ public class AssetBrowserPanel
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, palette.FrameBgHovered);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 3));
 
-        if (ImGui.Button(BaseName(_baseDirectory)))
+        if (ImGui.Button($"{EditorIcons.FolderOpen}  {BaseName(_baseDirectory)}"))
         {
             _pendingNavigate = _baseDirectory;
         }
@@ -146,11 +146,12 @@ public class AssetBrowserPanel
         ImGui.PopStyleVar();
         ImGui.PopStyleColor(2);
 
-        // Right-aligned search box and thumbnail-size slider.
+        // Right-aligned search box (with a leading magnifier glyph) and thumbnail-size slider.
         const float sliderWidth = 90.0f;
         const float searchWidth = 200.0f;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
-        float rightGroup = searchWidth + spacing + sliderWidth;
+        float glyphWidth = ImGui.CalcTextSize(EditorIcons.Search).X;
+        float rightGroup = glyphWidth + 6.0f + searchWidth + spacing + sliderWidth;
         float offset = ImGui.GetContentRegionAvail().X - rightGroup;
         if (offset > 0)
         {
@@ -161,6 +162,9 @@ public class AssetBrowserPanel
             ImGui.SameLine();
         }
 
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextDisabled(EditorIcons.Search);
+        ImGui.SameLine(0, 6.0f);
         ImGui.SetNextItemWidth(searchWidth);
         ImGui.InputTextWithHint("##assetsearch", "Search...", ref _searchQuery, 128);
         ImGui.SameLine();
@@ -187,7 +191,7 @@ public class AssetBrowserPanel
             return;
         }
 
-        float pad = 8.0f;
+        float pad = 10.0f;
         float cellW = _iconSize + pad * 2;
         float cellH = _iconSize + pad * 2 + ImGui.GetTextLineHeight() + 4;
         float spacing = ImGui.GetStyle().ItemSpacing.X;

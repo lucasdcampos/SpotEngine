@@ -206,7 +206,14 @@ public static class RenderSystem
         {
             Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)currentFbo[0]);
             Renderer.Api.Viewport(viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
-            
+
+            // Carry the scene's depth from the HDR pass into the target buffer so anything drawn on top
+            // afterwards (e.g. the editor grid and world axes) is occluded by the geometry instead of
+            // showing through it. Skipped for the default framebuffer (game runtime), where nothing is
+            // drawn over the composite and its depth format may not match for a blit.
+            if (currentFbo[0] != 0)
+                s_hdrFramebuffer.BlitDepthTo((uint)currentFbo[0], viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
+
             PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess);
         }
     }

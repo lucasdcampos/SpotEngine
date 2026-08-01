@@ -14,7 +14,7 @@ namespace Spot.Editor.UI;
 /// </summary>
 public sealed class SceneIcons
 {
-    private const float GlyphRadiusPx = 13.0f;
+    private const float GlyphSizePx = 26.0f;   // font size for the billboard glyph (fits inside the disc)
     private const float DiscRadiusPx = 18.0f;
 
     /// <summary>
@@ -33,7 +33,7 @@ public sealed class SceneIcons
 
         foreach (var entity in scene.View<TransformComponent>())
         {
-            if (!TryPickIcon(entity, out EditorGui.EntityIcon kind))
+            if (!TryPickIcon(entity, out _))
             {
                 continue;
             }
@@ -60,7 +60,14 @@ public sealed class SceneIcons
                 drawList.AddCircle(screen, DiscRadiusPx, ImGui.GetColorU32(palette.GizmoHover), 20, 2.0f);
             }
 
-            EditorGui.DrawEntityIcon(drawList, kind, screen, GlyphRadiusPx);
+            // Draw the same icon-font glyph the Hierarchy uses (a camera reads as a camera, a light as a
+            // lightbulb), centered on the disc. The icons are merged into the body font, so the current
+            // font carries them.
+            string glyph = EditorGui.EntityGlyph(entity);
+            ImFontPtr font = ImGui.GetFont();
+            Vector2 ts = font.CalcTextSizeA(GlyphSizePx, float.MaxValue, 0.0f, glyph);
+            Vector2 glyphPos = screen - ts * 0.5f;
+            drawList.AddText(font, GlyphSizePx, glyphPos, ImGui.GetColorU32(palette.Text), glyph);
         }
 
         if (hovered != null)

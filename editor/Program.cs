@@ -1,4 +1,5 @@
 using Spot.Core;
+using Spot.Editor.UI;
 
 namespace Spot.Editor;
 
@@ -6,13 +7,25 @@ public static class Program
 {
     public static void Main(string[] args)
     {
+        string fontsDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Fonts");
         var spec = new ApplicationSpec
         {
             Name = "Spot.Editor",
             // Start at the launcher's compact size; the editor restores its own size when it loads.
             Window = new WindowSpec { Title = "Spot Launcher", Width = 1000, Height = 620 },
-            FontPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Fonts", "Inter-Regular.ttf"),
-            FontSize = 16
+            FontPath = System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"),
+            FontSize = 16,
+            // Extra atlas fonts, resolved by EditorFonts in registration order: a heavier Inter for
+            // titles and JetBrains Mono for the console. Keep this order in sync with EditorFonts.
+            AdditionalFonts =
+            {
+                new FontSpec(System.IO.Path.Combine(fontsDir, "Inter-Medium.ttf"), 17.0f),
+                new FontSpec(System.IO.Path.Combine(fontsDir, "JetBrainsMono-Regular.ttf"), 15.0f),
+            },
+            // Font Awesome 6 (Solid) merged into the body font so its glyphs render inline with text,
+            // matched to the 16px body size.
+            IconFont = new IconFontSpec(
+                System.IO.Path.Combine(fontsDir, "fa-solid-900.ttf"), 16.0f, EditorIcons.GlyphRanges),
         };
 
         try

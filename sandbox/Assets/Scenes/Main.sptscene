@@ -68,235 +68,6 @@
     },
     {
       "Tag": {
-        "Name": "Floor",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          0,
-          -6.3039484,
-          0
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          100,
-          1,
-          100
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": {
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Grass.sptmat",
-        "Enabled": true
-      },
-      "Scripts": null,
-      "Camera": null,
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": {
-        "Velocity": [
-          0,
-          0,
-          0
-        ],
-        "GravityScale": 1,
-        "IsDynamic": false,
-        "Enabled": false
-      },
-      "BoxCollider3D": {
-        "Size": [
-          50,
-          1,
-          50
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ],
-        "Enabled": true
-      },
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
-        "Name": "Player",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          0,
-          -4.6939235,
-          0
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          1,
-          1,
-          1
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": null,
-      "Scripts": {
-        "ScriptNames": [
-          "FirstPersonController"
-        ],
-        "Enabled": true
-      },
-      "Camera": {
-        "Primary": true,
-        "FixedAspectRatio": false,
-        "ZoomLevel": 6,
-        "BackgroundColor": [
-          0.08,
-          0.09,
-          0.12,
-          1
-        ],
-        "ProjectionType": 1,
-        "FieldOfView": 60,
-        "Enabled": true
-      },
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": null,
-      "BoxCollider3D": null,
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          0,
-          -5.961839,
-          0
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          10,
-          1,
-          10
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": {
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Bricks.sptmat",
-        "Enabled": true
-      },
-      "Scripts": null,
-      "Camera": null,
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": null,
-      "BoxCollider3D": {
-        "Size": [
-          10,
-          1,
-          10
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ],
-        "Enabled": true
-      },
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
-        "Name": "Water",
-        "Enabled": true
-      },
-      "Transform": {
-        "Position": [
-          0,
-          -6.2939634,
-          0
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          25,
-          1,
-          25
-        ],
-        "Enabled": true
-      },
-      "Sprite": null,
-      "MeshRenderer": {
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ],
-        "ModelPath": "primitive:Plane",
-        "MaterialPath": "Materials/Water.sptmat",
-        "Enabled": true
-      },
-      "Scripts": null,
-      "Camera": null,
-      "PhysicsBody2D": null,
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": null,
-      "BoxCollider3D": null,
-      "PostProcessing": null,
-      "Children": null
-    },
-    {
-      "Tag": {
         "Name": "Post Processing",
         "Enabled": true
       },
@@ -340,6 +111,384 @@
         "Enabled": true
       },
       "Children": null
+    },
+    {
+      "Tag": {
+        "Name": "Empty Entity",
+        "Enabled": true
+      },
+      "Transform": {
+        "Position": [
+          0,
+          5.9957056,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true
+      },
+      "Sprite": null,
+      "MeshRenderer": null,
+      "Scripts": null,
+      "Camera": null,
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "Light": null,
+      "DynamicClouds": null,
+      "PhysicsBody3D": null,
+      "BoxCollider3D": null,
+      "PostProcessing": null,
+      "Children": [
+        {
+          "Tag": {
+            "Name": "Player",
+            "Enabled": true
+          },
+          "Transform": {
+            "Position": [
+              0,
+              -4.456316,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              1,
+              2,
+              1
+            ],
+            "Enabled": true
+          },
+          "Sprite": null,
+          "MeshRenderer": {
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "ModelPath": "primitive:Cube",
+            "MaterialPath": null,
+            "Enabled": true
+          },
+          "Scripts": null,
+          "Camera": null,
+          "PhysicsBody2D": null,
+          "BoxCollider2D": null,
+          "DirectionalLight": null,
+          "Light": null,
+          "DynamicClouds": null,
+          "PhysicsBody3D": {
+            "Velocity": [
+              0,
+              0,
+              0
+            ],
+            "GravityScale": 1,
+            "IsDynamic": true,
+            "Enabled": true
+          },
+          "BoxCollider3D": {
+            "Size": [
+              1,
+              1,
+              1
+            ],
+            "Offset": [
+              0,
+              0,
+              0
+            ],
+            "Enabled": true
+          },
+          "PostProcessing": null,
+          "Children": [
+            {
+              "Tag": {
+                "Name": "Camera",
+                "Enabled": true
+              },
+              "Transform": {
+                "Position": [
+                  0,
+                  0.37209502,
+                  0
+                ],
+                "Rotation": [
+                  0,
+                  0,
+                  0
+                ],
+                "Scale": [
+                  1,
+                  1,
+                  1
+                ],
+                "Enabled": true
+              },
+              "Sprite": null,
+              "MeshRenderer": null,
+              "Scripts": null,
+              "Camera": {
+                "Primary": true,
+                "FixedAspectRatio": false,
+                "ZoomLevel": 5,
+                "BackgroundColor": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "ProjectionType": 1,
+                "FieldOfView": 45,
+                "Enabled": true
+              },
+              "PhysicsBody2D": null,
+              "BoxCollider2D": null,
+              "DirectionalLight": null,
+              "Light": null,
+              "DynamicClouds": null,
+              "PhysicsBody3D": null,
+              "BoxCollider3D": null,
+              "PostProcessing": null,
+              "Children": null
+            },
+            {
+              "Tag": {
+                "Name": "Eyes",
+                "Enabled": true
+              },
+              "Transform": {
+                "Position": [
+                  0.44142678,
+                  0.35173017,
+                  0
+                ],
+                "Rotation": [
+                  0,
+                  0,
+                  0
+                ],
+                "Scale": [
+                  0.25958738,
+                  0.08679575,
+                  0.85885715
+                ],
+                "Enabled": true
+              },
+              "Sprite": null,
+              "MeshRenderer": {
+                "Color": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "ModelPath": "primitive:Cube",
+                "MaterialPath": null,
+                "Enabled": true
+              },
+              "Scripts": null,
+              "Camera": null,
+              "PhysicsBody2D": null,
+              "BoxCollider2D": null,
+              "DirectionalLight": null,
+              "Light": null,
+              "DynamicClouds": null,
+              "PhysicsBody3D": null,
+              "BoxCollider3D": null,
+              "PostProcessing": null,
+              "Children": null
+            }
+          ]
+        },
+        {
+          "Tag": {
+            "Name": "Water",
+            "Enabled": true
+          },
+          "Transform": {
+            "Position": [
+              0,
+              -6.2939634,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              25,
+              1,
+              25
+            ],
+            "Enabled": true
+          },
+          "Sprite": null,
+          "MeshRenderer": {
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "ModelPath": "primitive:Plane",
+            "MaterialPath": "Materials/Water.sptmat",
+            "Enabled": true
+          },
+          "Scripts": null,
+          "Camera": null,
+          "PhysicsBody2D": null,
+          "BoxCollider2D": null,
+          "DirectionalLight": null,
+          "Light": null,
+          "DynamicClouds": null,
+          "PhysicsBody3D": null,
+          "BoxCollider3D": null,
+          "PostProcessing": null,
+          "Children": null
+        },
+        {
+          "Tag": {
+            "Name": "Cube",
+            "Enabled": true
+          },
+          "Transform": {
+            "Position": [
+              0,
+              -5.961839,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              10,
+              1,
+              10
+            ],
+            "Enabled": true
+          },
+          "Sprite": null,
+          "MeshRenderer": {
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "ModelPath": "primitive:Cube",
+            "MaterialPath": "Materials/Bricks.sptmat",
+            "Enabled": true
+          },
+          "Scripts": null,
+          "Camera": null,
+          "PhysicsBody2D": null,
+          "BoxCollider2D": null,
+          "DirectionalLight": null,
+          "Light": null,
+          "DynamicClouds": null,
+          "PhysicsBody3D": null,
+          "BoxCollider3D": {
+            "Size": [
+              10,
+              1,
+              10
+            ],
+            "Offset": [
+              0,
+              0,
+              0
+            ],
+            "Enabled": true
+          },
+          "PostProcessing": null,
+          "Children": null
+        },
+        {
+          "Tag": {
+            "Name": "Floor",
+            "Enabled": true
+          },
+          "Transform": {
+            "Position": [
+              0,
+              -6.3039484,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              100,
+              1,
+              100
+            ],
+            "Enabled": true
+          },
+          "Sprite": null,
+          "MeshRenderer": {
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "ModelPath": "primitive:Cube",
+            "MaterialPath": "Materials/Grass.sptmat",
+            "Enabled": true
+          },
+          "Scripts": null,
+          "Camera": null,
+          "PhysicsBody2D": null,
+          "BoxCollider2D": null,
+          "DirectionalLight": null,
+          "Light": null,
+          "DynamicClouds": null,
+          "PhysicsBody3D": {
+            "Velocity": [
+              0,
+              0,
+              0
+            ],
+            "GravityScale": 1,
+            "IsDynamic": false,
+            "Enabled": false
+          },
+          "BoxCollider3D": {
+            "Size": [
+              50,
+              1,
+              50
+            ],
+            "Offset": [
+              0,
+              0,
+              0
+            ],
+            "Enabled": true
+          },
+          "PostProcessing": null,
+          "Children": null
+        }
+      ]
     }
   ]
 }

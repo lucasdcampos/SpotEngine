@@ -75,23 +75,26 @@ public sealed class EditorPalette
 /// </summary>
 public sealed class EditorStyleMetrics
 {
-    public float WindowRounding = 4.0f;
-    public float ChildRounding = 4.0f;
-    public float FrameRounding = 3.0f;
-    public float PopupRounding = 3.0f;
-    public float TabRounding = 4.0f;
-    public float GrabRounding = 3.0f;
-    public float ScrollbarRounding = 3.0f;
+    public float WindowRounding = 6.0f;
+    public float ChildRounding = 5.0f;
+    public float FrameRounding = 4.0f;
+    public float PopupRounding = 5.0f;
+    public float TabRounding = 5.0f;
+    public float GrabRounding = 4.0f;
+    public float ScrollbarRounding = 4.0f;
 
     public float WindowBorderSize = 1.0f;
     public float FrameBorderSize = 0.0f;
+    public float PopupBorderSize = 1.0f;
+    public float TabBorderSize = 0.0f;
 
-    public Vector2 WindowPadding = new(10.0f, 10.0f);
-    public Vector2 FramePadding = new(8.0f, 5.0f);
+    public Vector2 WindowPadding = new(10.0f, 8.0f);
+    public Vector2 FramePadding = new(9.0f, 5.0f);
     public Vector2 ItemSpacing = new(8.0f, 6.0f);
     public Vector2 ItemInnerSpacing = new(6.0f, 4.0f);
+    public Vector2 CellPadding = new(6.0f, 4.0f);
 
-    public float ScrollbarSize = 12.0f;
+    public float ScrollbarSize = 11.0f;
     public float GrabMinSize = 10.0f;
     public float IndentSpacing = 20.0f;
 }
@@ -154,24 +157,31 @@ public sealed class EditorTheme
         Set(ImGuiCol.ButtonHovered, p.ButtonHovered);
         Set(ImGuiCol.ButtonActive, p.ButtonActive);
 
-        // Header slots drive selectables, tree nodes and collapsing headers => use the accent.
-        Set(ImGuiCol.Header, WithAlpha(p.Accent, 0.55f));
-        Set(ImGuiCol.HeaderHovered, WithAlpha(p.Accent, 0.75f));
+        // Header slots drive selectables, tree nodes and collapsing headers. A solid accent marks the
+        // selected row (hierarchy, menus) while hover stays a soft accent tint so it reads as feedback,
+        // not a second selection.
+        Set(ImGuiCol.Header, WithAlpha(p.Accent, 0.85f));
+        Set(ImGuiCol.HeaderHovered, WithAlpha(p.Accent, 0.28f));
         Set(ImGuiCol.HeaderActive, p.Accent);
 
         Set(ImGuiCol.Separator, p.Separator);
         Set(ImGuiCol.SeparatorHovered, WithAlpha(p.Accent, 0.6f));
         Set(ImGuiCol.SeparatorActive, p.Accent);
 
-        Set(ImGuiCol.ResizeGrip, WithAlpha(p.Accent, 0.25f));
+        Set(ImGuiCol.ResizeGrip, WithAlpha(p.Accent, 0.20f));
         Set(ImGuiCol.ResizeGripHovered, WithAlpha(p.Accent, 0.55f));
         Set(ImGuiCol.ResizeGripActive, WithAlpha(p.Accent, 0.85f));
 
+        // Tabs: the focused, selected tab lifts to the header tone; everything else recedes into the
+        // dock so the active document is unmistakable without a heavy outline.
         Set(ImGuiCol.Tab, p.TabBg);
         Set(ImGuiCol.TabHovered, p.TabHovered);
         Set(ImGuiCol.TabActive, p.TabActive);
         Set(ImGuiCol.TabUnfocused, p.TabBg);
-        Set(ImGuiCol.TabUnfocusedActive, p.HeaderBg);
+        Set(ImGuiCol.TabUnfocusedActive, Lighten(p.TabBg, 0.05f));
+
+        Set(ImGuiCol.DockingPreview, WithAlpha(p.Accent, 0.35f));
+        Set(ImGuiCol.DockingEmptyBg, p.TitleBg);
 
         Set(ImGuiCol.PlotLines, p.Accent);
         Set(ImGuiCol.PlotHistogram, p.Accent);
@@ -187,24 +197,32 @@ public sealed class EditorTheme
 
         style.WindowBorderSize = Metrics.WindowBorderSize;
         style.FrameBorderSize = Metrics.FrameBorderSize;
+        style.ChildBorderSize = 0.0f;   // component cards paint their own hairline; avoid doubled lines
+        style.PopupBorderSize = Metrics.PopupBorderSize;
+        style.TabBorderSize = Metrics.TabBorderSize;
+        style.SeparatorTextBorderSize = 1.0f;
 
         style.WindowPadding = Metrics.WindowPadding;
         style.FramePadding = Metrics.FramePadding;
         style.ItemSpacing = Metrics.ItemSpacing;
         style.ItemInnerSpacing = Metrics.ItemInnerSpacing;
+        style.CellPadding = Metrics.CellPadding;
 
         style.ScrollbarSize = Metrics.ScrollbarSize;
         style.GrabMinSize = Metrics.GrabMinSize;
         style.IndentSpacing = Metrics.IndentSpacing;
 
         style.WindowTitleAlign = new Vector2(0.0f, 0.5f);
+        style.ButtonTextAlign = new Vector2(0.5f, 0.5f);
         style.WindowMenuButtonPosition = ImGuiDir.None;
 
         // Mirror the log colors onto the engine-owned developer console (the engine does not
         // reference the editor, so the theme pushes these values instead of the console pulling them).
+        // The monospaced font is handed over the same way so the console reads like a terminal.
         Spot.Console.DevConsole.DefaultTextColor = p.LogText;
         Spot.Console.DevConsole.CommandColor = p.LogCommand;
         Spot.Console.DevConsole.ErrorColor = p.LogError;
+        Spot.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);

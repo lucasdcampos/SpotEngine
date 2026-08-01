@@ -14,8 +14,8 @@
   "Metallic": 0,
   "NormalMapPath": "Textures/grass_normal.jpg",
   "Tiling": [
-    1,
-    1
+    0.5,
+    0.5
   ],
   "AutoTile": true
 }

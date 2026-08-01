@@ -23,6 +23,12 @@ public class HierarchyPanel
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
         ImGui.Begin("Hierarchy", ref open, flags);
 
+        // Deeper child indentation and a little extra row spacing make the nesting readable at a glance
+        // without changing any behavior.
+        var style = ImGui.GetStyle();
+        ImGui.PushStyleVar(ImGuiStyleVar.IndentSpacing, 24.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(style.ItemSpacing.X, 5.0f));
+
         if (_context.ActiveScene != null)
         {
             var view = _context.ActiveScene.View<TagComponent>();
@@ -87,6 +93,7 @@ public class HierarchyPanel
             }
         }
 
+        ImGui.PopStyleVar(2);
         ImGui.End();
     }
 
@@ -187,10 +194,8 @@ public class HierarchyPanel
             flags |= ImGuiTreeNodeFlags.Leaf;
         }
         
-        // Reserve room at the start of the label for a type icon, drawn afterwards over that space.
-        var iconKind = EditorGui.IconFor(entity);
-        float iconSize = ImGui.GetTextLineHeight();
-        string label = EditorGui.IconPadding(iconSize + 4.0f) + name;
+        // A monochrome icon-font glyph precedes the name; its uniform advance keeps names aligned.
+        string label = EditorGui.EntityGlyph(entity) + "   " + name;
 
         bool active = entity.IsActiveInHierarchy();
         if (!active) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1.0f));
@@ -198,14 +203,6 @@ public class HierarchyPanel
         bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, label);
 
         if (!active) ImGui.PopStyleColor();
-
-        // Draw the type icon just after the tree arrow, vertically centered on the row.
-        var drawList = ImGui.GetWindowDrawList();
-        Vector2 rectMin = ImGui.GetItemRectMin();
-        float rowHeight = ImGui.GetItemRectSize().Y;
-        float iconLeft = rectMin.X + ImGui.GetTreeNodeToLabelSpacing();
-        Vector2 iconCenter = new(iconLeft + iconSize * 0.5f, rectMin.Y + rowHeight * 0.5f);
-        EditorGui.DrawEntityIcon(drawList, iconKind, iconCenter, iconSize * 0.42f, active ? 1.0f : 0.5f);
 
         if (ImGui.IsItemClicked())
         {

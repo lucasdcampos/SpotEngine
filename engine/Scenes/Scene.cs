@@ -92,12 +92,18 @@ public class Scene
             Renderer.Clear();
             
             if (is3D)
+            {
                 Renderer.SetDepthTest(true);
+                Renderer.SetFaceCulling(true);
+            }
                 
             RenderSystem.Render(this, viewProjection.Value);
             
             if (is3D)
+            {
                 Renderer.SetDepthTest(false);
+                Renderer.SetFaceCulling(false);
+            }
         }
     }
 

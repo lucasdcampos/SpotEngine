@@ -161,26 +161,50 @@ public static class EditorGui
     {
         if (!entity.HasComponent(type)) return;
 
+        var p = Palette;
         ImGui.PushID(type.Name);
 
+        // Each component is its own card: a rounded, hairline-bordered surface that auto-sizes to its
+        // content, with a little air between cards so sections read as distinct groups rather than one
+        // continuous list. A child window (not a draw-list channel split) is used deliberately — the
+        // property rows below use ImGui.Columns, which owns the window's draw-list splitter, so wrapping
+        // them in our own split would corrupt rendering. The child gives each card its own draw list.
+        ImGui.Dummy(new Vector2(0.0f, 3.0f));
+
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, Lighten(p.WindowBg, 0.02f));
+        ImGui.PushStyleColor(ImGuiCol.Border, p.Border);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(10.0f, 8.0f));
+
+        ImGui.BeginChild("card", new Vector2(0.0f, 0.0f),
+            ImGuiChildFlags.AutoResizeY | ImGuiChildFlags.Border);
+
+        // Header row: a plain (unframed) collapsing node so the title sits on the card surface, with a
+        // hairline divider under it — matching the "▼ Title / ---- / fields" layout of pro inspectors.
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.AllowOverlap
-            | ImGuiTreeNodeFlags.Framed | ImGuiTreeNodeFlags.FramePadding;
+            | ImGuiTreeNodeFlags.FramePadding;
         if (defaultOpen) flags |= ImGuiTreeNodeFlags.DefaultOpen;
 
-        var p = Palette;
-        ImGui.PushStyleColor(ImGuiCol.Header, p.HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Lighten(p.HeaderBg, 0.06f));
-        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Lighten(p.HeaderBg, 0.1f));
+        ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0, 0, 0, 0));
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, WithAlpha(p.Text, 0.06f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, WithAlpha(p.Text, 0.10f));
+        EditorFonts.PushTitle();
         bool opened = ImGui.TreeNodeEx(title, flags);
+        EditorFonts.Pop();
         ImGui.PopStyleColor(3);
 
         bool removeRequested = false;
         if (removable)
         {
             float size = ImGui.GetFrameHeight();
-            ImGui.SameLine(ImGui.GetWindowWidth() - size - ImGui.GetStyle().FramePadding.X * 2.0f);
-            if (ImGui.Button("...", new Vector2(size, size)))
+            ImGui.SameLine(ImGui.GetWindowWidth() - size - ImGui.GetStyle().WindowPadding.X);
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, WithAlpha(p.Text, 0.10f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, WithAlpha(p.Text, 0.16f));
+            if (ImGui.Button(EditorIcons.EllipsisV, new Vector2(size, size)))
                 ImGui.OpenPopup("ComponentSettings");
+            ImGui.PopStyleColor(3);
             if (ImGui.BeginPopup("ComponentSettings"))
             {
                 if (ImGui.MenuItem("Remove component"))
@@ -191,9 +215,23 @@ public static class EditorGui
 
         if (opened)
         {
+            // Divider between the header and the properties, inset to the card's padding.
+            ImGui.Spacing();
+            var dl = ImGui.GetWindowDrawList();
+            Vector2 lineStart = ImGui.GetCursorScreenPos();
+            float innerWidth = ImGui.GetContentRegionAvail().X;
+            dl.AddLine(lineStart, lineStart + new Vector2(innerWidth, 0.0f),
+                ImGui.GetColorU32(p.Separator), 1.0f);
+            ImGui.Dummy(new Vector2(0.0f, 4.0f));
+
             drawContents();
             ImGui.TreePop();
         }
+
+        ImGui.EndChild();
+
+        ImGui.PopStyleVar(3);
+        ImGui.PopStyleColor(2);
 
         if (removeRequested)
             entity.RemoveComponent(type);
@@ -230,6 +268,17 @@ public static class EditorGui
         if (entity.HasComponent<Sprite2DComponent>()) return EntityIcon.Sprite;
         return EntityIcon.Empty;
     }
+
+    /// <summary>The monochrome icon-font glyph that best represents what an entity is.</summary>
+    public static string EntityGlyph(Entity entity) => IconFor(entity) switch
+    {
+        EntityIcon.Camera => EditorIcons.Camera,
+        EntityIcon.Light => EditorIcons.Lightbulb,
+        EntityIcon.Mesh => EditorIcons.Cube,
+        EntityIcon.Sprite => EditorIcons.Image,
+        EntityIcon.Skybox => EditorIcons.Cloud,
+        _ => EditorIcons.Circle,
+    };
 
     /// <summary>
     /// A string of spaces at least <paramref name="width"/> pixels wide, used to reserve room at the
@@ -340,7 +389,10 @@ public static class EditorGui
         ImGui.Columns(2, "row", false);
         ImGui.SetColumnWidth(0, LabelColumnWidth);
         ImGui.AlignTextToFramePadding();
+        // Labels sit one notch below the value text so the eye lands on the editable field first.
+        ImGui.PushStyleColor(ImGuiCol.Text, WithAlpha(Palette.Text, 0.82f));
         ImGui.TextUnformatted(label);
+        ImGui.PopStyleColor();
         ImGui.NextColumn();
     }
 
@@ -393,6 +445,8 @@ public static class EditorGui
         Math.Clamp(c.Y + amount, 0.0f, 1.0f),
         Math.Clamp(c.Z + amount, 0.0f, 1.0f),
         c.W);
+
+    private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);
 
     // ----- Asset Slots -----------------------------------------------------------------------------
 
