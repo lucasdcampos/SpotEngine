@@ -131,6 +131,11 @@ public sealed class Material
             var checker = new Material { SourcePath = path };
             checker.Texture = Texture2D.CreateCheckerboard();
             checker.TexturePath = path;
+            // Auto-tile so the checker squares keep a constant world size instead of stretching across
+            // scaled objects (e.g. a 100x100 ground). Tiling 0.25 over the 8-square texture yields
+            // ~0.5-unit squares; tweak Tiling in the inspector for a finer/coarser grid.
+            checker.AutoTile = true;
+            checker.Tiling = new Vector2(0.25f, 0.25f);
             s_cache[path] = checker;
             return checker;
         }
