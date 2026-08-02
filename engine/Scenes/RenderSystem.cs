@@ -121,6 +121,13 @@ public static class RenderSystem
             }
         }
         
+        if (Spot.Rendering.RendererDebug.Fullbright)
+        {
+            hasDirLight = false;
+            castShadows = false;
+            pointLightCount = 0;
+        }
+
         if (castShadows)
         {
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
@@ -138,6 +145,11 @@ public static class RenderSystem
                 }
             }
             Renderer3D.EndShadowPass();
+        }
+
+        if (Spot.Rendering.RendererDebug.Wireframe)
+        {
+            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Line);
         }
 
         Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount));
@@ -180,6 +192,11 @@ public static class RenderSystem
         }
 
         Renderer3D.EndScene();
+
+        if (Spot.Rendering.RendererDebug.Wireframe)
+        {
+            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Fill);
+        }
 
         Renderer2D.BeginScene(viewProjection);
 

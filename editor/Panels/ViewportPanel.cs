@@ -83,6 +83,20 @@ public class ViewportPanel
                     Spot.Physics.PhysicsDebug.ShowColliders = showColliders;
                 }
 
+                ImGui.SameLine();
+                bool fullbright = Spot.Rendering.RendererDebug.Fullbright;
+                if (ImGui.Checkbox("Fullbright", ref fullbright))
+                {
+                    Spot.Rendering.RendererDebug.Fullbright = fullbright;
+                }
+                
+                ImGui.SameLine();
+                bool wireframe = Spot.Rendering.RendererDebug.Wireframe;
+                if (ImGui.Checkbox("Wireframe", ref wireframe))
+                {
+                    Spot.Rendering.RendererDebug.Wireframe = wireframe;
+                }
+
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
                 {
                     // Render Camera Preview in bottom right
