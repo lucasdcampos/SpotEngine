@@ -440,8 +440,13 @@ public static class Renderer3D
         out vec4 fragColor;
         
         uniform mat4 uInverseViewProjection;
+        
+        uniform vec3 uSkyColor;
+        uniform vec3 uGroundColor;
+        
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
+        uniform int uHasDirLight;
         
         void main()
         {
@@ -455,32 +460,22 @@ public static class Renderer3D
             
             vec3 rayDir = normalize(farPos.xyz - nearPos.xyz);
             
-            vec3 skyColorTop = vec3(0.1, 0.4, 0.8) * uLightColor;
-            vec3 skyColorBottom = vec3(0.6, 0.8, 1.0) * uLightColor;
-            vec3 groundColorDay = vec3(0.15, 0.15, 0.15) * uLightColor;
-            
-            vec3 nightSkyTop = vec3(0.01, 0.02, 0.05);
-            vec3 nightSkyBottom = vec3(0.05, 0.05, 0.1);
-            vec3 groundColorNight = vec3(0.01, 0.01, 0.01);
-            
-            float sunHeight = smoothstep(-0.2, 0.2, uLightDir.y);
-            
             float skyGradient = smoothstep(0.0, 1.0, rayDir.y);
-            vec3 daySky = mix(skyColorBottom, skyColorTop, skyGradient);
-            vec3 nightSky = mix(nightSkyBottom, nightSkyTop, skyGradient);
+            vec3 sky = mix(uSkyColor, uSkyColor * 0.5, skyGradient);
             
             float groundMix = 1.0 - smoothstep(-0.05, 0.0, rayDir.y);
-            vec3 dayColor = mix(daySky, groundColorDay, groundMix);
-            vec3 nightColor = mix(nightSky, groundColorNight, groundMix);
+            vec3 finalSky = mix(sky, uGroundColor, groundMix);
             
-            vec3 finalSky = mix(nightColor, dayColor, sunHeight);
-            
-            float sunDot = dot(rayDir, uLightDir);
-            float sunGlow = smoothstep(0.95, 1.0, sunDot);
-            float sunDisc = smoothstep(0.998, 1.0, sunDot);
-            
-            finalSky += uLightColor * sunGlow * 0.5 * sunHeight;
-            finalSky += uLightColor * sunDisc * 2.0 * sunHeight;
+            if (uHasDirLight == 1)
+            {
+                float sunHeight = smoothstep(-0.2, 0.2, uLightDir.y);
+                float sunDot = dot(rayDir, uLightDir);
+                float sunGlow = smoothstep(0.95, 1.0, sunDot);
+                float sunDisc = smoothstep(0.998, 1.0, sunDot);
+                
+                finalSky += uLightColor * sunGlow * 0.5 * sunHeight;
+                finalSky += uLightColor * sunDisc * 2.0 * sunHeight;
+            }
             
             fragColor = vec4(finalSky, 1.0);
         }
@@ -949,17 +944,22 @@ public static class Renderer3D
     }
 
     /// <summary>
-    /// Draws the procedural skybox based on the directional light.
+    /// Draws the procedural skybox.
     /// </summary>
-    public static void DrawSkybox()
+    public static void DrawSkybox(Vector3 skyColor, Vector3 groundColor)
     {
-        if (s_skyboxShader == null || s_emptyVao == null || s_hasDirLight == 0) return;
+        if (s_skyboxShader == null || s_emptyVao == null) return;
 
         Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
         s_skyboxShader.Use();
         s_skyboxShader.SetUniform("uInverseViewProjection", invViewProj);
+        
+        s_skyboxShader.SetUniform("uSkyColor", skyColor);
+        s_skyboxShader.SetUniform("uGroundColor", groundColor);
+        
         s_skyboxShader.SetUniform("uLightDir", s_lightDir);
         s_skyboxShader.SetUniform("uLightColor", s_lightColor);
+        s_skyboxShader.SetUniform("uHasDirLight", s_hasDirLight);
 
         Renderer.SetDepthTest(false);
         Renderer.DrawArrays(s_emptyVao, 3);

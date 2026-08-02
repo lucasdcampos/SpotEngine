@@ -69,11 +69,17 @@ public class ApplicationSpec
 /// </summary>
 public sealed class FontSpec
 {
-    /// <summary>Creates a font spec from a <c>.ttf</c> path and a pixel size.</summary>
-    public FontSpec(string path, float size)
+    /// <summary>
+    /// Creates a font spec from a <c>.ttf</c> path and a pixel size. Pass <paramref name="glyphRanges"/>
+    /// (an ImGui <c>[lo, hi, …, 0]</c> array) to bake only a tight set of codepoints — e.g. an icon font
+    /// at a large size for use as its own standalone face; it must stay referenced by the caller (the
+    /// engine pins it while the atlas is built). When null, the font's default (Latin) ranges are baked.
+    /// </summary>
+    public FontSpec(string path, float size, ushort[]? glyphRanges = null)
     {
         Path = path;
         Size = size;
+        GlyphRanges = glyphRanges;
     }
 
     /// <summary>The path to the <c>.ttf</c> file.</summary>
@@ -81,6 +87,9 @@ public sealed class FontSpec
 
     /// <summary>The pixel size to rasterize the font at.</summary>
     public float Size { get; }
+
+    /// <summary>An optional tight glyph range (<c>[lo, hi, …, 0]</c>); null bakes the default ranges.</summary>
+    public ushort[]? GlyphRanges { get; }
 }
 
 /// <summary>

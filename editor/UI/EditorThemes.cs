@@ -24,40 +24,40 @@ public static class EditorThemes
         Palette = new EditorPalette
         {
             // Surfaces climb in brightness so depth reads from tone, not heavy borders.
-            WindowBg = Rgb(32, 33, 36),     // docked panels
-            ChildBg = Rgb(29, 30, 33),      // inset regions (console output, asset grid)
-            PopupBg = Rgb(37, 38, 42, 0.98f),
-            HeaderBg = Rgb(43, 44, 49),     // menu bar, title bars, component header strips
-            Border = Rgb(58, 58, 61, 0.55f),
+            WindowBg = Rgb(21, 21, 21),     // docked panels
+            ChildBg = Rgb(15, 15, 15),      // inset regions (console output, asset grid)
+            PopupBg = Rgb(30, 30, 30, 0.98f),
+            HeaderBg = Rgb(26, 26, 26),     // menu bar, title bars, component header strips
+            Border = Rgb(40, 40, 40, 0.8f),
 
-            Text = Rgb(232, 232, 232),
-            TextDisabled = Rgb(122, 122, 126),
+            Text = Rgb(200, 200, 200),
+            TextDisabled = Rgb(100, 100, 100),
 
-            Accent = Rgb(77, 132, 255),
-            AccentHovered = Rgb(107, 154, 255),
-            AccentActive = Rgb(61, 112, 230),
+            Accent = Rgb(0, 112, 224),
+            AccentHovered = Rgb(25, 137, 249),
+            AccentActive = Rgb(0, 85, 170),
 
-            FrameBg = Rgb(46, 48, 53),
-            FrameBgHovered = Rgb(60, 63, 70),
-            FrameBgActive = Rgb(69, 72, 80),
+            FrameBg = Rgb(10, 10, 10),
+            FrameBgHovered = Rgb(35, 35, 35),
+            FrameBgActive = Rgb(45, 45, 45),
 
-            TitleBg = Rgb(26, 27, 29),
-            TitleBgActive = Rgb(32, 33, 36),
+            TitleBg = Rgb(15, 15, 15),
+            TitleBgActive = Rgb(21, 21, 21),
 
-            TabBg = Rgb(26, 27, 29),        // inactive tabs recede into the dock
-            TabActive = Rgb(43, 44, 49),    // the selected tab lifts to the header tone
-            TabHovered = Rgb(56, 58, 64),
+            TabBg = Rgb(15, 15, 15),        // inactive tabs recede into the dock
+            TabActive = Rgb(35, 35, 35),    // the selected tab lifts to the header tone
+            TabHovered = Rgb(45, 45, 45),
 
             ScrollbarBg = Rgb(0, 0, 0, 0.0f),
-            ScrollbarGrab = Rgb(62, 64, 70),
+            ScrollbarGrab = Rgb(45, 45, 45),
 
-            Button = Rgb(52, 54, 60),
-            ButtonHovered = Rgb(66, 69, 77),
-            ButtonActive = Rgb(61, 112, 230),
+            Button = Rgb(35, 35, 35),
+            ButtonHovered = Rgb(50, 50, 50),
+            ButtonActive = Rgb(0, 112, 224),
 
-            CheckMark = Rgb(77, 132, 255),
-            SliderGrab = Rgb(77, 132, 255),
-            Separator = Rgb(52, 53, 57),
+            CheckMark = Rgb(0, 112, 224),
+            SliderGrab = Rgb(0, 112, 224),
+            Separator = Rgb(35, 35, 35),
 
             // Softer, desaturated axis colors so property fields read calm, not neon.
             AxisX = Rgb(196, 91, 94),

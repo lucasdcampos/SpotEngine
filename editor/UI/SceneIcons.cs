@@ -83,7 +83,7 @@ public sealed class SceneIcons
     {
         if (entity.HasComponent<CameraComponent>()) { kind = EditorGui.EntityIcon.Camera; return true; }
         if (entity.HasComponent<LightComponent>()) { kind = EditorGui.EntityIcon.Light; return true; }
-        if (entity.HasComponent<DynamicCloudsComponent>()) { kind = EditorGui.EntityIcon.Skybox; return true; }
+        if (entity.HasComponent<DynamicCloudsComponent>() || entity.HasComponent<SkyboxComponent>()) { kind = EditorGui.EntityIcon.Skybox; return true; }
         kind = EditorGui.EntityIcon.Empty;
         return false;
     }

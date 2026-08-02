@@ -368,20 +368,8 @@ public class AssetBrowserPanel
     private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
     {
         Vector2 iconMax = iconMin + new Vector2(size, size);
-        Vector2 center = iconMin + new Vector2(size * 0.5f, size * 0.5f);
 
-        if (entry.Kind == AssetKind.Folder)
-        {
-            uint folder = ImGui.GetColorU32(palette.Accent);
-            var tabMin = iconMin + new Vector2(size * 0.12f, size * 0.24f);
-            var tabMax = iconMin + new Vector2(size * 0.48f, size * 0.40f);
-            var bodyMin = iconMin + new Vector2(size * 0.12f, size * 0.34f);
-            var bodyMax = iconMin + new Vector2(size * 0.88f, size * 0.78f);
-            drawList.AddRectFilled(tabMin, tabMax, folder, 3.0f);
-            drawList.AddRectFilled(bodyMin, bodyMax, folder, 4.0f);
-            return;
-        }
-
+        // Dynamic previews take priority and keep their existing look (thumbnail / rendered material).
         if (entry.Kind == AssetKind.Image && TryGetThumbnail(entry.FullPath, out var tex))
         {
             drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
@@ -400,154 +388,33 @@ public class AssetBrowserPanel
             return;
         }
 
-        switch (entry.Kind)
-        {
-            case AssetKind.Script: DrawScriptIcon(drawList, center, size); break;
-            case AssetKind.Scene: DrawSceneIcon(drawList, center, size); break;
-            case AssetKind.Image: DrawImageIcon(drawList, center, size); break;
-            case AssetKind.Model: DrawModelIcon(drawList, center, size); break;
-            case AssetKind.Material: DrawMaterialIcon(drawList, center, size); break;
-            default: DrawGenericFileIcon(drawList, center, size, palette); break;
-        }
+        // Everything else is a centered icon-font glyph tinted per kind — the same font the Hierarchy and
+        // viewport use, drawn from the large icon atlas so it stays crisp at tile sizes (48–128px).
+        (string glyph, Vector4 color) = GlyphFor(entry.Kind, palette);
+        DrawGlyph(drawList, iconMin, size, glyph, color);
     }
 
-    // ----- Asset type icons (drawn as vector primitives, sized relative to the icon box) -----------
-
-    // A document page with a folded corner. Returns the page rect so callers can add glyphs inside.
-    private static void DrawPage(ImDrawListPtr dl, Vector2 c, float size, Vector4 accent,
-                                 out Vector2 pageMin, out Vector2 pageMax)
+    // Picks the Font Awesome glyph and tint for a non-preview asset kind.
+    private static (string Glyph, Vector4 Color) GlyphFor(AssetKind kind, EditorPalette palette) => kind switch
     {
-        float w = size * 0.50f;
-        float h = size * 0.66f;
-        pageMin = c - new Vector2(w * 0.5f, h * 0.5f);
-        pageMax = c + new Vector2(w * 0.5f, h * 0.5f);
-        float fold = size * 0.17f;
-        float rounding = size * 0.05f;
-        float thick = Thickness(size);
+        AssetKind.Folder => (EditorIcons.Folder, palette.Accent),
+        AssetKind.Script => (EditorIcons.Code, ScriptColor),
+        AssetKind.Scene => (EditorIcons.Cubes, SceneColor),
+        AssetKind.Image => (EditorIcons.Image, ImageColor),
+        AssetKind.Model => (EditorIcons.Cube, ModelColor),
+        AssetKind.Material => (EditorIcons.Palette, MaterialColor),
+        _ => (EditorIcons.File, palette.TextDisabled),
+    };
 
-        uint fill = ImGui.GetColorU32(new Vector4(1, 1, 1, 0.10f));
-        uint border = ImGui.GetColorU32(WithAlpha(accent, 0.95f));
-
-        // Body (leave the top-right corner squared so the fold reads cleanly).
-        dl.AddRectFilled(pageMin, pageMax, fill, rounding, ImDrawFlags.RoundCornersBottom | ImDrawFlags.RoundCornersTopLeft);
-        dl.AddRect(pageMin, pageMax, border, rounding, ImDrawFlags.RoundCornersBottom | ImDrawFlags.RoundCornersTopLeft, thick);
-
-        // Folded corner triangle.
-        Vector2 fA = new(pageMax.X - fold, pageMin.Y);
-        Vector2 fB = new(pageMax.X, pageMin.Y + fold);
-        Vector2 fC = new(pageMax.X - fold, pageMin.Y + fold);
-        dl.AddTriangleFilled(fA, fB, fC, ImGui.GetColorU32(WithAlpha(accent, 0.45f)));
-        dl.AddLine(fA, fC, border, thick);
-        dl.AddLine(fC, fB, border, thick);
-    }
-
-    private static void DrawScriptIcon(ImDrawListPtr dl, Vector2 c, float size)
+    // Draws a single icon-font glyph centered in the icon box, scaled to ~62% of it for breathing room.
+    private static void DrawGlyph(ImDrawListPtr dl, Vector2 iconMin, float size, string glyph, Vector4 color)
     {
-        DrawPage(dl, c, size, ScriptColor, out _, out _);
-        uint col = ImGui.GetColorU32(ScriptColor);
-        float th = Thickness(size);
-
-        // A "</>" code glyph centered on the page.
-        dl.AddLine(new Vector2(c.X - size * 0.06f, c.Y - size * 0.10f), new Vector2(c.X - size * 0.16f, c.Y), col, th);
-        dl.AddLine(new Vector2(c.X - size * 0.16f, c.Y), new Vector2(c.X - size * 0.06f, c.Y + size * 0.10f), col, th);
-        dl.AddLine(new Vector2(c.X + size * 0.06f, c.Y - size * 0.10f), new Vector2(c.X + size * 0.16f, c.Y), col, th);
-        dl.AddLine(new Vector2(c.X + size * 0.16f, c.Y), new Vector2(c.X + size * 0.06f, c.Y + size * 0.10f), col, th);
-        dl.AddLine(new Vector2(c.X - size * 0.02f, c.Y + size * 0.12f), new Vector2(c.X + size * 0.02f, c.Y - size * 0.12f), col, th);
+        ImFontPtr font = EditorFonts.Icons;
+        float glyphPx = size * 0.62f;
+        Vector2 ts = font.CalcTextSizeA(glyphPx, float.MaxValue, 0.0f, glyph);
+        Vector2 center = iconMin + new Vector2(size * 0.5f, size * 0.5f);
+        dl.AddText(font, glyphPx, center - ts * 0.5f, ImGui.GetColorU32(color), glyph);
     }
-
-    private static void DrawGenericFileIcon(ImDrawListPtr dl, Vector2 c, float size, EditorPalette palette)
-    {
-        DrawPage(dl, c, size, palette.TextDisabled, out Vector2 pageMin, out Vector2 pageMax);
-        uint col = ImGui.GetColorU32(WithAlpha(palette.Text, 0.5f));
-        float th = Thickness(size);
-
-        // A few "text lines" to suggest a generic document.
-        float w = pageMax.X - pageMin.X;
-        float x0 = pageMin.X + w * 0.20f;
-        float x1 = pageMax.X - w * 0.20f;
-        for (int i = 0; i < 3; i++)
-        {
-            float y = c.Y - size * 0.06f + i * size * 0.10f;
-            dl.AddLine(new Vector2(x0, y), new Vector2(x1, y), col, th);
-        }
-    }
-
-    private static void DrawSceneIcon(ImDrawListPtr dl, Vector2 c, float size)
-    {
-        // A stack of layers (three isometric diamonds).
-        float hw = size * 0.28f;
-        float hh = size * 0.13f;
-        float th = Thickness(size);
-        uint line = ImGui.GetColorU32(SceneColor);
-        for (int k = 2; k >= 0; k--)
-        {
-            Vector2 dc = new(c.X, c.Y + (k - 1) * size * 0.14f);
-            Vector2 top = new(dc.X, dc.Y - hh);
-            Vector2 right = new(dc.X + hw, dc.Y);
-            Vector2 bottom = new(dc.X, dc.Y + hh);
-            Vector2 left = new(dc.X - hw, dc.Y);
-            uint fill = ImGui.GetColorU32(WithAlpha(SceneColor, k == 0 ? 0.6f : 0.22f));
-            dl.AddTriangleFilled(top, right, bottom, fill);
-            dl.AddTriangleFilled(top, bottom, left, fill);
-            dl.AddLine(top, right, line, th);
-            dl.AddLine(right, bottom, line, th);
-            dl.AddLine(bottom, left, line, th);
-            dl.AddLine(left, top, line, th);
-        }
-    }
-
-    private static void DrawModelIcon(ImDrawListPtr dl, Vector2 c, float size)
-    {
-        // A cube seen corner-on: hexagon silhouette with three inner edges.
-        float r = size * 0.30f;
-        float th = Thickness(size);
-        uint line = ImGui.GetColorU32(ModelColor);
-        uint fill = ImGui.GetColorU32(WithAlpha(ModelColor, 0.20f));
-
-        Span<Vector2> hex = stackalloc Vector2[6];
-        for (int i = 0; i < 6; i++)
-        {
-            float a = (MathF.PI / 180.0f) * (30.0f + 60.0f * i);
-            hex[i] = c + new Vector2(MathF.Cos(a), MathF.Sin(a)) * r;
-        }
-        for (int i = 0; i < 6; i++)
-            dl.AddTriangleFilled(c, hex[i], hex[(i + 1) % 6], fill);
-        for (int i = 0; i < 6; i++)
-            dl.AddLine(hex[i], hex[(i + 1) % 6], line, th);
-        dl.AddLine(c, hex[1], line, th);
-        dl.AddLine(c, hex[3], line, th);
-        dl.AddLine(c, hex[5], line, th);
-    }
-
-    private static void DrawMaterialIcon(ImDrawListPtr dl, Vector2 c, float size)
-    {
-        // A shaded sphere, the conventional material preview.
-        float r = size * 0.30f;
-        dl.AddCircleFilled(c, r, ImGui.GetColorU32(WithAlpha(MaterialColor, 0.9f)), 32);
-        dl.AddCircle(c, r, ImGui.GetColorU32(Darken(MaterialColor, 0.35f)), 32, Thickness(size));
-        dl.AddCircleFilled(c - new Vector2(r * 0.32f, r * 0.32f), r * 0.30f,
-            ImGui.GetColorU32(new Vector4(1, 1, 1, 0.45f)), 20);
-    }
-
-    private static void DrawImageIcon(ImDrawListPtr dl, Vector2 c, float size)
-    {
-        // A framed picture with a sun and mountains (used when a thumbnail is unavailable).
-        float w = size * 0.60f;
-        float h = size * 0.48f;
-        Vector2 mn = c - new Vector2(w * 0.5f, h * 0.5f);
-        Vector2 mx = c + new Vector2(w * 0.5f, h * 0.5f);
-        float th = Thickness(size);
-        uint col = ImGui.GetColorU32(ImageColor);
-
-        dl.AddRectFilled(mn, mx, ImGui.GetColorU32(WithAlpha(ImageColor, 0.16f)), size * 0.04f);
-        dl.AddRect(mn, mx, col, size * 0.04f, ImDrawFlags.None, th);
-        dl.AddCircleFilled(new Vector2(mn.X + w * 0.26f, mn.Y + h * 0.28f), size * 0.05f, col, 12);
-        uint hill = ImGui.GetColorU32(WithAlpha(ImageColor, 0.7f));
-        dl.AddTriangleFilled(new Vector2(mn.X + w * 0.08f, mx.Y), new Vector2(mn.X + w * 0.42f, mn.Y + h * 0.45f), new Vector2(mn.X + w * 0.72f, mx.Y), hill);
-        dl.AddTriangleFilled(new Vector2(mn.X + w * 0.5f, mx.Y), new Vector2(mn.X + w * 0.74f, mn.Y + h * 0.55f), new Vector2(mx.X - w * 0.04f, mx.Y), hill);
-    }
-
-    private static float Thickness(float size) => MathF.Max(1.3f, size * 0.022f);
 
     private void DrawItemContextMenu(AssetEntry entry)
     {
@@ -966,12 +833,6 @@ public class {className} : EntityBehaviour
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);
-
-    private static Vector4 Darken(Vector4 c, float amount) => new(
-        Math.Clamp(c.X - amount, 0.0f, 1.0f),
-        Math.Clamp(c.Y - amount, 0.0f, 1.0f),
-        Math.Clamp(c.Z - amount, 0.0f, 1.0f),
-        c.W);
 
     // Shortens text with a trailing ellipsis so it fits within maxWidth pixels.
     private static string Truncate(string text, float maxWidth)
