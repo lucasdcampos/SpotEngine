@@ -59,6 +59,20 @@ public sealed class TransformComponent : Component
     public Vector3 Scale { get; set; } = Vector3.One;
 
     /// <summary>
+    /// Gets the world scale.
+    /// </summary>
+    [HideInInspector]
+    public Vector3 WorldScale
+    {
+        get
+        {
+            if (Matrix4x4.Decompose(Matrix, out Vector3 scale, out _, out _))
+                return scale;
+            return Scale;
+        }
+    }
+
+    /// <summary>
     /// Gets the local model matrix.
     /// </summary>
     [HideInInspector]

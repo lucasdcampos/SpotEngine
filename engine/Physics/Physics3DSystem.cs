@@ -39,7 +39,7 @@ internal static class Physics3DSystem
             var col1 = e1.GetComponent<BoxCollider3DComponent>();
             var t1 = e1.GetComponent<TransformComponent>();
             if (!col1.Enabled || !t1.Enabled) continue;
-            var b1 = col1.GetWorldBounds(t1.Position);
+            var b1 = col1.GetWorldBounds(t1.WorldPosition, t1.WorldScale);
             bool isDynamic1 = e1.TryGetComponent(out PhysicsBody3DComponent? body1) && body1.Enabled && body1.IsDynamic;
 
             for (int j = i + 1; j < colliders.Count; j++)
@@ -49,7 +49,7 @@ internal static class Physics3DSystem
                 var col2 = e2.GetComponent<BoxCollider3DComponent>();
                 var t2 = e2.GetComponent<TransformComponent>();
                 if (!col2.Enabled || !t2.Enabled) continue;
-                var b2 = col2.GetWorldBounds(t2.Position);
+                var b2 = col2.GetWorldBounds(t2.WorldPosition, t2.WorldScale);
                 bool isDynamic2 = e2.TryGetComponent(out PhysicsBody3DComponent? body2) && body2.Enabled && body2.IsDynamic;
 
                 if (!isDynamic1 && !isDynamic2) continue; // Static vs Static
@@ -59,7 +59,7 @@ internal static class Physics3DSystem
                     ResolveCollision(t1, body1, b1, isDynamic1, t2, body2, b2, isDynamic2);
                     
                     // Update bounds after resolution for further checks
-                    b1 = col1.GetWorldBounds(t1.Position);
+                    b1 = col1.GetWorldBounds(t1.WorldPosition, t1.WorldScale);
                 }
             }
         }

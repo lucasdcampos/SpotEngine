@@ -39,7 +39,7 @@ internal static class Physics2DSystem
             var col1 = e1.GetComponent<BoxCollider2DComponent>();
             var t1 = e1.GetComponent<TransformComponent>();
             if (!col1.Enabled || !t1.Enabled) continue;
-            var b1 = col1.GetWorldBounds(new Vector2(t1.Position.X, t1.Position.Y));
+            var b1 = col1.GetWorldBounds(new Vector2(t1.WorldPosition.X, t1.WorldPosition.Y), new Vector2(t1.WorldScale.X, t1.WorldScale.Y));
             bool isDynamic1 = e1.TryGetComponent(out PhysicsBody2DComponent? body1) && body1.Enabled && body1.IsDynamic;
 
             for (int j = i + 1; j < colliders.Count; j++)
@@ -49,7 +49,7 @@ internal static class Physics2DSystem
                 var col2 = e2.GetComponent<BoxCollider2DComponent>();
                 var t2 = e2.GetComponent<TransformComponent>();
                 if (!col2.Enabled || !t2.Enabled) continue;
-                var b2 = col2.GetWorldBounds(new Vector2(t2.Position.X, t2.Position.Y));
+                var b2 = col2.GetWorldBounds(new Vector2(t2.WorldPosition.X, t2.WorldPosition.Y), new Vector2(t2.WorldScale.X, t2.WorldScale.Y));
                 bool isDynamic2 = e2.TryGetComponent(out PhysicsBody2DComponent? body2) && body2.Enabled && body2.IsDynamic;
 
                 if (!isDynamic1 && !isDynamic2) continue; // Static vs Static
@@ -59,7 +59,7 @@ internal static class Physics2DSystem
                     ResolveCollision(t1, body1, b1, isDynamic1, t2, body2, b2, isDynamic2);
                     
                     // Update bounds after resolution for further checks
-                    b1 = col1.GetWorldBounds(new Vector2(t1.Position.X, t1.Position.Y));
+                    b1 = col1.GetWorldBounds(new Vector2(t1.WorldPosition.X, t1.WorldPosition.Y), new Vector2(t1.WorldScale.X, t1.WorldScale.Y));
                 }
             }
         }
