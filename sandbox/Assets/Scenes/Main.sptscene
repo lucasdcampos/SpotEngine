@@ -63,6 +63,7 @@
       },
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "CharacterController3D": null,
       "PostProcessing": null,
       "Children": null
     },
@@ -100,6 +101,7 @@
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "CharacterController3D": null,
       "PostProcessing": {
         "Exposure": 1,
         "Gamma": 1,
@@ -129,9 +131,9 @@
           0
         ],
         "Scale": [
-          100,
+          1000,
           1,
-          100
+          1000
         ],
         "Enabled": true
       },
@@ -144,7 +146,7 @@
           1
         ],
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Grass.sptmat",
+        "MaterialPath": "editor:Checkerboard",
         "Enabled": true
       },
       "Scripts": null,
@@ -161,7 +163,7 @@
           0
         ],
         "GravityScale": 1,
-        "IsDynamic": true,
+        "IsDynamic": false,
         "Enabled": true
       },
       "BoxCollider3D": {
@@ -177,6 +179,7 @@
         ],
         "Enabled": true
       },
+      "CharacterController3D": null,
       "PostProcessing": null,
       "Children": null
     },
@@ -214,6 +217,7 @@
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "CharacterController3D": null,
       "PostProcessing": null,
       "Children": [
         {
@@ -248,7 +252,7 @@
               1
             ],
             "ModelPath": "primitive:Cube",
-            "MaterialPath": null,
+            "MaterialPath": "editor:Checkerboard",
             "Enabled": true
           },
           "Scripts": null,
@@ -272,6 +276,7 @@
             ],
             "Enabled": true
           },
+          "CharacterController3D": null,
           "PostProcessing": null,
           "Children": null
         }
@@ -321,6 +326,7 @@
       "DynamicClouds": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
+      "CharacterController3D": null,
       "PostProcessing": null,
       "Children": null
     },
@@ -379,12 +385,29 @@
         ],
         "Enabled": true
       },
+      "CharacterController3D": {
+        "WalkSpeed": 4,
+        "RunSpeed": 8,
+        "CrouchSpeed": 2.5,
+        "JumpForce": 6,
+        "GroundAcceleration": 10,
+        "GroundFriction": 8,
+        "AirAcceleration": 100,
+        "MaxAirSpeed": 1,
+        "GravityMultiplier": 1.8,
+        "StandHeight": 1.7,
+        "CrouchHeight": 0.9,
+        "MouseSensitivity": 0.1,
+        "MaxPitch": 89,
+        "LockMouse": true,
+        "Enabled": true
+      },
       "PostProcessing": null,
       "Children": [
         {
           "Tag": {
             "Name": "Model",
-            "Enabled": true
+            "Enabled": false
           },
           "Transform": {
             "Position": [
@@ -425,6 +448,7 @@
           "DynamicClouds": null,
           "PhysicsBody3D": null,
           "BoxCollider3D": null,
+          "CharacterController3D": null,
           "PostProcessing": null,
           "Children": null
         },
@@ -436,8 +460,8 @@
           "Transform": {
             "Position": [
               0,
-              1.6895413,
-              0.12499929
+              1.6801645,
+              -0.0848094
             ],
             "Rotation": [
               0,
@@ -475,6 +499,7 @@
           "DynamicClouds": null,
           "PhysicsBody3D": null,
           "BoxCollider3D": null,
+          "CharacterController3D": null,
           "PostProcessing": null,
           "Children": null
         }

@@ -511,7 +511,14 @@ public class EditorScene : Scene
 
             if (open)
             {
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
+                // While the game runs in an external process the scene viewport is frozen: disable all
+                // camera/gizmo/selection input and paint a centered "running" notice over it.
+                bool playing = _state == EditorState.Play;
+                var viewportMin = ImGui.GetCursorScreenPos();
+                var viewportSize = ImGui.GetContentRegionAvail();
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: !playing && (isFocused || isHovered));
+                if (playing)
+                    DrawPlayingOverlay(viewportMin, viewportSize);
             }
             ImGui.End();
         }
@@ -826,6 +833,32 @@ public class EditorScene : Scene
             }
             _state = EditorState.Edit;
         }
+    }
+
+    // Dims a scene viewport and centers a "game is running" notice over it while the game runs in an
+    // external process, so it's obvious the frozen, non-interactive view is expected (not a hang).
+    private static void DrawPlayingOverlay(Vector2 min, Vector2 size)
+    {
+        if (size.X <= 0.0f || size.Y <= 0.0f)
+            return;
+
+        var palette = EditorThemeManager.Current.Palette;
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.AddRectFilled(min, min + size, ImGui.GetColorU32(new Vector4(0.04f, 0.04f, 0.06f, 0.72f)));
+
+        Vector2 center = min + size * 0.5f;
+
+        var font = ImGui.GetFont();
+        const string title = "Game is running";
+        const float titleSize = 30.0f;
+        Vector2 titleDim = font.CalcTextSizeA(titleSize, float.MaxValue, 0.0f, title);
+        drawList.AddText(font, titleSize, new Vector2(center.X - titleDim.X * 0.5f, center.Y - titleDim.Y - 2.0f),
+            ImGui.GetColorU32(palette.Text), title);
+
+        const string subtitle = "Press Stop to return to the editor";
+        Vector2 subDim = ImGui.CalcTextSize(subtitle);
+        drawList.AddText(new Vector2(center.X - subDim.X * 0.5f, center.Y + 6.0f),
+            ImGui.GetColorU32(palette.TextDisabled), subtitle);
     }
 
     // Rebuilds the default docked arrangement: Hierarchy on the left, Inspector on the right,

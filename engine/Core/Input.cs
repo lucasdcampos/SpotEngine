@@ -29,6 +29,26 @@ public static class Input
     public static Vector2 MouseScrollDelta { get; private set; }
 
     /// <summary>
+    /// Gets or sets whether the cursor is locked and hidden.
+    /// </summary>
+    public static bool CursorLocked
+    {
+        get
+        {
+            var mice = Application.Instance.Window.Input.Mice;
+            return mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw;
+        }
+        set
+        {
+            var mice = Application.Instance.Window.Input.Mice;
+            if (mice.Count > 0)
+            {
+                mice[0].Cursor.CursorMode = value ? Silk.NET.Input.CursorMode.Raw : Silk.NET.Input.CursorMode.Normal;
+            }
+        }
+    }
+
+    /// <summary>
     /// Returns whether the key is currently held down.
     /// </summary>
     /// <param name="key">The key to test.</param>

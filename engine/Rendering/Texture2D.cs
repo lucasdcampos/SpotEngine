@@ -63,30 +63,35 @@ public sealed class Texture2D : IDisposable
     public uint Handle => _handle;
 
     /// <summary>
-    /// Creates a simple checkerboard texture for debugging.
+    /// Creates a soft checkerboard texture for debugging. Rendered at a real resolution (not one texel
+    /// per square) with a gentle two-tone contrast so trilinear filtering can antialias the edges up
+    /// close and, crucially, average the pattern into smooth gray at distance instead of shimmering
+    /// like TV static across large, heavily-tiled surfaces.
     /// </summary>
     public static Texture2D CreateCheckerboard()
     {
-        uint width = 8;
-        uint height = 8;
-        byte[] pixels = new byte[width * height * 4];
-        
-        for (int y = 0; y < height; y++)
+        const int size = 256;      // texture resolution
+        const int squares = 8;     // checker squares per axis (one texture tile)
+        const int squarePx = size / squares;
+        byte[] pixels = new byte[size * size * 4];
+
+        for (int y = 0; y < size; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < size; x++)
             {
-                bool isLight = (x + y) % 2 == 0;
-                byte color = isLight ? (byte)60 : (byte)25;
-                
-                int index = (y * (int)width + x) * 4;
+                bool isLight = ((x / squarePx) + (y / squarePx)) % 2 == 0;
+                byte color = isLight ? (byte)72 : (byte)48;
+
+                int index = (y * size + x) * 4;
                 pixels[index] = color;
                 pixels[index + 1] = color;
                 pixels[index + 2] = color;
                 pixels[index + 3] = 255;
             }
         }
-        
-        return new Texture2D(width, height, pixels, pointFilter: true);
+
+        // pointFilter: false -> linear + mipmaps + anisotropy, the key to killing the distance shimmer.
+        return new Texture2D((uint)size, (uint)size, pixels, pointFilter: false);
     }
 
     /// <summary>

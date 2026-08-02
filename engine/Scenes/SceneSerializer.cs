@@ -30,6 +30,7 @@ public class EntityData
     public DynamicCloudsData? DynamicClouds { get; set; }
     public PhysicsBody3DData? PhysicsBody3D { get; set; }
     public BoxCollider3DData? BoxCollider3D { get; set; }
+    public CharacterController3DData? CharacterController3D { get; set; }
     public PostProcessingData? PostProcessing { get; set; }
     public List<EntityData>? Children { get; set; }
 }
@@ -101,6 +102,24 @@ public class BoxCollider3DData : ComponentData
 {
     public float[] Size { get; set; } = new float[3];
     public float[] Offset { get; set; } = new float[3];
+}
+
+public class CharacterController3DData : ComponentData
+{
+    public float WalkSpeed { get; set; } = 4.0f;
+    public float RunSpeed { get; set; } = 8.0f;
+    public float CrouchSpeed { get; set; } = 2.5f;
+    public float JumpForce { get; set; } = 6.0f;
+    public float GroundAcceleration { get; set; } = 10.0f;
+    public float GroundFriction { get; set; } = 8.0f;
+    public float AirAcceleration { get; set; } = 100.0f;
+    public float MaxAirSpeed { get; set; } = 1.0f;
+    public float GravityMultiplier { get; set; } = 1.8f;
+    public float StandHeight { get; set; } = 1.7f;
+    public float CrouchHeight { get; set; } = 0.9f;
+    public float MouseSensitivity { get; set; } = 0.1f;
+    public float MaxPitch { get; set; } = 89.0f;
+    public bool LockMouse { get; set; } = true;
 }
 
 public class ScriptComponentData : ComponentData
@@ -263,6 +282,29 @@ public class SceneSerializer
                 Enabled = collider.Enabled,
                 Size = new[] { collider.Size.X, collider.Size.Y, collider.Size.Z },
                 Offset = new[] { collider.Offset.X, collider.Offset.Y, collider.Offset.Z }
+            };
+        }
+
+        if (entity.HasComponent<CharacterController3DComponent>())
+        {
+            var cc = entity.GetComponent<CharacterController3DComponent>();
+            entityData.CharacterController3D = new CharacterController3DData
+            {
+                Enabled = cc.Enabled,
+                WalkSpeed = cc.WalkSpeed,
+                RunSpeed = cc.RunSpeed,
+                CrouchSpeed = cc.CrouchSpeed,
+                JumpForce = cc.JumpForce,
+                GroundAcceleration = cc.GroundAcceleration,
+                GroundFriction = cc.GroundFriction,
+                AirAcceleration = cc.AirAcceleration,
+                MaxAirSpeed = cc.MaxAirSpeed,
+                GravityMultiplier = cc.GravityMultiplier,
+                StandHeight = cc.StandHeight,
+                CrouchHeight = cc.CrouchHeight,
+                MouseSensitivity = cc.MouseSensitivity,
+                MaxPitch = cc.MaxPitch,
+                LockMouse = cc.LockMouse
             };
         }
 
@@ -512,6 +554,27 @@ public class SceneSerializer
             collider.Size = new System.Numerics.Vector3(entityData.BoxCollider3D.Size[0], entityData.BoxCollider3D.Size[1], entityData.BoxCollider3D.Size[2]);
             collider.Offset = new System.Numerics.Vector3(entityData.BoxCollider3D.Offset[0], entityData.BoxCollider3D.Offset[1], entityData.BoxCollider3D.Offset[2]);
             entity.AddComponent(collider);
+        }
+
+        if (entityData.CharacterController3D != null)
+        {
+            var cc = new CharacterController3DComponent();
+            cc.Enabled = entityData.CharacterController3D.Enabled;
+            cc.WalkSpeed = entityData.CharacterController3D.WalkSpeed;
+            cc.RunSpeed = entityData.CharacterController3D.RunSpeed;
+            cc.CrouchSpeed = entityData.CharacterController3D.CrouchSpeed;
+            cc.JumpForce = entityData.CharacterController3D.JumpForce;
+            cc.GroundAcceleration = entityData.CharacterController3D.GroundAcceleration;
+            cc.GroundFriction = entityData.CharacterController3D.GroundFriction;
+            cc.AirAcceleration = entityData.CharacterController3D.AirAcceleration;
+            cc.MaxAirSpeed = entityData.CharacterController3D.MaxAirSpeed;
+            cc.GravityMultiplier = entityData.CharacterController3D.GravityMultiplier;
+            cc.StandHeight = entityData.CharacterController3D.StandHeight;
+            cc.CrouchHeight = entityData.CharacterController3D.CrouchHeight;
+            cc.MouseSensitivity = entityData.CharacterController3D.MouseSensitivity;
+            cc.MaxPitch = entityData.CharacterController3D.MaxPitch;
+            cc.LockMouse = entityData.CharacterController3D.LockMouse;
+            entity.AddComponent(cc);
         }
 
         if (entityData.Light != null)
