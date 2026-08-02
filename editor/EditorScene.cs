@@ -764,28 +764,72 @@ public class EditorScene : Scene
         _context.ActiveScene?.OnExit();
     }
 
+    private System.Diagnostics.Process? _gameProcess;
+
     private void OnPlay()
     {
-        if (_state == EditorState.Edit && _activeSceneData != null)
+        if (_state == EditorState.Edit && Spot.Core.Project.Active != null)
         {
-            _sceneSnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
-            var playScene = new Scene();
-            new SceneSerializer(playScene).DeserializeFromString(_sceneSnapshot);
-            _context.ActiveScene = playScene;
+            if (!SaveAllDirtyWithPrompts()) return;
+
             _state = EditorState.Play;
+            Spot.Core.Log.Info("Building project for Play...");
+
+            System.Threading.Tasks.Task.Run(() => 
+            {
+                var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
+                    onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
+                    onError: msg => Spot.Core.Log.Error($"[Build] {msg}"));
+
+                if (result.Success)
+                {
+                    Spot.Core.Log.Info("Build succeeded. Launching game...");
+                    var exePath = System.IO.Path.Combine(result.OutputDir, Spot.Core.Project.Active.Config.Name + ".exe");
+                    var processInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        WorkingDirectory = Spot.Core.Project.Active.ProjectDirectory,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                    
+                    _gameProcess = new System.Diagnostics.Process { StartInfo = processInfo };
+                    _gameProcess.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Info($"[Game] {e.Data}"); };
+                    _gameProcess.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Error($"[Game] {e.Data}"); };
+                    
+                    _gameProcess.EnableRaisingEvents = true;
+                    _gameProcess.Exited += (sender, e) => 
+                    {
+                        Spot.Core.Log.Info("Game process exited.");
+                        _gameProcess = null;
+                        _state = EditorState.Edit; 
+                    };
+                    
+                    _gameProcess.Start();
+                    _gameProcess.BeginOutputReadLine();
+                    _gameProcess.BeginErrorReadLine();
+                }
+                else
+                {
+                    Spot.Core.Log.Error("Build failed. Cannot play.");
+                    _state = EditorState.Edit;
+                }
+            });
         }
     }
 
     private void OnStop()
     {
-        if (_state == EditorState.Play && _sceneSnapshot != null && _activeSceneData != null)
+        if (_state == EditorState.Play)
         {
-            var editScene = new Scene();
-            new SceneSerializer(editScene).DeserializeFromString(_sceneSnapshot);
-            _activeSceneData.Scene = editScene;
-            _context.ActiveScene = editScene;
+            if (_gameProcess != null && !_gameProcess.HasExited)
+            {
+                Spot.Core.Log.Info("Stopping game process...");
+                try { _gameProcess.Kill(); } catch { }
+            }
             _state = EditorState.Edit;
-            _sceneSnapshot = null;
         }
     }
 

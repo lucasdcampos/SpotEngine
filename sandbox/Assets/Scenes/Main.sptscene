@@ -114,7 +114,7 @@
     },
     {
       "Tag": {
-        "Name": "Cube",
+        "Name": "Ground",
         "Enabled": true
       },
       "Transform": {
@@ -154,16 +154,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
-      "PhysicsBody3D": {
-        "Velocity": [
-          0,
-          0,
-          0
-        ],
-        "GravityScale": 1,
-        "IsDynamic": false,
-        "Enabled": true
-      },
+      "PhysicsBody3D": null,
       "BoxCollider3D": {
         "Size": [
           1,
@@ -351,8 +342,14 @@
       "MeshRenderer": null,
       "Scripts": null,
       "Camera": null,
-      "PhysicsBody2D": {
+      "PhysicsBody2D": null,
+      "BoxCollider2D": null,
+      "DirectionalLight": null,
+      "Light": null,
+      "DynamicClouds": null,
+      "PhysicsBody3D": {
         "Velocity": [
+          0,
           0,
           0
         ],
@@ -360,11 +357,6 @@
         "IsDynamic": true,
         "Enabled": true
       },
-      "BoxCollider2D": null,
-      "DirectionalLight": null,
-      "Light": null,
-      "DynamicClouds": null,
-      "PhysicsBody3D": null,
       "BoxCollider3D": {
         "Size": [
           0.3,
