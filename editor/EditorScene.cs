@@ -209,17 +209,12 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        if (_state == EditorState.Play && _context.ActiveScene != null)
+        // The game now runs in an external process, so the editor's copy of the scene
+        // should never process physics or scripts (UpdateRuntime). It just stays in edit mode.
+        foreach (var sceneData in _openScenes)
         {
-            _context.ActiveScene.UpdateRuntime(deltaTime);
-        }
-        else if (_state == EditorState.Edit)
-        {
-            foreach (var sceneData in _openScenes)
-            {
-                sceneData.Scene.OnUpdate(deltaTime);
-                sceneData.Scene.FlushDestroyed();
-            }
+            sceneData.Scene.OnUpdate(deltaTime);
+            sceneData.Scene.FlushDestroyed();
         }
     }
 
