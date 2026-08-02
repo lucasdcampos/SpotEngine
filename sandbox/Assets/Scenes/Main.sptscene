@@ -154,7 +154,16 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
-      "PhysicsBody3D": null,
+      "PhysicsBody3D": {
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "IsDynamic": true,
+        "Enabled": true
+      },
       "BoxCollider3D": {
         "Size": [
           1,
@@ -323,7 +332,7 @@
       "Transform": {
         "Position": [
           0,
-          0.94040805,
+          0.5,
           0
         ],
         "Rotation": [

@@ -1,7 +1,7 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox", "Sandbox.csproj", "{201CCEA5-BEDE-429E-B481-B9CD12A1443E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox", "Sandbox.csproj", "{C9BDF532-CDF2-4725-BA83-C933F5A34BDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -9,9 +9,9 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{201CCEA5-BEDE-429E-B481-B9CD12A1443E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{201CCEA5-BEDE-429E-B481-B9CD12A1443E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{201CCEA5-BEDE-429E-B481-B9CD12A1443E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{201CCEA5-BEDE-429E-B481-B9CD12A1443E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9BDF532-CDF2-4725-BA83-C933F5A34BDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9BDF532-CDF2-4725-BA83-C933F5A34BDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9BDF532-CDF2-4725-BA83-C933F5A34BDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9BDF532-CDF2-4725-BA83-C933F5A34BDA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
