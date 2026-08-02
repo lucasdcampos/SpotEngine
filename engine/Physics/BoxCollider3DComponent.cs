@@ -12,8 +12,8 @@ public class BoxCollider3DComponent : Component
     public Vector3 Size { get; set; } = Vector3.One;
     public Vector3 Offset { get; set; } = Vector3.Zero;
 
-    public Aabb3d GetWorldBounds(Vector3 position)
+    public Aabb3d GetWorldBounds(Vector3 position, Vector3 scale)
     {
-        return new Aabb3d(position + Offset, Size);
+        return new Aabb3d(position + Offset * scale, Size * scale);
     }
 }

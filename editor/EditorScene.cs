@@ -296,8 +296,41 @@ public class EditorScene : Scene
                     Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
                     var transform = selectedEntity.GetComponent<TransformComponent>();
                     var collider = selectedEntity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
-                    var bounds = collider.GetWorldBounds(new Vector2(transform.Position.X, transform.Position.Y));
+                    var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                     Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
+                    Renderer2D.EndScene();
+                }
+                
+                if (selectedEntity.HasComponent<Spot.Physics.BoxCollider3DComponent>() && selectedEntity.HasComponent<TransformComponent>())
+                {
+                    Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+                    var transform = selectedEntity.GetComponent<TransformComponent>();
+                    var collider = selectedEntity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
+                    var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
+                    
+                    Vector3 min = bounds.Min;
+                    Vector3 max = bounds.Max;
+                    Vector4 color = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
+                    float t = 0.02f;
+
+                    // Bottom rect
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(max.X, min.Y, min.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, min.Y, max.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(min.X, min.Y, max.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, min.Y, min.Z), color, t);
+
+                    // Top rect
+                    Renderer2D.DrawLine(new Vector3(min.X, max.Y, min.Z), new Vector3(max.X, max.Y, min.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, max.Y, min.Z), new Vector3(max.X, max.Y, max.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, max.Y, max.Z), new Vector3(min.X, max.Y, max.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, max.Y, max.Z), new Vector3(min.X, max.Y, min.Z), color, t);
+
+                    // Connecting lines
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(min.X, max.Y, min.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, max.Y, min.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(max.X, max.Y, max.Z), color, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, max.Y, max.Z), color, t);
+                    
                     Renderer2D.EndScene();
                 }
             }

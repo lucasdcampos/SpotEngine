@@ -23,8 +23,8 @@ public class BoxCollider2DComponent : Component
     /// <summary>
     /// Returns the AABB in world space based on the given entity position.
     /// </summary>
-    public Aabb GetWorldBounds(Vector2 position)
+    public Aabb GetWorldBounds(Vector2 position, Vector2 scale)
     {
-        return new Aabb(position + Offset, Size);
+        return new Aabb(position + Offset * scale, Size * scale);
     }
 }
