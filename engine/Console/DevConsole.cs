@@ -331,6 +331,20 @@ public sealed class DevConsole
                 _lines.Clear();
             }
         }, "Clear console output");
+
+        Register("physics_debug", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Physics.PhysicsDebug.ShowColliders = val;
+                Print($"Physics debug colliders set to {val}");
+            }
+            else
+            {
+                Spot.Physics.PhysicsDebug.ShowColliders = !Spot.Physics.PhysicsDebug.ShowColliders;
+                Print($"Physics debug colliders toggled to {Spot.Physics.PhysicsDebug.ShowColliders}");
+            }
+        }, "Toggles global debug rendering of colliders (e.g., 'physics_debug' or 'physics_debug true')");
     }
 
     private string GetInputText()

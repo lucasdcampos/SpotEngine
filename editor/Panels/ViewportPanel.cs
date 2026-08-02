@@ -72,6 +72,16 @@ public class ViewportPanel
                 DrawGizmoModeButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate);
                 ImGui.SameLine();
                 DrawGizmoModeButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale);
+                
+                ImGui.SameLine();
+                ImGui.Dummy(new Vector2(8, 0));
+                ImGui.SameLine();
+                
+                bool showColliders = Spot.Physics.PhysicsDebug.ShowColliders;
+                if (ImGui.Checkbox("Show Colliders", ref showColliders))
+                {
+                    Spot.Physics.PhysicsDebug.ShowColliders = showColliders;
+                }
 
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
                 {
