@@ -345,6 +345,34 @@ public sealed class DevConsole
                 Print($"Physics debug colliders toggled to {Spot.Physics.PhysicsDebug.ShowColliders}");
             }
         }, "Toggles global debug rendering of colliders (e.g., 'physics_debug' or 'physics_debug true')");
+
+        Register("fullbright", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RendererDebug.Fullbright = val;
+                Print($"Fullbright set to {val}");
+            }
+            else
+            {
+                Spot.Rendering.RendererDebug.Fullbright = !Spot.Rendering.RendererDebug.Fullbright;
+                Print($"Fullbright toggled to {Spot.Rendering.RendererDebug.Fullbright}");
+            }
+        }, "Toggles fullbright rendering mode (disables lighting)");
+
+        Register("wireframe", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RendererDebug.Wireframe = val;
+                Print($"Wireframe set to {val}");
+            }
+            else
+            {
+                Spot.Rendering.RendererDebug.Wireframe = !Spot.Rendering.RendererDebug.Wireframe;
+                Print($"Wireframe toggled to {Spot.Rendering.RendererDebug.Wireframe}");
+            }
+        }, "Toggles wireframe rendering for 3D meshes");
     }
 
     private string GetInputText()
