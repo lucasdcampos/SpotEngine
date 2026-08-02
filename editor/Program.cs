@@ -16,11 +16,14 @@ public static class Program
             FontPath = System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"),
             FontSize = 16,
             // Extra atlas fonts, resolved by EditorFonts in registration order: a heavier Inter for
-            // titles and JetBrains Mono for the console. Keep this order in sync with EditorFonts.
+            // titles, JetBrains Mono for the console, and a large standalone Font Awesome atlas for the
+            // asset-browser tiles (drawn at 48–128px, where upscaling the 16px merged glyphs would blur).
+            // Keep this order in sync with EditorFonts.
             AdditionalFonts =
             {
                 new FontSpec(System.IO.Path.Combine(fontsDir, "Inter-Medium.ttf"), 17.0f),
                 new FontSpec(System.IO.Path.Combine(fontsDir, "JetBrainsMono-Regular.ttf"), 15.0f),
+                new FontSpec(System.IO.Path.Combine(fontsDir, "fa-solid-900.ttf"), 72.0f, EditorIcons.GlyphRanges),
             },
             // Font Awesome 6 (Solid) merged into the body font so its glyphs render inline with text,
             // matched to the 16px body size.

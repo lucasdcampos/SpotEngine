@@ -28,6 +28,7 @@ public class EntityData
     public DirectionalLightData? DirectionalLight { get; set; }
     public LightData? Light { get; set; }
     public DynamicCloudsData? DynamicClouds { get; set; }
+    public SkyboxData? Skybox { get; set; }
     public PhysicsBody3DData? PhysicsBody3D { get; set; }
     public BoxCollider3DData? BoxCollider3D { get; set; }
     public CharacterController3DData? CharacterController3D { get; set; }
@@ -66,6 +67,12 @@ public class DynamicCloudsData : ComponentData
     public float Height { get; set; } = 0.3f;
     public float Opacity { get; set; } = 0.6f;
     public float Volume { get; set; } = 1.35f;
+}
+
+public class SkyboxData : ComponentData
+{
+    public float[] SkyColor { get; set; } = new float[3] { 0.6f, 0.8f, 1.0f };
+    public float[] GroundColor { get; set; } = new float[3] { 0.15f, 0.15f, 0.15f };
 }
 
 public class CameraComponentData : ComponentData
@@ -336,6 +343,17 @@ public class SceneSerializer
                 Height = clouds.Height,
                 Opacity = clouds.Opacity,
                 Volume = clouds.Volume
+            };
+        }
+
+        if (entity.HasComponent<SkyboxComponent>())
+        {
+            var skybox = entity.GetComponent<SkyboxComponent>();
+            entityData.Skybox = new SkyboxData
+            {
+                Enabled = skybox.Enabled,
+                SkyColor = new[] { skybox.SkyColor.X, skybox.SkyColor.Y, skybox.SkyColor.Z },
+                GroundColor = new[] { skybox.GroundColor.X, skybox.GroundColor.Y, skybox.GroundColor.Z }
             };
         }
 
@@ -611,6 +629,15 @@ public class SceneSerializer
             clouds.Opacity = entityData.DynamicClouds.Opacity;
             clouds.Volume = entityData.DynamicClouds.Volume;
             entity.AddComponent(clouds);
+        }
+
+        if (entityData.Skybox != null)
+        {
+            var skybox = new SkyboxComponent();
+            skybox.Enabled = entityData.Skybox.Enabled;
+            skybox.SkyColor = new System.Numerics.Vector3(entityData.Skybox.SkyColor[0], entityData.Skybox.SkyColor[1], entityData.Skybox.SkyColor[2]);
+            skybox.GroundColor = new System.Numerics.Vector3(entityData.Skybox.GroundColor[0], entityData.Skybox.GroundColor[1], entityData.Skybox.GroundColor[2]);
+            entity.AddComponent(skybox);
         }
 
         if (entityData.Scripts != null)

@@ -7,7 +7,8 @@ namespace Spot.Editor.UI;
 /// <summary>
 /// Named access to the fonts the engine baked into the ImGui atlas. The editor registers them, in a
 /// fixed order, through <see cref="ApplicationSpec.AdditionalFonts"/> (see <c>Program.cs</c>): index 0
-/// is the body font, then a heavier <see cref="Title"/> face and a monospaced <see cref="Mono"/> face.
+/// is the body font, then a heavier <see cref="Title"/> face, a monospaced <see cref="Mono"/> face, and a
+/// large standalone icon face (<see cref="Icons"/>) for oversized glyphs.
 /// Lookups fall back to the current font if an extra failed to load, so callers never get a null handle.
 /// </summary>
 public static class EditorFonts
@@ -15,6 +16,7 @@ public static class EditorFonts
     // Must match the registration order in Program.cs (body is the primary font at index 0).
     private const int TitleIndex = 1;
     private const int MonoIndex = 2;
+    private const int IconsIndex = 3;
 
     /// <summary>The primary UI font used for body text.</summary>
     public static ImFontPtr Body => Font(0);
@@ -24,6 +26,13 @@ public static class EditorFonts
 
     /// <summary>A monospaced face for the console and other code/log text.</summary>
     public static ImFontPtr Mono => Font(MonoIndex);
+
+    /// <summary>
+    /// A large Font Awesome atlas (baked at 72px) for drawing <see cref="EditorIcons"/> glyphs at big
+    /// sizes crisply — e.g. asset-browser tiles — via <c>drawList.AddText(EditorFonts.Icons, px, …)</c>.
+    /// For inline, text-sized icons use the glyphs merged into <see cref="Body"/> instead.
+    /// </summary>
+    public static ImFontPtr Icons => Font(IconsIndex);
 
     private static ImFontPtr Font(int index)
     {

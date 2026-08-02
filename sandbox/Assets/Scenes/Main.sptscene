@@ -14,7 +14,7 @@
         "Rotation": [
           -72,
           45,
-          -1.2698746
+          0
         ],
         "Scale": [
           1,
@@ -33,12 +33,12 @@
       "Light": {
         "Type": 0,
         "Color": [
-          0.9749104,
-          0.9617222,
-          0.8805642
+          1,
+          1,
+          1
         ],
-        "Intensity": 1.2,
-        "AmbientIntensity": 0.1,
+        "Intensity": 1.25,
+        "AmbientIntensity": 0.3,
         "CastShadows": true,
         "Range": 10,
         "Enabled": true
@@ -54,12 +54,25 @@
           0.85,
           0.9
         ],
-        "Speed": 1,
-        "Density": 0.6,
+        "Speed": 1.1,
+        "Density": 0.59,
         "Height": 0.25,
-        "Opacity": 0.6,
-        "Volume": 1.35,
-        "Enabled": true
+        "Opacity": 1,
+        "Volume": 2.62,
+        "Enabled": false
+      },
+      "Skybox": {
+        "SkyColor": [
+          0.32137305,
+          0.5759765,
+          0.75985664
+        ],
+        "GroundColor": [
+          0.28982154,
+          0.42425358,
+          0.50537634
+        ],
+        "Enabled": false
       },
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
@@ -99,6 +112,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
+      "Skybox": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
       "CharacterController3D": null,
@@ -156,6 +170,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
+      "Skybox": null,
       "PhysicsBody3D": {
         "Velocity": [
           0,
@@ -215,6 +230,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
+      "Skybox": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
       "CharacterController3D": null,
@@ -262,6 +278,7 @@
           "DirectionalLight": null,
           "Light": null,
           "DynamicClouds": null,
+          "Skybox": null,
           "PhysicsBody3D": null,
           "BoxCollider3D": {
             "Size": [
@@ -324,6 +341,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
+      "Skybox": null,
       "PhysicsBody3D": null,
       "BoxCollider3D": null,
       "CharacterController3D": null,
@@ -362,6 +380,7 @@
       "DirectionalLight": null,
       "Light": null,
       "DynamicClouds": null,
+      "Skybox": null,
       "PhysicsBody3D": {
         "Velocity": [
           0,
@@ -446,6 +465,7 @@
           "DirectionalLight": null,
           "Light": null,
           "DynamicClouds": null,
+          "Skybox": null,
           "PhysicsBody3D": null,
           "BoxCollider3D": null,
           "CharacterController3D": null,
@@ -497,6 +517,7 @@
           "DirectionalLight": null,
           "Light": null,
           "DynamicClouds": null,
+          "Skybox": null,
           "PhysicsBody3D": null,
           "BoxCollider3D": null,
           "CharacterController3D": null,

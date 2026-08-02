@@ -19,6 +19,10 @@ public class ImGuiService : IEngineService
     // and only reads it when the atlas is (re)built, so the array must outlive font configuration.
     private GCHandle _iconRangeHandle;
 
+    // Same contract for any standalone additional fonts that carry their own tight glyph range (e.g. a
+    // large icon atlas): each array stays pinned until Shutdown.
+    private readonly List<GCHandle> _extraRangeHandles = new();
+
     public ImGuiService(ApplicationSpec spec)
     {
         _spec = spec;
@@ -75,7 +79,18 @@ public class ImGuiService : IEngineService
         {
             if (!string.IsNullOrEmpty(font.Path) && File.Exists(font.Path))
             {
-                _fonts.Add(io.Fonts.AddFontFromFileTTF(font.Path, font.Size));
+                if (font.GlyphRanges != null)
+                {
+                    // A standalone face with a tight range (e.g. a large icon atlas). Pin the range for
+                    // the atlas's lifetime and let ImGui build a default config around it.
+                    var handle = GCHandle.Alloc(font.GlyphRanges, GCHandleType.Pinned);
+                    _extraRangeHandles.Add(handle);
+                    _fonts.Add(io.Fonts.AddFontFromFileTTF(font.Path, font.Size, default, handle.AddrOfPinnedObject()));
+                }
+                else
+                {
+                    _fonts.Add(io.Fonts.AddFontFromFileTTF(font.Path, font.Size));
+                }
             }
             else
             {
@@ -141,5 +156,14 @@ public class ImGuiService : IEngineService
         {
             _iconRangeHandle.Free();
         }
+
+        foreach (var handle in _extraRangeHandles)
+        {
+            if (handle.IsAllocated)
+            {
+                handle.Free();
+            }
+        }
+        _extraRangeHandles.Clear();
     }
 }
