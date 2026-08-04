@@ -1,3 +1,5 @@
+using Spot.Rendering;
+
 namespace Spot.Assets;
 
 /// <summary>
@@ -13,7 +15,16 @@ public interface IModelImporter
     IEnumerable<string> SupportedExtensions { get; }
 
     /// <summary>
-    /// Imports the model at the given path.
+    /// Imports only the CPU-side geometry of the model, doing no GPU work. This is the expensive part
+    /// (reading and parsing the file) and contains no GL calls, so it is safe to call off the main
+    /// thread; the caller builds the GPU <see cref="Rendering.Mesh"/> instances on the render thread.
+    /// </summary>
+    /// <param name="path">The path to the model file.</param>
+    /// <returns>The model's meshes as CPU geometry.</returns>
+    IReadOnlyList<MeshData> ImportMeshData(string path);
+
+    /// <summary>
+    /// Imports the model at the given path, building its GPU meshes. Must run on the render thread.
     /// </summary>
     /// <param name="path">The path to the model file.</param>
     /// <returns>The imported model.</returns>

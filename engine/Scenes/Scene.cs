@@ -113,6 +113,7 @@ public class Scene
     /// </summary>
     public virtual void OnImGuiRender()
     {
+        ScriptSystem.ImGuiRender(this);
     }
 
     /// <summary>

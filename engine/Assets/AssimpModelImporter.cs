@@ -5,6 +5,7 @@ using Silk.NET.Assimp;
 using Spot.Core;
 using AssimpApi = Silk.NET.Assimp.Assimp;
 using RenderMesh = Spot.Rendering.Mesh;
+using MeshData = Spot.Rendering.MeshData;
 
 namespace Spot.Assets;
 
@@ -30,7 +31,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
     public IEnumerable<string> SupportedExtensions => s_extensions;
 
     /// <inheritdoc />
-    public Model Import(string path)
+    public IReadOnlyList<MeshData> ImportMeshData(string path)
     {
         const uint flags = (uint)(
             PostProcessSteps.Triangulate |
@@ -45,13 +46,13 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
 
         try
         {
-            var meshes = new List<RenderMesh>((int)scene->MNumMeshes);
+            var meshes = new List<MeshData>((int)scene->MNumMeshes);
             for (uint i = 0; i < scene->MNumMeshes; i++)
             {
-                meshes.Add(BuildMesh(scene->MMeshes[i]));
+                meshes.Add(BuildMeshData(scene->MMeshes[i]));
             }
 
-            return new Model(meshes);
+            return meshes;
         }
         finally
         {
@@ -59,7 +60,20 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         }
     }
 
-    private static RenderMesh BuildMesh(Mesh* mesh)
+    /// <inheritdoc />
+    public Model Import(string path)
+    {
+        IReadOnlyList<MeshData> data = ImportMeshData(path);
+        var meshes = new List<RenderMesh>(data.Count);
+        foreach (MeshData md in data)
+        {
+            meshes.Add(new RenderMesh(md.Vertices, md.Indices));
+        }
+
+        return new Model(meshes);
+    }
+
+    private static MeshData BuildMeshData(Mesh* mesh)
     {
         uint vertexCount = mesh->MNumVertices;
         var vertices = new float[vertexCount * RenderMesh.FloatsPerVertex];
@@ -106,7 +120,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
             }
         }
 
-        return new RenderMesh(vertices, indices.ToArray());
+        return new MeshData(vertices, indices.ToArray());
     }
 
     /// <summary>

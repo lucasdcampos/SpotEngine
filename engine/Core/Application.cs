@@ -285,6 +285,10 @@ public class Application
 
         try
         {
+            // Finish any background asset loads (build their GPU buffers) before this frame renders, so
+            // newly-ready models can be drawn the same frame. Time-budgeted internally.
+            ModelImporter.ProcessPendingUploads();
+
             SceneManager.ApplyPendingSwitch();
             SceneManager.Update(_deltaTime);
 
