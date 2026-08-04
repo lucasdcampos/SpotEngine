@@ -483,7 +483,7 @@ public static class Renderer3D
             vec3 sky = mix(haze, uSkyColor, smoothstep(0.0, 0.25, up));
             sky = mix(sky, zenith, smoothstep(0.18, 0.9, up));
 
-            // Sun scattering: a warm forward-scatter halo (strongest near the horizon), plus glow and disc.
+            // Sun scattering: a warm forward-scatter halo (strongest near the horizon), plus corona and disc.
             vec3 bandTint = haze;
             if (uHasDirLight == 1)
             {
@@ -491,14 +491,25 @@ public static class Renderer3D
                 float sunHeight = smoothstep(-0.15, 0.25, L.y); // fade the sun's contribution at night
                 float sunDot = max(dot(rayDir, L), 0.0);
 
+                // Wide Mie forward-scatter halo (strongest near the horizon).
                 float halo = pow(sunDot, 4.0);
                 float horizonBias = pow(1.0 - up, 3.0);
                 sky += uLightColor * halo * (0.12 + 0.5 * horizonBias) * sunHeight;
 
-                float glow = smoothstep(0.9, 1.0, sunDot);
-                float disc = smoothstep(0.9992, 0.9997, sunDot);
-                sky += uLightColor * glow * 0.35 * sunHeight;
-                sky += uLightColor * disc * 3.0 * sunHeight;
+                // Sun disc with limb darkening: core is brighter than the edge.
+                float discOuter = smoothstep(0.9992, 0.9997, sunDot);
+                float discCore  = smoothstep(0.9995, 0.9999, sunDot);
+                float disc = discOuter * mix(0.5, 1.0, discCore * discCore);
+                sky += uLightColor * disc * 12.0 * sunHeight;
+
+                // Inner corona: tight exponential falloff just outside the disc edge, no hard ring.
+                float corona = pow(sunDot, 512.0) * (1.0 - discOuter * 0.8);
+                sky += uLightColor * corona * 3.5 * sunHeight;
+
+                // Outer atmospheric glare: warm-tinted, smooth Gaussian-like falloff, no ring artifacts.
+                vec3 glareColor = mix(uLightColor, vec3(1.0, 0.62, 0.18), 0.35);
+                float outerGlare = pow(sunDot, 16.0) * (1.0 - pow(sunDot, 300.0) * 0.9);
+                sky += glareColor * outerGlare * 0.35 * sunHeight;
 
                 // Warm the horizon band toward the sun's side of the sky (sunset-style glow).
                 vec2 flatRay = normalize(vec2(rayDir.x, rayDir.z) + 1e-4);
