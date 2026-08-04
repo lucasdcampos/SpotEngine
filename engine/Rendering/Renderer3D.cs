@@ -447,37 +447,84 @@ public static class Renderer3D
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
         uniform int uHasDirLight;
-        
+
+        // Cheap, sine-free per-pixel hash in [0,1). Used for dithering.
+        float hash12(vec2 p)
+        {
+            vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
         void main()
         {
             vec4 ndcNear = vec4(vUV * 2.0 - 1.0, -1.0, 1.0);
             vec4 ndcFar  = vec4(vUV * 2.0 - 1.0, 1.0, 1.0);
-            
+
             vec4 nearPos = uInverseViewProjection * ndcNear;
             vec4 farPos  = uInverseViewProjection * ndcFar;
             nearPos.xyz /= nearPos.w;
             farPos.xyz  /= farPos.w;
-            
+
             vec3 rayDir = normalize(farPos.xyz - nearPos.xyz);
-            
-            float skyGradient = smoothstep(0.0, 1.0, rayDir.y);
-            vec3 sky = mix(uSkyColor, uSkyColor * 0.5, skyGradient);
-            
-            float groundMix = 1.0 - smoothstep(-0.05, 0.0, rayDir.y);
-            vec3 finalSky = mix(sky, uGroundColor, groundMix);
-            
+            float y = rayDir.y;
+
+            // Derive a small atmospheric palette from the single picked sky color, so the sky reads as a
+            // gradient instead of one flat, cartoon-looking tint.
+            float lum = dot(uSkyColor, vec3(0.2126, 0.7152, 0.0722));
+            // Zenith: deeper and more saturated than the picked color (squaring deepens + saturates).
+            vec3 zenith = uSkyColor * uSkyColor;
+            // Horizon haze: pale, desaturated and lifted toward a bright sky-white (aerial scattering).
+            vec3 haze = mix(uSkyColor, vec3(lum), 0.35);
+            haze = mix(haze, vec3(0.82, 0.88, 0.95), 0.4);
+
+            // Above-horizon gradient: haze at the horizon, rising through the picked color to the deep zenith.
+            float up = clamp(y, 0.0, 1.0);
+            vec3 sky = mix(haze, uSkyColor, smoothstep(0.0, 0.25, up));
+            sky = mix(sky, zenith, smoothstep(0.18, 0.9, up));
+
+            // Sun scattering: a warm forward-scatter halo (strongest near the horizon), plus glow and disc.
+            vec3 bandTint = haze;
             if (uHasDirLight == 1)
             {
-                float sunHeight = smoothstep(-0.2, 0.2, uLightDir.y);
-                float sunDot = dot(rayDir, uLightDir);
-                float sunGlow = smoothstep(0.95, 1.0, sunDot);
-                float sunDisc = smoothstep(0.998, 1.0, sunDot);
-                
-                finalSky += uLightColor * sunGlow * 0.5 * sunHeight;
-                finalSky += uLightColor * sunDisc * 2.0 * sunHeight;
+                vec3 L = normalize(uLightDir); // points toward the sun
+                float sunHeight = smoothstep(-0.15, 0.25, L.y); // fade the sun's contribution at night
+                float sunDot = max(dot(rayDir, L), 0.0);
+
+                float halo = pow(sunDot, 4.0);
+                float horizonBias = pow(1.0 - up, 3.0);
+                sky += uLightColor * halo * (0.12 + 0.5 * horizonBias) * sunHeight;
+
+                float glow = smoothstep(0.9, 1.0, sunDot);
+                float disc = smoothstep(0.9992, 0.9997, sunDot);
+                sky += uLightColor * glow * 0.35 * sunHeight;
+                sky += uLightColor * disc * 3.0 * sunHeight;
+
+                // Warm the horizon band toward the sun's side of the sky (sunset-style glow).
+                vec2 flatRay = normalize(vec2(rayDir.x, rayDir.z) + 1e-4);
+                vec2 flatSun = normalize(vec2(L.x, L.z) + 1e-4);
+                float az = pow(max(dot(flatRay, flatSun), 0.0), 2.0);
+                bandTint = mix(haze, haze * 0.6 + uLightColor * 0.7, az * sunHeight);
             }
-            
-            fragColor = vec4(finalSky, 1.0);
+
+            // Ground picks up the horizon haze as it nears the horizon (aerial perspective).
+            float groundHaze = pow(1.0 - clamp(-y, 0.0, 1.0), 3.0);
+            vec3 ground = mix(uGroundColor, haze, groundHaze * 0.55);
+
+            // Soft sky/ground transition with a thin, bright atmospheric band hugging the horizon line.
+            float horizonBlend = 1.0 - smoothstep(-0.04, 0.04, y);
+            vec3 color = mix(sky, ground, horizonBlend);
+            float band = exp(-abs(y) * 16.0);
+            color = mix(color, bandTint, band * 0.35);
+
+            // Dithering. This smooth gradient bands into concentric "onion rings" once quantized to an
+            // 8-bit target (the direct, no-post-processing path — the HDR/post path dithers in its own
+            // composite). Add ~1 LSB of triangular-PDF noise so each band edge dissolves into noise.
+            float d1 = hash12(gl_FragCoord.xy);
+            float d2 = hash12(gl_FragCoord.xy + 17.0);
+            color += (d1 + d2 - 1.0) / 255.0;
+
+            fragColor = vec4(color, 1.0);
         }
         """;
 

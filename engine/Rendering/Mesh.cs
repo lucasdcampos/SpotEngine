@@ -1,6 +1,30 @@
 namespace Spot.Rendering;
 
 /// <summary>
+/// The CPU-side geometry of a mesh: interleaved vertex data and triangle indices, before any GPU
+/// upload. Producing this is pure computation (no GL calls), so it is safe to build off the main
+/// thread — for example while importing a large model in the background. Turn it into a drawable
+/// <see cref="Mesh"/> on the render thread by passing its arrays to the <see cref="Mesh"/> constructor.
+/// </summary>
+public readonly struct MeshData
+{
+    /// <summary>Initializes CPU geometry from interleaved vertices and triangle indices.</summary>
+    /// <param name="vertices">Interleaved vertex data laid out as position (3), normal (3), texture coordinate (2).</param>
+    /// <param name="indices">Triangle indices into <paramref name="vertices"/>.</param>
+    public MeshData(float[] vertices, uint[] indices)
+    {
+        Vertices = vertices;
+        Indices = indices;
+    }
+
+    /// <summary>Gets the interleaved vertex data (position, normal, texture coordinate).</summary>
+    public float[] Vertices { get; }
+
+    /// <summary>Gets the triangle indices into <see cref="Vertices"/>.</summary>
+    public uint[] Indices { get; }
+}
+
+/// <summary>
 /// A drawable triangle mesh on the GPU: interleaved vertices together with an index buffer.
 /// </summary>
 /// <remarks>

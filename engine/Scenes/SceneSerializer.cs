@@ -6,7 +6,6 @@ using System.Text.Json;
 using Spot.Core;
 using Spot.Rendering;
 using Spot.Physics;
-using Spot.Assets;
 
 namespace Spot.Scenes;
 
@@ -102,6 +101,7 @@ public class PhysicsBody3DData : ComponentData
 {
     public float[] Velocity { get; set; } = new float[3];
     public float GravityScale { get; set; } = 1.0f;
+    public float LinearDrag { get; set; } = 0.0f;
     public bool IsDynamic { get; set; } = true;
 }
 
@@ -277,6 +277,7 @@ public class SceneSerializer
                 Enabled = body.Enabled,
                 Velocity = new[] { body.Velocity.X, body.Velocity.Y, body.Velocity.Z },
                 GravityScale = body.GravityScale,
+                LinearDrag = body.LinearDrag,
                 IsDynamic = body.IsDynamic
             };
         }
@@ -488,30 +489,12 @@ public class SceneSerializer
             var meshRenderer = new MeshComponent();
             meshRenderer.Enabled = entityData.MeshRenderer.Enabled;
             meshRenderer.Color = new System.Numerics.Vector4(entityData.MeshRenderer.Color[0], entityData.MeshRenderer.Color[1], entityData.MeshRenderer.Color[2], entityData.MeshRenderer.Color[3]);
-            if (!string.IsNullOrEmpty(entityData.MeshRenderer.ModelPath))
-            {
-                meshRenderer.ModelPath = entityData.MeshRenderer.ModelPath;
-                try
-                {
-                    meshRenderer.Model = Model.Load(meshRenderer.ModelPath);
-                }
-                catch (Exception ex)
-                {
-                    Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
-                }
-            }
-            if (!string.IsNullOrEmpty(entityData.MeshRenderer.MaterialPath))
-            {
-                meshRenderer.MaterialPath = entityData.MeshRenderer.MaterialPath;
-                try
-                {
-                    meshRenderer.Material = Material.Load(meshRenderer.MaterialPath);
-                }
-                catch (Exception ex)
-                {
-                    Log.CoreError("Failed to load material '{0}': {1}", meshRenderer.MaterialPath, ex.Message);
-                }
-            }
+            // Store only the asset paths here; the actual model/material load is deferred to first render
+            // (RenderSystem.ResolveAssets). This keeps scene loading instant regardless of asset size — a
+            // heavy model no longer freezes startup — and means a disabled entity never loads its assets at
+            // all. Models load asynchronously on a background thread; materials load lazily on demand.
+            meshRenderer.ModelPath = entityData.MeshRenderer.ModelPath;
+            meshRenderer.MaterialPath = entityData.MeshRenderer.MaterialPath;
             entity.AddComponent(meshRenderer);
         }
 
@@ -561,6 +544,7 @@ public class SceneSerializer
             body.Enabled = entityData.PhysicsBody3D.Enabled;
             body.Velocity = new System.Numerics.Vector3(entityData.PhysicsBody3D.Velocity[0], entityData.PhysicsBody3D.Velocity[1], entityData.PhysicsBody3D.Velocity[2]);
             body.GravityScale = entityData.PhysicsBody3D.GravityScale;
+            body.LinearDrag = entityData.PhysicsBody3D.LinearDrag;
             body.IsDynamic = entityData.PhysicsBody3D.IsDynamic;
             entity.AddComponent(body);
         }

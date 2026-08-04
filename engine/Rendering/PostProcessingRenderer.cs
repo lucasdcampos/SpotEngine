@@ -33,16 +33,24 @@ uniform float uGamma;
 uniform int uEnableVignette;
 uniform float uVignetteIntensity;
 
+// Cheap, sine-free per-pixel hash in [0,1). Used for dithering.
+float hash12(vec2 p)
+{
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 void main()
 {
     vec3 color = texture(uScreenTexture, TexCoords).rgb;
-    
+
     // Exposure tone mapping
     vec3 mapped = vec3(1.0) - exp(-color * uExposure);
-    
-    // Gamma correction 
+
+    // Gamma correction
     mapped = pow(mapped, vec3(1.0 / uGamma));
-    
+
     // Vignette
     if (uEnableVignette == 1)
     {
@@ -52,7 +60,15 @@ void main()
         vig = pow(vig, uVignetteIntensity);
         mapped *= vig;
     }
-    
+
+    // Dithering. Smooth gradients (most visibly the sky) show onion-ring banding once quantized to the
+    // 8-bit output. Add ~1 LSB of triangular-PDF noise in display space, right before quantization,
+    // to spread each channel's rounding across the band edge so the steps read as imperceptible noise.
+    // Two uniform hashes summed give a triangular distribution (flat noise variance, no visible pattern).
+    float d1 = hash12(gl_FragCoord.xy);
+    float d2 = hash12(gl_FragCoord.xy + 17.0);
+    mapped += (d1 + d2 - 1.0) / 255.0;
+
     FragColor = vec4(mapped, 1.0);
 }";
 

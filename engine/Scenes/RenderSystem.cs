@@ -1,4 +1,6 @@
+using System;
 using System.Numerics;
+using Spot.Assets;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -136,8 +138,11 @@ public static class RenderSystem
                 if (!entity.IsActiveInHierarchy()) continue;
                 MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
                 var transform = entity.GetComponent<TransformComponent>();
-                if (!meshRenderer.Enabled || !transform.Enabled || meshRenderer.Model is null) continue;
-                
+                if (!meshRenderer.Enabled || !transform.Enabled) continue;
+
+                ResolveAssets(meshRenderer);
+                if (meshRenderer.Model is null) continue;
+
                 Matrix4x4 world = transform.Matrix;
                 foreach (Mesh mesh in meshRenderer.Model.Meshes)
                 {
@@ -190,7 +195,9 @@ public static class RenderSystem
             MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
             var transform = entity.GetComponent<TransformComponent>();
             if (!meshRenderer.Enabled || !transform.Enabled) continue;
-            
+
+            ResolveAssets(meshRenderer);
+
             if (meshRenderer.Model is null)
             {
                 continue;
@@ -288,6 +295,47 @@ public static class RenderSystem
                 s_hdrFramebuffer.BlitDepthTo((uint)currentFbo[0], viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
 
             PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess);
+        }
+    }
+
+    /// <summary>
+    /// Lazily fills in a mesh renderer's <see cref="MeshComponent.Model"/> and <see cref="MeshComponent.Material"/>
+    /// from their stored paths. Scene loading stores only the paths (so it never blocks startup on a heavy
+    /// asset); this resolves them at draw time. Primitives and materials load synchronously — they're cheap —
+    /// while model files load asynchronously in the background and stay <see langword="null"/> (skipping the
+    /// draw) until ready. Because it runs only after the render loops have skipped disabled entities, a
+    /// disabled object never pays to load its assets.
+    /// </summary>
+    private static void ResolveAssets(MeshComponent meshRenderer)
+    {
+        if (meshRenderer.Model is null && !string.IsNullOrEmpty(meshRenderer.ModelPath))
+        {
+            if (meshRenderer.ModelPath.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    meshRenderer.Model = Model.Load(meshRenderer.ModelPath);
+                }
+                catch (Exception ex)
+                {
+                    // An unknown primitive name can't be recovered; log once and drop the reference so we
+                    // don't retry (and re-log) it every frame.
+                    Spot.Core.Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
+                    meshRenderer.ModelPath = null;
+                }
+            }
+            else
+            {
+                // Non-blocking: returns null while the file parses in the background, the ready model once
+                // its GPU upload has been finalized. RequestAsync tracks failures itself, so no spam here.
+                meshRenderer.Model = ModelImporter.RequestAsync(meshRenderer.ModelPath);
+            }
+        }
+
+        if (meshRenderer.Material is null && !string.IsNullOrEmpty(meshRenderer.MaterialPath))
+        {
+            // Material.Load is cached and never throws (it logs and returns a default on failure).
+            meshRenderer.Material = Material.Load(meshRenderer.MaterialPath);
         }
     }
 }

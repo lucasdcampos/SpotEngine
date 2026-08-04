@@ -76,4 +76,11 @@ public abstract class EntityBehaviour
     public virtual void OnDestroy()
     {
     }
+
+    /// <summary>
+    /// Called every frame to render UI with ImGui.
+    /// </summary>
+    public virtual void OnImGuiRender()
+    {
+    }
 }

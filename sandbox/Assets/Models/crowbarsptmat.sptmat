@@ -1,0 +1,21 @@
+{
+  "Color": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "TexturePath": "Models/crowbar_01_diff_1k.jpg",
+  "ShaderType": "Standard",
+  "WaveSpeed": 1,
+  "WaveScale": 1,
+  "WaveStrength": 0.3,
+  "SpecularPower": 64,
+  "Metallic": 0,
+  "NormalMapPath": null,
+  "Tiling": [
+    1,
+    1
+  ],
+  "AutoTile": false
+}

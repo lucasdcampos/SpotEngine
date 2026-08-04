@@ -24,6 +24,11 @@ internal static class Physics3DSystem
 
             if (body.IsDynamic)
             {
+                if (body.LinearDrag > 0f)
+                {
+                    // Apply linear drag (damping) to gradually reduce velocity over time
+                    body.Velocity -= body.Velocity * body.LinearDrag * deltaTime;
+                }
                 body.Velocity += Gravity * body.GravityScale * deltaTime;
                 transform.Position += body.Velocity * deltaTime;
             }

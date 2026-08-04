@@ -46,6 +46,30 @@ internal static class ScriptSystem
         }
     }
 
+    public static void ImGuiRender(Scene scene)
+    {
+        foreach (Entity entity in scene.View<ScriptComponent>().ToList())
+        {
+            if (!entity.IsActiveInHierarchy()) continue;
+            var scriptComp = entity.GetComponent<ScriptComponent>();
+            if (!scriptComp.Enabled) continue;
+
+            foreach (EntityBehaviour script in scriptComp.Scripts.ToList())
+            {
+                if (script.Faulted || !script.Started) continue;
+
+                try
+                {
+                    script.OnImGuiRender();
+                }
+                catch (Exception ex)
+                {
+                    Quarantine(script, "imgui_render", ex);
+                }
+            }
+        }
+    }
+
     public static void DestroyAll(Scene scene)
     {
         foreach (Entity entity in scene.View<ScriptComponent>().ToList())
