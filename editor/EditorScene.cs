@@ -913,6 +913,7 @@ public class EditorScene : Scene
 
         if (ImGui.BeginMenu("Scene"))
         {
+            if (ImGui.MenuItem("New Scene", "Ctrl+N")) NewScene();
             if (ImGui.MenuItem("Open Scene...")) OpenScene();
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
             if (ImGui.MenuItem("Save All Scenes", "Ctrl+Shift+S")) SaveAllScenes();
@@ -1108,6 +1109,10 @@ public class EditorScene : Scene
         {
             SaveScene();
         }
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.N))
+        {
+            NewScene();
+        }
     }
 
     // Records the current scene as the clean baseline (called after a successful save/open).
@@ -1144,6 +1149,17 @@ public class EditorScene : Scene
         }
     }
 
+
+    private void NewScene()
+    {
+        var newSceneData = new OpenSceneData(_context);
+        newSceneData.FocusNextFrame = true;
+        _openScenes.Add(newSceneData);
+        _activeSceneData = newSceneData;
+        _lastEditedSceneData = newSceneData;
+        _context.ActiveScene = newSceneData.Scene;
+        _context.Selection = null;
+    }
 
     private void OpenScene()
     {
