@@ -877,9 +877,9 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Right, 0.25f, out uint right, out center);
         ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.25f, out uint bottom, out center);
 
-        ImGuiDock.igDockBuilderDockWindow("Hierarchy", leftTop);
+        ImGuiDock.igDockBuilderDockWindow("Scene", leftTop);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", leftBottom);
-        ImGuiDock.igDockBuilderDockWindow("Inspector", right);
+        ImGuiDock.igDockBuilderDockWindow("Properties", right);
         ImGuiDock.igDockBuilderDockWindow("Console", bottom);
         
         foreach (var sceneData in _openScenes)
@@ -951,8 +951,8 @@ public class EditorScene : Scene
             if (ImGui.BeginMenu("Panels"))
             {
                 ImGui.MenuItem("Game", "", ref _showGame);
-                ImGui.MenuItem("Hierarchy", "", ref _showHierarchy);
-                ImGui.MenuItem("Inspector", "", ref _showInspector);
+                ImGui.MenuItem("Scene", "", ref _showHierarchy);
+                ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
                 ImGui.EndMenu();

@@ -20,7 +20,7 @@ public class InspectorPanel
     public void OnImGuiRender(ref bool open)
     {
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
-        ImGui.Begin("Inspector", ref open, flags);
+        ImGui.Begin("Properties", ref open, flags);
 
         if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
         {
