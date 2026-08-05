@@ -95,10 +95,14 @@ public class AssetBrowserPanel
         DrawToolbar();
         ImGui.Separator();
 
-        ImGui.BeginChild("AssetGrid", new Vector2(0, 0), ImGuiChildFlags.None);
+        float bottomHeight = ImGui.GetTextLineHeightWithSpacing();
+        ImGui.BeginChild("AssetGrid", new Vector2(0, -bottomHeight), ImGuiChildFlags.None);
         DrawGrid();
         DrawEmptySpaceContextMenu();
         ImGui.EndChild();
+
+        string statusText = _selectedPath != null ? $"Selected: {Path.GetFileName(_selectedPath)}" : " ";
+        ImGui.TextDisabled(statusText);
 
         HandleModals();
 
@@ -153,15 +157,13 @@ public class AssetBrowserPanel
         const float searchWidth = 200.0f;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         float glyphWidth = ImGui.CalcTextSize(EditorIcons.Search).X;
-        float rightGroup = glyphWidth + 6.0f + searchWidth + spacing + sliderWidth;
-        float offset = ImGui.GetContentRegionAvail().X - rightGroup;
-        if (offset > 0)
+        float rightGroup = glyphWidth + 6.0f + searchWidth + spacing + sliderWidth + 24.0f;
+        
+        ImGui.SameLine();
+        float avail = ImGui.GetContentRegionAvail().X;
+        if (avail > rightGroup)
         {
-            ImGui.SameLine(0, offset);
-        }
-        else
-        {
-            ImGui.SameLine();
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (avail - rightGroup));
         }
 
         ImGui.AlignTextToFramePadding();
@@ -397,7 +399,7 @@ public class AssetBrowserPanel
     // Picks the Font Awesome glyph and tint for a non-preview asset kind.
     private static (string Glyph, Vector4 Color) GlyphFor(AssetKind kind, EditorPalette palette) => kind switch
     {
-        AssetKind.Folder => (EditorIcons.Folder, palette.Accent),
+        AssetKind.Folder => (EditorIcons.FolderOpen, palette.TextDisabled),
         AssetKind.Script => (EditorIcons.Code, ScriptColor),
         AssetKind.Scene => (EditorIcons.Cubes, SceneColor),
         AssetKind.Image => (EditorIcons.Image, ImageColor),

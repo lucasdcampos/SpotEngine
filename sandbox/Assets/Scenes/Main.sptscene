@@ -350,9 +350,7 @@
       "Sprite": null,
       "MeshRenderer": null,
       "Scripts": {
-        "ScriptNames": [
-          "ItemGrabber"
-        ],
+        "ScriptNames": [],
         "Enabled": true
       },
       "Camera": null,

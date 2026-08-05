@@ -901,34 +901,28 @@ public class EditorScene : Scene
         // A slightly taller bar with more generous item spacing so the top strip reads as part of the
         // editor chrome rather than a stock menu. The vars stay pushed for the whole bar so the menu
         // items inherit the same rhythm.
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10.0f, 7.0f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10.0f, 6.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(14.0f, 10.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(14.0f, 8.0f));
         if (!ImGui.BeginMainMenuBar())
         {
             ImGui.PopStyleVar(2);
             return;
         }
 
-        DrawBrandMark(palette);
-
-        if (ImGui.BeginMenu("Scene"))
+        if (ImGui.BeginMenu("File"))
         {
+            if (ImGui.MenuItem("New Project...")) _isCreatingProject = true;
+            if (ImGui.MenuItem("Open Project...")) OpenProject();
+            ImGui.Separator();
+            
             if (ImGui.MenuItem("New Scene", "Ctrl+N")) NewScene();
             if (ImGui.MenuItem("Open Scene...")) OpenScene();
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
             if (ImGui.MenuItem("Save All Scenes", "Ctrl+Shift+S")) SaveAllScenes();
             ImGui.Separator();
-            if (ImGui.MenuItem("Exit")) RequestExit();
-            ImGui.EndMenu();
-        }
-
-        if (ImGui.BeginMenu("Project"))
-        {
-            if (ImGui.MenuItem("New Project...")) _isCreatingProject = true;
-            if (ImGui.MenuItem("Open Project...")) OpenProject();
+            
             if (Project.Active != null)
             {
-                ImGui.Separator();
                 ImGui.MenuItem("Project Settings", "", ref _showProjectSettings);
                 ImGui.Separator();
                 if (ImGui.BeginMenu("Build Game (Release)"))
@@ -943,43 +937,10 @@ public class EditorScene : Scene
                     if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Spot.Build.ProjectGenerator.Generate(Project.Active!, overwriteProgram: true);
                     ImGui.EndMenu();
                 }
-            }
-            ImGui.EndMenu();
-        }
-
-        if (ImGui.BeginMenu("Entity"))
-        {
-            bool hasScene = _context.ActiveScene != null;
-            if (ImGui.MenuItem("Create Empty", "", false, hasScene)) _hierarchyPanel.CreateEmpty();
-            if (ImGui.MenuItem("Create Camera", "", false, hasScene)) _hierarchyPanel.CreateCamera();
-            if (ImGui.MenuItem("Create Sprite", "", false, hasScene)) _hierarchyPanel.CreateSprite();
-            if (ImGui.MenuItem("Create Mesh", "", false, hasScene)) _hierarchyPanel.CreateMesh();
-            if (hasScene && ImGui.BeginMenu("Light"))
-            {
-                if (ImGui.MenuItem("Directional Light")) _hierarchyPanel.CreateLight(Spot.Scenes.LightType.Directional);
-                if (ImGui.MenuItem("Point Light")) _hierarchyPanel.CreateLight(Spot.Scenes.LightType.Point);
-                ImGui.EndMenu();
-            }
-            else if (!hasScene)
-            {
-                ImGui.MenuItem("Light", "", false, false);
+                ImGui.Separator();
             }
             
-            if (hasScene && ImGui.BeginMenu("3D Object"))
-            {
-                if (ImGui.MenuItem("Cube")) _hierarchyPanel.CreatePrimitive("Cube");
-                if (ImGui.MenuItem("Plane")) _hierarchyPanel.CreatePrimitive("Plane");
-                if (ImGui.MenuItem("Quad")) _hierarchyPanel.CreatePrimitive("Quad");
-                if (ImGui.MenuItem("Sphere")) _hierarchyPanel.CreatePrimitive("Sphere");
-                ImGui.EndMenu();
-            }
-            else if (!hasScene)
-            {
-                ImGui.MenuItem("3D Object", "", false, false);
-            }
-            
-            ImGui.Separator();
-            if (ImGui.MenuItem("Import 3D Model...", "", false, hasScene)) ImportModel();
+            if (ImGui.MenuItem("Exit")) RequestExit();
             ImGui.EndMenu();
         }
 
@@ -1029,28 +990,7 @@ public class EditorScene : Scene
         ImGui.PopStyleVar(2);
     }
 
-    // A small brand mark at the far left of the menu bar: an accent diamond plus the wordmark, drawn
-    // into the menu-bar draw list so it reads as a logo without behaving like a clickable menu.
-    private void DrawBrandMark(EditorPalette palette)
-    {
-        float h = ImGui.GetFrameHeight();
-        var drawList = ImGui.GetWindowDrawList();
-        Vector2 origin = ImGui.GetCursorScreenPos();
-        float cy = origin.Y + h * 0.5f;
-        float r = 5.0f;
-        Vector2 c = new(origin.X + 8.0f + r, cy);
-        uint accent = ImGui.GetColorU32(palette.Accent);
-        drawList.AddQuadFilled(
-            c + new Vector2(0.0f, -r), c + new Vector2(r, 0.0f),
-            c + new Vector2(0.0f, r), c + new Vector2(-r, 0.0f), accent);
 
-        // Reserve the glyph's footprint, then draw the wordmark aligned to the bar.
-        ImGui.Dummy(new Vector2(8.0f + r * 2.0f, h));
-        ImGui.SameLine(0.0f, 8.0f);
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextUnformatted("Spot");
-        ImGui.SameLine(0.0f, 14.0f);
-    }
 
     // Draws the centered play/stop icon button inside the main menu bar.
     private void DrawPlayControl()
@@ -1076,11 +1016,11 @@ public class EditorScene : Scene
             drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
         }
 
-        float pad = size * 0.30f;
+        float pad = size * 0.22f;
         if (_state == EditorState.Edit)
         {
             // Play: right-pointing triangle.
-            uint color = ImGui.GetColorU32(palette.Accent);
+            uint color = ImGui.GetColorU32(palette.Text);
             Vector2 a = p0 + new Vector2(pad, pad);
             Vector2 b = p0 + new Vector2(pad, size - pad);
             Vector2 c = p0 + new Vector2(size - pad, size * 0.5f);

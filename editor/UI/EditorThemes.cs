@@ -33,9 +33,9 @@ public static class EditorThemes
             Text = Rgb(200, 200, 200),
             TextDisabled = Rgb(100, 100, 100),
 
-            Accent = Rgb(0, 112, 224),
-            AccentHovered = Rgb(25, 137, 249),
-            AccentActive = Rgb(0, 85, 170),
+            Accent = Rgb(224, 112, 0),
+            AccentHovered = Rgb(249, 137, 25),
+            AccentActive = Rgb(170, 85, 0),
 
             FrameBg = Rgb(10, 10, 10),
             FrameBgHovered = Rgb(35, 35, 35),
@@ -53,10 +53,10 @@ public static class EditorThemes
 
             Button = Rgb(35, 35, 35),
             ButtonHovered = Rgb(50, 50, 50),
-            ButtonActive = Rgb(0, 112, 224),
+            ButtonActive = Rgb(224, 112, 0),
 
-            CheckMark = Rgb(0, 112, 224),
-            SliderGrab = Rgb(0, 112, 224),
+            CheckMark = Rgb(224, 112, 0),
+            SliderGrab = Rgb(224, 112, 0),
             Separator = Rgb(35, 35, 35),
 
             // Softer, desaturated axis colors so property fields read calm, not neon.
@@ -85,9 +85,9 @@ public static class EditorThemes
             Text = Rgb(20, 20, 20),
             TextDisabled = Rgb(120, 120, 120),
 
-            Accent = Rgb(30, 100, 200),
-            AccentHovered = Rgb(50, 120, 220),
-            AccentActive = Rgb(20, 80, 180),
+            Accent = Rgb(200, 100, 30),
+            AccentHovered = Rgb(220, 120, 50),
+            AccentActive = Rgb(180, 80, 20),
 
             FrameBg = Rgb(250, 250, 250),
             FrameBgHovered = Rgb(220, 220, 230),
@@ -107,8 +107,8 @@ public static class EditorThemes
             ButtonHovered = Rgb(200, 200, 200),
             ButtonActive = Rgb(180, 180, 180),
 
-            CheckMark = Rgb(30, 100, 200),
-            SliderGrab = Rgb(30, 100, 200),
+            CheckMark = Rgb(200, 100, 30),
+            SliderGrab = Rgb(200, 100, 30),
             Separator = Rgb(200, 200, 200),
 
             AxisX = Rgb(196, 91, 94),
