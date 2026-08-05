@@ -56,7 +56,7 @@ public class LauncherScene : Scene
         EditorThemeManager.SetTheme(EditorThemes.SpotDark);
 
         var native = Application.Instance.Window.NativeWindow;
-        native.Title = "Spot Launcher";
+        native.Title = $"Spot {Application.Instance.EngineVersion}";
 
         // Shrink the window down to the launcher's compact size and center it on the monitor. The
         // editor restores its own (larger) size when it loads.
