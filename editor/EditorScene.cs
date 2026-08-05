@@ -172,6 +172,35 @@ public class EditorScene : Scene
         }
     }
 
+    // Scans the active project's assets and installs the Library-backed content resolver, so guid: references
+    // in scenes/materials resolve to cooked artifacts — the editor renders exactly what a build would ship.
+    private static void ActivateProjectPipeline()
+    {
+        var project = Project.Active;
+        if (project == null)
+        {
+            return;
+        }
+
+        Spot.Assets.AssetDatabase.Refresh(project.GetAssetDirectory());
+        Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, "Library"));
+    }
+
+    // Rewrites this project's scene/material references to stable guid: references (a one-time upgrade), then
+    // reloads so the open scenes pick up the migrated files.
+    private void MigrateAssets()
+    {
+        var project = Project.Active;
+        if (project == null)
+        {
+            return;
+        }
+
+        int changed = Spot.Assets.AssetDatabase.MigrateReferences(project.GetAssetDirectory());
+        Log.CoreInfo("Migrated {0} file(s) to guid references; reloading.", changed);
+        LoadStartScene();
+    }
+
     private void LoadStartScene()
     {
         _openScenes.Clear();
@@ -190,6 +219,8 @@ public class EditorScene : Scene
             _context.ActiveScene = newSceneData.Scene;
             return;
         }
+
+        ActivateProjectPipeline();
 
         string startAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
         if (System.IO.File.Exists(startAbs))
@@ -939,6 +970,7 @@ public class EditorScene : Scene
                     if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Spot.Build.ProjectGenerator.Generate(Project.Active!, overwriteProgram: true);
                     ImGui.EndMenu();
                 }
+                if (ImGui.MenuItem("Migrate Assets to GUID References")) MigrateAssets();
                 ImGui.Separator();
             }
             
@@ -1286,6 +1318,7 @@ public class EditorScene : Scene
         }
 
         Spot.Editor.Utils.RecentProjects.Add(filepath);
+        ActivateProjectPipeline();
 
         string startSceneAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
         _openScenes.Clear();

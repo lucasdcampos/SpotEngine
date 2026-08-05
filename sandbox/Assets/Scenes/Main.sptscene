@@ -128,7 +128,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/debug.sptmat",
+        "MaterialPath": "guid:bf7a32a61d574222845466acdcd2c72e",
         "Color": [
           1,
           1,
@@ -253,8 +253,8 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "Models/passive_marker_man.fbx",
-        "MaterialPath": "Models/MocapSuit02_diffuse.sptmat",
+        "ModelPath": "guid:383b2b0c7bc745c7b65a06ce15380063",
+        "MaterialPath": "guid:0d924df414364b21935af1618a92a0d3",
         "Color": [
           1,
           1,
@@ -361,7 +361,7 @@
           },
           "MeshRenderer": {
             "Enabled": true,
-            "ModelPath": "Models/ybot.fbx",
+            "ModelPath": "guid:bb4c9beac4144ad0a212f4674e0d206a",
             "MaterialPath": null,
             "Color": [
               1,
@@ -471,7 +471,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Bricks.sptmat",
+        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
         "Color": [
           1,
           1,
@@ -519,7 +519,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Bricks.sptmat",
+        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
         "Color": [
           1,
           1,
@@ -567,7 +567,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Bricks.sptmat",
+        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
         "Color": [
           1,
           1,
@@ -615,7 +615,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Bricks.sptmat",
+        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
         "Color": [
           1,
           1,
@@ -663,7 +663,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/concrete1.sptmat",
+        "MaterialPath": "guid:37839579127e488486381a90cf92039b",
         "Color": [
           1,
           1,
@@ -721,8 +721,8 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "Models/crowbar_01_1k.fbx",
-        "MaterialPath": "Models/crowbarsptmat.sptmat",
+        "ModelPath": "guid:b5236c0cfb534563a078c0e3cfbf7c8c",
+        "MaterialPath": "guid:adbab3949cfd45adbe5072d9fd1a4583",
         "Color": [
           1,
           1,
@@ -788,8 +788,8 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "Models/plastic_crate_01_1k.fbx",
-        "MaterialPath": "Models/plastic_cratesptmat.sptmat",
+        "ModelPath": "guid:5143df3c31274b799aa17acd0ac61edb",
+        "MaterialPath": "guid:f577308646b444cb92f0ab54ab002dbb",
         "Color": [
           1,
           1,
@@ -855,8 +855,8 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "Models/wooden_picnic_table_1k.fbx",
-        "MaterialPath": "Models/wooden_tablesptmat.sptmat",
+        "ModelPath": "guid:4b877ce97b504bc5b4512114a5b9a616",
+        "MaterialPath": "guid:3e94b4a2e70a4b8bb7fd168e94363be1",
         "Color": [
           1,
           1,
@@ -904,7 +904,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "Materials/Water.sptmat",
+        "MaterialPath": "guid:1d5c345f02da4733b47bb2562069feab",
         "Color": [
           1,
           1,

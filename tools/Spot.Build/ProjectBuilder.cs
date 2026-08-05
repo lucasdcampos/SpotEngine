@@ -55,6 +55,21 @@ public static class ProjectBuilder
         // Keep the .csproj and bundled engine DLL in sync with the current engine before publishing.
         ProjectGenerator.Generate(project);
 
+        // Cook source assets into Content/ so the published build ships only engine-native artifacts.
+        // The generated .csproj copies Content/ (not Assets/) to the output.
+        string contentRoot = Path.Combine(project.ProjectDirectory, "Content");
+        try
+        {
+            onOutput?.Invoke("Cooking assets...");
+            string manifest = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            onOutput?.Invoke($"Cooked assets -> {manifest}");
+        }
+        catch (Exception ex)
+        {
+            onError?.Invoke($"Asset cook failed: {ex.Message}");
+            return new BuildResult(false, -1, contentRoot);
+        }
+
         string rid = RuntimeIdentifier(platform);
 
         // A distributable build goes to Build/<platform> as a self-contained, single-file Release.

@@ -115,12 +115,12 @@ public class ImGuiService : IEngineService
     // Runs during atlas configuration, so these fonts land in the same single atlas as the rest.
     private void LoadAssetFonts(ImGuiIOPtr io)
     {
-        if (string.IsNullOrEmpty(_spec.AssetDirectory))
+        if (string.IsNullOrEmpty(_spec.AssetRoot))
         {
             return;
         }
 
-        string fontsDir = Path.Combine(_spec.AssetDirectory, "Fonts");
+        string fontsDir = Path.Combine(_spec.AssetRoot, "Fonts");
         if (!Directory.Exists(fontsDir))
         {
             return;

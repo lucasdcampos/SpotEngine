@@ -26,6 +26,9 @@ internal static class Program
             return 0;
         }
 
+        // Engine paths (asset cook, migration) log through Serilog, which throws if never initialized.
+        Log.Init();
+
         string command = args[0].ToLowerInvariant();
         try
         {
@@ -34,6 +37,8 @@ internal static class Program
                 "new" => CmdNew(args),
                 "generate" => CmdGenerate(args),
                 "build" => CmdBuild(args),
+                "cook" => CmdCook(args),
+                "migrate" => CmdMigrate(args),
                 "help" or "-h" or "--help" => PrintUsageAnd(0),
                 _ => UnknownCommand(command),
             };
@@ -95,6 +100,33 @@ internal static class Program
         BuildPlatform platform = ParsePlatform(positionals[0]);
         var project = ResolveProject(options.GetValueOrDefault("project"));
         return RunBuild(project, platform);
+    }
+
+    // spot cook [--project <path>] [--out <dir>]
+    private static int CmdCook(string[] args)
+    {
+        var (_, options) = ParseArgs(args, 1);
+        var project = ResolveProject(options.GetValueOrDefault("project"));
+        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, "Content");
+
+        Console.WriteLine($"Cooking assets for '{project.Config.Name}' -> {outDir}");
+        string manifest = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), outDir);
+        Console.WriteLine($"Cooked. Manifest: {manifest}");
+        return 0;
+    }
+
+    // spot migrate [--project <path>] [--dry-run]
+    private static int CmdMigrate(string[] args)
+    {
+        var (_, options) = ParseArgs(args, 1);
+        var project = ResolveProject(options.GetValueOrDefault("project"));
+        bool dryRun = options.ContainsKey("dry-run");
+
+        int changed = Spot.Assets.AssetDatabase.MigrateReferences(project.GetAssetDirectory(), dryRun);
+        Console.WriteLine(dryRun
+            ? $"{changed} file(s) would be migrated to guid references."
+            : $"Migrated {changed} file(s) to guid references.");
+        return 0;
     }
 
     private static int RunBuild(Project project, BuildPlatform platform)
@@ -203,6 +235,13 @@ Usage:
 
   spot build <windows|linux> [--project <path>]
       Publish a self-contained standalone build for the platform into Build/<platform>.
+
+  spot cook [--project <path>] [--out <dir>]
+      Cook source assets into engine-native artifacts + a manifest (defaults to Content/).
+
+  spot migrate [--project <path>] [--dry-run]
+      Rewrite scene/material asset references to stable guid: references and generate
+      missing .meta sidecars. --dry-run reports changes without writing.
 
   spot help
       Show this help.");

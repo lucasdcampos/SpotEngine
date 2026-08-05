@@ -53,14 +53,32 @@ public class ApplicationSpec
     public IconFontSpec? IconFont { get; set; }
 
     /// <summary>
-    /// Gets or sets the root directory for assets.
+    /// Gets or sets the root directory for source assets. Used by the editor (which loads from a project's
+    /// <c>Assets/</c>) and as a fallback when no <see cref="ContentDirectory"/> is set.
     /// </summary>
     public string? AssetDirectory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the root directory of cooked content shipped with the game (the build's <c>Content/</c>).
+    /// When set it takes precedence over <see cref="AssetDirectory"/> as the root that scenes, fonts, and
+    /// relative references resolve against — a shipped game loads cooked content, never source assets.
+    /// </summary>
+    public string? ContentDirectory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the asset manifest path (absolute, or relative to <see cref="ContentDirectory"/>). When set
+    /// and present, the game loads it and resolves <c>guid:</c> references to cooked artifacts through it.
+    /// </summary>
+    public string? ManifestPath { get; set; }
 
     /// <summary>
     /// Gets or sets the path to the start scene to load automatically on startup.
     /// </summary>
     public string? StartScene { get; set; }
+
+    /// <summary>Gets the effective asset root: the cooked <see cref="ContentDirectory"/> if set, else <see cref="AssetDirectory"/>.</summary>
+    public string? AssetRoot =>
+        !string.IsNullOrEmpty(ContentDirectory) ? ContentDirectory : AssetDirectory;
 }
 
 /// <summary>
@@ -253,6 +271,10 @@ public class Application
         Log.Init(new DevConsoleSink(_console));
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
+        // Establish the asset root and, for a cooked/shipped game, the content manifest that resolves
+        // guid: references — before any service or scene loads an asset.
+        InitializeContent();
+
         _window = new Window(_spec.Window);
         _window.SetEventCallback(OnEvent);
 
@@ -272,15 +294,10 @@ public class Application
         }
         else if (!string.IsNullOrEmpty(_spec.StartScene))
         {
-            if (!string.IsNullOrEmpty(_spec.AssetDirectory))
-            {
-                AssetPath.Root = _spec.AssetDirectory;
-            }
-            
             string scenePath = _spec.StartScene;
-            if (!string.IsNullOrEmpty(_spec.AssetDirectory))
+            if (!string.IsNullOrEmpty(AssetPath.Root))
             {
-                scenePath = Path.Combine(_spec.AssetDirectory, scenePath);
+                scenePath = Path.Combine(AssetPath.Root, scenePath);
             }
 
             if (File.Exists(scenePath))
@@ -298,6 +315,38 @@ public class Application
 
         _stopwatch = Stopwatch.StartNew();
         _lastTime = _stopwatch.Elapsed;
+    }
+
+    // Points the asset system at this app's content: sets the resolution root and, for a shipped game with a
+    // cooked manifest, installs the resolver that turns guid: references into cooked-artifact paths. Missing
+    // content logs and continues (the engine must never crash on bad data) rather than aborting startup.
+    private void InitializeContent()
+    {
+        if (!string.IsNullOrEmpty(_spec.AssetRoot))
+        {
+            AssetPath.Root = _spec.AssetRoot;
+        }
+
+        if (string.IsNullOrEmpty(_spec.ManifestPath))
+        {
+            return;
+        }
+
+        string manifestPath = _spec.ManifestPath;
+        if (!Path.IsPathRooted(manifestPath) && !string.IsNullOrEmpty(_spec.ContentDirectory))
+        {
+            manifestPath = Path.Combine(_spec.ContentDirectory, manifestPath);
+        }
+
+        if (File.Exists(manifestPath))
+        {
+            AssetManifest.Load(manifestPath);
+            AssetPath.ContentResolver = static reference => AssetManifest.Active?.ResolveGuidRef(reference);
+        }
+        else
+        {
+            Log.CoreError("Content manifest not found: {0}", manifestPath);
+        }
     }
 
     private void PollEvents()

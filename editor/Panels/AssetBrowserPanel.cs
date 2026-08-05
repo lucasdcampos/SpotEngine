@@ -601,6 +601,12 @@ public class AssetBrowserPanel
         }
         foreach (var file in dirInfo.GetFiles().OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
         {
+            // .meta sidecars are pipeline bookkeeping that lives beside each source; never show them.
+            if (file.Name.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             if (Matches(file.Name))
             {
                 result.Add(new AssetEntry(file.FullName, file.Name, false, Classify(file.Name)));

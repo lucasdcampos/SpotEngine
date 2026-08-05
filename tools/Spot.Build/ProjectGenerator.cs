@@ -85,7 +85,9 @@ public static class ProjectGenerator
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=""Assets\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
+    <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
+    <None Remove=""Content\**"" />
+    <Content Include=""Content\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
   </ItemGroup>
 </Project>";
 
@@ -128,7 +130,6 @@ EndGlobal
         if (!overwriteProgram && File.Exists(programPath)) return;
 
         string name = project.Config.Name;
-        string assetDir = project.Config.AssetDirectory.Replace("\\", "/");
         string startScene = project.Config.StartScene.Replace("\\", "/");
 
         string programContent = $@"using System;
@@ -143,7 +144,8 @@ class Program
         var spec = new ApplicationSpec
         {{
             Name = ""{name}"",
-            AssetDirectory = ""{assetDir}"",
+            ContentDirectory = ""Content"",
+            ManifestPath = ""manifest.json"",
             StartScene = ""{startScene}""
         }};
         spec.Window.Title = ""{name}"";

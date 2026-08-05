@@ -1,4 +1,5 @@
 using Silk.NET.OpenGL;
+using Spot.Assets;
 using StbImageSharp;
 
 namespace Spot.Rendering;
@@ -92,6 +93,36 @@ public sealed class Texture2D : IDisposable
 
         // pointFilter: false -> linear + mipmaps + anisotropy, the key to killing the distance shimmer.
         return new Texture2D((uint)size, (uint)size, pixels, pointFilter: false);
+    }
+
+    /// <summary>
+    /// Loads a cooked <c>.sptex</c> texture — raw RGBA decoded at import time — and uploads it verbatim, so no
+    /// image decoder runs at runtime. Mipmaps are generated on upload, as for a source texture.
+    /// </summary>
+    /// <param name="path">The absolute path to the cooked <c>.sptex</c> file.</param>
+    public static Texture2D FromSpTex(string path)
+    {
+        SpTexData tex = SpTex.ReadFile(path);
+        return new Texture2D(tex.Width, tex.Height, tex.Rgba, tex.PointFilter);
+    }
+
+    /// <summary>
+    /// Loads a texture from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.sptex</c>
+    /// through the content host, while any other value is loaded as a source image path. This is the single
+    /// entry point components and materials use, so they never care whether the project has been cooked.
+    /// </summary>
+    /// <param name="storedRef">The stored reference (a <c>guid:</c> reference or a source image path).</param>
+    /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
+    public static Texture2D LoadRef(string storedRef)
+    {
+        if (AssetRef.IsGuidRef(storedRef))
+        {
+            string cooked = AssetPath.ResolveContent(storedRef)
+                ?? throw new FileNotFoundException($"Unresolved texture reference '{storedRef}'.");
+            return FromSpTex(cooked);
+        }
+
+        return new Texture2D(storedRef);
     }
 
     /// <summary>
