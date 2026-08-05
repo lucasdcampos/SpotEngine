@@ -100,8 +100,9 @@ _Feito:_ serialização orientada por reflexão/atributos — cada componente ga
 automaticamente (vetores como arrays, enums como int, paths de asset relativizados). ~460 linhas de
 DTO removidas; formato em disco preservado (lê cenas antigas, incl. slots `null` e o alias
 `DirectionalLight`); coberto por testes de round-trip e back-compat. `LabelComponent` e
-`ScriptComponent` seguem com tratamento especial. Falta ainda expor **campos de script** (feature à
-parte, agora destravada pela infra).
+`ScriptComponent` seguem com tratamento especial. ✅ **Campos de script agora persistidos e editáveis**
+— `ScriptComponent` virou modelo de entradas (`ScriptInstance`), campos públicos dos scripts são
+serializados (`{ Type, Fields }`, lendo o legado `ScriptNames`) e editáveis no inspector.
 
 **2. "Play" faz um build de release completo a cada vez** — `EditorScene.OnPlay` chama
 `ProjectBuilder.Build`, que roda `dotnet publish -c Release -r win-x64 --self-contained true
@@ -124,7 +125,7 @@ as luzes", "todos os colliders"). Limita extensibilidade de sistemas.
 | Feature | Impacto | Nota |
 |---|---|---|
 | **Áudio** | Crítico | Não existe *nada* de som. Uma engine de jogos precisa disso. |
-| **Campos de script serializáveis/editáveis** | Crítico | `ItemGrabber` tem `GrabDistance`, `SpringForce` etc. públicos, mas o inspector só guarda `ClassNames` — nenhum parâmetro de script é editável nem persistido. Depende da refatoração do serializer. |
+| ~~**Campos de script serializáveis/editáveis**~~ ✅ **FEITO** | ~~Crítico~~ | Campos públicos dos scripts (ex.: `ItemGrabber.GrabDistance`) agora são persistidos na cena (`{ Type, Fields }`) e editáveis no inspector. |
 | **Prefabs / templates de entidade** | Alto | Sem reutilização de hierarquias. |
 | **Undo/Redo no editor** | Alto | Ausente. |
 | **Referência de asset por GUID (.meta)** | Alto | Refs são por path; renomear/mover quebra a cena. |
