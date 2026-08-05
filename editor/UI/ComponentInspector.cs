@@ -470,6 +470,14 @@ internal static class ComponentInspector
                 scriptToRemove = i;
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove script");
 
+            // Editable tunables: the script's public fields/properties, drawn indented under its row.
+            if (item.Instance != null)
+            {
+                ImGui.Indent();
+                DrawScriptFields(item.Instance);
+                ImGui.Unindent();
+            }
+
             ImGui.PopID();
         }
 
@@ -489,4 +497,177 @@ internal static class ComponentInspector
 
     private static readonly Vector4 ScriptGlyphColor = new(0.36f, 0.66f, 0.98f, 1.0f);
     private static readonly Vector4 ScriptMissingColor = new(0.95f, 0.70f, 0.25f, 1.0f);
+
+    // ----- Script field editing --------------------------------------------------------------------
+
+    private sealed class ScriptFieldMeta
+    {
+        public string Label = string.Empty;
+        public Type Type = typeof(object);
+        public Func<object, object?> Get = _ => null;
+        public Action<object, object?> Set = (_, _) => { };
+        public bool HasRange;
+        public bool IsColor;
+        public bool HasReset;
+        public float Min;
+        public float Max;
+        public float Speed = 0.1f;
+        public float Reset;
+        public string[]? EnumNames;
+        public object[]? EnumValues;
+    }
+
+    private static readonly Dictionary<Type, ScriptFieldMeta[]> _scriptFieldCache = new();
+
+    // Draws a script's public fields and read/write properties as inline editors. Editing a value marks
+    // the scene dirty automatically, since script fields are now part of the serialized scene.
+    private static void DrawScriptFields(EntityBehaviour script)
+    {
+        foreach (ScriptFieldMeta meta in ScriptFieldsFor(script.GetType()))
+        {
+            ImGui.PushID(meta.Label);
+            try
+            {
+                DrawScriptField(script, meta);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Inspector failed to draw script field '{0}': {1}", meta.Label, ex.Message);
+            }
+            finally
+            {
+                ImGui.PopID();
+            }
+        }
+    }
+
+    private static void DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
+    {
+        Type t = meta.Type;
+        string label = meta.Label;
+
+        if (t == typeof(float))
+        {
+            float v = (float)meta.Get(script)!;
+            if (EditorGui.DragFloat(label, ref v, meta.HasRange ? meta.Speed : 0.1f, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f))
+                meta.Set(script, v);
+        }
+        else if (t == typeof(int))
+        {
+            float v = (int)meta.Get(script)!;
+            float speed = meta.HasRange ? meta.Speed : 1f;
+            if (EditorGui.DragFloat(label, ref v, speed, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f, "%.0f"))
+                meta.Set(script, (int)MathF.Round(v));
+        }
+        else if (t == typeof(bool))
+        {
+            bool v = (bool)meta.Get(script)!;
+            if (EditorGui.Checkbox(label, ref v))
+                meta.Set(script, v);
+        }
+        else if (t.IsEnum)
+        {
+            object cur = meta.Get(script)!;
+            int idx = Array.IndexOf(meta.EnumValues!, cur);
+            if (idx < 0) idx = 0;
+            if (EditorGui.Combo(label, ref idx, meta.EnumNames!))
+                meta.Set(script, meta.EnumValues![idx]);
+        }
+        else if (t == typeof(Vector2))
+        {
+            var v = (Vector2)meta.Get(script)!;
+            if (EditorGui.Vector2Control(label, ref v, meta.HasReset ? meta.Reset : 0f))
+                meta.Set(script, v);
+        }
+        else if (t == typeof(Vector3))
+        {
+            var v = (Vector3)meta.Get(script)!;
+            bool changed = meta.IsColor
+                ? EditorGui.Color3(label, ref v)
+                : EditorGui.Vector3Control(label, ref v, meta.HasReset ? meta.Reset : 0f);
+            if (changed)
+                meta.Set(script, v);
+        }
+        else if (t == typeof(Vector4))
+        {
+            var v = (Vector4)meta.Get(script)!;
+            if (EditorGui.Color4(label, ref v))
+                meta.Set(script, v);
+        }
+        else if (t == typeof(string))
+        {
+            string v = (string?)meta.Get(script) ?? string.Empty;
+            if (EditorGui.InputText(label, ref v))
+                meta.Set(script, v);
+        }
+    }
+
+    private static ScriptFieldMeta[] ScriptFieldsFor(Type type)
+    {
+        if (_scriptFieldCache.TryGetValue(type, out ScriptFieldMeta[]? cached))
+            return cached;
+
+        var metas = new List<ScriptFieldMeta>();
+
+        foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (field.IsInitOnly || field.IsLiteral) continue;
+            if (!IsScriptFieldType(field.FieldType)) continue;
+            if (field.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
+            metas.Add(BuildScriptFieldMeta(field, field.FieldType, field.Name, o => field.GetValue(o), (o, v) => field.SetValue(o, v)));
+        }
+
+        foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetIndexParameters().Length > 0) continue;
+            if (prop.GetMethod is not { IsPublic: true } || prop.SetMethod is not { IsPublic: true }) continue;
+            if (!IsScriptFieldType(prop.PropertyType)) continue;
+            if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
+            metas.Add(BuildScriptFieldMeta(prop, prop.PropertyType, prop.Name, o => prop.GetValue(o), (o, v) => prop.SetValue(o, v)));
+        }
+
+        ScriptFieldMeta[] arr = metas.ToArray();
+        _scriptFieldCache[type] = arr;
+        return arr;
+    }
+
+    private static ScriptFieldMeta BuildScriptFieldMeta(MemberInfo member, Type type, string name, Func<object, object?> get, Action<object, object?> set)
+    {
+        var meta = new ScriptFieldMeta
+        {
+            Type = type,
+            Get = get,
+            Set = set,
+            Label = member.GetCustomAttribute<InspectorLabelAttribute>()?.Label ?? Humanize(name),
+            IsColor = member.GetCustomAttribute<InspectorColorAttribute>() != null,
+        };
+
+        var range = member.GetCustomAttribute<InspectorRangeAttribute>();
+        if (range != null)
+        {
+            meta.HasRange = true;
+            meta.Min = range.Min;
+            meta.Max = range.Max;
+            meta.Speed = range.Speed;
+        }
+
+        var reset = member.GetCustomAttribute<InspectorResetAttribute>();
+        if (reset != null)
+        {
+            meta.HasReset = true;
+            meta.Reset = reset.Value;
+        }
+
+        if (type.IsEnum)
+        {
+            meta.EnumNames = Enum.GetNames(type);
+            meta.EnumValues = Enum.GetValues(type).Cast<object>().ToArray();
+        }
+
+        return meta;
+    }
+
+    private static bool IsScriptFieldType(Type t) =>
+        t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
+        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4);
 }
