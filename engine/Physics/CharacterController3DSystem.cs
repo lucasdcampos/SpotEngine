@@ -73,8 +73,10 @@ internal static class CharacterController3DSystem
             var cameraEntity = ResolveCamera(scene, entity, cc);
             ApplyCameraPose(entity, cameraEntity, transform, cc);
 
-            // Grounded when the previous physics step zeroed our vertical velocity against the floor.
-            cc.IsGrounded = MathF.Abs(body.Velocity.Y) < 0.001f;
+            // Grounded is set by the physics step when a floor contact pushed us up last frame. This
+            // beats the old "vertical velocity ≈ 0" heuristic, which also fired at the jump apex and
+            // let the player jump a second time there.
+            cc.IsGrounded = body.Grounded;
 
             Move(cc, body, deltaTime);
             body.GravityScale = cc.GravityMultiplier;
