@@ -4,13 +4,13 @@ namespace Spot.Scenes;
 /// A human-readable name attached to an entity. Every entity created by
 /// <see cref="Scene.Instantiate"/> has one.
 /// </summary>
-public sealed class TagComponent : Component
+public sealed class LabelComponent : Component
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="TagComponent"/> class.
+    /// Initializes a new instance of the <see cref="LabelComponent"/> class.
     /// </summary>
     /// <param name="name">The entity name.</param>
-    public TagComponent(string name)
+    public LabelComponent(string name)
     {
         Name = name;
     }

@@ -12,7 +12,7 @@ namespace Spot.Scenes;
 /// writes its public properties automatically (see <see cref="ComponentSerialization"/>), so adding a
 /// serializable component means adding the attribute — no per-component serialization code. Components
 /// without it are not written (for example <see cref="RelationshipComponent"/>, reconstructed from the
-/// entity hierarchy; <see cref="TagComponent"/> and <see cref="ScriptComponent"/>, handled specially by
+/// entity hierarchy; <see cref="LabelComponent"/> and <see cref="ScriptComponent"/>, handled specially by
 /// the serializer).
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]

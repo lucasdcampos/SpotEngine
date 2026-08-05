@@ -14,7 +14,7 @@ public class EcsTests
 
         Assert.True(e.IsValid);
         Assert.Equal("Player", e.Name);
-        Assert.True(e.HasComponent<TagComponent>());
+        Assert.True(e.HasComponent<LabelComponent>());
         Assert.True(e.HasComponent<RelationshipComponent>());
         Assert.True(e.HasComponent<TransformComponent>());
     }

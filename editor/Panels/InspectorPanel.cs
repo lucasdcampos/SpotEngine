@@ -55,7 +55,7 @@ public class InspectorPanel
 
     private static void DrawTagRow(Entity entity)
     {
-        var tag = entity.GetComponent<TagComponent>();
+        var tag = entity.GetComponent<LabelComponent>();
         bool active = tag.Enabled;
         if (ImGui.Checkbox("##Active", ref active))
             tag.Enabled = active;

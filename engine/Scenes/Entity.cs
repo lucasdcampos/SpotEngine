@@ -27,12 +27,12 @@ public readonly struct Entity : IEquatable<Entity>
     public bool IsValid => _scene is not null && _scene.IsAlive(this);
 
     /// <summary>
-    /// Gets or sets the entity's name (stored in its <see cref="TagComponent"/>).
+    /// Gets or sets the entity's name (stored in its <see cref="LabelComponent"/>).
     /// </summary>
     public string Name
     {
-        get => GetComponent<TagComponent>().Name;
-        set => GetComponent<TagComponent>().Name = value;
+        get => GetComponent<LabelComponent>().Name;
+        set => GetComponent<LabelComponent>().Name = value;
     }
 
     /// <summary>
@@ -41,8 +41,8 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public bool Enabled
     {
-        get => GetComponent<TagComponent>().Enabled;
-        set => GetComponent<TagComponent>().Enabled = value;
+        get => GetComponent<LabelComponent>().Enabled;
+        set => GetComponent<LabelComponent>().Enabled = value;
     }
 
     /// <summary>

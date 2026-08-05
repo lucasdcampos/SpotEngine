@@ -153,7 +153,7 @@ public class Scene
     }
 
     /// <summary>
-    /// Creates a new entity with a <see cref="TagComponent"/> and a <see cref="TransformComponent"/>. Safe to
+    /// Creates a new entity with a <see cref="LabelComponent"/> and a <see cref="TransformComponent"/>. Safe to
     /// call at any time, including from a script.
     /// </summary>
     /// <param name="name">The entity name.</param>
@@ -164,7 +164,7 @@ public class Scene
         _entities.Add(id);
 
         var entity = new Entity(id, this);
-        entity.AddComponent(new TagComponent(name));
+        entity.AddComponent(new LabelComponent(name));
         entity.AddComponent(new RelationshipComponent());
         entity.AddComponent(new TransformComponent());
         return entity;

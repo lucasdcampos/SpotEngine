@@ -78,13 +78,13 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Name_RoundTripsThroughTagComponent()
+    public void Name_RoundTripsThroughLabelComponent()
     {
         var scene = new Scene();
         var e = scene.Instantiate("initial");
-        Assert.Equal("initial", e.GetComponent<TagComponent>().Name);
+        Assert.Equal("initial", e.GetComponent<LabelComponent>().Name);
 
         e.Name = "renamed";
-        Assert.Equal("renamed", e.GetComponent<TagComponent>().Name);
+        Assert.Equal("renamed", e.GetComponent<LabelComponent>().Name);
     }
 }
