@@ -3,6 +3,7 @@ using System.Numerics;
 namespace Spot.Scenes;
 
 [ComponentMenu("Dynamic Clouds", Order = 90)]
+[SceneComponent("DynamicClouds")]
 public sealed class DynamicCloudsComponent : Component
 {
     [InspectorColor]

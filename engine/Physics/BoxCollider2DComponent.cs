@@ -8,6 +8,7 @@ namespace Spot.Physics;
 /// A component to define a simple rectangle for AABB collisions.
 /// </summary>
 [ComponentMenu("Box Collider 2D", Order = 50)]
+[SceneComponent("BoxCollider2D")]
 public class BoxCollider2DComponent : Component
 {
     /// <summary>

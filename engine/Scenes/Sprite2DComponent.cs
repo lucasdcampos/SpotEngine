@@ -13,6 +13,7 @@ namespace Spot.Scenes;
 /// logic — the engine's renderer does the drawing.
 /// </remarks>
 [ComponentMenu("Sprite 2D", Order = 10)]
+[SceneComponent("Sprite")]
 public sealed class Sprite2DComponent : Component
 {
     /// <summary>

@@ -7,6 +7,7 @@ namespace Spot.Physics;
 /// A component to define a simple 3D box for AABB collisions.
 /// </summary>
 [ComponentMenu("Box Collider 3D", Order = 70)]
+[SceneComponent("BoxCollider3D")]
 public class BoxCollider3DComponent : Component
 {
     public Vector3 Size { get; set; } = Vector3.One;
