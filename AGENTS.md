@@ -4,14 +4,15 @@ This file provides guidance to AI Agents when working with code in this reposito
 
 ## What this is
 
-Spot is a 2D/3D game engine written in C# (.NET 10), built on Silk.NET (windowing, OpenGL, input, Assimp) and Dear ImGui (via ImGuiNET). It ships an ImGui-based editor, a sandbox project, and a project/build toolchain. There is no test suite (`tests/` is empty).
+Spot is a 2D/3D game engine written in C# (.NET 10), built on Silk.NET (windowing, OpenGL, input, Assimp) and Dear ImGui (via ImGuiNET). It ships an ImGui-based editor, a sandbox project, a project/build toolchain, and an xUnit test suite under `tests/` (`Spot.Engine.Tests`, `Spot.Build.Tests`).
 
 ## Commands
 
 Build/run everything from the repo root. The solution is `SpotEngine.slnx` (the `.slnx` XML solution format, not `.sln`).
 
 ```bash
-dotnet build SpotEngine.slnx        # build all five projects
+dotnet build SpotEngine.slnx        # build the whole solution
+dotnet test SpotEngine.slnx         # run the xUnit test suite
 dotnet run --project editor         # launch the ImGui editor (starts on LauncherScene)
 dotnet run --project sandbox        # run the sandbox project (data-driven .sptscene showcase)
 dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>   # `spot` CLI (assembly name: spot)
@@ -75,7 +76,7 @@ Rendering is deliberately layered so callers choose their altitude:
 
 ### Editor (`editor/`)
 
-ImGui docking-based. `EditorScene` is the shell: multiple open scenes as dockable tabs (`OpenSceneData`, each with its own `Framebuffer` + `EditorCamera`), Play/Edit mode via serialize-snapshot round-trip (Play deserializes a fresh copy so Stop restores exactly), unsaved-change confirmation dialogs, and per-panel dock layout persisted to `imgui.ini`. Panels (`editor/Panels`): Hierarchy, Inspector, Console, AssetBrowser, Viewport. `EditorContext` carries the current selection (entity XOR asset). The editor accesses engine internals via `[InternalsVisibleTo("Spot.Editor")]` (declared in `engine/Spot.cs`).
+ImGui docking-based. `EditorScene` is the shell: multiple open scenes as dockable tabs (`OpenSceneData`, each with its own `Framebuffer` + `EditorCamera`), Play/Edit mode where Play does a fast Debug build of the project (`ProjectBuilder.Build(fastDebug: true)`) and launches it as a separate process while the editor's own scene copy stays frozen in edit mode (Stop kills that process), unsaved-change confirmation dialogs, and per-panel dock layout persisted to `imgui.ini`. Panels (`editor/Panels`): Hierarchy, Inspector, Console, AssetBrowser, Viewport. `EditorContext` carries the current selection (entity XOR asset). The editor accesses engine internals via `[InternalsVisibleTo("Spot.Editor")]` (declared in `engine/Spot.cs`).
 
 ### Project/build toolchain (`tools/`)
 
