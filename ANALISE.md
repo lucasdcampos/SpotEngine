@@ -138,8 +138,8 @@ Priorizados — todos são pontuais:
    risco de spam de warning. (~15 linhas) ✅ `Shader._uniformLocations`
 - [x] **2. Clamp de `deltaTime`** em `Application.Update` (`MathF.Min(dt, 0.1f)`) — mata
    explosões/tunneling de física em hitches. (1 linha) ✅ `Application.MaxDeltaTime`
-- [ ] **3. Play em build Debug/framework-dependent** em vez de Release self-contained single-file — corta
-   drasticamente o tempo de Play. (poucas linhas)
+- [x] **3. Play em build Debug/framework-dependent** em vez de Release self-contained single-file — corta
+   drasticamente o tempo de Play. (poucas linhas) ✅ `ProjectBuilder.Build(fastDebug)` → `Build/play`
 - [x] **4. Inverter view-projection uma vez em `BeginScene`** e reusar em DrawMesh/skybox/clouds/grid. ✅ `Renderer3D.s_inverseViewProjection`
 - [x] **5. Passar posição real da câmera como uniform** — corrige specular/fresnel/point lights. ✅ `uCameraPos` via `RenderSystem.Render(..., cameraPosition)`
 - [ ] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo

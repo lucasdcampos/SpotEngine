@@ -43,7 +43,8 @@ public static class ProjectBuilder
     /// main thread.
     /// </summary>
     public static BuildResult Build(Project project, BuildPlatform platform,
-                                    Action<string>? onOutput = null, Action<string>? onError = null)
+                                    Action<string>? onOutput = null, Action<string>? onError = null,
+                                    bool fastDebug = false)
     {
         if (string.IsNullOrEmpty(project.ProjectDirectory))
         {
@@ -55,13 +56,24 @@ public static class ProjectBuilder
         ProjectGenerator.Generate(project);
 
         string rid = RuntimeIdentifier(platform);
-        string outputDir = Path.Combine(project.ProjectDirectory, "Build", FolderName(platform));
+
+        // A distributable build goes to Build/<platform> as a self-contained, single-file Release.
+        // The editor's Play uses fastDebug: a framework-dependent Debug build in Build/play that skips
+        // the self-contained runtime copy and single-file bundling, cutting Play iteration time from
+        // tens of seconds to a normal incremental build. It lives in its own folder so it never
+        // clobbers a distributable build.
+        string outputDir = Path.Combine(project.ProjectDirectory, "Build",
+            fastDebug ? "play" : FolderName(platform));
         string csprojFile = project.Config.Name + ".csproj";
+
+        string publishArgs = fastDebug
+            ? $"publish \"{csprojFile}\" -c Debug -r {rid} --self-contained false -o \"{outputDir}\""
+            : $"publish \"{csprojFile}\" -c Release -r {rid} --self-contained true -p:PublishSingleFile=true -o \"{outputDir}\"";
 
         var processInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"publish \"{csprojFile}\" -c Release -r {rid} --self-contained true -p:PublishSingleFile=true -o \"{outputDir}\"",
+            Arguments = publishArgs,
             WorkingDirectory = project.ProjectDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,
