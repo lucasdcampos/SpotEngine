@@ -81,9 +81,13 @@ public sealed class Window : IDisposable
     public int Height => _height;
 
     /// <summary>
-    /// Gets the window title.
+    /// Gets or sets the window title.
     /// </summary>
-    public string Title => _spec.Title;
+    public string Title
+    {
+        get => _window.Title;
+        set => _window.Title = value;
+    }
 
     /// <summary>
     /// Gets the underlying Silk.NET window.

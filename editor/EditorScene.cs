@@ -1077,11 +1077,11 @@ public class EditorScene : Scene
             }
         }
 
-        string title = "Spot.Editor";
+        string projectName = Project.Active?.Config.Name ?? "Untitled Project";
+        string title = $"Spot {Spot.Core.Application.Instance.EngineVersion} - {projectName}";
         if (_state == EditorState.Play)
         {
-            string sceneName = _activeSceneData?.FilePath != null ? System.IO.Path.GetFileNameWithoutExtension(_activeSceneData.FilePath) : "Untitled";
-            title = $"{sceneName} (Playing) - Spot.Editor";
+            title += " (Playing)";
         }
         
         if (title != _lastWindowTitle)
