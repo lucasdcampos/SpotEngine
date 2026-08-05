@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using Spot.Core;
 using Spot.Scenes;
 
 namespace Spot.Game;
@@ -58,13 +59,14 @@ public class PlayerUI : EntityBehaviour
         if (ImGui.Begin("HUD_HP", hpFlags))
         {
             // Laranja clássico do Half-Life
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.6f, 0.0f, 1.0f)); 
-            
-            // Deixando a fonte maior ainda
-            ImGui.SetWindowFontScale(4.0f);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
+
+            // Fonte grande assada no tamanho alvo (Assets/Fonts/Inter.ttf), em vez de escalar a fonte
+            // de UI — escalar estica o bitmap do atlas e borra o texto.
+            ImGui.PushFont(Application.Instance.GetFont("Inter", 48.0f));
             ImGui.Text($"+ {_hp}");
-            ImGui.SetWindowFontScale(1.0f);
-            
+            ImGui.PopFont();
+
             ImGui.PopStyleColor();
             ImGui.End();
         }
