@@ -190,6 +190,32 @@ public class Application
     /// </summary>
     public IReadOnlyList<ImFontPtr> Fonts => _imguiService?.Fonts ?? Array.Empty<ImFontPtr>();
 
+    // Names already reported as missing, so a script calling GetFont every frame warns only once each.
+    private readonly HashSet<string> _warnedMissingFonts = new();
+
+    /// <summary>
+    /// A font discovered under the project's <c>Assets/Fonts</c> directory, by file name (without
+    /// extension), baked nearest to <paramref name="size"/> px. Push it with <see cref="ImGui.PushFont"/>
+    /// to draw crisp text at that size instead of rescaling the UI font (which blurs). Falls back to the
+    /// primary UI font when no such font exists, so the result is always safe to push.
+    /// </summary>
+    public ImFontPtr GetFont(string name, float size)
+    {
+        ImFontPtr? font = _imguiService?.GetFont(name, size);
+        if (font.HasValue)
+        {
+            return font.Value;
+        }
+
+        if (_warnedMissingFonts.Add(name))
+        {
+            Log.CoreWarn("Font '{0}' not found under Assets/Fonts; using the default UI font.", name);
+        }
+
+        IReadOnlyList<ImFontPtr> fonts = Fonts;
+        return fonts.Count > 0 ? fonts[0] : default;
+    }
+
     public string EngineVersion => SpotEngine.GetVersion();
 
     public void AddService(IEngineService service)

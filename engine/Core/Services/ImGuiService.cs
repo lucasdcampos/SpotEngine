@@ -23,6 +23,14 @@ public class ImGuiService : IEngineService
     // large icon atlas): each array stays pinned until Shutdown.
     private readonly List<GCHandle> _extraRangeHandles = new();
 
+    // Fonts discovered under the project's Assets/Fonts, keyed by file name (no extension). Each is baked
+    // at every size in FontSizeLadder so a script can pick a crisp size at runtime without rescaling.
+    private readonly Dictionary<string, List<(float Size, ImFontPtr Font)>> _assetFonts =
+        new(System.StringComparer.OrdinalIgnoreCase);
+
+    // The pixel sizes each Assets/Fonts face is baked at; GetFont snaps a requested size to the nearest.
+    private static readonly float[] FontSizeLadder = { 16f, 24f, 32f, 48f, 64f };
+
     public ImGuiService(ApplicationSpec spec)
     {
         _spec = spec;
@@ -98,6 +106,82 @@ public class ImGuiService : IEngineService
                 _fonts.Add(primary); // keep index alignment; callers get the body font in this slot
             }
         }
+
+        LoadAssetFonts(io);
+    }
+
+    // Bakes every .ttf under the project's Assets/Fonts at the size ladder, exposed by file name via
+    // GetFont — so a game can drop a font in and use it (Application.GetFont) without touching Program.cs.
+    // Runs during atlas configuration, so these fonts land in the same single atlas as the rest.
+    private void LoadAssetFonts(ImGuiIOPtr io)
+    {
+        if (string.IsNullOrEmpty(_spec.AssetDirectory))
+        {
+            return;
+        }
+
+        string fontsDir = Path.Combine(_spec.AssetDirectory, "Fonts");
+        if (!Directory.Exists(fontsDir))
+        {
+            return;
+        }
+
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(fontsDir, "*.ttf");
+        }
+        catch
+        {
+            // Enumeration failure (permissions, race with deletion) just yields no asset fonts.
+            return;
+        }
+
+        foreach (string path in files)
+        {
+            string name = Path.GetFileNameWithoutExtension(path);
+            var baked = new List<(float, ImFontPtr)>(FontSizeLadder.Length);
+            foreach (float size in FontSizeLadder)
+            {
+                try
+                {
+                    baked.Add((size, io.Fonts.AddFontFromFileTTF(path, size)));
+                }
+                catch
+                {
+                    // A malformed font must never take the atlas build (and thus startup) down; skip it.
+                }
+            }
+
+            if (baked.Count > 0)
+            {
+                _assetFonts[name] = baked;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Assets/Fonts face named <paramref name="name"/> (file name without extension) baked nearest to
+    /// <paramref name="size"/> px, or <see langword="null"/> when no such font was discovered. Baked once
+    /// at startup, so the returned face renders crisply at its native size — no rescaling blur.
+    /// </summary>
+    public ImFontPtr? GetFont(string name, float size)
+    {
+        if (!_assetFonts.TryGetValue(name, out List<(float Size, ImFontPtr Font)>? baked))
+        {
+            return null;
+        }
+
+        (float Size, ImFontPtr Font) best = baked[0];
+        foreach ((float Size, ImFontPtr Font) entry in baked)
+        {
+            if (System.MathF.Abs(entry.Size - size) < System.MathF.Abs(best.Size - size))
+            {
+                best = entry;
+            }
+        }
+
+        return best.Font;
     }
 
     // Merges the icon font into the font that was just added (the body font), so icon glyphs render
