@@ -177,80 +177,34 @@ public class InspectorPanel
         if (changedTiling) material.Save(path);
 
         ImGui.Spacing();
-        ImGui.TextUnformatted("Texture");
-        ImGui.Button(material.Texture != null
-            ? $"{System.IO.Path.GetFileName(material.TexturePath) ?? "Texture"} (Drop to change)"
-            : "Drop Texture Here", new Vector2(-1, 30));
-        if (ImGui.BeginDragDropTarget())
-        {
-            unsafe
-            {
-                var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
-                    if (filepath != null)
-                    {
-                        try
-                        {
-                            material.SetTexture(filepath);
-                            material.Save(path);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Console.WriteLine($"Failed to set material texture: {ex.Message}");
-                        }
-                    }
-                }
-            }
-            ImGui.EndDragDropTarget();
-        }
 
-        if (material.Texture != null)
+        // Texture and normal-map slots share the reusable AssetSlot widget: drag an image in, or click to
+        // pick one from a searchable, thumbnailed list; the ✕ clears the slot. Each edit saves immediately.
+        string[] imagePatterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
+
+        if (EditorGui.AssetSlot("Texture", "IMAGE_FILE", imagePatterns, material.TexturePath, out string? newTexture))
         {
-            if (ImGui.Button("Remove Texture", new Vector2(-1, 24)))
+            try
             {
-                material.SetTexture(null);
+                material.SetTexture(newTexture);
                 material.Save(path);
             }
-        }
-
-        ImGui.Spacing();
-        ImGui.TextUnformatted("Normal Map");
-        ImGui.Button(material.NormalMap != null
-            ? $"{System.IO.Path.GetFileName(material.NormalMapPath) ?? "Normal Map"} (Drop to change)"
-            : "Drop Normal Map Here", new Vector2(-1, 30));
-        if (ImGui.BeginDragDropTarget())
-        {
-            unsafe
+            catch (Exception ex)
             {
-                var payload = ImGui.AcceptDragDropPayload("IMAGE_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filepath = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
-                    if (filepath != null)
-                    {
-                        try
-                        {
-                            material.SetNormalMap(filepath);
-                            material.Save(path);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Console.WriteLine($"Failed to set material normal map: {ex.Message}");
-                        }
-                    }
-                }
+                Spot.Core.Log.Error("Failed to set material texture: {0}", ex.Message);
             }
-            ImGui.EndDragDropTarget();
         }
 
-        if (material.NormalMap != null)
+        if (EditorGui.AssetSlot("Normal Map", "IMAGE_FILE", imagePatterns, material.NormalMapPath, out string? newNormal))
         {
-            if (ImGui.Button("Remove Normal Map", new Vector2(-1, 24)))
+            try
             {
-                material.SetNormalMap(null);
+                material.SetNormalMap(newNormal);
                 material.Save(path);
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.Error("Failed to set material normal map: {0}", ex.Message);
             }
         }
     }

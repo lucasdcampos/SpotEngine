@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using ImGuiNET;
 using Spot.Assets;
@@ -446,39 +445,46 @@ internal static class ComponentInspector
         if (EditorGui.Checkbox("Enabled", ref enabled))
             scriptComp.Enabled = enabled;
 
+        // Each attached script is a row: a code glyph, its class name (dim + tagged when the type can't be
+        // resolved), and a remove button. A missing type usually means the script hasn't compiled yet or was
+        // renamed — surfacing it here beats a silent no-op at runtime.
         int scriptToRemove = -1;
         for (int i = 0; i < scriptComp.ClassNames.Count; i++)
         {
             string className = scriptComp.ClassNames[i];
-            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 30.0f);
-            if (ImGui.InputText($"##Script{i}", ref className, 256))
-                scriptComp.ClassNames[i] = className;
+            bool resolved = EditorGui.ScriptExists(className);
+
+            ImGui.PushID(i);
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextColored(ScriptGlyphColor, EditorIcons.Code);
             ImGui.SameLine();
-            if (ImGui.Button($"X##{i}"))
+            if (resolved)
+                ImGui.TextUnformatted(className);
+            else
+                ImGui.TextColored(ScriptMissingColor, $"{className}  (not found)");
+
+            // Right-align the remove button to the card's inner edge.
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - ImGui.GetFrameHeight());
+            if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
                 scriptToRemove = i;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove script");
+            ImGui.PopID();
         }
 
         if (scriptToRemove >= 0)
             scriptComp.ClassNames.RemoveAt(scriptToRemove);
 
-        ImGui.Button("Drop Script Here", new Vector2(-1, 30));
-        if (ImGui.BeginDragDropTarget())
+        ImGui.Spacing();
+        // The slot both accepts a dragged script file and, on click, opens a searchable list of every
+        // EntityBehaviour in the loaded assemblies — no more typing class names by hand.
+        if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames, out string? chosen)
+            && chosen != null && !scriptComp.ClassNames.Contains(chosen))
         {
-            unsafe
-            {
-                var payload = ImGui.AcceptDragDropPayload("SCRIPT_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filename = Marshal.PtrToStringUTF8(payload.Data);
-                    if (filename != null && filename.EndsWith(".cs"))
-                    {
-                        string cName = filename.Substring(0, filename.Length - 3);
-                        if (!scriptComp.ClassNames.Contains(cName))
-                            scriptComp.ClassNames.Add(cName);
-                    }
-                }
-            }
-            ImGui.EndDragDropTarget();
+            scriptComp.ClassNames.Add(chosen);
         }
     }
+
+    private static readonly Vector4 ScriptGlyphColor = new(0.36f, 0.66f, 0.98f, 1.0f);
+    private static readonly Vector4 ScriptMissingColor = new(0.95f, 0.70f, 0.25f, 1.0f);
 }

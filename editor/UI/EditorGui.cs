@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Assets;
+using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Core;
 
@@ -450,13 +454,23 @@ public static class EditorGui
 
     // ----- Asset Slots -----------------------------------------------------------------------------
 
+    // A single search buffer is fine: only one picker popup can be open at a time. The "just opened"
+    // flag lets us focus the search box on the frame the popup appears.
     private static string _assetSearchFilter = string.Empty;
+    private static bool _assetPickerJustOpened;
 
+    /// <summary>
+    /// Lets a caller contribute extra choices (engine primitives, built-in materials) at the top of an
+    /// <see cref="AssetSlot"/> picker. Set <paramref name="selectedPath"/> and <paramref name="changed"/>
+    /// when the user picks one.
+    /// </summary>
     public delegate void AssetSlotCustomItems(ref string? selectedPath, ref bool changed);
 
     /// <summary>
-    /// A generic slot for an asset reference. Shows the current asset name, allows drag-and-drop of the
-    /// specified payload type, and provides a button to open a project-wide selection popup.
+    /// A generic slot for an asset reference. Shows the current asset (glyph/thumbnail + name), accepts a
+    /// drag-and-drop of the given payload type, and — when clicked — opens a searchable project-wide picker
+    /// so the asset can be chosen without dragging. When a value is set, a trailing ✕ clears it. Returns
+    /// true (with <paramref name="outPath"/> set) on any change, including clearing (to <c>null</c>).
     /// </summary>
     public static bool AssetSlot(
         string label,
@@ -472,14 +486,93 @@ public static class EditorGui
         ImGui.PushID(label);
         BeginLabel(label);
 
-        string displayLabel = "None";
-        if (!string.IsNullOrEmpty(currentPath))
+        bool hasValue = !string.IsNullOrEmpty(currentPath);
+
+        // Reserve room on the right for the clear button when there's something to clear, so the two
+        // controls share the value column instead of wrapping.
+        float clearWidth = hasValue ? ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X : 0.0f;
+        float buttonWidth = ImGui.GetContentRegionAvail().X - clearWidth;
+
+        bool clicked = AssetButton(currentPath, buttonWidth);
+        // A drop sets the value directly; it must not also open the picker, so its result isn't OR'd in.
+        AcceptAssetDrop(payloadType, ref outPath, ref changed);
+
+        if (hasValue)
         {
-            displayLabel = System.IO.Path.GetFileName(currentPath) ?? "None";
+            ImGui.SameLine();
+            if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
+            {
+                outPath = null;
+                changed = true;
+            }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Clear");
         }
 
-        bool clicked = ImGui.Button($"{displayLabel}##btn", new Vector2(-1, 0)); // button filling width
-        
+        string popupName = "SelectAssetPopup";
+        if (clicked)
+        {
+            _assetSearchFilter = string.Empty;
+            _assetPickerJustOpened = true;
+            ImGui.OpenPopup(popupName);
+        }
+
+        DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems);
+
+        EndLabel();
+        ImGui.PopID();
+
+        return changed;
+    }
+
+    /// <summary>
+    /// The value button for a slot: a full-width, left-aligned button showing the asset's kind glyph
+    /// (or a live thumbnail for images) and name, or a dim "None" when empty. Returns true when clicked.
+    /// </summary>
+    private static bool AssetButton(string? path, float width)
+    {
+        var p = Palette;
+        bool empty = string.IsNullOrEmpty(path);
+        float h = ImGui.GetFrameHeight();
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ButtonTextAlign, new Vector2(0.0f, 0.5f));
+        if (empty)
+            ImGui.PushStyleColor(ImGuiCol.Text, p.TextDisabled);
+        // The label carries a leading glyph and a gap the thumbnail/icon is drawn over.
+        string name = empty ? "None" : AssetDisplayName(path!);
+        Vector2 btnMin = ImGui.GetCursorScreenPos();
+        bool clicked = ImGui.Button("  " + IconPadding(h) + name, new Vector2(width, 0.0f));
+        if (empty)
+            ImGui.PopStyleColor();
+        ImGui.PopStyleVar();
+
+        if (!empty)
+        {
+            var dl = ImGui.GetWindowDrawList();
+            Vector2 iconCenter = btnMin + new Vector2(4.0f + h * 0.5f, h * 0.5f);
+            Texture2D? thumb = IsImagePath(path!) ? EditorThumbnails.Get(AssetPath.Resolve(path!)) : null;
+            if (thumb != null)
+            {
+                float s = h - 6.0f;
+                Vector2 tl = iconCenter - new Vector2(s * 0.5f, s * 0.5f);
+                dl.AddImageRounded((IntPtr)thumb.Handle, tl, tl + new Vector2(s, s),
+                    new Vector2(0, 1), new Vector2(1, 0), 0xFFFFFFFF, 3.0f);
+            }
+            else
+            {
+                (string glyph, Vector4 color) = AssetGlyph(path!);
+                DrawGlyphCentered(dl, EditorFonts.Icons, h * 0.62f, iconCenter, glyph, color);
+            }
+        }
+
+        if (!empty && ImGui.IsItemHovered())
+            ImGui.SetTooltip(path!);
+        return clicked;
+    }
+
+    // Consumes a drag-drop payload dropped on the last-submitted item. Returns true if the drop set a value.
+    private static bool AcceptAssetDrop(string payloadType, ref string? outPath, ref bool changed)
+    {
+        bool dropped = false;
         if (ImGui.BeginDragDropTarget())
         {
             unsafe
@@ -492,86 +585,344 @@ public static class EditorGui
                     {
                         outPath = filepath;
                         changed = true;
+                        dropped = true;
+                    }
+                }
+            }
+            ImGui.EndDragDropTarget();
+        }
+        return dropped;
+    }
+
+    // The searchable project-wide picker popup shared by every asset slot.
+    private static void DrawAssetPicker(
+        string popupName,
+        string[] searchPatterns,
+        string? currentPath,
+        ref string? outPath,
+        ref bool changed,
+        AssetSlotCustomItems? drawCustomItems)
+    {
+        if (!ImGui.BeginPopup(popupName))
+            return;
+
+        ImGui.SetNextItemWidth(320);
+        if (_assetPickerJustOpened)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _assetPickerJustOpened = false;
+        }
+        ImGui.InputTextWithHint("##Search", $"{EditorIcons.Search}  Search assets...", ref _assetSearchFilter, 128);
+        ImGui.Separator();
+
+        ImGui.BeginChild("AssetList", new Vector2(320, 340), ImGuiChildFlags.None);
+
+        if (PickerRow(EditorIcons.Times, Palette.TextDisabled, "None", null, string.IsNullOrEmpty(currentPath)))
+        {
+            outPath = null;
+            changed = true;
+            ImGui.CloseCurrentPopup();
+        }
+
+        drawCustomItems?.Invoke(ref outPath, ref changed);
+        if (changed) ImGui.CloseCurrentPopup();
+
+        var assets = EnumerateProjectAssets(searchPatterns);
+        if (assets.Count > 0)
+            ImGui.Separator();
+
+        string? assetRoot = Project.Active?.GetAssetDirectory();
+        bool foundAny = false;
+        foreach (string path in assets)
+        {
+            string filename = System.IO.Path.GetFileName(path);
+            if (!string.IsNullOrEmpty(_assetSearchFilter) &&
+                !filename.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foundAny = true;
+            bool isSelected = string.Equals(currentPath, path, StringComparison.OrdinalIgnoreCase);
+            string? subtitle = RelativeFolder(assetRoot, path);
+            (string glyph, Vector4 color) = AssetGlyph(path);
+            string? thumbPath = IsImagePath(path) ? path : null;
+
+            if (PickerRow(glyph, color, filename, subtitle, isSelected, thumbPath))
+            {
+                outPath = path;
+                changed = true;
+                ImGui.CloseCurrentPopup();
+            }
+        }
+
+        if (!foundAny)
+            ImGui.TextDisabled(assets.Count == 0 ? "No assets found." : "No matching assets.");
+
+        ImGui.EndChild();
+        ImGui.EndPopup();
+    }
+
+    /// <summary>
+    /// One row of the asset picker: a thumbnail or kind glyph, the asset name, and a dim folder subtitle.
+    /// Returns true when clicked. When <paramref name="thumbPath"/> is set and loads, an image preview is
+    /// drawn instead of the glyph.
+    /// </summary>
+    private static bool PickerRow(string glyph, Vector4 glyphColor, string title, string? subtitle, bool selected, string? thumbPath = null)
+    {
+        float rowH = MathF.Max(ImGui.GetTextLineHeight() * 2.0f + 6.0f, 34.0f);
+        Vector2 min = ImGui.GetCursorScreenPos();
+        bool clicked = ImGui.Selectable($"##{title}{subtitle}", selected, ImGuiSelectableFlags.None, new Vector2(0.0f, rowH));
+
+        var dl = ImGui.GetWindowDrawList();
+        float pad = 6.0f;
+        float thumb = rowH - pad * 2.0f;
+        Vector2 iconCenter = min + new Vector2(pad + thumb * 0.5f, rowH * 0.5f);
+
+        Texture2D? tex = thumbPath != null ? EditorThumbnails.Get(AssetPath.Resolve(thumbPath)) : null;
+        if (tex != null)
+        {
+            Vector2 tl = iconCenter - new Vector2(thumb * 0.5f, thumb * 0.5f);
+            dl.AddRectFilled(tl, tl + new Vector2(thumb, thumb), 0x40000000, 3.0f);
+            dl.AddImageRounded((IntPtr)tex.Handle, tl, tl + new Vector2(thumb, thumb),
+                new Vector2(0, 1), new Vector2(1, 0), 0xFFFFFFFF, 3.0f);
+        }
+        else
+        {
+            DrawGlyphCentered(dl, EditorFonts.Icons, thumb * 0.7f, iconCenter, glyph, glyphColor);
+        }
+
+        float textX = min.X + pad * 2.0f + thumb;
+        uint titleCol = ImGui.GetColorU32(Palette.Text);
+        if (string.IsNullOrEmpty(subtitle))
+        {
+            dl.AddText(new Vector2(textX, min.Y + (rowH - ImGui.GetTextLineHeight()) * 0.5f), titleCol, title);
+        }
+        else
+        {
+            float lineH = ImGui.GetTextLineHeight();
+            float top = min.Y + (rowH - lineH * 2.0f) * 0.5f;
+            dl.AddText(new Vector2(textX, top), titleCol, title);
+            dl.AddText(new Vector2(textX, top + lineH), ImGui.GetColorU32(Palette.TextDisabled), subtitle);
+        }
+        return clicked;
+    }
+
+    // ----- Script slot -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// A picker for an <see cref="EntityBehaviour"/> script by class name. Mirrors <see cref="AssetSlot"/>:
+    /// the button accepts a dragged script file and, when clicked, opens a searchable list of every script
+    /// type discovered across the loaded assemblies. Returns the chosen class name via
+    /// <paramref name="chosenClass"/> when the user picks one; existing selections in
+    /// <paramref name="alreadyAdded"/> are shown as disabled so a script isn't attached twice.
+    /// </summary>
+    public static bool ScriptSlot(string label, IReadOnlyCollection<string> alreadyAdded, out string? chosenClass)
+    {
+        chosenClass = null;
+        bool changed = false;
+
+        ImGui.PushID(label);
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ButtonTextAlign, new Vector2(0.5f, 0.5f));
+        bool clicked = ImGui.Button($"{EditorIcons.Code}  {label}", new Vector2(-1, 30));
+        ImGui.PopStyleVar();
+
+        // Drag-drop: the asset browser sends a script's file name (e.g. "Player.cs").
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                var payload = ImGui.AcceptDragDropPayload("SCRIPT_FILE");
+                if (payload.NativePtr != null)
+                {
+                    string? filename = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
+                    if (filename != null)
+                    {
+                        chosenClass = filename.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                            ? filename[..^3] : filename;
+                        changed = true;
                     }
                 }
             }
             ImGui.EndDragDropTarget();
         }
 
-        string popupName = "SelectAssetPopup_" + label;
         if (clicked)
         {
             _assetSearchFilter = string.Empty;
-            ImGui.OpenPopup(popupName);
+            _assetPickerJustOpened = true;
+            ImGui.OpenPopup("SelectScriptPopup");
         }
 
-        if (ImGui.BeginPopup(popupName))
+        if (ImGui.BeginPopup("SelectScriptPopup"))
         {
-            ImGui.SetNextItemWidth(250);
-            ImGui.InputTextWithHint("##Search", "Search assets...", ref _assetSearchFilter, 128);
+            ImGui.SetNextItemWidth(320);
+            if (_assetPickerJustOpened)
+            {
+                ImGui.SetKeyboardFocusHere();
+                _assetPickerJustOpened = false;
+            }
+            ImGui.InputTextWithHint("##Search", $"{EditorIcons.Search}  Search scripts...", ref _assetSearchFilter, 128);
             ImGui.Separator();
 
-            ImGui.BeginChild("AssetList", new Vector2(250, 300), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
+            ImGui.BeginChild("ScriptList", new Vector2(320, 340), ImGuiChildFlags.None);
 
-            if (ImGui.MenuItem("None", "", string.IsNullOrEmpty(currentPath)))
-            {
-                outPath = null;
-                changed = true;
-                ImGui.CloseCurrentPopup();
-            }
-
-            drawCustomItems?.Invoke(ref outPath, ref changed);
-            if (changed) ImGui.CloseCurrentPopup();
-
-            var assets = EnumerateProjectAssets(searchPatterns);
-            if (assets.Count > 0)
-                ImGui.Separator();
-
+            var scripts = DiscoverScriptTypes();
             bool foundAny = false;
-            foreach (string path in assets)
+            foreach (string className in scripts)
             {
-                string filename = System.IO.Path.GetFileName(path);
-                
-                if (!string.IsNullOrEmpty(_assetSearchFilter) && 
-                    !filename.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(_assetSearchFilter) &&
+                    !className.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
                 foundAny = true;
-                bool isSelected = string.Equals(currentPath, path, StringComparison.OrdinalIgnoreCase);
-                if (ImGui.MenuItem(filename, "", isSelected))
+                bool added = alreadyAdded.Contains(className);
+                ImGui.BeginDisabled(added);
+                if (PickerRow(EditorIcons.Code, ScriptGlyphColor, className, added ? "already attached" : null, false))
                 {
-                    outPath = path;
+                    chosenClass = className;
                     changed = true;
                     ImGui.CloseCurrentPopup();
                 }
-                
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.BeginTooltip();
-                    ImGui.TextUnformatted(path);
-                    ImGui.EndTooltip();
-                }
+                ImGui.EndDisabled();
             }
 
-            if (!foundAny && assets.Count > 0)
-            {
-                ImGui.TextDisabled("No matching assets.");
-            }
-            else if (assets.Count == 0)
-            {
-                ImGui.TextDisabled("No assets found.");
-            }
+            if (!foundAny)
+                ImGui.TextDisabled(scripts.Count == 0 ? "No scripts found." : "No matching scripts.");
 
             ImGui.EndChild();
             ImGui.EndPopup();
         }
 
-        EndLabel();
         ImGui.PopID();
-        
         return changed;
+    }
+
+    private static readonly Vector4 ScriptGlyphColor = new(0.36f, 0.66f, 0.98f, 1.0f);
+
+    /// <summary>
+    /// The scripts the editor can offer, by class name. The project's scripts live as <c>.cs</c> files under
+    /// its asset directory and are only compiled when the game is built, so the editor can't see them by
+    /// reflection — it lists them by file name (the same name the serializer resolves at load). Any concrete
+    /// <see cref="EntityBehaviour"/> that <em>is</em> loaded (e.g. when running a project in-process) is folded
+    /// in too, so built-in scripts still appear.
+    /// </summary>
+    private static List<string> DiscoverScriptTypes()
+    {
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string path in EnumerateProjectAssets(new[] { "*.cs" }))
+            names.Add(System.IO.Path.GetFileNameWithoutExtension(path));
+
+        foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type[] types;
+            try { types = assembly.GetTypes(); }
+            catch { continue; } // A partially-loadable assembly must never take the editor down.
+
+            foreach (Type type in types)
+            {
+                if (!type.IsAbstract && type.IsSubclassOf(typeof(EntityBehaviour)))
+                    names.Add(type.Name);
+            }
+        }
+        return names.ToList();
+    }
+
+    /// <summary>
+    /// Whether a script class name is backed by a <c>.cs</c> file in the project (or a loaded
+    /// <see cref="EntityBehaviour"/> type). Used by the inspector to flag attached scripts it can't find.
+    /// </summary>
+    public static bool ScriptExists(string className)
+    {
+        string name = className.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            ? className[..^3] : className;
+
+        foreach (string path in EnumerateProjectAssets(new[] { "*.cs" }))
+        {
+            if (string.Equals(System.IO.Path.GetFileNameWithoutExtension(path), name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type[] types;
+            try { types = assembly.GetTypes(); }
+            catch { continue; }
+            foreach (Type type in types)
+            {
+                if (!type.IsAbstract && type.Name == name && type.IsSubclassOf(typeof(EntityBehaviour)))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    // ----- Asset helpers ---------------------------------------------------------------------------
+
+    private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
+
+    private static bool IsImagePath(string path)
+    {
+        // Pseudo paths ("primitive:Cube", "editor:Checkerboard") never point at image files.
+        if (path.Contains(':') && !System.IO.Path.IsPathRooted(path))
+            return false;
+        return Array.IndexOf(ImageExtensions, System.IO.Path.GetExtension(path).ToLowerInvariant()) >= 0;
+    }
+
+    // The display name for a slot value: the tail of a pseudo path ("primitive:Cube" -> "Cube") or the file name.
+    private static string AssetDisplayName(string path)
+    {
+        int colon = path.IndexOf(':');
+        if (colon > 0 && !System.IO.Path.IsPathRooted(path))
+            return path[(colon + 1)..];
+        return System.IO.Path.GetFileName(path);
+    }
+
+    // The kind glyph + tint for an asset path, matching the asset browser's color coding.
+    private static (string Glyph, Vector4 Color) AssetGlyph(string path)
+    {
+        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
+            return (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f));
+        if (path.StartsWith("editor:", StringComparison.OrdinalIgnoreCase))
+            return (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f));
+
+        string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".cs" => (EditorIcons.Code, new Vector4(0.36f, 0.66f, 0.98f, 1.0f)),
+            ".sptscene" => (EditorIcons.Cubes, new Vector4(0.66f, 0.40f, 0.98f, 1.0f)),
+            ".sptmat" => (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f)),
+            ".obj" or ".fbx" or ".gltf" or ".glb" or ".dae" or ".ply" or ".stl"
+                => (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
+            _ when IsImagePath(path) => (EditorIcons.Image, new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
+            _ => (EditorIcons.File, Palette.TextDisabled),
+        };
+    }
+
+    // The folder holding an asset, relative to the project's asset root, for a picker subtitle. Null at root.
+    private static string? RelativeFolder(string? assetRoot, string fullPath)
+    {
+        string? folder = System.IO.Path.GetDirectoryName(fullPath);
+        if (string.IsNullOrEmpty(folder))
+            return null;
+        if (!string.IsNullOrEmpty(assetRoot))
+        {
+            string rel = System.IO.Path.GetRelativePath(assetRoot, folder);
+            if (rel == ".") return null;
+            return rel.Replace('\\', '/');
+        }
+        return System.IO.Path.GetFileName(folder);
+    }
+
+    // Draws an icon-font glyph centered on a point.
+    private static void DrawGlyphCentered(ImDrawListPtr dl, ImFontPtr font, float pixelSize, Vector2 center, string glyph, Vector4 color)
+    {
+        Vector2 ts = font.CalcTextSizeA(pixelSize, float.MaxValue, 0.0f, glyph);
+        dl.AddText(font, pixelSize, center - ts * 0.5f, ImGui.GetColorU32(color), glyph);
     }
 
     private static System.Collections.Generic.List<string> EnumerateProjectAssets(string[] patterns)
