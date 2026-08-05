@@ -21,7 +21,7 @@ public class HierarchyPanel
     public void OnImGuiRender(ref bool open)
     {
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
-        ImGui.Begin("Hierarchy", ref open, flags);
+        ImGui.Begin("Scene", ref open, flags);
 
         // Deeper child indentation and a little extra row spacing make the nesting readable at a glance
         // without changing any behavior.
@@ -61,7 +61,7 @@ public class HierarchyPanel
                 ImGui.EndDragDropTarget();
             }
 
-            if (ImGui.BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
+            if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
             {
                 if (ImGui.MenuItem("Create Empty Entity"))
                 {
