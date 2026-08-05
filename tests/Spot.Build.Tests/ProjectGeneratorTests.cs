@@ -26,11 +26,17 @@ public class ProjectGeneratorTests
         Assert.Contains("<TargetFramework>net10.0</TargetFramework>", csproj);
         Assert.Contains(@"EngineBin\Spot.Engine.dll", csproj); // references the copied engine DLL
 
+        // Ships cooked content, not source assets.
+        Assert.Contains(@"Content\**\*.*", csproj);
+        Assert.DoesNotContain(@"Assets\**\*.*", csproj);
+
         Assert.True(File.Exists(Path.Combine(temp.Path, "Arcade.sln")));
 
         string program = File.ReadAllText(Path.Combine(temp.Path, "Program.cs"));
         Assert.Contains("class Program", program);
         Assert.Contains("new Application(spec)", program);
+        Assert.Contains("ContentDirectory = \"Content\"", program);
+        Assert.Contains("ManifestPath = \"manifest.json\"", program);
     }
 
     [Fact]

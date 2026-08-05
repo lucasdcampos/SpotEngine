@@ -61,6 +61,35 @@ public static class ModelImporter
     public static bool CanLoad(string path) => s_importers.ContainsKey(Path.GetExtension(path));
 
     /// <summary>
+    /// Resolves a stored model reference to an absolute path to load from, and whether that path is a cooked
+    /// <c>.spmesh</c> (loaded without Assimp) rather than a source model. A <c>guid:</c> reference resolves
+    /// through the content host; anything else resolves as a source path. Returns <see langword="false"/> when a
+    /// guid reference has no cooked artifact (unknown guid or no host installed), so callers can skip it.
+    /// </summary>
+    private static bool TryResolveModelPath(string path, out string fullPath, out bool cooked)
+    {
+        if (AssetRef.IsGuidRef(path))
+        {
+            string? content = AssetPath.ResolveContent(path);
+            if (content is null)
+            {
+                fullPath = string.Empty;
+                cooked = false;
+                return false;
+            }
+
+            fullPath = Path.GetFullPath(content);
+        }
+        else
+        {
+            fullPath = Path.GetFullPath(AssetPath.Resolve(path));
+        }
+
+        cooked = fullPath.EndsWith(".spmesh", StringComparison.OrdinalIgnoreCase);
+        return true;
+    }
+
+    /// <summary>
     /// Loads a model from a file through the importer registered for its extension, caching by full path.
     /// This blocks the calling thread through both parsing and the GPU upload, so it must run on the
     /// render thread; prefer <see cref="RequestAsync"/> for anything that could be large.
@@ -83,25 +112,46 @@ public static class ModelImporter
             return primitive;
         }
 
-        string fullPath = Path.GetFullPath(AssetPath.Resolve(path));
+        if (!TryResolveModelPath(path, out string fullPath, out bool cooked))
+        {
+            throw new FileNotFoundException($"Unresolved model reference '{path}'.");
+        }
+
         if (s_cache.TryGetValue(fullPath, out Model? cached))
         {
             return cached;
         }
 
+        var sw = Stopwatch.StartNew();
+        Model model = cooked ? BuildFromSpMesh(fullPath) : ImportFromSource(fullPath);
+        sw.Stop();
+        model.SourcePath = fullPath;
+        s_cache[fullPath] = model;
+        Log.CoreInfo("Loaded model '{0}' in {1:0} ms", path, sw.Elapsed.TotalMilliseconds);
+        return model;
+    }
+
+    private static Model BuildFromSpMesh(string fullPath)
+    {
+        IReadOnlyList<MeshData> data = SpMesh.ReadFile(fullPath);
+        var meshes = new List<Mesh>(data.Count);
+        foreach (MeshData md in data)
+        {
+            meshes.Add(new Mesh(md.Vertices, md.Indices));
+        }
+
+        return new Model(meshes);
+    }
+
+    private static Model ImportFromSource(string fullPath)
+    {
         string extension = Path.GetExtension(fullPath);
         if (!s_importers.TryGetValue(extension, out IModelImporter? importer))
         {
             throw new NotSupportedException($"No model importer is registered for '{extension}' files.");
         }
 
-        var sw = Stopwatch.StartNew();
-        Model model = importer.Import(fullPath);
-        sw.Stop();
-        model.SourcePath = fullPath;
-        s_cache[fullPath] = model;
-        Log.CoreInfo("Loaded model '{0}' in {1:0} ms", path, sw.Elapsed.TotalMilliseconds);
-        return model;
+        return importer.Import(fullPath);
     }
 
     /// <summary>
@@ -121,7 +171,17 @@ public static class ModelImporter
             return Load(path);
         }
 
-        string fullPath = Path.GetFullPath(AssetPath.Resolve(path));
+        if (!TryResolveModelPath(path, out string fullPath, out bool cooked))
+        {
+            // Unknown guid or no content host yet: log once (keyed by the reference) and don't retry.
+            if (s_failed.Add(path))
+            {
+                Log.CoreError("Unresolved model reference '{0}'.", path);
+            }
+
+            return null;
+        }
+
         if (s_cache.TryGetValue(fullPath, out Model? cached))
         {
             return cached;
@@ -132,22 +192,41 @@ public static class ModelImporter
             return null;
         }
 
-        string extension = Path.GetExtension(fullPath);
-        if (!s_importers.TryGetValue(extension, out IModelImporter? importer))
+        // Cooked meshes just need their blob read on the worker; source models go through Assimp there.
+        Func<IReadOnlyList<MeshData>> parse;
+        if (cooked)
         {
-            Log.CoreError("No model importer is registered for '{0}' files.", extension);
-            s_failed.Add(fullPath);
-            return null;
+            parse = () => SpMesh.ReadFile(fullPath);
+        }
+        else
+        {
+            string extension = Path.GetExtension(fullPath);
+            if (!s_importers.TryGetValue(extension, out IModelImporter? importer))
+            {
+                Log.CoreError("No model importer is registered for '{0}' files.", extension);
+                s_failed.Add(fullPath);
+                return null;
+            }
+
+            parse = () => importer.ImportMeshData(fullPath);
         }
 
         s_inFlight.Add(fullPath);
+        QueueParse(fullPath, parse);
+        return null;
+    }
+
+    // Runs a CPU-only parse (Assimp or .spmesh read) on a gated background worker, then queues the resulting
+    // geometry back for GPU upload on the render thread. The queue is the only cross-thread structure.
+    private static void QueueParse(string fullPath, Func<IReadOnlyList<MeshData>> parse)
+    {
         _ = Task.Run(async () =>
         {
             await s_importGate.WaitAsync().ConfigureAwait(false);
             var sw = Stopwatch.StartNew();
             try
             {
-                IReadOnlyList<MeshData> data = importer.ImportMeshData(fullPath);
+                IReadOnlyList<MeshData> data = parse();
                 sw.Stop();
                 s_completed.Enqueue(new LoadResult { FullPath = fullPath, Data = data, ParseMs = sw.Elapsed.TotalMilliseconds });
             }
@@ -160,8 +239,6 @@ public static class ModelImporter
                 s_importGate.Release();
             }
         });
-
-        return null;
     }
 
     /// <summary>

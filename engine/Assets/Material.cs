@@ -92,7 +92,7 @@ public sealed class Material
             return;
         }
 
-        Texture = new Texture2D(path);
+        Texture = Texture2D.LoadRef(path);
         TexturePath = path;
     }
 
@@ -111,7 +111,7 @@ public sealed class Material
             return;
         }
 
-        NormalMap = new Texture2D(path);
+        NormalMap = Texture2D.LoadRef(path);
         NormalMapPath = path;
     }
 
@@ -140,7 +140,32 @@ public sealed class Material
             return checker;
         }
 
-        string full = Path.GetFullPath(AssetPath.Resolve(path));
+        // Cache by the original reference too, so repeated loads of a guid reference skip re-resolution.
+        if (s_cache.TryGetValue(path, out Material? refCached))
+        {
+            return refCached;
+        }
+
+        // A guid reference resolves to its cooked .sptmat through the content host; anything else is a source path.
+        string full;
+        if (AssetRef.IsGuidRef(path))
+        {
+            string? cooked = AssetPath.ResolveContent(path);
+            if (cooked is null)
+            {
+                Log.CoreError("Unresolved material reference '{0}'; using a default material.", path);
+                var missing = new Material { SourcePath = path };
+                s_cache[path] = missing;
+                return missing;
+            }
+
+            full = Path.GetFullPath(cooked);
+        }
+        else
+        {
+            full = Path.GetFullPath(AssetPath.Resolve(path));
+        }
+
         if (s_cache.TryGetValue(full, out Material? cached))
         {
             return cached;
@@ -206,6 +231,7 @@ public sealed class Material
         }
 
         s_cache[full] = material;
+        s_cache[path] = material;
         return material;
     }
 

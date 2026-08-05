@@ -1,11 +1,15 @@
 using Spot.Rendering;
-using Spot.Assets;
 
 namespace Spot.Core.Services;
 
 /// <summary>
-/// Initializes rendering systems and asset importers.
+/// Initializes rendering systems.
 /// </summary>
+/// <remarks>
+/// This runs in both the editor and a shipped game, so it deliberately does not register the Assimp source
+/// importer: a shipped game loads cooked <c>.spmesh</c> meshes and must never pull in Assimp. Authoring hosts
+/// (the editor) register the source importer themselves.
+/// </remarks>
 public class GraphicsService : IEngineService
 {
     public void Init(Application app)
@@ -15,7 +19,6 @@ public class GraphicsService : IEngineService
         Renderer2D.Init();
         Renderer3D.Init();
         PostProcessingRenderer.Init();
-        ModelImporter.Register(new AssimpModelImporter());
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     }
 

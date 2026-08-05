@@ -8,3 +8,7 @@ editor_window.json
 EngineBin/
 
 Build/
+
+# Asset pipeline: regenerable from source + committed .meta sidecars.
+Library/
+Content/

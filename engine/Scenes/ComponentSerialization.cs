@@ -122,7 +122,7 @@ internal static class ComponentSerialization
 
             try
             {
-                assetRef.Asset.SetValue(component, new Texture2D(p));
+                assetRef.Asset.SetValue(component, Texture2D.LoadRef(p));
             }
             catch (Exception ex)
             {

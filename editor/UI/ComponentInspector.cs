@@ -342,17 +342,21 @@ internal static class ComponentInspector
     private static void DrawTextureSlot(Entity entity, object component, PropertyMeta meta)
     {
         var texture = (Texture2D?)meta.Prop.GetValue(component);
-        string? path = (string?)meta.AssetPathProp!.GetValue(component);
+        string? stored = (string?)meta.AssetPathProp!.GetValue(component);
+        string? display = AssetDatabase.ToDisplayPath(stored);
 
         string[] patterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
-        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, path, out string? newPath))
+        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, display, out string? newPath))
         {
             try
             {
-                var newTexture = newPath != null ? new Texture2D(newPath) : null;
+                // Store a stable guid: reference (portable across rename/move) and preview the cooked texture,
+                // so what the editor shows matches what a build ships.
+                string? storedRef = AssetDatabase.ToGuidRef(newPath);
+                var newTexture = storedRef != null ? Texture2D.LoadRef(storedRef) : null;
                 texture?.Dispose();
                 meta.Prop.SetValue(component, newTexture);
-                meta.AssetPathProp!.SetValue(component, newPath);
+                meta.AssetPathProp!.SetValue(component, storedRef);
             }
             catch (Exception ex)
             {
@@ -364,41 +368,43 @@ internal static class ComponentInspector
     private static void DrawModelSlot(Entity entity, object component, PropertyMeta meta)
     {
         var model = (Model?)meta.Prop.GetValue(component);
-        string? path = (string?)meta.AssetPathProp!.GetValue(component);
+        string? stored = (string?)meta.AssetPathProp!.GetValue(component);
+        string? display = AssetDatabase.ToDisplayPath(stored);
 
         string[] patterns = { "*.obj", "*.fbx", "*.gltf", "*.glb", "*.dae" };
-        
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) => 
+
+        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
         {
-            if (ImGui.MenuItem("Cube", "", path == "primitive:Cube"))
+            if (ImGui.MenuItem("Cube", "", stored == "primitive:Cube"))
             {
                 selectedPath = "primitive:Cube";
                 changed = true;
             }
-            if (ImGui.MenuItem("Plane", "", path == "primitive:Plane"))
+            if (ImGui.MenuItem("Plane", "", stored == "primitive:Plane"))
             {
                 selectedPath = "primitive:Plane";
                 changed = true;
             }
-            if (ImGui.MenuItem("Quad", "", path == "primitive:Quad"))
+            if (ImGui.MenuItem("Quad", "", stored == "primitive:Quad"))
             {
                 selectedPath = "primitive:Quad";
                 changed = true;
             }
-            if (ImGui.MenuItem("Sphere", "", path == "primitive:Sphere"))
+            if (ImGui.MenuItem("Sphere", "", stored == "primitive:Sphere"))
             {
                 selectedPath = "primitive:Sphere";
                 changed = true;
             }
         };
 
-        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, path, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, display, out string? newPath, customItems))
         {
             try
             {
-                var newModel = newPath != null ? Model.Load(newPath) : null;
+                string? storedRef = AssetDatabase.ToGuidRef(newPath);
+                var newModel = storedRef != null ? Model.Load(storedRef) : null;
                 meta.Prop.SetValue(component, newModel);
-                meta.AssetPathProp!.SetValue(component, newPath);
+                meta.AssetPathProp!.SetValue(component, storedRef);
             }
             catch (Exception ex)
             {
@@ -410,26 +416,28 @@ internal static class ComponentInspector
     private static void DrawMaterialSlot(Entity entity, object component, PropertyMeta meta)
     {
         var material = (Material?)meta.Prop.GetValue(component);
-        string? path = (string?)meta.AssetPathProp!.GetValue(component);
+        string? stored = (string?)meta.AssetPathProp!.GetValue(component);
+        string? display = AssetDatabase.ToDisplayPath(stored);
 
         string[] patterns = { "*.sptmat" };
-        
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) => 
+
+        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
         {
-            if (ImGui.MenuItem("Checkerboard", "", path == "editor:Checkerboard"))
+            if (ImGui.MenuItem("Checkerboard", "", stored == "editor:Checkerboard"))
             {
                 selectedPath = "editor:Checkerboard";
                 changed = true;
             }
         };
 
-        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, path, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, display, out string? newPath, customItems))
         {
             try
             {
-                var newMaterial = newPath != null ? Material.Load(newPath) : null;
+                string? storedRef = AssetDatabase.ToGuidRef(newPath);
+                var newMaterial = storedRef != null ? Material.Load(storedRef) : null;
                 meta.Prop.SetValue(component, newMaterial);
-                meta.AssetPathProp!.SetValue(component, newPath);
+                meta.AssetPathProp!.SetValue(component, storedRef);
             }
             catch (Exception ex)
             {
