@@ -11,6 +11,7 @@ public sealed class Shader : IDisposable
 {
     private readonly GL _gl;
     private readonly uint _handle;
+    private readonly Dictionary<string, int> _uniformLocations = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Shader"/> class by compiling and linking the given sources.
@@ -101,12 +102,22 @@ public sealed class Shader : IDisposable
 
     private int GetUniformLocation(string name)
     {
+        // Uniform locations are fixed for the life of a linked program, so look each one up once and
+        // cache it. This turns a per-draw glGetUniformLocation (dozens per mesh per frame) into a
+        // dictionary hit, and — because the miss is cached too — warns at most once per missing name
+        // instead of every frame.
+        if (_uniformLocations.TryGetValue(name, out int cached))
+        {
+            return cached;
+        }
+
         int location = _gl.GetUniformLocation(_handle, name);
         if (location == -1)
         {
             Log.CoreWarn("Uniform '{0}' not found in shader program.", name);
         }
 
+        _uniformLocations[name] = location;
         return location;
     }
 
