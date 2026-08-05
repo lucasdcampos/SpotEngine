@@ -25,8 +25,25 @@ public static class RenderSystem
     /// </summary>
     /// <param name="scene">The scene whose meshes and sprites are drawn.</param>
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
-    public static void Render(Scene scene, Matrix4x4 viewProjection)
+    /// <param name="cameraPosition">
+    /// The camera's world position, used by the lighting shaders for view-dependent terms (specular,
+    /// fresnel). When <see langword="null"/> it is approximated from the inverse view-projection, which
+    /// is good enough for editor overlays but wrong for perspective specular — pass the real position.
+    /// </param>
+    public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
     {
+        Vector3 cameraPos;
+        if (cameraPosition.HasValue)
+        {
+            cameraPos = cameraPosition.Value;
+        }
+        else
+        {
+            Matrix4x4.Invert(viewProjection, out Matrix4x4 inv);
+            Vector4 p = Vector4.Transform(new Vector4(0f, 0f, -1f, 1f), inv);
+            cameraPos = new Vector3(p.X, p.Y, p.Z) / p.W;
+        }
+
         PostProcessingComponent? postProcess = null;
         foreach (Entity entity in scene.View<PostProcessingComponent>())
         {
@@ -157,7 +174,7 @@ public static class RenderSystem
             Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Line);
         }
 
-        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount));
+        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount), cameraPos);
         
         Vector3 skyColor = Vector3.Zero;
         Vector3 groundColor = Vector3.Zero;
