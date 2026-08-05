@@ -82,6 +82,8 @@ public class CameraComponentData : ComponentData
     public float[]? BackgroundColor { get; set; }
     public int ProjectionType { get; set; } = 0;
     public float FieldOfView { get; set; } = 45.0f;
+    public float NearClip { get; set; } = 0.1f;
+    public float FarClip { get; set; } = 1000.0f;
 }
 
 public class PhysicsBody2DData : ComponentData
@@ -242,7 +244,9 @@ public class SceneSerializer
                 ZoomLevel = camera.ZoomLevel,
                 BackgroundColor = new[] { camera.BackgroundColor.X, camera.BackgroundColor.Y, camera.BackgroundColor.Z, camera.BackgroundColor.W },
                 ProjectionType = (int)camera.ProjectionType,
-                FieldOfView = camera.FieldOfView
+                FieldOfView = camera.FieldOfView,
+                NearClip = camera.NearClip,
+                FarClip = camera.FarClip
             };
         }
 
@@ -507,6 +511,8 @@ public class SceneSerializer
             camera.ZoomLevel = entityData.Camera.ZoomLevel;
             camera.ProjectionType = (SceneCameraProjection)entityData.Camera.ProjectionType;
             camera.FieldOfView = entityData.Camera.FieldOfView;
+            camera.NearClip = entityData.Camera.NearClip;
+            camera.FarClip = entityData.Camera.FarClip;
             if (entityData.Camera.BackgroundColor != null && entityData.Camera.BackgroundColor.Length == 4)
             {
                 camera.BackgroundColor = new System.Numerics.Vector4(
