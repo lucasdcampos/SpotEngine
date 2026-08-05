@@ -58,8 +58,8 @@ public static class Renderer3D
         
         uniform int uHasNormalMap;
         uniform float uMetallic;
-        uniform mat4 uInverseViewProjection;
-        
+        uniform vec3 uCameraPos;
+
         uniform vec2 uTiling;
         uniform int uAutoTile;
         uniform vec3 uModelScale;
@@ -135,10 +135,8 @@ public static class Renderer3D
             vec4 albedo = texture(uTexture, finalUV) * uColor;
             vec3 normal = uHasNormalMap == 1 ? getNormalFromMap(finalUV) : normalize(vNormal);
             
-            vec4 camPos4 = uInverseViewProjection * vec4(0.0, 0.0, -1.0, 1.0);
-            vec3 cameraPos = camPos4.xyz / camPos4.w;
-            vec3 viewDir = normalize(cameraPos - vFragPos);
-            
+            vec3 viewDir = normalize(uCameraPos - vFragPos);
+
             vec3 F0 = vec3(0.04);
             F0 = mix(F0, albedo.rgb, uMetallic);
             
@@ -245,8 +243,8 @@ public static class Renderer3D
         uniform sampler2D uTexture;
         uniform sampler2D uShadowMap;
         uniform float uTime;
-        uniform mat4 uInverseViewProjection;
-        
+        uniform vec3 uCameraPos;
+
         uniform float uWaveSpeed;
         uniform float uWaveScale;
         uniform float uWaveStrength;
@@ -352,10 +350,7 @@ public static class Renderer3D
             vec4 texColor = texture(uTexture, finalUV);
             vec4 albedo = texColor * uColor;
             
-            // Calculate approximate camera position from uInverseViewProjection
-            vec4 camPos4 = uInverseViewProjection * vec4(0.0, 0.0, -1.0, 1.0);
-            vec3 cameraPos = camPos4.xyz / camPos4.w;
-            vec3 viewDir = normalize(cameraPos - vFragPos);
+            vec3 viewDir = normalize(uCameraPos - vFragPos);
             
             vec3 waterBase = vec3(0.0);
             vec3 finalColor = vec3(0.0);
@@ -791,6 +786,8 @@ public static class Renderer3D
     private static Texture2D? s_whiteTexture;
     private static DepthFramebuffer? s_shadowMap;
     private static Matrix4x4 s_viewProjection = Matrix4x4.Identity;
+    private static Matrix4x4 s_inverseViewProjection = Matrix4x4.Identity;
+    private static Vector3 s_cameraPosition = Vector3.Zero;
     private static Matrix4x4 s_lightSpaceMatrix = Matrix4x4.Identity;
 
     public struct PointLightData
@@ -833,9 +830,14 @@ public static class Renderer3D
     /// <summary>
     /// Begins a 3D scene. Meshes drawn until <see cref="EndScene"/> use this view-projection.
     /// </summary>
-    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default)
+    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default, Vector3 cameraPosition = default)
     {
         s_viewProjection = viewProjection;
+        // Invert once per scene: the skybox, clouds and grid all need the inverse view-projection, and
+        // recomputing it per draw was pure waste. The camera position is supplied by the caller (the
+        // camera's world position) rather than derived from the matrix, which is only approximate.
+        Matrix4x4.Invert(viewProjection, out s_inverseViewProjection);
+        s_cameraPosition = cameraPosition;
         s_hasDirLight = hasLight ? 1 : 0;
         s_lightDir = hasLight ? lightDir : Vector3.UnitY;
         s_lightColor = hasLight ? lightColor : Vector3.One;
@@ -915,10 +917,9 @@ public static class Renderer3D
         activeShader.SetUniform("uModel", model);
         activeShader.SetUniform("uColor", color);
         activeShader.SetUniform("uTexture", 0);
-        
-        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
-        activeShader.SetUniform("uInverseViewProjection", invViewProj);
-        
+
+        activeShader.SetUniform("uCameraPos", s_cameraPosition);
+
         Vector2 tiling = material?.Tiling ?? Vector2.One;
         int autoTile = (material?.AutoTile ?? false) ? 1 : 0;
         activeShader.SetUniform("uTiling", tiling);
@@ -1008,9 +1009,8 @@ public static class Renderer3D
     {
         if (s_skyboxShader == null || s_emptyVao == null) return;
 
-        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
         s_skyboxShader.Use();
-        s_skyboxShader.SetUniform("uInverseViewProjection", invViewProj);
+        s_skyboxShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
         
         s_skyboxShader.SetUniform("uSkyColor", skyColor);
         s_skyboxShader.SetUniform("uGroundColor", groundColor);
@@ -1033,9 +1033,8 @@ public static class Renderer3D
     {
         if (s_cloudsShader == null || s_emptyVao == null) return;
 
-        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
         s_cloudsShader.Use();
-        s_cloudsShader.SetUniform("uInverseViewProjection", invViewProj);
+        s_cloudsShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
         s_cloudsShader.SetUniform("uColorTop", new Vector3(colorTopX, colorTopY, colorTopZ));
         s_cloudsShader.SetUniform("uColorBottom", new Vector3(colorBotX, colorBotY, colorBotZ));
         s_cloudsShader.SetUniform("uSpeed", speed);
@@ -1060,10 +1059,9 @@ public static class Renderer3D
     {
         if (s_gridShader == null || s_emptyVao == null) return;
 
-        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
         s_gridShader.Use();
         s_gridShader.SetUniform("uViewProjection", s_viewProjection);
-        s_gridShader.SetUniform("uInverseViewProjection", invViewProj);
+        s_gridShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
         s_gridShader.SetUniform("uCameraPos", cameraPos);
 
         Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);

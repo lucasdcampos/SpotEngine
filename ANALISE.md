@@ -140,8 +140,8 @@ Priorizados — todos são pontuais:
    explosões/tunneling de física em hitches. (1 linha) ✅ `Application.MaxDeltaTime`
 - [ ] **3. Play em build Debug/framework-dependent** em vez de Release self-contained single-file — corta
    drasticamente o tempo de Play. (poucas linhas)
-- [ ] **4. Inverter view-projection uma vez em `BeginScene`** e reusar em DrawMesh/skybox/clouds/grid.
-- [ ] **5. Passar posição real da câmera como uniform** — corrige specular/fresnel/point lights.
+- [x] **4. Inverter view-projection uma vez em `BeginScene`** e reusar em DrawMesh/skybox/clouds/grid. ✅ `Renderer3D.s_inverseViewProjection`
+- [x] **5. Passar posição real da câmera como uniform** — corrige specular/fresnel/point lights. ✅ `uCameraPos` via `RenderSystem.Render(..., cameraPosition)`
 - [ ] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo
    duplo no ápice.
 - [ ] **7. Remover código morto** (`_sceneSnapshot`, `ImportModel`) e **atualizar `AGENTS.md`**.

@@ -238,7 +238,7 @@ public class EditorScene : Scene
                 Renderer.SetFaceCulling(true);
             }
                 
-            RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection);
+            RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position);
 
             // The editor grid and world axes are screen-aligned / crossed-quad overlays with no single
             // front-face winding, so culling must be off while drawing them. Otherwise the back-face
@@ -353,17 +353,17 @@ public class EditorScene : Scene
                     var transform = entity.GetComponent<TransformComponent>();
                     var viewProj = cc.GetViewProjection(transform);
                     var is3DPrev = cc.ProjectionType == SceneCameraProjection.Perspective;
-                    
+
                     Renderer.SetClearColor(cc.BackgroundColor.X, cc.BackgroundColor.Y, cc.BackgroundColor.Z, cc.BackgroundColor.W);
                     Renderer.Clear();
-                    
+
                     if (is3DPrev)
                     {
                         Renderer.SetDepthTest(true);
                         Renderer.SetFaceCulling(true);
                     }
-                        
-                    RenderSystem.Render(sceneData.Scene, viewProj);
+
+                    RenderSystem.Render(sceneData.Scene, viewProj, transform.WorldPosition);
                     
                     if (is3DPrev)
                     {
@@ -385,9 +385,10 @@ public class EditorScene : Scene
         if (gameScene != null)
         {
             System.Numerics.Matrix4x4? viewProjection = null;
+            Vector3 cameraPosition = Vector3.Zero;
             Vector4 clearColor = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
             bool is3D = false;
-            
+
             foreach (var entity in gameScene.View<CameraComponent>())
             {
                 var cc = entity.GetComponent<CameraComponent>();
@@ -397,6 +398,7 @@ public class EditorScene : Scene
                     {
                         var transform = entity.GetComponent<TransformComponent>();
                         viewProjection = cc.GetViewProjection(transform);
+                        cameraPosition = transform.WorldPosition;
                         is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
                     }
                     clearColor = cc.BackgroundColor;
@@ -415,7 +417,7 @@ public class EditorScene : Scene
                     Renderer.SetFaceCulling(true);
                 }
                     
-                RenderSystem.Render(gameScene, viewProjection.Value);
+                RenderSystem.Render(gameScene, viewProjection.Value, cameraPosition);
                 
                 if (is3D)
                 {
