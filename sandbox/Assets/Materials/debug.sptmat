@@ -1,0 +1,21 @@
+{
+  "Color": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "TexturePath": "Textures/dev_measuregeneric01b.png",
+  "ShaderType": "Standard",
+  "WaveSpeed": 1,
+  "WaveScale": 1,
+  "WaveStrength": 0.3,
+  "SpecularPower": 64,
+  "Metallic": 1,
+  "NormalMapPath": null,
+  "Tiling": [
+    1,
+    1
+  ],
+  "AutoTile": true
+}
