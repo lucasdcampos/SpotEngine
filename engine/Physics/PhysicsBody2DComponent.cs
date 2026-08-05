@@ -8,6 +8,7 @@ namespace Spot.Physics;
 /// A component to handle velocity and gravity for 2D physics.
 /// </summary>
 [ComponentMenu("Physics Body 2D", Order = 40)]
+[SceneComponent("PhysicsBody2D")]
 public class PhysicsBody2DComponent : Component
 {
     /// <summary>

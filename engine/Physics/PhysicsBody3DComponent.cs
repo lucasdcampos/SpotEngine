@@ -7,6 +7,7 @@ namespace Spot.Physics;
 /// A component to handle velocity and gravity for 3D physics.
 /// </summary>
 [ComponentMenu("Physics Body 3D", Order = 60)]
+[SceneComponent("PhysicsBody3D")]
 public class PhysicsBody3DComponent : Component
 {
     public Vector3 Velocity { get; set; } = Vector3.Zero;

@@ -12,6 +12,7 @@ namespace Spot.Rendering;
 /// and leave <see cref="Scale"/>.Z at one.
 /// </remarks>
 [ComponentMenu("Transform", Addable = false, Removable = false, Order = 0)]
+[SceneComponent("Transform")]
 public sealed class TransformComponent : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;

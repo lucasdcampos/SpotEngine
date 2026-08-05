@@ -9,6 +9,7 @@ namespace Spot.Scenes;
 /// draws it together with the entity's <see cref="Rendering.TransformComponent"/>.
 /// </summary>
 [ComponentMenu("Mesh Renderer", Order = 20)]
+[SceneComponent("MeshRenderer")]
 public sealed class MeshComponent : Component
 {
     /// <summary>

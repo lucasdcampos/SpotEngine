@@ -11,6 +11,7 @@ namespace Spot.Physics;
 /// entity carrying a <see cref="Spot.Scenes.CameraComponent"/> for the eyes.
 /// </summary>
 [ComponentMenu("Character Controller 3D", Order = 65)]
+[SceneComponent("CharacterController3D")]
 public class CharacterController3DComponent : Component
 {
     // Speeds (units/second). Run is the default; hold Shift to walk, Ctrl to crouch.
