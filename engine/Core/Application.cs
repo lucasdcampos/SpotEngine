@@ -126,6 +126,10 @@ public class Application
 {
     private static Application? s_instance;
 
+    // Upper bound on a single frame's delta time (seconds). Frames longer than this are treated as
+    // this long so a stall can't destabilize physics; ~10 FPS worth of catch-up per frame.
+    private const float MaxDeltaTime = 0.1f;
+
     private readonly ApplicationSpec _spec;
     private readonly DevConsole _console = new();
     private readonly List<IEngineService> _services = new();
@@ -282,6 +286,11 @@ public class Application
         TimeSpan now = _stopwatch!.Elapsed;
         _deltaTime = (float)(now - _lastTime).TotalSeconds;
         _lastTime = now;
+
+        // Clamp the frame delta so a hitch (window drag, GC pause, a heavy asset load) can't feed a
+        // huge dt into physics/scripts and explode springs or tunnel bodies through colliders. A
+        // stalled frame simply runs in slow motion instead of blowing up the simulation.
+        _deltaTime = Math.Min(_deltaTime, MaxDeltaTime);
 
         try
         {
