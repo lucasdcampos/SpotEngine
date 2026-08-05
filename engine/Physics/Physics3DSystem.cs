@@ -24,6 +24,9 @@ internal static class Physics3DSystem
 
             if (body.IsDynamic)
             {
+                // Cleared each step; a floor contact in the resolution pass below sets it back to true.
+                body.Grounded = false;
+
                 if (body.LinearDrag > 0f)
                 {
                     // Apply linear drag (damping) to gradually reduce velocity over time
@@ -104,6 +107,11 @@ internal static class Physics3DSystem
 
             if (isDynamic1 && body1 != null) body1.Velocity = new Vector3(body1.Velocity.X, 0, body1.Velocity.Z);
             if (isDynamic2 && body2 != null) body2.Velocity = new Vector3(body2.Velocity.X, 0, body2.Velocity.Z);
+
+            // A positive Y resolution pushes body1 up (it landed on body2); a negative one pushes
+            // body2 up. Mark whichever body was lifted as grounded for this step.
+            if (isDynamic1 && body1 != null && resolution.Y > 0f) body1.Grounded = true;
+            if (isDynamic2 && body2 != null && resolution.Y < 0f) body2.Grounded = true;
         }
         else
         {

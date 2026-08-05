@@ -142,8 +142,8 @@ Priorizados — todos são pontuais:
    drasticamente o tempo de Play. (poucas linhas) ✅ `ProjectBuilder.Build(fastDebug)` → `Build/play`
 - [x] **4. Inverter view-projection uma vez em `BeginScene`** e reusar em DrawMesh/skybox/clouds/grid. ✅ `Renderer3D.s_inverseViewProjection`
 - [x] **5. Passar posição real da câmera como uniform** — corrige specular/fresnel/point lights. ✅ `uCameraPos` via `RenderSystem.Render(..., cameraPosition)`
-- [ ] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo
-   duplo no ápice.
+- [x] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo
+   duplo no ápice. ✅ `PhysicsBody3DComponent.Grounded` setado no contato de chão
 - [ ] **7. Remover código morto** (`_sceneSnapshot`, `ImportModel`) e **atualizar `AGENTS.md`**.
 - [ ] **8. `near`/`far` da câmera configuráveis** (`CameraComponent` fixa 0.1/1000; ortho 3D clipa em -1/1).
 
