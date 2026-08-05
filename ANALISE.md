@@ -145,7 +145,7 @@ Priorizados — todos são pontuais:
 - [x] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo
    duplo no ápice. ✅ `PhysicsBody3DComponent.Grounded` setado no contato de chão
 - [ ] **7. Remover código morto** (`_sceneSnapshot`, `ImportModel`) e **atualizar `AGENTS.md`**.
-- [ ] **8. `near`/`far` da câmera configuráveis** (`CameraComponent` fixa 0.1/1000; ortho 3D clipa em -1/1).
+- [x] **8. `near`/`far` da câmera configuráveis** (`CameraComponent` fixa 0.1/1000; ortho 3D clipa em -1/1). ✅ `CameraComponent.NearClip`/`FarClip` (serializados; ortho usa `-far..far`)
 
 ---
 
