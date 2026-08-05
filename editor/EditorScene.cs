@@ -783,7 +783,8 @@ public class EditorScene : Scene
             {
                 var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
                     onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
-                    onError: msg => Spot.Core.Log.Error($"[Build] {msg}"));
+                    onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
+                    fastDebug: true);
 
                 if (result.Success)
                 {
