@@ -144,7 +144,7 @@ Priorizados — todos são pontuais:
 - [x] **5. Passar posição real da câmera como uniform** — corrige specular/fresnel/point lights. ✅ `uCameraPos` via `RenderSystem.Render(..., cameraPosition)`
 - [x] **6. Corrigir o check de "grounded"** (usar contato real ou limiar negativo pequeno) — mata o pulo
    duplo no ápice. ✅ `PhysicsBody3DComponent.Grounded` setado no contato de chão
-- [ ] **7. Remover código morto** (`_sceneSnapshot`, `ImportModel`) e **atualizar `AGENTS.md`**.
+- [x] **7. Remover código morto** (`_sceneSnapshot`, `ImportModel`) e **atualizar `AGENTS.md`**. ✅ (AGENTS.md: testes existem, Play é processo externo)
 - [x] **8. `near`/`far` da câmera configuráveis** (`CameraComponent` fixa 0.1/1000; ortho 3D clipa em -1/1). ✅ `CameraComponent.NearClip`/`FarClip` (serializados; ortho usa `-far..far`)
 
 ---
