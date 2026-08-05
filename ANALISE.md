@@ -90,12 +90,18 @@ uniforms por mesh. Broadphase de física é O(n²).
 
 ## Refatorações estruturais
 
-**1. `SceneSerializer` (712 linhas de boilerplate manual)** — o maior débito de manutenção. Cada
-componente exige: um DTO + um bloco de serialize + um bloco de deserialize + um campo em
-`EntityData`. Isso contrasta com o inspector, que é 100% automático via reflexão. Esse padrão é um
-ímã para o bug "esqueci de serializar o campo X" e **é a causa direta** da lacuna de campos de
-script não persistidos. Migrar para serialização orientada por reflexão/atributos (ou polimorfismo
-do `System.Text.Json` por tipo de componente) eliminaria ~600 linhas e unificaria com o inspector.
+**1. `SceneSerializer` (712 linhas de boilerplate manual)** ✅ **RESOLVIDO** — o maior débito de
+manutenção. Cada componente exigia: um DTO + um bloco de serialize + um bloco de deserialize + um
+campo em `EntityData`. Isso contrastava com o inspector, 100% automático via reflexão. Esse padrão era
+um ímã para o bug "esqueci de serializar o campo X" e **é a causa direta** da lacuna de campos de
+script não persistidos.
+_Feito:_ serialização orientada por reflexão/atributos — cada componente ganha
+`[SceneComponent("key")]` e o `ComponentSerialization` lê/escreve suas propriedades públicas
+automaticamente (vetores como arrays, enums como int, paths de asset relativizados). ~460 linhas de
+DTO removidas; formato em disco preservado (lê cenas antigas, incl. slots `null` e o alias
+`DirectionalLight`); coberto por testes de round-trip e back-compat. `LabelComponent` e
+`ScriptComponent` seguem com tratamento especial. Falta ainda expor **campos de script** (feature à
+parte, agora destravada pela infra).
 
 **2. "Play" faz um build de release completo a cada vez** — `EditorScene.OnPlay` chama
 `ProjectBuilder.Build`, que roda `dotnet publish -c Release -r win-x64 --self-contained true
