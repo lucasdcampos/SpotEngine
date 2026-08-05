@@ -449,19 +449,19 @@ internal static class ComponentInspector
         // resolved), and a remove button. A missing type usually means the script hasn't compiled yet or was
         // renamed — surfacing it here beats a silent no-op at runtime.
         int scriptToRemove = -1;
-        for (int i = 0; i < scriptComp.ClassNames.Count; i++)
+        for (int i = 0; i < scriptComp.Items.Count; i++)
         {
-            string className = scriptComp.ClassNames[i];
-            bool resolved = EditorGui.ScriptExists(className);
+            ScriptInstance item = scriptComp.Items[i];
+            bool resolved = item.Instance != null;
 
             ImGui.PushID(i);
             ImGui.AlignTextToFramePadding();
             ImGui.TextColored(ScriptGlyphColor, EditorIcons.Code);
             ImGui.SameLine();
             if (resolved)
-                ImGui.TextUnformatted(className);
+                ImGui.TextUnformatted(item.ClassName);
             else
-                ImGui.TextColored(ScriptMissingColor, $"{className}  (not found)");
+                ImGui.TextColored(ScriptMissingColor, $"{item.ClassName}  (not found)");
 
             // Right-align the remove button to the card's inner edge.
             ImGui.SameLine();
@@ -469,19 +469,21 @@ internal static class ComponentInspector
             if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
                 scriptToRemove = i;
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove script");
+
             ImGui.PopID();
         }
 
         if (scriptToRemove >= 0)
-            scriptComp.ClassNames.RemoveAt(scriptToRemove);
+            scriptComp.Items.RemoveAt(scriptToRemove);
 
         ImGui.Spacing();
         // The slot both accepts a dragged script file and, on click, opens a searchable list of every
-        // EntityBehaviour in the loaded assemblies — no more typing class names by hand.
-        if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames, out string? chosen)
+        // EntityBehaviour in the loaded assemblies — no more typing class names by hand. Adding one
+        // instantiates it immediately so its fields are editable right away.
+        if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames.ToList(), out string? chosen)
             && chosen != null && !scriptComp.ClassNames.Contains(chosen))
         {
-            scriptComp.ClassNames.Add(chosen);
+            scriptComp.Items.Add(new ScriptInstance(chosen, ScriptResolver.Create(chosen, entity)));
         }
     }
 

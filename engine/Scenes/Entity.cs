@@ -226,7 +226,7 @@ public readonly struct Entity : IEquatable<Entity>
             scripts = AddComponent(new ScriptComponent());
         }
 
-        scripts.Scripts.Add(script);
+        scripts.Items.Add(new ScriptInstance(script.GetType().Name, script));
         return script;
     }
 

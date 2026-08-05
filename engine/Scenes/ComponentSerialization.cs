@@ -241,6 +241,99 @@ internal static class ComponentSerialization
         return arr;
     }
 
+    // ----- Script members (fields + properties) ----------------------------------------------------
+
+    private sealed class ScriptMember
+    {
+        public ScriptMember(string name, Type type, Func<object, object?> get, Action<object, object?> set)
+        {
+            Name = name;
+            Type = type;
+            Get = get;
+            Set = set;
+        }
+
+        public string Name { get; }
+        public Type Type { get; }
+        public Func<object, object?> Get { get; }
+        public Action<object, object?> Set { get; }
+    }
+
+    private static readonly Dictionary<Type, ScriptMember[]> s_scriptMemberCache = new();
+
+    /// <summary>
+    /// Writes an object's public fields and read/write properties of supported types into a JSON object.
+    /// Used for script instances (<see cref="EntityBehaviour"/>), which expose tunables as public fields.
+    /// </summary>
+    public static JsonObject SerializeMembers(object obj)
+    {
+        var json = new JsonObject();
+        foreach (ScriptMember member in ScriptMembersFor(obj.GetType()))
+        {
+            json[member.Name] = ToNode(member.Get(obj));
+        }
+
+        return json;
+    }
+
+    /// <summary>Applies previously serialized field/property values from a JSON object onto an instance.</summary>
+    public static void ApplyMembers(object obj, JsonObject data)
+    {
+        foreach (ScriptMember member in ScriptMembersFor(obj.GetType()))
+        {
+            if (!data.TryGetPropertyValue(member.Name, out JsonNode? node) || node is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                object? value = FromNode(node, member.Type);
+                if (value != null)
+                {
+                    member.Set(obj, value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.CoreWarn("Skipping script field '{0}.{1}': {2}", obj.GetType().Name, member.Name, ex.Message);
+            }
+        }
+    }
+
+    private static ScriptMember[] ScriptMembersFor(Type type)
+    {
+        if (s_scriptMemberCache.TryGetValue(type, out ScriptMember[]? cached))
+        {
+            return cached;
+        }
+
+        var members = new List<ScriptMember>();
+
+        foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (field.IsInitOnly || field.IsLiteral) continue;
+            if (!IsSupported(field.FieldType)) continue;
+            if (field.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
+
+            members.Add(new ScriptMember(field.Name, field.FieldType, o => field.GetValue(o), (o, v) => field.SetValue(o, v)));
+        }
+
+        foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetIndexParameters().Length > 0) continue;
+            if (prop.GetMethod is not { IsPublic: true } || prop.SetMethod is not { IsPublic: true }) continue;
+            if (!IsSupported(prop.PropertyType)) continue;
+            if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
+
+            members.Add(new ScriptMember(prop.Name, prop.PropertyType, o => prop.GetValue(o), (o, v) => prop.SetValue(o, v)));
+        }
+
+        ScriptMember[] arr = members.ToArray();
+        s_scriptMemberCache[type] = arr;
+        return arr;
+    }
+
     private static bool IsSupported(Type t) =>
         t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
         t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4);
