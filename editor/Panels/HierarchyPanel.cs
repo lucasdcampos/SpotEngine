@@ -31,7 +31,7 @@ public class HierarchyPanel
 
         if (_context.ActiveScene != null)
         {
-            var view = _context.ActiveScene.View<TagComponent>();
+            var view = _context.ActiveScene.View<LabelComponent>();
             foreach (var entity in view)
             {
                 if (entity.Parent == null)

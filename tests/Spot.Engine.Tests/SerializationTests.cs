@@ -126,7 +126,7 @@ public class SerializationTests
 
     private static Entity? FindByNameOrNull(Scene scene, string name)
     {
-        foreach (var e in scene.View<TagComponent>())
+        foreach (var e in scene.View<LabelComponent>())
         {
             if (e.Name == name)
             {

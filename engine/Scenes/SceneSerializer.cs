@@ -1,174 +1,26 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Spot.Core;
-using Spot.Rendering;
-using Spot.Physics;
 
 namespace Spot.Scenes;
 
-public class SceneData
-{
-    public List<EntityData> Entities { get; set; } = new();
-}
-
-public class EntityData
-{
-    public TagComponent? Tag { get; set; }
-    public TransformData? Transform { get; set; }
-    public Sprite2DData? Sprite { get; set; }
-    public MeshRendererData? MeshRenderer { get; set; }
-    public ScriptComponentData? Scripts { get; set; }
-    public CameraComponentData? Camera { get; set; }
-    public PhysicsBody2DData? PhysicsBody2D { get; set; }
-    public BoxCollider2DData? BoxCollider2D { get; set; }
-    public DirectionalLightData? DirectionalLight { get; set; }
-    public LightData? Light { get; set; }
-    public DynamicCloudsData? DynamicClouds { get; set; }
-    public SkyboxData? Skybox { get; set; }
-    public PhysicsBody3DData? PhysicsBody3D { get; set; }
-    public BoxCollider3DData? BoxCollider3D { get; set; }
-    public CharacterController3DData? CharacterController3D { get; set; }
-    public PostProcessingData? PostProcessing { get; set; }
-    public List<EntityData>? Children { get; set; }
-}
-
-public abstract class ComponentData
-{
-    public bool Enabled { get; set; } = true;
-}
-
-public class DirectionalLightData : ComponentData
-{
-    public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
-    public float Intensity { get; set; } = 1.0f;
-    public float AmbientIntensity { get; set; } = 0.3f;
-}
-
-public class LightData : ComponentData
-{
-    public int Type { get; set; } = 0;
-    public float[] Color { get; set; } = new float[3] { 1, 1, 1 };
-    public float Intensity { get; set; } = 1.0f;
-    public float AmbientIntensity { get; set; } = 0.3f;
-    public bool CastShadows { get; set; } = true;
-    public float Range { get; set; } = 10.0f;
-}
-
-public class DynamicCloudsData : ComponentData
-{
-    public float[] ColorTop { get; set; } = new float[3] { 1, 1, 1 };
-    public float[] ColorBottom { get; set; } = new float[3] { 0.8f, 0.85f, 0.9f };
-    public float Speed { get; set; } = 1.0f;
-    public float Density { get; set; } = 0.57f;
-    public float Height { get; set; } = 0.3f;
-    public float Opacity { get; set; } = 0.6f;
-    public float Volume { get; set; } = 1.35f;
-}
-
-public class SkyboxData : ComponentData
-{
-    public float[] SkyColor { get; set; } = new float[3] { 0.6f, 0.8f, 1.0f };
-    public float[] GroundColor { get; set; } = new float[3] { 0.15f, 0.15f, 0.15f };
-}
-
-public class CameraComponentData : ComponentData
-{
-    public bool Primary { get; set; }
-    public bool FixedAspectRatio { get; set; }
-    public float ZoomLevel { get; set; }
-    public float[]? BackgroundColor { get; set; }
-    public int ProjectionType { get; set; } = 0;
-    public float FieldOfView { get; set; } = 45.0f;
-    public float NearClip { get; set; } = 0.1f;
-    public float FarClip { get; set; } = 1000.0f;
-}
-
-public class PhysicsBody2DData : ComponentData
-{
-    public float[] Velocity { get; set; } = new float[2];
-    public float GravityScale { get; set; } = 1.0f;
-    public bool IsDynamic { get; set; } = true;
-}
-
-public class BoxCollider2DData : ComponentData
-{
-    public float[] Size { get; set; } = new float[2];
-    public float[] Offset { get; set; } = new float[2];
-}
-
-public class PhysicsBody3DData : ComponentData
-{
-    public float[] Velocity { get; set; } = new float[3];
-    public float GravityScale { get; set; } = 1.0f;
-    public float LinearDrag { get; set; } = 0.0f;
-    public bool IsDynamic { get; set; } = true;
-}
-
-public class BoxCollider3DData : ComponentData
-{
-    public float[] Size { get; set; } = new float[3];
-    public float[] Offset { get; set; } = new float[3];
-}
-
-public class CharacterController3DData : ComponentData
-{
-    public float WalkSpeed { get; set; } = 4.0f;
-    public float RunSpeed { get; set; } = 8.0f;
-    public float CrouchSpeed { get; set; } = 2.5f;
-    public float JumpForce { get; set; } = 6.0f;
-    public float GroundAcceleration { get; set; } = 10.0f;
-    public float GroundFriction { get; set; } = 8.0f;
-    public float AirAcceleration { get; set; } = 100.0f;
-    public float MaxAirSpeed { get; set; } = 1.0f;
-    public float GravityMultiplier { get; set; } = 1.8f;
-    public float StandHeight { get; set; } = 1.7f;
-    public float CrouchHeight { get; set; } = 0.9f;
-    public float MouseSensitivity { get; set; } = 0.1f;
-    public float MaxPitch { get; set; } = 89.0f;
-    public bool LockMouse { get; set; } = true;
-}
-
-public class ScriptComponentData : ComponentData
-{
-    public List<string> ScriptNames { get; set; } = new();
-}
-
-public class PostProcessingData : ComponentData
-{
-    public float Exposure { get; set; } = 1.0f;
-    public float Gamma { get; set; } = 2.2f;
-    public bool EnableVignette { get; set; } = true;
-    public float VignetteIntensity { get; set; } = 0.25f;
-    public bool EnableBloom { get; set; } = true;
-    public float BloomThreshold { get; set; } = 1.0f;
-    public float BloomIntensity { get; set; } = 1.0f;
-}
-
-public class TransformData : ComponentData
-{
-    public float[] Position { get; set; } = new float[3];
-    public float[] Rotation { get; set; } = new float[3];
-    public float[] Scale { get; set; } = new float[3] { 1, 1, 1 };
-}
-
-public class Sprite2DData : ComponentData
-{
-    public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
-    public string? TexturePath { get; set; }
-}
-
-public class MeshRendererData : ComponentData
-{
-    public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
-    public string? ModelPath { get; set; }
-    public string? MaterialPath { get; set; }
-}
-
+/// <summary>
+/// Reads and writes a <see cref="Scene"/> as <c>.sptscene</c> JSON. Component data is handled entirely
+/// by reflection through <see cref="ComponentSerialization"/> — every component tagged with
+/// <see cref="SceneComponentAttribute"/> is written and read automatically, so adding a serializable
+/// component needs no changes here. Only the two structural pieces are handled explicitly: the
+/// <see cref="LabelComponent"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>)
+/// and the <see cref="ScriptComponent"/> (its scripts are resolved by class name and instantiated at
+/// load). The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
+/// component keys, and missing assets — logging and continuing rather than throwing.
+/// </summary>
 public class SceneSerializer
 {
+    private static readonly JsonSerializerOptions s_writeOptions = new() { WriteIndented = true };
+
     private readonly Scene _scene;
 
     public SceneSerializer(Scene scene)
@@ -178,233 +30,72 @@ public class SceneSerializer
 
     public string SerializeToString()
     {
-        var data = new SceneData();
-
-        foreach (var entity in _scene.View<TagComponent>())
+        var entities = new JsonArray();
+        foreach (var entity in _scene.View<LabelComponent>())
         {
             if (entity.Parent == null)
             {
-                data.Entities.Add(SerializeEntity(entity));
+                entities.Add(SerializeEntity(entity));
             }
         }
 
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        return JsonSerializer.Serialize(data, options);
+        var root = new JsonObject { ["Entities"] = entities };
+        return root.ToJsonString(s_writeOptions);
     }
 
-    private EntityData SerializeEntity(Entity entity)
+    private JsonObject SerializeEntity(Entity entity)
     {
-        var entityData = new EntityData();
+        var obj = new JsonObject();
 
-        entityData.Tag = entity.GetComponent<TagComponent>();
+        // Tag is structural: it holds the name and the entity's enabled state.
+        var tag = entity.GetComponent<LabelComponent>();
+        obj["Tag"] = new JsonObject { ["Name"] = tag.Name, ["Enabled"] = entity.Enabled };
 
-        if (entity.HasComponent<TransformComponent>())
+        // Every registered component is written generically by reflection.
+        foreach (var (type, key) in ComponentSerialization.WriteOrder)
         {
-            var transform = entity.GetComponent<TransformComponent>();
-            entityData.Transform = new TransformData
+            if (entity.HasComponent(type))
             {
-                Enabled = transform.Enabled,
-                Position = new[] { transform.Position.X, transform.Position.Y, transform.Position.Z },
-                Rotation = new[] { transform.Rotation.X, transform.Rotation.Y, transform.Rotation.Z },
-                Scale = new[] { transform.Scale.X, transform.Scale.Y, transform.Scale.Z }
-            };
+                obj[key] = ComponentSerialization.Serialize(entity.GetComponent(type)!);
+            }
         }
 
-        if (entity.HasComponent<Sprite2DComponent>())
+        // Scripts are special: only the class names are stored (runtime instances are rebuilt on load).
+        if (entity.TryGetComponent(out ScriptComponent? scripts))
         {
-            var sprite = entity.GetComponent<Sprite2DComponent>();
-            entityData.Sprite = new Sprite2DData
-            {
-                Enabled = sprite.Enabled,
-                Color = new[] { sprite.Color.X, sprite.Color.Y, sprite.Color.Z, sprite.Color.W },
-                TexturePath = sprite.TexturePath != null ? Assets.AssetPath.MakeRelative(sprite.TexturePath) : null
-            };
-        }
-
-        if (entity.HasComponent<MeshComponent>())
-        {
-            var meshRenderer = entity.GetComponent<MeshComponent>();
-            entityData.MeshRenderer = new MeshRendererData
-            {
-                Enabled = meshRenderer.Enabled,
-                Color = new[] { meshRenderer.Color.X, meshRenderer.Color.Y, meshRenderer.Color.Z, meshRenderer.Color.W },
-                ModelPath = meshRenderer.ModelPath != null ? Assets.AssetPath.MakeRelative(meshRenderer.ModelPath) : null,
-                MaterialPath = meshRenderer.MaterialPath != null ? Assets.AssetPath.MakeRelative(meshRenderer.MaterialPath) : null
-            };
-        }
-
-        if (entity.HasComponent<CameraComponent>())
-        {
-            var camera = entity.GetComponent<CameraComponent>();
-            entityData.Camera = new CameraComponentData
-            {
-                Enabled = camera.Enabled,
-                Primary = camera.Primary,
-                FixedAspectRatio = camera.FixedAspectRatio,
-                ZoomLevel = camera.ZoomLevel,
-                BackgroundColor = new[] { camera.BackgroundColor.X, camera.BackgroundColor.Y, camera.BackgroundColor.Z, camera.BackgroundColor.W },
-                ProjectionType = (int)camera.ProjectionType,
-                FieldOfView = camera.FieldOfView,
-                NearClip = camera.NearClip,
-                FarClip = camera.FarClip
-            };
-        }
-
-        if (entity.HasComponent<PhysicsBody2DComponent>())
-        {
-            var body = entity.GetComponent<PhysicsBody2DComponent>();
-            entityData.PhysicsBody2D = new PhysicsBody2DData
-            {
-                Enabled = body.Enabled,
-                Velocity = new[] { body.Velocity.X, body.Velocity.Y },
-                GravityScale = body.GravityScale,
-                IsDynamic = body.IsDynamic
-            };
-        }
-
-        if (entity.HasComponent<BoxCollider2DComponent>())
-        {
-            var collider = entity.GetComponent<BoxCollider2DComponent>();
-            entityData.BoxCollider2D = new BoxCollider2DData
-            {
-                Enabled = collider.Enabled,
-                Size = new[] { collider.Size.X, collider.Size.Y },
-                Offset = new[] { collider.Offset.X, collider.Offset.Y }
-            };
-        }
-
-        if (entity.HasComponent<PhysicsBody3DComponent>())
-        {
-            var body = entity.GetComponent<PhysicsBody3DComponent>();
-            entityData.PhysicsBody3D = new PhysicsBody3DData
-            {
-                Enabled = body.Enabled,
-                Velocity = new[] { body.Velocity.X, body.Velocity.Y, body.Velocity.Z },
-                GravityScale = body.GravityScale,
-                LinearDrag = body.LinearDrag,
-                IsDynamic = body.IsDynamic
-            };
-        }
-
-        if (entity.HasComponent<BoxCollider3DComponent>())
-        {
-            var collider = entity.GetComponent<BoxCollider3DComponent>();
-            entityData.BoxCollider3D = new BoxCollider3DData
-            {
-                Enabled = collider.Enabled,
-                Size = new[] { collider.Size.X, collider.Size.Y, collider.Size.Z },
-                Offset = new[] { collider.Offset.X, collider.Offset.Y, collider.Offset.Z }
-            };
-        }
-
-        if (entity.HasComponent<CharacterController3DComponent>())
-        {
-            var cc = entity.GetComponent<CharacterController3DComponent>();
-            entityData.CharacterController3D = new CharacterController3DData
-            {
-                Enabled = cc.Enabled,
-                WalkSpeed = cc.WalkSpeed,
-                RunSpeed = cc.RunSpeed,
-                CrouchSpeed = cc.CrouchSpeed,
-                JumpForce = cc.JumpForce,
-                GroundAcceleration = cc.GroundAcceleration,
-                GroundFriction = cc.GroundFriction,
-                AirAcceleration = cc.AirAcceleration,
-                MaxAirSpeed = cc.MaxAirSpeed,
-                GravityMultiplier = cc.GravityMultiplier,
-                StandHeight = cc.StandHeight,
-                CrouchHeight = cc.CrouchHeight,
-                MouseSensitivity = cc.MouseSensitivity,
-                MaxPitch = cc.MaxPitch,
-                LockMouse = cc.LockMouse
-            };
-        }
-
-        if (entity.HasComponent<LightComponent>())
-        {
-            var light = entity.GetComponent<LightComponent>();
-            entityData.Light = new LightData
-            {
-                Enabled = light.Enabled,
-                Type = (int)light.Type,
-                Color = new[] { light.Color.X, light.Color.Y, light.Color.Z },
-                Intensity = light.Intensity,
-                AmbientIntensity = light.AmbientIntensity,
-                CastShadows = light.CastShadows,
-                Range = light.Range
-            };
-        }
-
-        if (entity.HasComponent<DynamicCloudsComponent>())
-        {
-            var clouds = entity.GetComponent<DynamicCloudsComponent>();
-            entityData.DynamicClouds = new DynamicCloudsData
-            {
-                Enabled = clouds.Enabled,
-                ColorTop = new[] { clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z },
-                ColorBottom = new[] { clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z },
-                Speed = clouds.Speed,
-                Density = clouds.Density,
-                Height = clouds.Height,
-                Opacity = clouds.Opacity,
-                Volume = clouds.Volume
-            };
-        }
-
-        if (entity.HasComponent<SkyboxComponent>())
-        {
-            var skybox = entity.GetComponent<SkyboxComponent>();
-            entityData.Skybox = new SkyboxData
-            {
-                Enabled = skybox.Enabled,
-                SkyColor = new[] { skybox.SkyColor.X, skybox.SkyColor.Y, skybox.SkyColor.Z },
-                GroundColor = new[] { skybox.GroundColor.X, skybox.GroundColor.Y, skybox.GroundColor.Z }
-            };
-        }
-
-        if (entity.HasComponent<ScriptComponent>())
-        {
-            var scriptComp = entity.GetComponent<ScriptComponent>();
-            var scriptNames = new List<string>(scriptComp.ClassNames);
-            entityData.Scripts = new ScriptComponentData { Enabled = scriptComp.Enabled,
-                ScriptNames = scriptNames };
-        }
-
-        if (entity.HasComponent<PostProcessingComponent>())
-        {
-            var pp = entity.GetComponent<PostProcessingComponent>();
-            entityData.PostProcessing = new PostProcessingData
-            {
-                Enabled = pp.Enabled,
-                Exposure = pp.Exposure,
-                Gamma = pp.Gamma,
-                EnableVignette = pp.EnableVignette,
-                VignetteIntensity = pp.VignetteIntensity,
-                EnableBloom = pp.EnableBloom,
-                BloomThreshold = pp.BloomThreshold,
-                BloomIntensity = pp.BloomIntensity
-            };
+            obj["Scripts"] = SerializeScripts(scripts);
         }
 
         var children = entity.Children.ToList();
         if (children.Count > 0)
         {
-            entityData.Children = new List<EntityData>();
+            var childArray = new JsonArray();
             foreach (var child in children)
             {
-                entityData.Children.Add(SerializeEntity(child));
+                childArray.Add(SerializeEntity(child));
             }
+            obj["Children"] = childArray;
         }
 
-        return entityData;
+        return obj;
+    }
+
+    private static JsonObject SerializeScripts(ScriptComponent scripts)
+    {
+        var names = new JsonArray();
+        foreach (string name in scripts.ClassNames)
+        {
+            names.Add(name);
+        }
+
+        return new JsonObject { ["Enabled"] = scripts.Enabled, ["ScriptNames"] = names };
     }
 
     public void Serialize(string filepath)
     {
         try
         {
-            string json = SerializeToString();
-            File.WriteAllText(filepath, json);
+            File.WriteAllText(filepath, SerializeToString());
         }
         catch (Exception ex)
         {
@@ -421,13 +112,12 @@ public class SceneSerializer
         }
 
         // Some editors save JSON with a leading UTF-8 BOM; strip it so the parser doesn't choke.
-        json = json.TrimStart('\uFEFF');
+        json = json.TrimStart('﻿');
 
-        SceneData? data;
+        JsonNode? root;
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            data = JsonSerializer.Deserialize<SceneData>(json, options);
+            root = JsonNode.Parse(json);
         }
         catch (JsonException ex)
         {
@@ -435,264 +125,154 @@ public class SceneSerializer
             return false;
         }
 
-        if (data == null)
+        if (root is not JsonObject rootObj)
         {
             return false;
         }
 
-        foreach (var entityData in data.Entities)
+        // A scene with no "Entities" array is valid (an empty scene) rather than an error.
+        if (rootObj["Entities"] is JsonArray entities)
         {
-            DeserializeEntity(entityData, null);
+            foreach (JsonNode? entityNode in entities)
+            {
+                if (entityNode is JsonObject entityObj)
+                {
+                    DeserializeEntity(entityObj, null);
+                }
+            }
         }
 
         return true;
     }
 
-    private void DeserializeEntity(EntityData entityData, Entity? parent)
+    private void DeserializeEntity(JsonObject entityObj, Entity? parent)
     {
-        string name = entityData.Tag?.Name ?? "Entity";
+        string name = "Entity";
+        bool enabled = true;
+        if (entityObj["Tag"] is JsonObject tagObj)
+        {
+            name = tagObj["Name"]?.GetValue<string>() ?? "Entity";
+            enabled = tagObj["Enabled"]?.GetValue<bool>() ?? true;
+        }
+
         var entity = _scene.Instantiate(name);
-
-        if (entityData.Tag != null) { entity.Enabled = entityData.Tag.Enabled; }
-
+        entity.Enabled = enabled;
         if (parent != null)
         {
             entity.SetParent(parent);
         }
 
-        if (entityData.Transform != null)
+        foreach (var (key, node) in entityObj)
         {
-            var transform = entity.GetComponent<TransformComponent>();
-            transform.Position = new System.Numerics.Vector3(entityData.Transform.Position[0], entityData.Transform.Position[1], entityData.Transform.Position[2]);
-            transform.Rotation = new System.Numerics.Vector3(entityData.Transform.Rotation[0], entityData.Transform.Rotation[1], entityData.Transform.Rotation[2]);
-            transform.Scale = new System.Numerics.Vector3(entityData.Transform.Scale[0], entityData.Transform.Scale[1], entityData.Transform.Scale[2]);
-        }
-
-        if (entityData.Sprite != null)
-        {
-            var sprite = new Sprite2DComponent();
-            sprite.Enabled = entityData.Sprite.Enabled;
-            sprite.Color = new System.Numerics.Vector4(entityData.Sprite.Color[0], entityData.Sprite.Color[1], entityData.Sprite.Color[2], entityData.Sprite.Color[3]);
-            if (!string.IsNullOrEmpty(entityData.Sprite.TexturePath))
+            if (key is "Tag" or "Children" || node is not JsonObject componentObj)
             {
-                sprite.TexturePath = entityData.Sprite.TexturePath;
+                continue;
+            }
+
+            if (key == "Scripts")
+            {
+                DeserializeScripts(entity, componentObj);
+                continue;
+            }
+
+            if (ComponentSerialization.TryResolveKey(key, out Type? type))
+            {
                 try
                 {
-                    sprite.Texture = new Texture2D(sprite.TexturePath);
+                    entity.AddComponent(ComponentSerialization.Deserialize(type, componentObj));
                 }
                 catch (Exception ex)
                 {
-                    Log.CoreError("Failed to load texture '{0}': {1}", sprite.TexturePath, ex.Message);
+                    Log.CoreError("Failed to load component '{0}': {1}", key, ex.Message);
                 }
             }
-            entity.AddComponent(sprite);
-        }
-
-        if (entityData.MeshRenderer != null)
-        {
-            var meshRenderer = new MeshComponent();
-            meshRenderer.Enabled = entityData.MeshRenderer.Enabled;
-            meshRenderer.Color = new System.Numerics.Vector4(entityData.MeshRenderer.Color[0], entityData.MeshRenderer.Color[1], entityData.MeshRenderer.Color[2], entityData.MeshRenderer.Color[3]);
-            // Store only the asset paths here; the actual model/material load is deferred to first render
-            // (RenderSystem.ResolveAssets). This keeps scene loading instant regardless of asset size — a
-            // heavy model no longer freezes startup — and means a disabled entity never loads its assets at
-            // all. Models load asynchronously on a background thread; materials load lazily on demand.
-            meshRenderer.ModelPath = entityData.MeshRenderer.ModelPath;
-            meshRenderer.MaterialPath = entityData.MeshRenderer.MaterialPath;
-            entity.AddComponent(meshRenderer);
-        }
-
-        if (entityData.Camera != null)
-        {
-            var camera = new CameraComponent();
-            camera.Enabled = entityData.Camera.Enabled;
-            camera.Primary = entityData.Camera.Primary;
-            camera.FixedAspectRatio = entityData.Camera.FixedAspectRatio;
-            camera.ZoomLevel = entityData.Camera.ZoomLevel;
-            camera.ProjectionType = (SceneCameraProjection)entityData.Camera.ProjectionType;
-            camera.FieldOfView = entityData.Camera.FieldOfView;
-            camera.NearClip = entityData.Camera.NearClip;
-            camera.FarClip = entityData.Camera.FarClip;
-            if (entityData.Camera.BackgroundColor != null && entityData.Camera.BackgroundColor.Length == 4)
+            else
             {
-                camera.BackgroundColor = new System.Numerics.Vector4(
-                    entityData.Camera.BackgroundColor[0],
-                    entityData.Camera.BackgroundColor[1],
-                    entityData.Camera.BackgroundColor[2],
-                    entityData.Camera.BackgroundColor[3]
-                );
+                Log.CoreWarn("Unknown component '{0}' in scene; skipping.", key);
             }
-            entity.AddComponent(camera);
         }
 
-        if (entityData.PhysicsBody2D != null)
+        if (entityObj["Children"] is JsonArray children)
         {
-            var body = new PhysicsBody2DComponent();
-            body.Enabled = entityData.PhysicsBody2D.Enabled;
-            body.Velocity = new System.Numerics.Vector2(entityData.PhysicsBody2D.Velocity[0], entityData.PhysicsBody2D.Velocity[1]);
-            body.GravityScale = entityData.PhysicsBody2D.GravityScale;
-            body.IsDynamic = entityData.PhysicsBody2D.IsDynamic;
-            entity.AddComponent(body);
-        }
-
-        if (entityData.BoxCollider2D != null)
-        {
-            var collider = new BoxCollider2DComponent();
-            collider.Enabled = entityData.BoxCollider2D.Enabled;
-            collider.Size = new System.Numerics.Vector2(entityData.BoxCollider2D.Size[0], entityData.BoxCollider2D.Size[1]);
-            collider.Offset = new System.Numerics.Vector2(entityData.BoxCollider2D.Offset[0], entityData.BoxCollider2D.Offset[1]);
-            entity.AddComponent(collider);
-        }
-
-        if (entityData.PhysicsBody3D != null)
-        {
-            var body = new PhysicsBody3DComponent();
-            body.Enabled = entityData.PhysicsBody3D.Enabled;
-            body.Velocity = new System.Numerics.Vector3(entityData.PhysicsBody3D.Velocity[0], entityData.PhysicsBody3D.Velocity[1], entityData.PhysicsBody3D.Velocity[2]);
-            body.GravityScale = entityData.PhysicsBody3D.GravityScale;
-            body.LinearDrag = entityData.PhysicsBody3D.LinearDrag;
-            body.IsDynamic = entityData.PhysicsBody3D.IsDynamic;
-            entity.AddComponent(body);
-        }
-
-        if (entityData.BoxCollider3D != null)
-        {
-            var collider = new BoxCollider3DComponent();
-            collider.Enabled = entityData.BoxCollider3D.Enabled;
-            collider.Size = new System.Numerics.Vector3(entityData.BoxCollider3D.Size[0], entityData.BoxCollider3D.Size[1], entityData.BoxCollider3D.Size[2]);
-            collider.Offset = new System.Numerics.Vector3(entityData.BoxCollider3D.Offset[0], entityData.BoxCollider3D.Offset[1], entityData.BoxCollider3D.Offset[2]);
-            entity.AddComponent(collider);
-        }
-
-        if (entityData.CharacterController3D != null)
-        {
-            var cc = new CharacterController3DComponent();
-            cc.Enabled = entityData.CharacterController3D.Enabled;
-            cc.WalkSpeed = entityData.CharacterController3D.WalkSpeed;
-            cc.RunSpeed = entityData.CharacterController3D.RunSpeed;
-            cc.CrouchSpeed = entityData.CharacterController3D.CrouchSpeed;
-            cc.JumpForce = entityData.CharacterController3D.JumpForce;
-            cc.GroundAcceleration = entityData.CharacterController3D.GroundAcceleration;
-            cc.GroundFriction = entityData.CharacterController3D.GroundFriction;
-            cc.AirAcceleration = entityData.CharacterController3D.AirAcceleration;
-            cc.MaxAirSpeed = entityData.CharacterController3D.MaxAirSpeed;
-            cc.GravityMultiplier = entityData.CharacterController3D.GravityMultiplier;
-            cc.StandHeight = entityData.CharacterController3D.StandHeight;
-            cc.CrouchHeight = entityData.CharacterController3D.CrouchHeight;
-            cc.MouseSensitivity = entityData.CharacterController3D.MouseSensitivity;
-            cc.MaxPitch = entityData.CharacterController3D.MaxPitch;
-            cc.LockMouse = entityData.CharacterController3D.LockMouse;
-            entity.AddComponent(cc);
-        }
-
-        if (entityData.Light != null)
-        {
-            var light = new LightComponent();
-            light.Enabled = entityData.Light.Enabled;
-            light.Type = (LightType)entityData.Light.Type;
-            light.Color = new System.Numerics.Vector3(entityData.Light.Color[0], entityData.Light.Color[1], entityData.Light.Color[2]);
-            light.Intensity = entityData.Light.Intensity;
-            light.AmbientIntensity = entityData.Light.AmbientIntensity;
-            light.CastShadows = entityData.Light.CastShadows;
-            light.Range = entityData.Light.Range;
-            entity.AddComponent(light);
-        }
-        else if (entityData.DirectionalLight != null)
-        {
-            var light = new LightComponent { Type = LightType.Directional };
-            light.Enabled = entityData.DirectionalLight.Enabled;
-            light.Color = new System.Numerics.Vector3(entityData.DirectionalLight.Color[0], entityData.DirectionalLight.Color[1], entityData.DirectionalLight.Color[2]);
-            light.Intensity = entityData.DirectionalLight.Intensity;
-            light.AmbientIntensity = entityData.DirectionalLight.AmbientIntensity;
-            entity.AddComponent(light);
-        }
-
-        if (entityData.DynamicClouds != null)
-        {
-            var clouds = new DynamicCloudsComponent();
-            clouds.Enabled = entityData.DynamicClouds.Enabled;
-            clouds.ColorTop = new System.Numerics.Vector3(entityData.DynamicClouds.ColorTop[0], entityData.DynamicClouds.ColorTop[1], entityData.DynamicClouds.ColorTop[2]);
-            clouds.ColorBottom = new System.Numerics.Vector3(entityData.DynamicClouds.ColorBottom[0], entityData.DynamicClouds.ColorBottom[1], entityData.DynamicClouds.ColorBottom[2]);
-            clouds.Speed = entityData.DynamicClouds.Speed;
-            clouds.Density = entityData.DynamicClouds.Density;
-            clouds.Height = entityData.DynamicClouds.Height;
-            clouds.Opacity = entityData.DynamicClouds.Opacity;
-            clouds.Volume = entityData.DynamicClouds.Volume;
-            entity.AddComponent(clouds);
-        }
-
-        if (entityData.Skybox != null)
-        {
-            var skybox = new SkyboxComponent();
-            skybox.Enabled = entityData.Skybox.Enabled;
-            skybox.SkyColor = new System.Numerics.Vector3(entityData.Skybox.SkyColor[0], entityData.Skybox.SkyColor[1], entityData.Skybox.SkyColor[2]);
-            skybox.GroundColor = new System.Numerics.Vector3(entityData.Skybox.GroundColor[0], entityData.Skybox.GroundColor[1], entityData.Skybox.GroundColor[2]);
-            entity.AddComponent(skybox);
-        }
-
-        if (entityData.Scripts != null)
-        {
-            var scriptComp = new ScriptComponent();
-            scriptComp.Enabled = entityData.Scripts.Enabled;
-            entity.AddComponent(scriptComp);
-            
-            foreach (var scriptName in entityData.Scripts.ScriptNames)
+            foreach (JsonNode? childNode in children)
             {
-                scriptComp.ClassNames.Add(scriptName);
-                
-                string className = scriptName.EndsWith(".cs") ? scriptName.Substring(0, scriptName.Length - 3) : scriptName;
-                
-                Type? scriptType = null;
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                if (childNode is JsonObject childObj)
                 {
-                    scriptType = assembly.GetTypes().FirstOrDefault(t => t.Name == className && t.IsSubclassOf(typeof(EntityBehaviour)));
-                    if (scriptType != null)
-                    {
-                        break;
-                    }
-                }
-                
-                if (scriptType != null)
-                {
-                    try
-                    {
-                        var scriptInstance = (EntityBehaviour)Activator.CreateInstance(scriptType)!;
-                        scriptInstance.Entity = entity;
-                        scriptComp.Scripts.Add(scriptInstance);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.CoreError("Failed to instantiate script '{0}': {1}", scriptName, ex.Message);
-                    }
-                }
-                else
-                {
-                    Log.CoreWarn("Failed to load script '{0}'. Type not found.", scriptName);
+                    DeserializeEntity(childObj, entity);
                 }
             }
         }
+    }
 
-        if (entityData.PostProcessing != null)
+    private static void DeserializeScripts(Entity entity, JsonObject data)
+    {
+        var scripts = new ScriptComponent { Enabled = data["Enabled"]?.GetValue<bool>() ?? true };
+        entity.AddComponent(scripts);
+
+        if (data["ScriptNames"] is not JsonArray names)
         {
-            var pp = new PostProcessingComponent();
-            pp.Enabled = entityData.PostProcessing.Enabled;
-            pp.Exposure = entityData.PostProcessing.Exposure;
-            pp.Gamma = entityData.PostProcessing.Gamma;
-            pp.EnableVignette = entityData.PostProcessing.EnableVignette;
-            pp.VignetteIntensity = entityData.PostProcessing.VignetteIntensity;
-            pp.EnableBloom = entityData.PostProcessing.EnableBloom;
-            pp.BloomThreshold = entityData.PostProcessing.BloomThreshold;
-            pp.BloomIntensity = entityData.PostProcessing.BloomIntensity;
-            entity.AddComponent(pp);
+            return;
         }
 
-        if (entityData.Children != null)
+        foreach (JsonNode? nameNode in names)
         {
-            foreach (var childData in entityData.Children)
+            string? scriptName = nameNode?.GetValue<string>();
+            if (string.IsNullOrEmpty(scriptName))
             {
-                DeserializeEntity(childData, entity);
+                continue;
+            }
+
+            scripts.ClassNames.Add(scriptName);
+
+            Type? scriptType = ResolveScriptType(scriptName);
+            if (scriptType == null)
+            {
+                Log.CoreWarn("Failed to load script '{0}'. Type not found.", scriptName);
+                continue;
+            }
+
+            try
+            {
+                var instance = (EntityBehaviour)Activator.CreateInstance(scriptType)!;
+                instance.Entity = entity;
+                scripts.Scripts.Add(instance);
+            }
+            catch (Exception ex)
+            {
+                Log.CoreError("Failed to instantiate script '{0}': {1}", scriptName, ex.Message);
             }
         }
+    }
+
+    // Resolves a script class name (an optional ".cs" suffix is tolerated) to an EntityBehaviour type,
+    // searching every loaded assembly so game scripts in the project assembly are found by reflection.
+    private static Type? ResolveScriptType(string scriptName)
+    {
+        string className = scriptName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            ? scriptName[..^3]
+            : scriptName;
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch
+            {
+                // A partially-loadable assembly must never take scene loading down; skip it.
+                continue;
+            }
+
+            Type? match = types.FirstOrDefault(t => t.Name == className && t.IsSubclassOf(typeof(EntityBehaviour)));
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 
     public bool Deserialize(string filepath)

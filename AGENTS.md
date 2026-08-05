@@ -47,7 +47,7 @@ When adding features that run per-frame or load external data, keep them inside 
 `Scene` is both an entity/component container **and** a switchable screen with lifecycle hooks (`OnEnter`/`OnUpdate`/`OnRender`/`OnImGuiRender`/`OnEvent`/`OnExit`). Derive from it for menus/levels, or use a plain `Scene` populated by the serializer.
 
 - **Entities** are just an `int` id. `Entity` is a lightweight readonly struct handle carrying the id + scene reference.
-- **Components** are plain classes stored in per-type pools: `Dictionary<Type, Dictionary<int, object>>`. Every entity gets `TagComponent`, `RelationshipComponent` (parent/children hierarchy), and `Transform` on `Instantiate`.
+- **Components** are plain classes stored in per-type pools: `Dictionary<Type, Dictionary<int, object>>`. Every entity gets `LabelComponent`, `RelationshipComponent` (parent/children hierarchy), and `Transform` on `Instantiate`.
 - **Queries**: `View<T>()` / `View<T1,T2>()` return a **snapshot** `List<Entity>`, so it's safe to add/destroy entities while iterating. `Destroy` is deferred to end-of-frame (`FlushDestroyed`).
 - **Systems** are static and query the scene: `RenderSystem` (draws `MeshRenderer` + `Sprite2D` each with its `Transform`, plus the first `DirectionalLightComponent`), `ScriptSystem` (runs scripts), `Physics2DSystem`.
 
