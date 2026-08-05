@@ -445,20 +445,22 @@ internal static class ComponentInspector
         if (EditorGui.Checkbox("Enabled", ref enabled))
             scriptComp.Enabled = enabled;
 
-        // Each attached script is a row: a code glyph, its class name (dim + tagged when the type can't be
-        // resolved), and a remove button. A missing type usually means the script hasn't compiled yet or was
-        // renamed — surfacing it here beats a silent no-op at runtime.
+        // Each attached script is a row: a code glyph, its class name (dim + tagged only when the script
+        // genuinely can't be found), and a remove button. A project's scripts aren't compiled into the
+        // editor, so a null instance is normal here — a script counts as "known" when it has a backing .cs
+        // file (or a loaded type). "(not found)" is reserved for a name with no file and no type, which
+        // usually means it was renamed or deleted.
         int scriptToRemove = -1;
         for (int i = 0; i < scriptComp.Items.Count; i++)
         {
             ScriptInstance item = scriptComp.Items[i];
-            bool resolved = item.Instance != null;
+            bool known = item.Instance != null || EditorGui.ScriptExists(item.ClassName);
 
             ImGui.PushID(i);
             ImGui.AlignTextToFramePadding();
             ImGui.TextColored(ScriptGlyphColor, EditorIcons.Code);
             ImGui.SameLine();
-            if (resolved)
+            if (known)
                 ImGui.TextUnformatted(item.ClassName);
             else
                 ImGui.TextColored(ScriptMissingColor, $"{item.ClassName}  (not found)");
@@ -486,12 +488,17 @@ internal static class ComponentInspector
 
         ImGui.Spacing();
         // The slot both accepts a dragged script file and, on click, opens a searchable list of every
-        // EntityBehaviour in the loaded assemblies — no more typing class names by hand. Adding one
-        // instantiates it immediately so its fields are editable right away.
+        // script the project knows about — no more typing class names by hand. A project's scripts live
+        // as .cs files that are only compiled into the game, so their type usually isn't loaded in the
+        // editor: attach by name (it resolves at runtime) and only instantiate when the type happens to
+        // be loaded here, without logging the expected "not found".
         if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames.ToList(), out string? chosen)
             && chosen != null && !scriptComp.ClassNames.Contains(chosen))
         {
-            scriptComp.Items.Add(new ScriptInstance(chosen, ScriptResolver.Create(chosen, entity)));
+            EntityBehaviour? instance = ScriptResolver.Resolve(chosen) != null
+                ? ScriptResolver.Create(chosen, entity)
+                : null;
+            scriptComp.Items.Add(new ScriptInstance(chosen, instance));
         }
     }
 
