@@ -136,8 +136,8 @@ Priorizados — todos são pontuais:
 
 - [x] **1. Cache de uniform location no `Shader`** — maior ganho de perf por linha; também elimina o
    risco de spam de warning. (~15 linhas) ✅ `Shader._uniformLocations`
-- [ ] **2. Clamp de `deltaTime`** em `Application.Update` (`MathF.Min(dt, 0.1f)`) — mata
-   explosões/tunneling de física em hitches. (1 linha)
+- [x] **2. Clamp de `deltaTime`** em `Application.Update` (`MathF.Min(dt, 0.1f)`) — mata
+   explosões/tunneling de física em hitches. (1 linha) ✅ `Application.MaxDeltaTime`
 - [ ] **3. Play em build Debug/framework-dependent** em vez de Release self-contained single-file — corta
    drasticamente o tempo de Play. (poucas linhas)
 - [ ] **4. Inverter view-projection uma vez em `BeginScene`** e reusar em DrawMesh/skybox/clouds/grid.
