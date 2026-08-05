@@ -35,14 +35,14 @@ public sealed class ComponentMenuAttribute : Attribute
     public int Order { get; set; }
 }
 
-/// <summary>Hides a component property from the reflection-based inspector (e.g. serialized paths or computed values).</summary>
-[AttributeUsage(AttributeTargets.Property)]
+/// <summary>Hides a component property or script field from the reflection-based inspector (e.g. serialized paths, computed values, or script state that should not be authored).</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class HideInInspectorAttribute : Attribute
 {
 }
 
-/// <summary>Overrides the label the inspector derives from a property's name.</summary>
-[AttributeUsage(AttributeTargets.Property)]
+/// <summary>Overrides the label the inspector derives from a property or field name.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class InspectorLabelAttribute : Attribute
 {
     /// <summary>Initializes the attribute with the label to display.</summary>
@@ -60,7 +60,7 @@ public sealed class InspectorLabelAttribute : Attribute
 /// Configures the drag range and step for a <see cref="float"/> property, matching the parameters of
 /// the editor's drag-float widget.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class InspectorRangeAttribute : Attribute
 {
     /// <summary>Initializes the attribute with the drag bounds and step.</summary>
@@ -84,14 +84,14 @@ public sealed class InspectorRangeAttribute : Attribute
     public float Speed { get; }
 }
 
-/// <summary>Draws a <c>Vector3</c>/<c>Vector4</c> property as a color picker rather than a vector field.</summary>
-[AttributeUsage(AttributeTargets.Property)]
+/// <summary>Draws a <c>Vector3</c>/<c>Vector4</c> property or field as a color picker rather than a vector field.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class InspectorColorAttribute : Attribute
 {
 }
 
-/// <summary>Sets the value a vector field resets each axis to when its axis badge is clicked (e.g. 1 for scale).</summary>
-[AttributeUsage(AttributeTargets.Property)]
+/// <summary>Sets the value a vector control resets each axis to when its axis badge is clicked (e.g. 1 for scale).</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class InspectorResetAttribute : Attribute
 {
     /// <summary>Initializes the attribute with the per-axis reset value.</summary>

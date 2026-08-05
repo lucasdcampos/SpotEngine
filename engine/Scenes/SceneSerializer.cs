@@ -82,13 +82,26 @@ public class SceneSerializer
 
     private static JsonObject SerializeScripts(ScriptComponent scripts)
     {
-        var names = new JsonArray();
-        foreach (string name in scripts.ClassNames)
+        var items = new JsonArray();
+        foreach (ScriptInstance item in scripts.Items)
         {
-            names.Add(name);
+            var entry = new JsonObject { ["Type"] = item.ClassName };
+
+            // Persist the script's authored field values when the instance is available. Unresolved
+            // scripts (no instance) keep just their class name so the reference survives.
+            if (item.Instance is not null)
+            {
+                JsonObject fields = ComponentSerialization.SerializeMembers(item.Instance);
+                if (fields.Count > 0)
+                {
+                    entry["Fields"] = fields;
+                }
+            }
+
+            items.Add(entry);
         }
 
-        return new JsonObject { ["Enabled"] = scripts.Enabled, ["ScriptNames"] = names };
+        return new JsonObject { ["Enabled"] = scripts.Enabled, ["Items"] = items };
     }
 
     public void Serialize(string filepath)
@@ -209,70 +222,46 @@ public class SceneSerializer
         var scripts = new ScriptComponent { Enabled = data["Enabled"]?.GetValue<bool>() ?? true };
         entity.AddComponent(scripts);
 
-        if (data["ScriptNames"] is not JsonArray names)
+        if (data["Items"] is JsonArray items)
         {
-            return;
+            // New format: each entry carries the class name and its serialized field values.
+            foreach (JsonNode? node in items)
+            {
+                if (node is not JsonObject entry)
+                {
+                    continue;
+                }
+
+                string? className = entry["Type"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(className))
+                {
+                    AddScript(entity, scripts, className, entry["Fields"] as JsonObject);
+                }
+            }
         }
-
-        foreach (JsonNode? nameNode in names)
+        else if (data["ScriptNames"] is JsonArray names)
         {
-            string? scriptName = nameNode?.GetValue<string>();
-            if (string.IsNullOrEmpty(scriptName))
+            // Legacy format: a plain array of class names (no persisted field values).
+            foreach (JsonNode? node in names)
             {
-                continue;
-            }
-
-            scripts.ClassNames.Add(scriptName);
-
-            Type? scriptType = ResolveScriptType(scriptName);
-            if (scriptType == null)
-            {
-                Log.CoreWarn("Failed to load script '{0}'. Type not found.", scriptName);
-                continue;
-            }
-
-            try
-            {
-                var instance = (EntityBehaviour)Activator.CreateInstance(scriptType)!;
-                instance.Entity = entity;
-                scripts.Scripts.Add(instance);
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to instantiate script '{0}': {1}", scriptName, ex.Message);
+                string? className = node?.GetValue<string>();
+                if (!string.IsNullOrEmpty(className))
+                {
+                    AddScript(entity, scripts, className, null);
+                }
             }
         }
     }
 
-    // Resolves a script class name (an optional ".cs" suffix is tolerated) to an EntityBehaviour type,
-    // searching every loaded assembly so game scripts in the project assembly are found by reflection.
-    private static Type? ResolveScriptType(string scriptName)
+    private static void AddScript(Entity entity, ScriptComponent scripts, string className, JsonObject? fields)
     {
-        string className = scriptName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-            ? scriptName[..^3]
-            : scriptName;
-
-        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        EntityBehaviour? instance = ScriptResolver.Create(className, entity);
+        if (instance != null && fields != null)
         {
-            Type[] types;
-            try
-            {
-                types = assembly.GetTypes();
-            }
-            catch
-            {
-                // A partially-loadable assembly must never take scene loading down; skip it.
-                continue;
-            }
-
-            Type? match = types.FirstOrDefault(t => t.Name == className && t.IsSubclassOf(typeof(EntityBehaviour)));
-            if (match != null)
-            {
-                return match;
-            }
+            ComponentSerialization.ApplyMembers(instance, fields);
         }
 
-        return null;
+        scripts.Items.Add(new ScriptInstance(className, instance));
     }
 
     public bool Deserialize(string filepath)

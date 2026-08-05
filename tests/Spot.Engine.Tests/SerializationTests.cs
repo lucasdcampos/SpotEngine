@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using Spot.Core;
 using Spot.Physics;
@@ -12,6 +13,15 @@ namespace Spot.Engine.Tests;
 // assemblies. Kept top-level and public so Activator can construct it.
 public sealed class SerializationProbeBehaviour : EntityBehaviour
 {
+}
+
+// A probe script exposing public fields, to verify script tunables are persisted through a scene.
+public sealed class SerializationFieldProbe : EntityBehaviour
+{
+    public float Speed = 1.0f;
+    public int Count;
+    public bool Flag;
+    public Vector3 Offset;
 }
 
 public class SerializationTests
@@ -73,7 +83,7 @@ public class SerializationTests
     {
         var scene = new Scene();
         var e = scene.Instantiate("Scripted");
-        e.AddComponent(new ScriptComponent { ClassNames = { nameof(SerializationProbeBehaviour) } });
+        e.AddScript(new SerializationProbeBehaviour());
 
         string json = new SceneSerializer(scene).SerializeToString();
 
@@ -84,7 +94,31 @@ public class SerializationTests
         var comp = scripted.GetComponent<ScriptComponent>();
         Assert.Contains(nameof(SerializationProbeBehaviour), comp.ClassNames);
         Assert.Single(comp.Scripts);
-        Assert.IsType<SerializationProbeBehaviour>(comp.Scripts[0]);
+        Assert.IsType<SerializationProbeBehaviour>(comp.Scripts.Single());
+    }
+
+    [Fact]
+    public void Scene_PersistsScriptPublicFields()
+    {
+        var scene = new Scene();
+        var agent = scene.Instantiate("Agent");
+        var probe = agent.AddScript(new SerializationFieldProbe());
+        probe.Speed = 12.5f;
+        probe.Count = 7;
+        probe.Flag = true;
+        probe.Offset = new Vector3(1, 2, 3);
+
+        string json = new SceneSerializer(scene).SerializeToString();
+
+        var loaded = new Scene();
+        Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
+
+        var comp = FindByName(loaded, "Agent").GetComponent<ScriptComponent>();
+        var restored = Assert.IsType<SerializationFieldProbe>(comp.Scripts.Single());
+        Assert.Equal(12.5f, restored.Speed);
+        Assert.Equal(7, restored.Count);
+        Assert.True(restored.Flag);
+        Assert.Equal(new Vector3(1, 2, 3), restored.Offset);
     }
 
     [Fact]
