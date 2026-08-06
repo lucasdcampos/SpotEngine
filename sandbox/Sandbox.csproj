@@ -32,6 +32,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Assets\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
+    <None Remove="Content\**" />
+    <Content Include="Content\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

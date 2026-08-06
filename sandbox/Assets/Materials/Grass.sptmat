@@ -5,14 +5,14 @@
     1,
     1
   ],
-  "TexturePath": "guid:00101eaef8c84cfbad84625e7cbe1bb9",
+  "TexturePath": "Textures/grass1.png",
   "ShaderType": "Standard",
   "WaveSpeed": 1,
   "WaveScale": 1,
   "WaveStrength": 0.3,
   "SpecularPower": 64,
   "Metallic": 0,
-  "NormalMapPath": "Textures/grass_normal.jpg",
+  "NormalMapPath": null,
   "Tiling": [
     0.5,
     0.5
