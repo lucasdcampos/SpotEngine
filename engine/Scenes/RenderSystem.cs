@@ -65,15 +65,12 @@ public static class RenderSystem
         }
 
         // With HDR always-on, a scene without a PostProcessingComponent still renders through the HDR
-        // buffer and gets tone-mapped/anti-aliased using engine defaults (no bloom or vignette, which
-        // are opt-in via an explicit component). This is what makes ACES + FXAA the baseline everywhere.
+        // buffer with the full default look — the same defaults a freshly added component would have
+        // (ACES, bloom, FXAA, vignette). The baseline is the best graphics we offer; adding the
+        // component is for *customizing* that look, not for switching quality on.
         if (postProcess is null && Spot.Rendering.RenderSettings.Hdr)
         {
-            postProcess = s_defaultPostProcess ??= new PostProcessingComponent
-            {
-                EnableBloom = false,
-                EnableVignette = false,
-            };
+            postProcess = s_defaultPostProcess ??= new PostProcessingComponent();
         }
 
         int[] currentFbo = new int[1];

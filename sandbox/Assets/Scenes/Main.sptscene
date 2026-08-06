@@ -93,10 +93,12 @@
       },
       "PostProcessing": {
         "Enabled": true,
+        "Tonemap": 2,
         "Exposure": 1.1,
         "Gamma": 1.25,
         "EnableVignette": true,
         "VignetteIntensity": 0.01,
+        "EnableFXAA": true,
         "EnableBloom": true,
         "BloomThreshold": 1,
         "BloomIntensity": 1
@@ -128,7 +130,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:bf7a32a61d574222845466acdcd2c72e",
+        "MaterialPath": "guid:b94289066ac6471abdfdd931e8360ef0",
         "Color": [
           1,
           1,
