@@ -28,6 +28,9 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform sampler2D uScreenTexture;
+uniform sampler2D uBloom;
+uniform int uEnableBloom;
+uniform float uBloomIntensity;
 uniform float uExposure;
 uniform float uGamma;
 uniform int uTonemap;
@@ -57,6 +60,13 @@ vec3 tonemapAces(vec3 x)
 void main()
 {
     vec3 color = texture(uScreenTexture, TexCoords).rgb;
+
+    // Add the HDR bloom glow while still in linear space, before exposure/tone mapping, so it is
+    // compressed by the same curve as the rest of the scene instead of clipping to flat white.
+    if (uEnableBloom == 1)
+    {
+        color += texture(uBloom, TexCoords).rgb * uBloomIntensity;
+    }
 
     // Apply exposure in linear space, then compress HDR -> LDR with the selected operator.
     color *= uExposure;
@@ -111,9 +121,18 @@ void main()
         s_quadVAO.AddVertexBuffer(s_quadVBO);
     }
 
-    public static void Draw(uint screenTexture, PostProcessingComponent config)
+    /// <summary>
+    /// Composites the HDR scene into the currently bound target: adds bloom, applies exposure, tone
+    /// mapping, gamma, vignette and dithering in a single full-screen pass.
+    /// </summary>
+    /// <param name="screenTexture">The HDR scene color texture.</param>
+    /// <param name="config">The post-processing parameters.</param>
+    /// <param name="bloomTexture">The blurred bloom texture from <see cref="BloomRenderer"/>, or 0 for none.</param>
+    public static void Draw(uint screenTexture, PostProcessingComponent config, uint bloomTexture = 0)
     {
         if (s_shader == null || s_quadVAO == null) return;
+
+        bool bloomEnabled = config.EnableBloom && bloomTexture != 0;
 
         // This is a screen-space composite of the already-lit scene, so it must not test or write
         // depth. If it did, the full-screen quad (clip z = 0) would stamp its depth across the whole
@@ -129,10 +148,17 @@ void main()
         s_shader.SetUniform("uTonemap", (int)config.Tonemap);
         s_shader.SetUniform("uEnableVignette", config.EnableVignette ? 1 : 0);
         s_shader.SetUniform("uVignetteIntensity", config.VignetteIntensity);
+        s_shader.SetUniform("uEnableBloom", bloomEnabled ? 1 : 0);
+        s_shader.SetUniform("uBloomIntensity", config.BloomIntensity);
 
         s_shader.SetUniform("uScreenTexture", 0);
         Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
         Renderer.Gl.BindTexture(TextureTarget.Texture2D, screenTexture);
+
+        s_shader.SetUniform("uBloom", 1);
+        Renderer.Gl.ActiveTexture(TextureUnit.Texture1);
+        Renderer.Gl.BindTexture(TextureTarget.Texture2D, bloomEnabled ? bloomTexture : 0u);
+        Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
 
         s_quadVAO.Bind();
         Renderer.Gl.DrawArrays(PrimitiveType.Triangles, 0, 6);

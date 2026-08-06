@@ -19,6 +19,7 @@ public class GraphicsService : IEngineService
         Renderer2D.Init();
         Renderer3D.Init();
         PostProcessingRenderer.Init();
+        BloomRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     }
 

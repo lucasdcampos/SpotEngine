@@ -20,6 +20,10 @@ public static class RenderSystem
 {
     private static Framebuffer? s_hdrFramebuffer;
 
+    // Number of horizontal+vertical blur pairs used for bloom. Higher widens the glow at a small fill
+    // cost; five reads as a soft, wide bloom at half resolution without visible box stepping.
+    private const int BloomIterations = 5;
+
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
     /// </summary>
@@ -301,6 +305,16 @@ public static class RenderSystem
 
         if (postProcess != null && s_hdrFramebuffer != null)
         {
+            // Extract and blur the scene's bright regions while the HDR buffer is still bound as the
+            // source. Bloom manages its own (half-res) targets and leaves nothing bound, so do it before
+            // rebinding the final target below.
+            uint bloomTexture = 0;
+            if (postProcess.EnableBloom)
+            {
+                bloomTexture = BloomRenderer.Generate(
+                    s_hdrFramebuffer.ColorAttachment, viewport[2], viewport[3], postProcess.BloomThreshold, BloomIterations);
+            }
+
             Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)currentFbo[0]);
             Renderer.Api.Viewport(viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
 
@@ -311,7 +325,7 @@ public static class RenderSystem
             if (currentFbo[0] != 0)
                 s_hdrFramebuffer.BlitDepthTo((uint)currentFbo[0], viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
 
-            PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess);
+            PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess, bloomTexture);
         }
     }
 
