@@ -30,6 +30,7 @@ in vec2 TexCoords;
 uniform sampler2D uScreenTexture;
 uniform float uExposure;
 uniform float uGamma;
+uniform int uTonemap;
 uniform int uEnableVignette;
 uniform float uVignetteIntensity;
 
@@ -41,12 +42,29 @@ float hash12(vec2 p)
     return fract((p3.x + p3.y) * p3.z);
 }
 
+// Narkowicz's ACES filmic approximation: a cheap fit of the ACES RRT+ODT that gives film-like
+// contrast and a graceful highlight roll-off. Operates on already-exposed linear color.
+vec3 tonemapAces(vec3 x)
+{
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
 void main()
 {
     vec3 color = texture(uScreenTexture, TexCoords).rgb;
 
-    // Exposure tone mapping
-    vec3 mapped = vec3(1.0) - exp(-color * uExposure);
+    // Apply exposure in linear space, then compress HDR -> LDR with the selected operator.
+    color *= uExposure;
+
+    vec3 mapped;
+    if (uTonemap == 2)       mapped = tonemapAces(color);          // ACES filmic
+    else if (uTonemap == 1)  mapped = color / (color + vec3(1.0)); // Reinhard
+    else                     mapped = clamp(color, 0.0, 1.0);      // None (clamp)
 
     // Gamma correction
     mapped = pow(mapped, vec3(1.0 / uGamma));
@@ -108,6 +126,7 @@ void main()
         s_shader.Use();
         s_shader.SetUniform("uExposure", config.Exposure);
         s_shader.SetUniform("uGamma", config.Gamma);
+        s_shader.SetUniform("uTonemap", (int)config.Tonemap);
         s_shader.SetUniform("uEnableVignette", config.EnableVignette ? 1 : 0);
         s_shader.SetUniform("uVignetteIntensity", config.VignetteIntensity);
 
