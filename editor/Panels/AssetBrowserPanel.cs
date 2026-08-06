@@ -42,20 +42,15 @@ public class AssetBrowserPanel
     private string? _selectedPath;
     private string? _pendingNavigate;
 
-    // Deferred creation / editing state (driven by context menus, resolved as modals).
-    private bool _isCreatingScript;
-    private string _newScriptName = "";
-    private bool _isCreatingFolder;
-    private string _newFolderName = "";
-    private bool _isRenaming;
-    private string _renameTarget = "";
-    private string _renameBuffer = "";
+    // Inline rename state: set after creation or explicit rename; rendered in the tile instead of the label.
+    private string? _inlineRenamePath;
+    private string _inlineRenameBuffer = "";
+    private bool _inlineRenameFocusPending;
+    private bool _inlineRenameIsNew;
+
+    // Deferred deletion (still a confirmation modal).
     private bool _isDeleting;
     private string _deleteTarget = "";
-    private bool _isCreatingScene;
-    private string _newSceneName = "";
-    private bool _isCreatingMaterial;
-    private string _newMaterialName = "";
 
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
@@ -217,6 +212,21 @@ public class AssetBrowserPanel
             _selectedPath = null;
             _context.SelectedAssetPath = null;
         }
+
+        if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _inlineRenamePath == null && _selectedPath != null)
+        {
+            if (ImGui.IsKeyPressed(ImGuiKey.F2))
+            {
+                bool isDir = Directory.Exists(_selectedPath);
+                string initial = isDir ? Path.GetFileName(_selectedPath)! : Path.GetFileNameWithoutExtension(_selectedPath);
+                StartInlineRename(_selectedPath, initial, isNew: false);
+            }
+            else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
+            {
+                _isDeleting = true;
+                _deleteTarget = _selectedPath;
+            }
+        }
     }
 
     private void DrawTile(AssetEntry entry, float cellW, float cellH, float pad)
@@ -334,27 +344,60 @@ public class AssetBrowserPanel
         Vector2 iconMin = p0 + new Vector2(pad, pad);
         DrawIcon(drawList, iconMin, _iconSize, entry, palette);
 
-        // Filename label, centered and truncated with an ellipsis (full name in tooltip).
-        string label = entry.Name;
-        if (ImGui.CalcTextSize(label).X > cellW - 6)
+        bool isInlineRenaming = _inlineRenamePath == entry.FullPath;
+
+        if (isInlineRenaming)
         {
-            float eWidth = ImGui.CalcTextSize("...").X;
-            for (int i = label.Length - 1; i > 0; i--)
+            // Draw an InputText below the icon instead of the static label.
+            Vector2 inputPos = new Vector2(p0.X + 4, p0.Y + pad + _iconSize + 1);
+            ImGui.SetCursorScreenPos(inputPos);
+            ImGui.SetNextItemWidth(cellW - 8);
+            bool focusThisFrame = _inlineRenameFocusPending;
+            if (_inlineRenameFocusPending)
             {
-                if (ImGui.CalcTextSize(label.Substring(0, i)).X + eWidth <= cellW - 6)
-                {
-                    label = label.Substring(0, i) + "...";
-                    break;
-                }
+                ImGui.SetKeyboardFocusHere();
+                _inlineRenameFocusPending = false;
+            }
+            bool submitted = ImGui.InputText("##tilename", ref _inlineRenameBuffer, 200,
+                ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+            bool escaped = ImGui.IsKeyPressed(ImGuiKey.Escape);
+            bool lostFocus = !focusThisFrame && !ImGui.IsItemActive();
+
+            if (submitted || (lostFocus && !ImGui.IsItemHovered()))
+            {
+                CommitInlineRename(entry);
+            }
+            else if (escaped)
+            {
+                if (_inlineRenameIsNew)
+                    DeleteEntry(entry.FullPath);
+                _inlineRenamePath = null;
             }
         }
-        Vector2 ts = ImGui.CalcTextSize(label);
-        Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, p0.Y + pad + _iconSize + 3);
-        drawList.AddText(labelPos, ImGui.GetColorU32(palette.Text), label);
-
-        if (hovered)
+        else
         {
-            ImGui.SetTooltip(entry.Name);
+            // Filename label, centered and truncated with an ellipsis (full name in tooltip).
+            string label = entry.Name;
+            if (ImGui.CalcTextSize(label).X > cellW - 6)
+            {
+                float eWidth = ImGui.CalcTextSize("...").X;
+                for (int i = label.Length - 1; i > 0; i--)
+                {
+                    if (ImGui.CalcTextSize(label.Substring(0, i)).X + eWidth <= cellW - 6)
+                    {
+                        label = label.Substring(0, i) + "...";
+                        break;
+                    }
+                }
+            }
+            Vector2 ts = ImGui.CalcTextSize(label);
+            Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, p0.Y + pad + _iconSize + 3);
+            drawList.AddText(labelPos, ImGui.GetColorU32(palette.Text), label);
+
+            if (hovered)
+            {
+                ImGui.SetTooltip(entry.Name);
+            }
         }
 
         ImGui.PopID();
@@ -461,9 +504,9 @@ public class AssetBrowserPanel
         ImGui.Separator();
         if (ImGui.MenuItem("Rename"))
         {
-            _isRenaming = true;
-            _renameTarget = entry.FullPath;
-            _renameBuffer = entry.Name;
+            bool isDir = entry.IsDirectory;
+            string initial = isDir ? entry.Name : Path.GetFileNameWithoutExtension(entry.Name);
+            StartInlineRename(entry.FullPath, initial);
         }
         if (ImGui.MenuItem("Delete"))
         {
@@ -483,23 +526,27 @@ public class AssetBrowserPanel
 
         if (ImGui.MenuItem("New Folder"))
         {
-            _isCreatingFolder = true;
-            _newFolderName = "New Folder";
+            string path = UniqueAssetPath(_currentDirectory, "New Folder", "");
+            try { Directory.CreateDirectory(path); } catch { }
+            StartInlineRename(path, Path.GetFileName(path), isNew: true);
         }
         if (ImGui.MenuItem("New Script"))
         {
-            _isCreatingScript = true;
-            _newScriptName = "NewScript.cs";
+            string path = UniqueAssetPath(_currentDirectory, "NewScript", ".cs");
+            CreateScript(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
         if (ImGui.MenuItem("New Scene"))
         {
-            _isCreatingScene = true;
-            _newSceneName = "NewScene.sptscene";
+            string path = UniqueAssetPath(_currentDirectory, "NewScene", ".sptscene");
+            CreateScene(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
         if (ImGui.MenuItem("New Material"))
         {
-            _isCreatingMaterial = true;
-            _newMaterialName = "NewMaterial.sptmat";
+            string path = UniqueAssetPath(_currentDirectory, "NewMaterial", ".sptmat");
+            CreateMaterial(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
         ImGui.Separator();
         if (ImGui.MenuItem("Open in Explorer"))
@@ -509,20 +556,31 @@ public class AssetBrowserPanel
         ImGui.EndPopup();
     }
 
+    private void StartInlineRename(string fullPath, string bufferInitial, bool isNew = false)
+    {
+        _selectedPath = fullPath;
+        _inlineRenamePath = fullPath;
+        _inlineRenameBuffer = bufferInitial;
+        _inlineRenameFocusPending = true;
+        _inlineRenameIsNew = isNew;
+    }
+
+    // Returns a path that doesn't conflict with existing files/folders by appending a counter.
+    private static string UniqueAssetPath(string dir, string baseName, string ext)
+    {
+        string candidate = Path.Combine(dir, baseName + ext);
+        if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+        for (int i = 1; i < 100; i++)
+        {
+            candidate = Path.Combine(dir, $"{baseName} {i}{ext}");
+            if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+        }
+        return candidate;
+    }
+
     private void HandleModals()
     {
-        if (_isCreatingScript) ImGui.OpenPopup("Create New Script");
-        if (_isCreatingFolder) ImGui.OpenPopup("Create New Folder");
-        if (_isCreatingScene) ImGui.OpenPopup("Create New Scene");
-        if (_isCreatingMaterial) ImGui.OpenPopup("Create New Material");
-        if (_isRenaming) ImGui.OpenPopup("Rename");
         if (_isDeleting) ImGui.OpenPopup("Delete Asset");
-
-        DrawTextEntryModal("Create New Script", "Name", ref _isCreatingScript, ref _newScriptName, CreateScript);
-        DrawTextEntryModal("Create New Folder", "Name", ref _isCreatingFolder, ref _newFolderName, CreateFolder);
-        DrawTextEntryModal("Create New Scene", "Name", ref _isCreatingScene, ref _newSceneName, CreateScene);
-        DrawTextEntryModal("Create New Material", "Name", ref _isCreatingMaterial, ref _newMaterialName, CreateMaterial);
-        DrawTextEntryModal("Rename", "New name", ref _isRenaming, ref _renameBuffer, name => RenameEntry(_renameTarget, name));
 
         bool deleteOpen = true;
         if (ImGui.BeginPopupModal("Delete Asset", ref deleteOpen, ImGuiWindowFlags.AlwaysAutoResize))
@@ -550,33 +608,6 @@ public class AssetBrowserPanel
         else if (!deleteOpen)
         {
             _isDeleting = false;
-        }
-    }
-
-    private static void DrawTextEntryModal(string id, string fieldLabel, ref bool open, ref string buffer, Action<string> onConfirm)
-    {
-        bool windowOpen = true;
-        if (ImGui.BeginPopupModal(id, ref windowOpen, ImGuiWindowFlags.AlwaysAutoResize))
-        {
-            ImGui.SetNextItemWidth(260);
-            bool submitted = ImGui.InputText("##" + fieldLabel, ref buffer, 256, ImGuiInputTextFlags.EnterReturnsTrue);
-            if (ImGui.Button("OK", new Vector2(120, 0)) || submitted)
-            {
-                onConfirm(buffer);
-                open = false;
-                ImGui.CloseCurrentPopup();
-            }
-            ImGui.SameLine();
-            if (ImGui.Button("Cancel", new Vector2(120, 0)))
-            {
-                open = false;
-                ImGui.CloseCurrentPopup();
-            }
-            ImGui.EndPopup();
-        }
-        else if (!windowOpen)
-        {
-            open = false;
         }
     }
 
@@ -735,6 +766,28 @@ public class {className} : EntityBehaviour
         if (File.Exists(filepath)) return;
 
         new Spot.Assets.Material().Save(filepath);
+    }
+
+    private void CommitInlineRename(AssetEntry entry)
+    {
+        _inlineRenamePath = null;
+        string trimmed = _inlineRenameBuffer.Trim();
+        if (string.IsNullOrEmpty(trimmed)) return;
+
+        // Reattach the original extension for file assets (the buffer holds only the base name).
+        string newName;
+        if (entry.IsDirectory)
+        {
+            newName = trimmed;
+        }
+        else
+        {
+            string ext = Path.GetExtension(entry.Name);
+            newName = trimmed.EndsWith(ext, StringComparison.OrdinalIgnoreCase) ? trimmed : trimmed + ext;
+        }
+
+        if (newName != entry.Name)
+            RenameEntry(entry.FullPath, newName);
     }
 
     private void RenameEntry(string fullPath, string newName)
