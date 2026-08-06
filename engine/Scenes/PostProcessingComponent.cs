@@ -37,6 +37,9 @@ public class PostProcessingComponent : Component
     [ShowIf(nameof(EnableVignette), true)]
     public float VignetteIntensity { get; set; } = 0.25f;
 
+    /// <summary>Applies FXAA (fast approximate anti-aliasing) to the final tone-mapped image.</summary>
+    public bool EnableFXAA { get; set; } = true;
+
     public bool EnableBloom { get; set; } = true;
 
     [InspectorRange(0.0f, 10.0f, 0.05f)]
