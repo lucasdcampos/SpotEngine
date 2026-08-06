@@ -58,6 +58,8 @@ public static class Renderer3D
         
         uniform int uHasNormalMap;
         uniform float uMetallic;
+        uniform vec3 uEmissiveColor;
+        uniform float uEmissiveIntensity;
         uniform vec3 uCameraPos;
 
         uniform vec2 uTiling;
@@ -179,13 +181,15 @@ public static class Renderer3D
                 }
             }
             
+            vec3 emissive = uEmissiveColor * uEmissiveIntensity;
+
             if (uHasDirectionalLight == 0 && uPointLightCount == 0)
             {
-                fragColor = albedo; // Unlit
+                fragColor = vec4(albedo.rgb + emissive, albedo.a); // Unlit
             }
             else
             {
-                fragColor = vec4(albedo.rgb * lighting, albedo.a);
+                fragColor = vec4(albedo.rgb * lighting + emissive, albedo.a);
             }
         }
         """;
@@ -936,7 +940,9 @@ public static class Renderer3D
         if (shaderType == 0) // Standard
         {
             activeShader.SetUniform("uMetallic", material?.Metallic ?? 0.0f);
-            
+            activeShader.SetUniform("uEmissiveColor", material?.EmissiveColor ?? Vector3.Zero);
+            activeShader.SetUniform("uEmissiveIntensity", material?.EmissiveIntensity ?? 1.0f);
+
             if (material?.NormalMap != null)
             {
                 material.NormalMap.Bind(2);

@@ -150,6 +150,14 @@ public class InspectorPanel
                 material.Metallic = metallic;
                 material.Save(path);
             }
+
+            bool emissiveChanged = false;
+            var emissive = material.EmissiveColor;
+            if (EditorGui.Color3("Emissive", ref emissive)) { material.EmissiveColor = emissive; emissiveChanged = true; }
+            float emissiveIntensity = material.EmissiveIntensity;
+            // Allow > 1 so a surface can glow into HDR and drive bloom.
+            if (EditorGui.DragFloat("Emissive Intensity", ref emissiveIntensity, 0.05f, 0.0f, 20.0f)) { material.EmissiveIntensity = emissiveIntensity; emissiveChanged = true; }
+            if (emissiveChanged) material.Save(path);
         }
         else if (material.ShaderType == MaterialShaderType.Water)
         {

@@ -34,6 +34,8 @@ public sealed class Material
         public float WaveStrength { get; set; } = 0.3f;
         public float SpecularPower { get; set; } = 64.0f;
         public float Metallic { get; set; } = 0.0f;
+        public float[] Emissive { get; set; } = new float[3] { 0.0f, 0.0f, 0.0f };
+        public float EmissiveIntensity { get; set; } = 1.0f;
         public string? NormalMapPath { get; set; }
         public float[] Tiling { get; set; } = new float[2] { 1.0f, 1.0f };
         public bool AutoTile { get; set; } = false;
@@ -49,6 +51,15 @@ public sealed class Material
 
     /// <summary>Gets or sets the metallic property for the material.</summary>
     public float Metallic { get; set; } = 0.0f;
+
+    /// <summary>
+    /// Gets or sets the emissive color the surface radiates on its own, independent of scene lighting.
+    /// Scaled by <see cref="EmissiveIntensity"/>; values above 1 push the surface into HDR and bloom.
+    /// </summary>
+    public Vector3 EmissiveColor { get; set; } = Vector3.Zero;
+
+    /// <summary>Gets or sets the multiplier applied to <see cref="EmissiveColor"/>. Drive above 1 to make a surface glow.</summary>
+    public float EmissiveIntensity { get; set; } = 1.0f;
 
     /// <summary>Gets or sets the UV tiling (scale) for the texture and normal map.</summary>
     public Vector2 Tiling { get; set; } = Vector2.One;
@@ -212,7 +223,12 @@ public sealed class Material
                 }
                 
                 material.Metallic = data.Metallic;
-                
+                if (data.Emissive != null && data.Emissive.Length == 3)
+                {
+                    material.EmissiveColor = new Vector3(data.Emissive[0], data.Emissive[1], data.Emissive[2]);
+                }
+                material.EmissiveIntensity = data.EmissiveIntensity;
+
                 material.WaveSpeed = data.WaveSpeed;
                 material.WaveScale = data.WaveScale;
                 material.WaveStrength = data.WaveStrength;
@@ -253,6 +269,8 @@ public sealed class Material
             WaveStrength = WaveStrength,
             SpecularPower = SpecularPower,
             Metallic = Metallic,
+            Emissive = new[] { EmissiveColor.X, EmissiveColor.Y, EmissiveColor.Z },
+            EmissiveIntensity = EmissiveIntensity,
             NormalMapPath = NormalMapPath != null ? AssetPath.MakeRelative(NormalMapPath) : null,
             Tiling = new float[] { Tiling.X, Tiling.Y },
             AutoTile = AutoTile
