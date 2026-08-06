@@ -24,6 +24,10 @@ public static class RenderSystem
     // cost; five reads as a soft, wide bloom at half resolution without visible box stepping.
     private const int BloomIterations = 5;
 
+    // Synthesized when HDR is on but the scene has no PostProcessingComponent, so tone mapping and FXAA
+    // still apply. Reused across frames rather than reallocated each render.
+    private static PostProcessingComponent? s_defaultPostProcess;
+
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
     /// </summary>
@@ -58,6 +62,18 @@ public static class RenderSystem
                 postProcess = pp;
                 break;
             }
+        }
+
+        // With HDR always-on, a scene without a PostProcessingComponent still renders through the HDR
+        // buffer and gets tone-mapped/anti-aliased using engine defaults (no bloom or vignette, which
+        // are opt-in via an explicit component). This is what makes ACES + FXAA the baseline everywhere.
+        if (postProcess is null && Spot.Rendering.RenderSettings.Hdr)
+        {
+            postProcess = s_defaultPostProcess ??= new PostProcessingComponent
+            {
+                EnableBloom = false,
+                EnableVignette = false,
+            };
         }
 
         int[] currentFbo = new int[1];
