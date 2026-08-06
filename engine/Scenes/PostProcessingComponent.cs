@@ -31,11 +31,15 @@ public class PostProcessingComponent : Component
     [InspectorRange(0.0f, 10.0f, 0.05f)]
     public float Gamma { get; set; } = 2.2f;
 
+    /// <summary>
+    /// Darkens the frame toward the corners. On by default but only very faintly (see
+    /// <see cref="VignetteIntensity"/>) — just enough to settle the edges, not a heavy stylistic frame.
+    /// </summary>
     public bool EnableVignette { get; set; } = true;
 
     [InspectorRange(0.0f, 5.0f, 0.01f)]
     [ShowIf(nameof(EnableVignette), true)]
-    public float VignetteIntensity { get; set; } = 0.25f;
+    public float VignetteIntensity { get; set; } = 0.03f;
 
     /// <summary>Applies FXAA (fast approximate anti-aliasing) to the final tone-mapped image.</summary>
     public bool EnableFXAA { get; set; } = true;

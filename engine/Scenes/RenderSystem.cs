@@ -65,8 +65,10 @@ public static class RenderSystem
         }
 
         // With HDR always-on, a scene without a PostProcessingComponent still renders through the HDR
-        // buffer with the full default look — the same defaults a freshly added component would have
-        // (ACES, bloom, FXAA, vignette). The baseline is the best graphics we offer; adding the
+        // buffer with the full default look — the same defaults a freshly added component would have:
+        // ACES tone mapping, FXAA, threshold-gated bloom that only responds to genuine HDR highlights
+        // (the sun disc, emissive surfaces), and only a very faint vignette. The baseline exalts the
+        // engine's lighting rather than dressing it up with heavy stylistic filters. Adding the
         // component is for *customizing* that look, not for switching quality on.
         if (postProcess is null && Spot.Rendering.RenderSettings.Hdr)
         {

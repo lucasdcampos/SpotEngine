@@ -71,7 +71,7 @@
     {
       "Tag": {
         "Name": "Post Processing",
-        "Enabled": false
+        "Enabled": true
       },
       "Transform": {
         "Enabled": true,
@@ -94,10 +94,10 @@
       "PostProcessing": {
         "Enabled": true,
         "Tonemap": 2,
-        "Exposure": 1.1,
-        "Gamma": 1.25,
+        "Exposure": 1,
+        "Gamma": 2.2,
         "EnableVignette": true,
-        "VignetteIntensity": 0.01,
+        "VignetteIntensity": 0.03,
         "EnableFXAA": true,
         "EnableBloom": true,
         "BloomThreshold": 1,
