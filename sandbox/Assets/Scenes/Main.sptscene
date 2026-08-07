@@ -189,13 +189,24 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
-        "MaterialPath": "editor:Checkerboard",
+        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
         "Color": [
           1,
           1,
           1,
           1
         ]
+      },
+      "AudioSource": {
+        "ClipPath": "guid:ae9e04f6b94c43dfbe135ed77e5ca7d6",
+        "Volume": 1,
+        "Pitch": 1,
+        "Loop": true,
+        "PlayOnAwake": true,
+        "Spatial": true,
+        "MinDistance": 1,
+        "MaxDistance": 100,
+        "Enabled": true
       },
       "PhysicsBody3D": {
         "Enabled": true,
@@ -274,12 +285,12 @@
         "Enabled": true,
         "Position": [
           0,
-          22.224312,
-          10.915697
+          1.5,
+          0
         ],
         "Rotation": [
           0,
-          180,
+          0,
           0
         ],
         "Scale": [
@@ -301,10 +312,10 @@
       },
       "CharacterController3D": {
         "Enabled": true,
-        "WalkSpeed": 4,
-        "RunSpeed": 8,
+        "WalkSpeed": 8,
+        "RunSpeed": 6,
         "CrouchSpeed": 2.5,
-        "JumpForce": 6,
+        "JumpForce": 5,
         "GroundAcceleration": 10,
         "GroundFriction": 8,
         "AirAcceleration": 100,
@@ -411,6 +422,9 @@
             "NearClip": 0.1,
             "FarClip": 1000,
             "Enabled": true
+          },
+          "AudioListener": {
+            "Enabled": true
           }
         }
       ]
@@ -449,199 +463,7 @@
     },
     {
       "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Enabled": true,
-        "Position": [
-          0,
-          1,
-          -12.794175
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          100,
-          7,
-          1
-        ]
-      },
-      "MeshRenderer": {
-        "Enabled": true,
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ]
-      },
-      "BoxCollider3D": {
-        "Enabled": true,
-        "Size": [
-          1,
-          1,
-          1
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ]
-      }
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Enabled": true,
-        "Position": [
-          49.550877,
-          1,
-          36.657375
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          1,
-          7,
-          100
-        ]
-      },
-      "MeshRenderer": {
-        "Enabled": true,
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ]
-      },
-      "BoxCollider3D": {
-        "Enabled": true,
-        "Size": [
-          1,
-          1,
-          1
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ]
-      }
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Enabled": true,
-        "Position": [
-          0,
-          1,
-          86.35785
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          100,
-          7,
-          1
-        ]
-      },
-      "MeshRenderer": {
-        "Enabled": true,
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ]
-      },
-      "BoxCollider3D": {
-        "Enabled": true,
-        "Size": [
-          1,
-          1,
-          1
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ]
-      }
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Enabled": true,
-        "Position": [
-          -49.33919,
-          1,
-          34.68176
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          1,
-          7,
-          100
-        ]
-      },
-      "MeshRenderer": {
-        "Enabled": true,
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:17b3a7f64115413f994975ace115159c",
-        "Color": [
-          1,
-          1,
-          1,
-          1
-        ]
-      },
-      "BoxCollider3D": {
-        "Enabled": true,
-        "Size": [
-          1,
-          1,
-          1
-        ],
-        "Offset": [
-          0,
-          0,
-          0
-        ]
-      }
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
+        "Name": "Concrete",
         "Enabled": true
       },
       "Transform": {
@@ -657,7 +479,7 @@
           0
         ],
         "Scale": [
-          60,
+          15,
           1,
           15
         ]
@@ -773,9 +595,9 @@
       "Transform": {
         "Enabled": true,
         "Position": [
-          -5.0693064,
-          0.95582724,
-          -0.6469539
+          -4.3634143,
+          1.7203903,
+          -1.9884597
         ],
         "Rotation": [
           -90,
@@ -814,12 +636,12 @@
         "Enabled": true,
         "Size": [
           0.4,
-          0.3,
+          0.2,
           0.5
         ],
         "Offset": [
           0,
-          0,
+          0.1,
           0
         ]
       },
@@ -840,9 +662,9 @@
       "Transform": {
         "Enabled": true,
         "Position": [
-          -6.053997,
+          -4.6,
           0.9517141,
-          -3.1150699
+          -3
         ],
         "Rotation": [
           -90,
@@ -877,41 +699,6 @@
           0,
           0,
           0
-        ]
-      }
-    },
-    {
-      "Tag": {
-        "Name": "Cube",
-        "Enabled": true
-      },
-      "Transform": {
-        "Enabled": true,
-        "Position": [
-          0,
-          0.22807348,
-          15.766507
-        ],
-        "Rotation": [
-          0,
-          0,
-          0
-        ],
-        "Scale": [
-          6,
-          1,
-          6
-        ]
-      },
-      "MeshRenderer": {
-        "Enabled": true,
-        "ModelPath": "primitive:Cube",
-        "MaterialPath": "guid:1d5c345f02da4733b47bb2562069feab",
-        "Color": [
-          1,
-          1,
-          1,
-          1
         ]
       }
     }

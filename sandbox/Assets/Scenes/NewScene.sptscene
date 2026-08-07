@@ -1,3 +1,155 @@
 {
-  "Entities": []
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Skybox",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Skybox": {
+        "Enabled": true,
+        "SkyColor": [
+          0.6,
+          0.8,
+          1
+        ],
+        "GroundColor": [
+          0.15,
+          0.15,
+          0.15
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Directional Light",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          -45,
+          45,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Light": {
+        "Enabled": true,
+        "Type": 0,
+        "Color": [
+          1,
+          1,
+          1
+        ],
+        "Intensity": 1,
+        "AmbientIntensity": 0.3,
+        "CastShadows": true,
+        "Range": 10
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Clouds",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "DynamicClouds": {
+        "Enabled": true,
+        "ColorTop": [
+          1,
+          1,
+          1
+        ],
+        "ColorBottom": [
+          0.8,
+          0.85,
+          0.9
+        ],
+        "Speed": 1,
+        "Density": 0.57,
+        "Height": 0.3,
+        "Opacity": 0.6,
+        "Volume": 1.35
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Cube",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          100,
+          1,
+          100
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": "guid:bf7a32a61d574222845466acdcd2c72e",
+        "Color": [
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ]
 }

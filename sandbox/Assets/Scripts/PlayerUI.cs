@@ -14,30 +14,12 @@ public class PlayerUI : EntityBehaviour
         var io = ImGui.GetIO();
         Vector2 screenSize = io.DisplaySize;
 
-        ImGuiWindowFlags crosshairFlags = ImGuiWindowFlags.NoDecoration | 
-                                 ImGuiWindowFlags.AlwaysAutoResize | 
-                                 ImGuiWindowFlags.NoSavedSettings | 
-                                 ImGuiWindowFlags.NoFocusOnAppearing | 
-                                 ImGuiWindowFlags.NoNav | 
-                                 ImGuiWindowFlags.NoBackground |
-                                 ImGuiWindowFlags.NoInputs;
-
-        // 1. Crosshair no centro da tela (apenas um ponto branco)
+        // 1. Crosshair — círculo no centro da tela
         Vector2 center = screenSize * 0.5f;
-        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        
-        if (ImGui.Begin("Crosshair", crosshairFlags))
-        {
-            var drawList = ImGui.GetWindowDrawList();
-            Vector2 p = ImGui.GetWindowPos(); // Posição central devido ao pivô 0.5
-            
-            uint color = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Branco
-            float radius = 3.0f;
-
-            drawList.AddCircleFilled(p, radius, color);
-            
-            ImGui.End();
-        }
+        var fg = ImGui.GetForegroundDrawList();
+        uint white = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 0.9f));
+        fg.AddCircle(center, 16f, white, 32, 1.5f);
+        fg.AddCircleFilled(center, 2f, white);
 
         // 2. HP no canto inferior esquerdo (estilo Valve)
         ImGuiWindowFlags hpFlags = ImGuiWindowFlags.NoDecoration | 

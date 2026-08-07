@@ -18,13 +18,12 @@ public class ItemGrabber : EntityBehaviour
 
     public override void OnUpdate(float deltaTime)
     {
-        if (Input.GetMouseButtonDown(MouseButton.Left))
+        if (Input.GetKeyDown(Key.E))
         {
-            TryGrabItem();
-        }
-        else if (Input.GetMouseButtonUp(MouseButton.Left) && _heldItem != null)
-        {
-            DropItem();
+            if (_heldItem != null)
+                DropItem();
+            else
+                TryGrabItem();
         }
 
         UpdateHeldItem(deltaTime);
