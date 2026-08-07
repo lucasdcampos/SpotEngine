@@ -1,0 +1,155 @@
+{
+  "Root": {
+    "Tag": {
+      "Name": "Player",
+      "Enabled": true
+    },
+    "Transform": {
+      "Enabled": true,
+      "Position": [
+        0,
+        1.5,
+        0
+      ],
+      "Rotation": [
+        0,
+        0,
+        0
+      ],
+      "Scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "PhysicsBody3D": {
+      "Enabled": true,
+      "Velocity": [
+        0,
+        0,
+        0
+      ],
+      "GravityScale": 1,
+      "LinearDrag": 0,
+      "IsDynamic": true
+    },
+    "CharacterController3D": {
+      "Enabled": true,
+      "WalkSpeed": 8,
+      "RunSpeed": 6,
+      "CrouchSpeed": 2.5,
+      "JumpForce": 5,
+      "GroundAcceleration": 10,
+      "GroundFriction": 8,
+      "AirAcceleration": 100,
+      "MaxAirSpeed": 1,
+      "GravityMultiplier": 1.8,
+      "StandHeight": 1.7,
+      "CrouchHeight": 0.9,
+      "MouseSensitivity": 0.1,
+      "MaxPitch": 89,
+      "LockMouse": true
+    },
+    "BoxCollider3D": {
+      "Enabled": true,
+      "Size": [
+        0.3,
+        1.7,
+        0.2
+      ],
+      "Offset": [
+        0,
+        0.85,
+        0
+      ]
+    },
+    "Scripts": {
+      "Enabled": true,
+      "Items": [
+        {
+          "Type": "ItemGrabber"
+        }
+      ]
+    },
+    "Children": [
+      {
+        "Tag": {
+          "Name": "Model",
+          "Enabled": true
+        },
+        "Transform": {
+          "Enabled": true,
+          "Position": [
+            0,
+            0,
+            0
+          ],
+          "Rotation": [
+            0,
+            180,
+            0
+          ],
+          "Scale": [
+            0.01,
+            0.01,
+            0.01
+          ]
+        },
+        "MeshRenderer": {
+          "Enabled": true,
+          "ModelPath": "guid:bb4c9beac4144ad0a212f4674e0d206a",
+          "MaterialPath": null,
+          "Color": [
+            1,
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "Tag": {
+          "Name": "Camera",
+          "Enabled": true
+        },
+        "Transform": {
+          "Enabled": true,
+          "Position": [
+            0,
+            1.68,
+            -0.10299925
+          ],
+          "Rotation": [
+            0,
+            0,
+            0
+          ],
+          "Scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Camera": {
+          "Primary": true,
+          "FixedAspectRatio": false,
+          "BackgroundColor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "ProjectionType": 1,
+          "ZoomLevel": 5,
+          "FieldOfView": 45,
+          "NearClip": 0.1,
+          "FarClip": 1000,
+          "Enabled": true
+        },
+        "AudioListener": {
+          "Enabled": true
+        }
+      }
+    ]
+  }
+}

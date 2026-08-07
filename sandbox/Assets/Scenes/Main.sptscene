@@ -340,6 +340,10 @@
           0
         ]
       },
+      "Prefab": {
+        "Enabled": true,
+        "PrefabRef": "guid:60c05476934946b895cfe8b12b972a00"
+      },
       "Scripts": {
         "Enabled": true,
         "Items": [
@@ -352,7 +356,7 @@
         {
           "Tag": {
             "Name": "Model",
-            "Enabled": false
+            "Enabled": true
           },
           "Transform": {
             "Enabled": true,
@@ -393,8 +397,8 @@
             "Enabled": true,
             "Position": [
               0,
-              1.6801645,
-              -0.0848094
+              1.68,
+              -0.10299925
             ],
             "Rotation": [
               0,
