@@ -36,6 +36,7 @@ public static class AssetDatabase
         RegisterImporter(new ModelAssetImporter());
         RegisterImporter(new MaterialImporter());
         RegisterImporter(new PrefabImporter());
+        RegisterImporter(new AudioImporter());
     }
 
     /// <summary>Registers an importer for each of its source extensions. Later registrations win for an extension.</summary>
@@ -297,7 +298,7 @@ public static class AssetDatabase
     }
 
     // Reference properties in scenes/materials whose relative source-path values migrate to guid: references.
-    private static readonly string[] s_referenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath" };
+    private static readonly string[] s_referenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath" };
 
     /// <summary>
     /// One-time migration: rewrites every scene (<c>.sptscene</c>) and material (<c>.sptmat</c>) under a

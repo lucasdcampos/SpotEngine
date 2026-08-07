@@ -279,6 +279,7 @@ public class Application
         _window.SetEventCallback(OnEvent);
 
         AddService(new GraphicsService());
+        AddService(new AudioService());
         _imguiService = new ImGuiService(_spec);
         AddService(_imguiService);
 

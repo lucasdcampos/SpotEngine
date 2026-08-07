@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Spot.Assets;
+using Spot.Audio;
 using Spot.Core;
 using Spot.Rendering;
 
@@ -113,20 +114,27 @@ internal static class ComponentSerialization
             }
         }
 
-        // Eager-load texture references (sprites) so they render on the first frame, matching the
-        // pre-refactor behavior. Model/material references stay lazy, resolved at draw time.
+        // Eager-load texture references (sprites) so they render on the first frame, and audio clips so a
+        // PlayOnAwake source is ready when the scene starts. Model/material references stay lazy, resolved
+        // at draw time.
         foreach (AssetRef assetRef in AssetRefsFor(type))
         {
-            if (assetRef.Asset.PropertyType != typeof(Texture2D)) continue;
             if (assetRef.Path.GetValue(component) is not string p || string.IsNullOrEmpty(p)) continue;
 
             try
             {
-                assetRef.Asset.SetValue(component, Texture2D.LoadRef(p));
+                if (assetRef.Asset.PropertyType == typeof(Texture2D))
+                {
+                    assetRef.Asset.SetValue(component, Texture2D.LoadRef(p));
+                }
+                else if (assetRef.Asset.PropertyType == typeof(AudioClip))
+                {
+                    assetRef.Asset.SetValue(component, AudioClip.LoadRef(p));
+                }
             }
             catch (Exception ex)
             {
-                Log.CoreError("Failed to load texture '{0}': {1}", p, ex.Message);
+                Log.CoreError("Failed to load asset '{0}': {1}", p, ex.Message);
             }
         }
 
