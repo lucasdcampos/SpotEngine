@@ -24,6 +24,11 @@ public class HierarchyPanel
     // Tint for prefab-instance entities; matches the asset browser's prefab color.
     private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
 
+    // Entity clipboard, shared across panel instances and scenes. Holds a serialized prefab (an entity
+    // subtree). A cut also remembers the source entity so its first paste moves rather than copies.
+    private static string? s_entityClipboardJson;
+    private static Entity? s_cutEntity;
+
     public HierarchyPanel(EditorContext context)
     {
         _context = context;
@@ -42,6 +47,9 @@ public class HierarchyPanel
 
         if (_context.ActiveScene != null)
         {
+            DrawActionBar();
+            ImGui.Separator();
+
             SyncRootOrder();
             foreach (int rootId in _rootOrder.ToList())
             {
@@ -53,20 +61,30 @@ public class HierarchyPanel
                 _context.Selection = null;
             }
 
-            if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _renamingEntityId == -1 && _context.Selection != null)
+            if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _renamingEntityId == -1 && !ImGui.IsAnyItemActive())
             {
-                var sel = _context.Selection.Value;
-                if (ImGui.IsKeyPressed(ImGuiKey.F2))
+                Entity? sel = _context.Selection;
+                if (ImGui.GetIO().KeyCtrl)
                 {
-                    _renamingEntityId = sel.Id;
-                    _entityRenameBuffer = sel.Name;
-                    _renameFocusPending = true;
-                    _isNewEntity = false;
+                    if (sel != null && ImGui.IsKeyPressed(ImGuiKey.C)) CopyEntity(sel.Value);
+                    else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.X)) CutEntity(sel.Value);
+                    else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateEntity(sel.Value);
+                    else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteEntity(sel);
                 }
-                else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
+                else if (sel != null)
                 {
-                    _context.ActiveScene?.Destroy(sel);
-                    _context.Selection = null;
+                    if (ImGui.IsKeyPressed(ImGuiKey.F2))
+                    {
+                        _renamingEntityId = sel.Value.Id;
+                        _entityRenameBuffer = sel.Value.Name;
+                        _renameFocusPending = true;
+                        _isNewEntity = false;
+                    }
+                    else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
+                    {
+                        _context.ActiveScene?.Destroy(sel.Value);
+                        _context.Selection = null;
+                    }
                 }
             }
 
@@ -120,6 +138,11 @@ public class HierarchyPanel
                     if (ImGui.MenuItem("Quad")) CreatePrimitive("Quad");
                     if (ImGui.MenuItem("Sphere")) CreatePrimitive("Sphere");
                     ImGui.EndMenu();
+                }
+                ImGui.Separator();
+                if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_entityClipboardJson != null))
+                {
+                    PasteEntity(null);
                 }
                 ImGui.EndPopup();
             }
@@ -360,6 +383,11 @@ public class HierarchyPanel
                 _isNewEntity = false;
             }
             ImGui.Separator();
+            if (ImGui.MenuItem("Copy", "Ctrl+C")) CopyEntity(entity);
+            if (ImGui.MenuItem("Cut", "Ctrl+X")) CutEntity(entity);
+            if (ImGui.MenuItem("Duplicate", "Ctrl+D")) DuplicateEntity(entity);
+            if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_entityClipboardJson != null)) PasteEntity(entity);
+            ImGui.Separator();
             if (ImGui.MenuItem("Move Up")) MoveEntityUp(entity);
             if (ImGui.MenuItem("Move Down")) MoveEntityDown(entity);
             ImGui.Separator();
@@ -398,6 +426,115 @@ public class HierarchyPanel
             if (_context.Selection != null && _context.Selection.Value == entity)
                 _context.Selection = null;
         }
+    }
+
+    // Compact Copy / Cut / Duplicate / Paste button strip at the top of the panel. Mirrors the shortcuts
+    // and the per-item context menu so the actions are discoverable without right-clicking.
+    private void DrawActionBar()
+    {
+        bool hasSel = _context.Selection != null;
+        bool canPaste = s_entityClipboardJson != null;
+
+        ImGui.BeginDisabled(!hasSel);
+        if (ImGui.SmallButton("Copy")) CopyEntity(_context.Selection!.Value);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Cut")) CutEntity(_context.Selection!.Value);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Duplicate")) DuplicateEntity(_context.Selection!.Value);
+        ImGui.EndDisabled();
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!canPaste);
+        if (ImGui.SmallButton("Paste")) PasteEntity(_context.Selection);
+        ImGui.EndDisabled();
+    }
+
+    private void CopyEntity(Entity entity)
+    {
+        try
+        {
+            s_entityClipboardJson = Prefab.Serialize(entity);
+            s_cutEntity = null;
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to copy entity: {0}", ex.Message);
+        }
+    }
+
+    private void CutEntity(Entity entity)
+    {
+        try
+        {
+            s_entityClipboardJson = Prefab.Serialize(entity);
+            s_cutEntity = entity;
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to cut entity: {0}", ex.Message);
+        }
+    }
+
+    private void DuplicateEntity(Entity entity)
+    {
+        var scene = _context.ActiveScene;
+        if (scene == null) return;
+        try
+        {
+            // Duplicate as a sibling (same parent) of the source.
+            Entity? copy = Prefab.InstantiateInto(scene, Prefab.Serialize(entity), entity.Parent);
+            if (copy != null) _context.Selection = copy.Value;
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+        }
+    }
+
+    // Pastes the clipboard entity under the given parent (or at the root when null). A pending cut is
+    // consumed: the source is removed after a successful paste, turning the copy into a move.
+    private void PasteEntity(Entity? parent)
+    {
+        var scene = _context.ActiveScene;
+        if (scene == null || string.IsNullOrEmpty(s_entityClipboardJson)) return;
+
+        // A cut can't be moved into itself or one of its own descendants.
+        if (s_cutEntity != null && parent != null && IsSelfOrDescendant(parent.Value, s_cutEntity.Value))
+        {
+            return;
+        }
+
+        try
+        {
+            Entity? pasted = Prefab.InstantiateInto(scene, s_entityClipboardJson, parent);
+            if (pasted == null) return;
+            _context.Selection = pasted.Value;
+
+            if (s_cutEntity != null)
+            {
+                if (s_cutEntity.Value.Scene == scene)
+                {
+                    scene.Destroy(s_cutEntity.Value);
+                }
+                s_cutEntity = null;
+                s_entityClipboardJson = null; // a cut is consumed by its paste
+            }
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to paste entity: {0}", ex.Message);
+        }
+    }
+
+    private static bool IsSelfOrDescendant(Entity node, Entity ancestor)
+    {
+        Entity? current = node;
+        while (current != null)
+        {
+            if (current.Value == ancestor) return true;
+            current = current.Value.Parent;
+        }
+        return false;
     }
 
     // Keeps _rootOrder in sync with the scene: adds new root entities at the end, removes stale ones.

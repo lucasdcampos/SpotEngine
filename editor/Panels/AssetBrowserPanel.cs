@@ -45,6 +45,15 @@ public class AssetBrowserPanel
     private string? _selectedPath;
     private string? _pendingNavigate;
 
+    // Full path of the asset currently being dragged, recorded when a drag starts so a folder drop target
+    // can move it without reparsing the kind-specific payload.
+    private string? _dragPath;
+
+    // Asset clipboard, shared across panel instances. A cut pastes as a move (carrying the .meta guid); a
+    // copy pastes as a fresh asset (no .meta, so a new guid is minted on the next scan).
+    private static string? s_clipboardPath;
+    private static bool s_clipboardCut;
+
     // Inline rename state: set after creation or explicit rename; rendered in the tile instead of the label.
     private string? _inlineRenamePath;
     private string _inlineRenameBuffer = "";
@@ -91,6 +100,7 @@ public class AssetBrowserPanel
         _pendingNavigate = null;
 
         DrawToolbar();
+        DrawActionBar();
         ImGui.Separator();
 
         float bottomHeight = ImGui.GetTextLineHeightWithSpacing();
@@ -133,6 +143,11 @@ public class AssetBrowserPanel
         {
             _pendingNavigate = _baseDirectory;
         }
+        if (ImGui.BeginDragDropTarget())
+        {
+            if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, _baseDirectory);
+            ImGui.EndDragDropTarget();
+        }
 
         string rel = Path.GetRelativePath(_baseDirectory, _currentDirectory);
         if (rel != ".")
@@ -147,6 +162,11 @@ public class AssetBrowserPanel
                 if (ImGui.Button(part + "##crumb"))
                 {
                     _pendingNavigate = accum;
+                }
+                if (ImGui.BeginDragDropTarget())
+                {
+                    if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, accum);
+                    ImGui.EndDragDropTarget();
                 }
             }
         }
@@ -220,18 +240,29 @@ public class AssetBrowserPanel
             _context.SelectedAssetPath = null;
         }
 
-        if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _inlineRenamePath == null && _selectedPath != null)
+        if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _inlineRenamePath == null && !ImGui.IsAnyItemActive())
         {
-            if (ImGui.IsKeyPressed(ImGuiKey.F2))
+            bool hasSelection = _selectedPath != null;
+            if (ImGui.GetIO().KeyCtrl)
             {
-                bool isDir = Directory.Exists(_selectedPath);
-                string initial = isDir ? Path.GetFileName(_selectedPath)! : Path.GetFileNameWithoutExtension(_selectedPath);
-                StartInlineRename(_selectedPath, initial, isNew: false);
+                if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.C)) CopySelected(cut: false);
+                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
+                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateAsset(_selectedPath!);
+                else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteClipboardInto(_currentDirectory);
             }
-            else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
+            else if (hasSelection)
             {
-                _isDeleting = true;
-                _deleteTarget = _selectedPath;
+                if (ImGui.IsKeyPressed(ImGuiKey.F2))
+                {
+                    bool isDir = Directory.Exists(_selectedPath);
+                    string initial = isDir ? Path.GetFileName(_selectedPath)! : Path.GetFileNameWithoutExtension(_selectedPath!);
+                    StartInlineRename(_selectedPath!, initial, isNew: false);
+                }
+                else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
+                {
+                    _isDeleting = true;
+                    _deleteTarget = _selectedPath!;
+                }
             }
         }
     }
@@ -276,88 +307,26 @@ public class AssetBrowserPanel
             }
         }
 
-        // Drag files as payloads (consumed by the Inspector).
-        if (!entry.IsDirectory && ImGui.BeginDragDropSource())
+        // Drag as a typed payload (consumed by the Inspector and by folder tiles for moving). Folders drag
+        // too, so a whole folder can be dropped into another. _dragPath records the real source path so the
+        // move target doesn't have to reparse the (kind-specific) payload data.
+        if (ImGui.BeginDragDropSource())
         {
-            if (entry.Kind == AssetKind.Image)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("IMAGE_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else if (entry.Kind == AssetKind.Model)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("MODEL_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else if (entry.Kind == AssetKind.Material)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("MATERIAL_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else if (entry.Kind == AssetKind.Scene)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("SCENE_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else if (entry.Kind == AssetKind.Prefab)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("PREFAB_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else if (entry.Kind == AssetKind.Audio)
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("AUDIO_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
-            else
-            {
-                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");
-                unsafe
-                {
-                    fixed (byte* p = payloadBytes)
-                    {
-                        ImGui.SetDragDropPayload("SCRIPT_FILE", (IntPtr)p, (uint)payloadBytes.Length);
-                    }
-                }
-            }
+            _dragPath = entry.FullPath;
+            (string payloadType, string payloadData) = DragPayloadFor(entry);
+            SetDragPayload(payloadType, payloadData);
             ImGui.Text(entry.Name);
             ImGui.EndDragDropSource();
+        }
+
+        // Drop onto a folder tile to move the dragged asset (or folder) into it.
+        if (entry.IsDirectory && ImGui.BeginDragDropTarget())
+        {
+            if (TryAcceptAssetMove())
+            {
+                MoveEntryInto(_dragPath, entry.FullPath);
+            }
+            ImGui.EndDragDropTarget();
         }
 
         DrawItemContextMenu(entry);
@@ -566,6 +535,15 @@ public class AssetBrowserPanel
             RevealInExplorer(entry.FullPath);
         }
         ImGui.Separator();
+        if (ImGui.MenuItem("Copy", "Ctrl+C")) { _selectedPath = entry.FullPath; CopySelected(cut: false); }
+        if (ImGui.MenuItem("Cut", "Ctrl+X")) { _selectedPath = entry.FullPath; CopySelected(cut: true); }
+        if (ImGui.MenuItem("Duplicate", "Ctrl+D")) DuplicateAsset(entry.FullPath);
+        if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_clipboardPath != null))
+        {
+            // Paste into this folder when the target is a directory, else into the current folder.
+            PasteClipboardInto(entry.IsDirectory ? entry.FullPath : _currentDirectory);
+        }
+        ImGui.Separator();
         if (ImGui.MenuItem("Rename"))
         {
             bool isDir = entry.IsDirectory;
@@ -611,6 +589,11 @@ public class AssetBrowserPanel
             string path = UniqueAssetPath(_currentDirectory, "NewMaterial", ".sptmat");
             CreateMaterial(Path.GetFileName(path));
             StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
+        }
+        ImGui.Separator();
+        if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_clipboardPath != null))
+        {
+            PasteClipboardInto(_currentDirectory);
         }
         ImGui.Separator();
         if (ImGui.MenuItem("Open in Explorer"))
@@ -930,6 +913,249 @@ public class {className} : EntityBehaviour
         }
         ClearThumbnails();
     }
+
+    // Payload types a folder tile accepts as a move. Mirrors the types produced by DragPayloadFor.
+    private static readonly string[] MovablePayloads =
+    {
+        "FOLDER_FILE", "IMAGE_FILE", "MODEL_FILE", "MATERIAL_FILE",
+        "SCENE_FILE", "PREFAB_FILE", "AUDIO_FILE", "SCRIPT_FILE",
+    };
+
+    // The drag payload (type + data) for an entry. Data is the full path for everything the Inspector
+    // resolves by path; scripts/other keep their historical name-only payload for the script slot consumer.
+    private static (string Type, string Data) DragPayloadFor(AssetEntry entry) => entry.IsDirectory
+        ? ("FOLDER_FILE", entry.FullPath)
+        : entry.Kind switch
+        {
+            AssetKind.Image => ("IMAGE_FILE", entry.FullPath),
+            AssetKind.Model => ("MODEL_FILE", entry.FullPath),
+            AssetKind.Material => ("MATERIAL_FILE", entry.FullPath),
+            AssetKind.Scene => ("SCENE_FILE", entry.FullPath),
+            AssetKind.Prefab => ("PREFAB_FILE", entry.FullPath),
+            AssetKind.Audio => ("AUDIO_FILE", entry.FullPath),
+            _ => ("SCRIPT_FILE", entry.Name),
+        };
+
+    private static unsafe void SetDragPayload(string type, string data)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(data + "\0");
+        fixed (byte* p = bytes)
+        {
+            ImGui.SetDragDropPayload(type, (IntPtr)p, (uint)bytes.Length);
+        }
+    }
+
+    // Returns true on the frame a movable payload is dropped on the current target. AcceptDragDropPayload
+    // (without AcceptBeforeDelivery) only returns non-null once the mouse is released, so a non-null result
+    // means "delivered here".
+    private static bool TryAcceptAssetMove()
+    {
+        foreach (string type in MovablePayloads)
+        {
+            var payload = ImGui.AcceptDragDropPayload(type);
+            unsafe
+            {
+                if (payload.NativePtr != null) return true;
+            }
+        }
+        return false;
+    }
+
+    // Moves a file or folder into destDir, carrying its committed .meta sidecar so the asset keeps its guid
+    // identity (and existing guid: scene references keep resolving). Never throws: bad moves log and continue.
+    private void MoveEntryInto(string? sourcePath, string destDir)
+    {
+        if (string.IsNullOrEmpty(sourcePath)) return;
+
+        try
+        {
+            // No-op if it already lives here.
+            string? sourceParent = Path.GetDirectoryName(sourcePath);
+            if (string.Equals(sourceParent, destDir, StringComparison.OrdinalIgnoreCase)) return;
+
+            string srcFull = Path.GetFullPath(sourcePath);
+            string dstFull = Path.GetFullPath(destDir);
+
+            // Never move a folder into itself or one of its own descendants (would orphan the tree).
+            if (Directory.Exists(sourcePath))
+            {
+                if (string.Equals(srcFull, dstFull, StringComparison.OrdinalIgnoreCase)) return;
+                if (dstFull.StartsWith(srcFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return;
+            }
+
+            string name = Path.GetFileName(sourcePath);
+            string dest = Path.Combine(destDir, name);
+            if (File.Exists(dest) || Directory.Exists(dest))
+            {
+                Spot.Core.Log.Error("Cannot move '{0}': an item with that name already exists in the target folder.", name);
+                return;
+            }
+
+            if (!MovePath(sourcePath, dest)) return;
+
+            if (_selectedPath == sourcePath) _selectedPath = dest;
+            if (_context.SelectedAssetPath == sourcePath) _context.SelectedAssetPath = dest;
+            ClearThumbnails();
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to move asset: {0}", ex.Message);
+        }
+        finally
+        {
+            _dragPath = null;
+        }
+    }
+
+    // Compact Copy / Cut / Duplicate / Paste button strip beneath the toolbar. Mirrors the shortcuts and
+    // per-item context menu so the actions are discoverable without right-clicking.
+    private void DrawActionBar()
+    {
+        bool hasSelection = _selectedPath != null && (File.Exists(_selectedPath) || Directory.Exists(_selectedPath));
+        bool canPaste = s_clipboardPath != null;
+
+        ImGui.BeginDisabled(!hasSelection);
+        if (ImGui.SmallButton("Copy")) CopySelected(cut: false);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Cut")) CopySelected(cut: true);
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Duplicate")) DuplicateAsset(_selectedPath!);
+        ImGui.EndDisabled();
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!canPaste);
+        if (ImGui.SmallButton("Paste")) PasteClipboardInto(_currentDirectory);
+        ImGui.EndDisabled();
+    }
+
+    private void CopySelected(bool cut)
+    {
+        if (_selectedPath == null) return;
+        s_clipboardPath = _selectedPath;
+        s_clipboardCut = cut;
+    }
+
+    // Copies an asset in place (same folder) under a unique name and selects the copy.
+    private void DuplicateAsset(string path)
+    {
+        string? dir = Path.GetDirectoryName(path);
+        if (dir == null) return;
+
+        var (baseName, ext) = SplitName(path);
+        string dest = UniqueAssetPath(dir, baseName, ext);
+        try
+        {
+            CopyPath(path, dest);
+            _selectedPath = dest;
+            ClearThumbnails();
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to duplicate asset: {0}", ex.Message);
+        }
+    }
+
+    // Pastes the clipboard asset into destDir. A cut moves (carrying the .meta guid) and is then consumed; a
+    // copy duplicates as a fresh asset. Names that collide in the target get a unique suffix.
+    private void PasteClipboardInto(string destDir)
+    {
+        if (string.IsNullOrEmpty(s_clipboardPath)) return;
+        string src = s_clipboardPath;
+
+        if (!File.Exists(src) && !Directory.Exists(src))
+        {
+            s_clipboardPath = null; // stale (moved/deleted elsewhere)
+            return;
+        }
+
+        try
+        {
+            // Never paste a folder into itself or one of its own descendants.
+            if (Directory.Exists(src))
+            {
+                string srcFull = Path.GetFullPath(src);
+                string dstFull = Path.GetFullPath(destDir);
+                if (string.Equals(srcFull, dstFull, StringComparison.OrdinalIgnoreCase)
+                    || dstFull.StartsWith(srcFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
+            var (baseName, ext) = SplitName(src);
+            string dest = UniqueAssetPath(destDir, baseName, ext);
+
+            if (s_clipboardCut)
+            {
+                string? srcParent = Path.GetDirectoryName(src);
+                // Moving into the same folder is a no-op; keep the clipboard so it can go elsewhere.
+                if (!string.Equals(srcParent, destDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    MovePath(src, dest);
+                    _selectedPath = dest;
+                    s_clipboardPath = null; // a cut is consumed by its paste
+                }
+            }
+            else
+            {
+                CopyPath(src, dest);
+                _selectedPath = dest;
+            }
+            ClearThumbnails();
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to paste asset: {0}", ex.Message);
+        }
+    }
+
+    // Moves a file or folder to an exact destination path, carrying the .meta sidecar so the guid identity
+    // survives. Returns false when the source no longer exists.
+    private static bool MovePath(string src, string dest)
+    {
+        if (Directory.Exists(src))
+        {
+            Directory.Move(src, dest);
+            return true;
+        }
+        if (File.Exists(src))
+        {
+            File.Move(src, dest);
+            string meta = Spot.Assets.AssetMeta.MetaPathFor(src);
+            if (File.Exists(meta)) File.Move(meta, Spot.Assets.AssetMeta.MetaPathFor(dest));
+            return true;
+        }
+        return false;
+    }
+
+    // Copies a file or folder (recursively) to dest. The committed .meta sidecars are deliberately skipped:
+    // a copy is a distinct asset and must mint its own guid on the next database scan, not clone the source's.
+    private static void CopyPath(string src, string dest)
+    {
+        if (Directory.Exists(src))
+        {
+            Directory.CreateDirectory(dest);
+            foreach (string file in Directory.GetFiles(src))
+            {
+                if (file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
+                File.Copy(file, Path.Combine(dest, Path.GetFileName(file)));
+            }
+            foreach (string dir in Directory.GetDirectories(src))
+            {
+                CopyPath(dir, Path.Combine(dest, Path.GetFileName(dir)));
+            }
+        }
+        else if (File.Exists(src))
+        {
+            File.Copy(src, dest);
+        }
+    }
+
+    // Splits a path into the (baseName, extension) pair UniqueAssetPath expects: folders have no extension.
+    private static (string BaseName, string Ext) SplitName(string path) =>
+        Directory.Exists(path)
+            ? (Path.GetFileName(Path.TrimEndingDirectorySeparator(path)), "")
+            : (Path.GetFileNameWithoutExtension(path), Path.GetExtension(path));
 
     private void DeleteEntry(string fullPath)
     {
