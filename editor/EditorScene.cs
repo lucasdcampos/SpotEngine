@@ -19,6 +19,13 @@ public class OpenSceneData
     public string? SavedSnapshot;
     public bool IsDirty = true;
     public int DirtyCheckCounter = 0;
+
+    // Undo/redo history for this scene tab. Snapshots are full-scene JSON (the same serialization the
+    // dirty-check uses). UndoBaseline is the last "settled" state; edits push the previous baseline onto
+    // UndoStack. Lists (not Stack) so the oldest entry can be dropped once MaxUndo is exceeded.
+    public string? UndoBaseline;
+    public readonly List<string> UndoStack = new();
+    public readonly List<string> RedoStack = new();
     public ViewportPanel ViewportPanel;
     public Framebuffer Framebuffer;
     public Framebuffer CameraPreviewFramebuffer;
@@ -1043,6 +1050,15 @@ public class EditorScene : Scene
             ImGui.EndMenu();
         }
 
+        if (ImGui.BeginMenu("Edit"))
+        {
+            bool canUndo = _state == EditorState.Edit && (_activeSceneData?.UndoStack.Count ?? 0) > 0;
+            bool canRedo = _state == EditorState.Edit && (_activeSceneData?.RedoStack.Count ?? 0) > 0;
+            if (ImGui.MenuItem("Undo", "Ctrl+Z", false, canUndo)) Undo();
+            if (ImGui.MenuItem("Redo", "Ctrl+Y", false, canRedo)) Redo();
+            ImGui.EndMenu();
+        }
+
         if (ImGui.BeginMenu("View"))
         {
             if (ImGui.BeginMenu("Panels"))
@@ -1152,6 +1168,96 @@ public class EditorScene : Scene
         {
             NewScene();
         }
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Z))
+        {
+            Undo();
+        }
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Y))
+        {
+            Redo();
+        }
+    }
+
+    // The most entries kept per scene's undo history.
+    private const int MaxUndo = 100;
+
+    // True while the user is mid-interaction (dragging the gizmo, or editing an ImGui field), used to
+    // coalesce a continuous edit into a single history entry: snapshots are only committed once the
+    // interaction settles.
+    private static bool EditorIsInteracting() =>
+        ImGui.GetIO().MouseDown[0] || ImGui.IsAnyItemActive();
+
+    // Records a history entry when the scene has changed since the last settled baseline. Skipped while
+    // the user is still interacting, so a continuous edit (a gizmo drag, a slider) collapses into one entry.
+    private static void CaptureUndoState(OpenSceneData sceneData, string current)
+    {
+        if (sceneData.UndoBaseline == null)
+        {
+            sceneData.UndoBaseline = current;
+            return;
+        }
+
+        if (current == sceneData.UndoBaseline || EditorIsInteracting())
+        {
+            return;
+        }
+
+        sceneData.UndoStack.Add(sceneData.UndoBaseline);
+        if (sceneData.UndoStack.Count > MaxUndo)
+        {
+            sceneData.UndoStack.RemoveAt(0);
+        }
+        sceneData.UndoBaseline = current;
+        sceneData.RedoStack.Clear();
+    }
+
+    private void Undo()
+    {
+        var sd = _activeSceneData;
+        if (sd == null || sd.UndoStack.Count == 0 || sd.UndoBaseline == null)
+        {
+            return;
+        }
+
+        string target = sd.UndoStack[^1];
+        sd.UndoStack.RemoveAt(sd.UndoStack.Count - 1);
+        sd.RedoStack.Add(sd.UndoBaseline);
+        RestoreSnapshot(sd, target);
+        sd.UndoBaseline = target;
+    }
+
+    private void Redo()
+    {
+        var sd = _activeSceneData;
+        if (sd == null || sd.RedoStack.Count == 0 || sd.UndoBaseline == null)
+        {
+            return;
+        }
+
+        string target = sd.RedoStack[^1];
+        sd.RedoStack.RemoveAt(sd.RedoStack.Count - 1);
+        sd.UndoStack.Add(sd.UndoBaseline);
+        RestoreSnapshot(sd, target);
+        sd.UndoBaseline = target;
+    }
+
+    // Re-hydrates a scene from a snapshot in place (same Scene instance, so framebuffer/viewport bindings
+    // stay valid). The selection is remapped by id when the entity still exists, else cleared.
+    private void RestoreSnapshot(OpenSceneData sd, string json)
+    {
+        int? selId = _context.Selection is { IsValid: true } sel ? sel.Id : null;
+
+        sd.Scene.Clear();
+        new SceneSerializer(sd.Scene).DeserializeFromString(json);
+
+        if (_activeSceneData == sd)
+        {
+            _context.ActiveScene = sd.Scene;
+            _context.Selection = sd.Scene.EntityById(selId);
+        }
+
+        // Force the dirty flag to be recomputed against the saved baseline on the next check.
+        sd.DirtyCheckCounter = 15;
     }
 
     // Records the current scene as the clean baseline (called after a successful save/open).
@@ -1161,16 +1267,20 @@ public class EditorScene : Scene
         {
             foreach (var sceneData in _openScenes)
             {
-                if (sceneData.FilePath == null)
+                if (++sceneData.DirtyCheckCounter < 15)
                 {
-                    sceneData.IsDirty = true;
+                    continue;
                 }
-                else if (++sceneData.DirtyCheckCounter >= 15)
-                {
-                    sceneData.DirtyCheckCounter = 0;
-                    string current = new SceneSerializer(sceneData.Scene).SerializeToString();
-                    sceneData.IsDirty = sceneData.SavedSnapshot == null || current != sceneData.SavedSnapshot;
-                }
+                sceneData.DirtyCheckCounter = 0;
+
+                // Serialize once and reuse for both dirty-tracking and the undo history. Unsaved scenes
+                // (no file yet) are always considered dirty, but still get history captured.
+                string current = new SceneSerializer(sceneData.Scene).SerializeToString();
+                sceneData.IsDirty = sceneData.FilePath == null
+                    || sceneData.SavedSnapshot == null
+                    || current != sceneData.SavedSnapshot;
+
+                CaptureUndoState(sceneData, current);
             }
         }
 
