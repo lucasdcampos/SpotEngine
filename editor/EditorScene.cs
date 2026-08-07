@@ -369,7 +369,72 @@ public class EditorScene : Scene
                 DrawColliders(_context.Selection.Value);
                 Renderer2D.EndScene();
             }
-            
+
+            // Camera frustum gizmo: draw where the selected camera is looking.
+            if (_context.Selection.HasValue && sceneData == _activeSceneData
+                && _context.Selection.Value.HasComponent<CameraComponent>()
+                && _context.Selection.Value.HasComponent<TransformComponent>())
+            {
+                var camEntity = _context.Selection.Value;
+                var camComp = camEntity.GetComponent<CameraComponent>();
+                var camTransform = camEntity.GetComponent<TransformComponent>();
+
+                // Invert the camera's real view-projection so the drawing matches exactly what it
+                // renders (direction, aspect, FOV) regardless of projection type or forward convention.
+                System.Numerics.Matrix4x4 camVP = camComp.GetViewProjection(camTransform);
+                if (System.Numerics.Matrix4x4.Invert(camVP, out System.Numerics.Matrix4x4 invVP))
+                {
+                    // NDC corner (x,y in [-1,1]; z in [0,1] for System.Numerics projections) -> world.
+                    Vector3 ToWorld(float x, float y, float z)
+                    {
+                        Vector4 p = Vector4.Transform(new Vector4(x, y, z, 1.0f), invVP);
+                        return new Vector3(p.X, p.Y, p.Z) / p.W;
+                    }
+
+                    // Near corners sit at the true near plane; far corners are pulled in to a capped
+                    // gizmo length along each frustum edge, so the drawing shows the camera's aim and
+                    // field of view without spanning the whole scene when FarClip is large (the 1000
+                    // default would otherwise draw lines a kilometre long).
+                    float gizmoDepth = MathF.Min(camComp.FarClip - camComp.NearClip, 8.0f);
+                    Vector3 CapFar(Vector3 near, Vector3 far)
+                    {
+                        Vector3 dir = far - near;
+                        float len = dir.Length();
+                        if (len <= 1e-6f) return near;
+                        return near + (dir / len) * gizmoDepth;
+                    }
+
+                    Vector3 nbl = ToWorld(-1, -1, 0), nbr = ToWorld(1, -1, 0), ntr = ToWorld(1, 1, 0), ntl = ToWorld(-1, 1, 0);
+                    Vector3 fbl = CapFar(nbl, ToWorld(-1, -1, 1));
+                    Vector3 fbr = CapFar(nbr, ToWorld(1, -1, 1));
+                    Vector3 ftr = CapFar(ntr, ToWorld(1, 1, 1));
+                    Vector3 ftl = CapFar(ntl, ToWorld(-1, 1, 1));
+
+                    Vector4 frustumColor = new Vector4(0.35f, 0.75f, 1.0f, 1.0f);
+                    float t = Math.Max(0.004f, sceneData.EditorCamera.Position.Length() * 0.0016f);
+
+                    Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+
+                    // Near rectangle
+                    Renderer2D.DrawLine(nbl, nbr, frustumColor, t);
+                    Renderer2D.DrawLine(nbr, ntr, frustumColor, t);
+                    Renderer2D.DrawLine(ntr, ntl, frustumColor, t);
+                    Renderer2D.DrawLine(ntl, nbl, frustumColor, t);
+                    // Far rectangle
+                    Renderer2D.DrawLine(fbl, fbr, frustumColor, t);
+                    Renderer2D.DrawLine(fbr, ftr, frustumColor, t);
+                    Renderer2D.DrawLine(ftr, ftl, frustumColor, t);
+                    Renderer2D.DrawLine(ftl, fbl, frustumColor, t);
+                    // Connecting edges (near -> far)
+                    Renderer2D.DrawLine(nbl, fbl, frustumColor, t);
+                    Renderer2D.DrawLine(nbr, fbr, frustumColor, t);
+                    Renderer2D.DrawLine(ntr, ftr, frustumColor, t);
+                    Renderer2D.DrawLine(ntl, ftl, frustumColor, t);
+
+                    Renderer2D.EndScene();
+                }
+            }
+
             sceneData.Framebuffer.Unbind();
             
             // Render Camera Preview
