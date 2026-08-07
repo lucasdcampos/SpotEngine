@@ -35,6 +35,7 @@ public static class AssetDatabase
         RegisterImporter(new TextureImporter());
         RegisterImporter(new ModelAssetImporter());
         RegisterImporter(new MaterialImporter());
+        RegisterImporter(new PrefabImporter());
     }
 
     /// <summary>Registers an importer for each of its source extensions. Later registrations win for an extension.</summary>
