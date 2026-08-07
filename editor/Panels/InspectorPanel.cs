@@ -12,6 +12,13 @@ public class InspectorPanel
     private readonly EditorContext _context;
     private Spot.Rendering.Framebuffer? _materialPreviewFb;
 
+    // Prefab editing state: the inspected prefab is loaded into an isolated scene so its components can be
+    // edited with the same reflection-based UI as a live entity, then re-serialized back to disk on change.
+    private Scene? _prefabScene;
+    private Entity? _prefabRoot;
+    private string? _prefabPath;
+    private string _prefabLastJson = "";
+
     public InspectorPanel(EditorContext context)
     {
         _context = context;
@@ -25,6 +32,10 @@ public class InspectorPanel
         if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
         {
             DrawMaterialEditor(_context.SelectedAssetPath);
+        }
+        else if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptprefab", StringComparison.OrdinalIgnoreCase))
+        {
+            DrawPrefabEditor(_context.SelectedAssetPath);
         }
         else if (_context.Selection != null)
         {
@@ -95,6 +106,50 @@ public class InspectorPanel
                 }
             }
             ImGui.EndPopup();
+        }
+    }
+
+    // ----- Prefab editor ---------------------------------------------------------------------------
+
+    private void DrawPrefabEditor(string path)
+    {
+        // Load (or reload) the prefab into an isolated scene the first time this path is inspected. Its
+        // scripts are resolved but never ticked, so nothing runs — we only present and edit its components.
+        if (path != _prefabPath || _prefabRoot == null)
+        {
+            _prefabScene = new Scene();
+            _prefabRoot = Prefab.InstantiateFile(_prefabScene, path, null);
+            _prefabPath = path;
+            _prefabLastJson = _prefabRoot != null ? Prefab.Serialize(_prefabRoot.Value) : "";
+        }
+
+        ImGui.TextDisabled(System.IO.Path.GetFileName(path));
+        ImGui.Separator();
+
+        if (_prefabRoot == null)
+        {
+            ImGui.TextDisabled("This prefab could not be loaded.");
+            return;
+        }
+
+        Entity root = _prefabRoot.Value;
+        DrawComponents(root);
+        ImGui.Spacing();
+        DrawAddComponentButton(root);
+
+        // Persist edits when the user releases a control, so we don't write to disk every frame while dragging.
+        string current = Prefab.Serialize(root);
+        if (current != _prefabLastJson && !ImGui.IsAnyItemActive())
+        {
+            try
+            {
+                System.IO.File.WriteAllText(path, current);
+                _prefabLastJson = current;
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.Error("Failed to save prefab '{0}': {1}", path, ex.Message);
+            }
         }
     }
 

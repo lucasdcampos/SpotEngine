@@ -21,6 +21,9 @@ public class HierarchyPanel
     // Explicit root-entity ordering (dictionary pools have no stable order for reordering).
     private readonly List<int> _rootOrder = new();
 
+    // Tint for prefab-instance entities; matches the asset browser's prefab color.
+    private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
+
     public HierarchyPanel(EditorContext context)
     {
         _context = context;
@@ -67,7 +70,7 @@ public class HierarchyPanel
                 }
             }
 
-            // Allow dropping on the empty space to clear parent
+            // Allow dropping on the empty space to clear parent, or to instantiate a prefab at the root.
             if (ImGui.BeginDragDropTarget())
             {
                 unsafe
@@ -78,6 +81,13 @@ public class HierarchyPanel
                         int payloadId = *(int*)payload.Data;
                         Entity draggedEntity = new Entity(payloadId, _context.ActiveScene);
                         draggedEntity.SetParent(null);
+                    }
+
+                    var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
+                    if (prefabPayload.NativePtr != null)
+                    {
+                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
+                        if (path != null) InstantiatePrefab(path, null);
                     }
                 }
                 ImGui.EndDragDropTarget();
@@ -197,6 +207,21 @@ public class HierarchyPanel
         return entity;
     }
 
+    // Instantiates a prefab file into the active scene under an optional parent, marks the new root as an
+    // instance of that prefab, and selects it. Failures are logged by the loader and leave the scene unchanged.
+    private void InstantiatePrefab(string path, Entity? parent)
+    {
+        var scene = _context.ActiveScene;
+        if (scene == null) return;
+
+        Entity? root = Prefab.InstantiateFile(scene, path, parent);
+        if (root == null) return;
+
+        string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
+        root.Value.AddComponent(new PrefabComponent { PrefabRef = reference });
+        _context.Selection = root.Value;
+    }
+
     // Creates a new root entity, selects it, triggers inline rename, and returns it.
     private Entity CreateEntity(string name)
     {
@@ -227,12 +252,17 @@ public class HierarchyPanel
         string glyphPrefix = EditorGui.EntityGlyph(entity) + "   ";
         string label = isRenaming ? glyphPrefix : glyphPrefix + name;
 
+        // Prefab instances read in a distinct color; a disabled entity is dimmed and takes precedence.
         bool active = entity.IsActiveInHierarchy();
-        if (!active) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1.0f));
+        bool isPrefab = entity.HasComponent<PrefabComponent>();
+        Vector4? textColor = !active ? new Vector4(0.5f, 0.5f, 0.5f, 1.0f)
+                           : isPrefab ? PrefabColor
+                           : null;
+        if (textColor != null) ImGui.PushStyleColor(ImGuiCol.Text, textColor.Value);
 
         bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, label);
 
-        if (!active) ImGui.PopStyleColor();
+        if (textColor != null) ImGui.PopStyleColor();
 
         if (isRenaming)
         {
@@ -306,6 +336,14 @@ public class HierarchyPanel
                     {
                         draggedEntity.SetParent(entity);
                     }
+                }
+
+                // Dropping a prefab onto an entity instantiates it as a child of that entity.
+                var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
+                if (prefabPayload.NativePtr != null)
+                {
+                    string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
+                    if (path != null) InstantiatePrefab(path, entity);
                 }
             }
             ImGui.EndDragDropTarget();

@@ -35,7 +35,7 @@ public class SceneSerializer
         {
             if (entity.Parent == null)
             {
-                entities.Add(SerializeEntity(entity));
+                entities.Add(WriteEntity(entity));
             }
         }
 
@@ -43,7 +43,11 @@ public class SceneSerializer
         return root.ToJsonString(s_writeOptions);
     }
 
-    private JsonObject SerializeEntity(Entity entity)
+    /// <summary>
+    /// Writes a single entity and its descendants to a JSON object using the same reflection-based component
+    /// handling as a full scene. Shared with the prefab serializer, which stores one such subtree.
+    /// </summary>
+    internal static JsonObject WriteEntity(Entity entity)
     {
         var obj = new JsonObject();
 
@@ -72,7 +76,7 @@ public class SceneSerializer
             var childArray = new JsonArray();
             foreach (var child in children)
             {
-                childArray.Add(SerializeEntity(child));
+                childArray.Add(WriteEntity(child));
             }
             obj["Children"] = childArray;
         }
@@ -150,7 +154,7 @@ public class SceneSerializer
             {
                 if (entityNode is JsonObject entityObj)
                 {
-                    DeserializeEntity(entityObj, null);
+                    ReadEntity(_scene, entityObj, null);
                 }
             }
         }
@@ -158,7 +162,12 @@ public class SceneSerializer
         return true;
     }
 
-    private void DeserializeEntity(JsonObject entityObj, Entity? parent)
+    /// <summary>
+    /// Reads a single entity (and its descendants) from a JSON object into the given scene under an optional
+    /// parent, returning the created entity. Shared with the prefab serializer, which instantiates one such
+    /// subtree. Component and script failures are logged and skipped rather than thrown.
+    /// </summary>
+    internal static Entity ReadEntity(Scene scene, JsonObject entityObj, Entity? parent)
     {
         string name = "Entity";
         bool enabled = true;
@@ -168,7 +177,7 @@ public class SceneSerializer
             enabled = tagObj["Enabled"]?.GetValue<bool>() ?? true;
         }
 
-        var entity = _scene.Instantiate(name);
+        var entity = scene.Instantiate(name);
         entity.Enabled = enabled;
         if (parent != null)
         {
@@ -211,10 +220,12 @@ public class SceneSerializer
             {
                 if (childNode is JsonObject childObj)
                 {
-                    DeserializeEntity(childObj, entity);
+                    ReadEntity(scene, childObj, entity);
                 }
             }
         }
+
+        return entity;
     }
 
     private static void DeserializeScripts(Entity entity, JsonObject data)

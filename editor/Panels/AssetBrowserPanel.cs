@@ -6,12 +6,13 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Editor.UI;
 using Spot.Rendering;
+using Spot.Scenes;
 
 namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Other }
 
     private readonly struct AssetEntry
     {
@@ -95,6 +96,10 @@ public class AssetBrowserPanel
         DrawGrid();
         DrawEmptySpaceContextMenu();
         ImGui.EndChild();
+
+        // The grid child is itself an item in the parent window, so dropping an entity anywhere over it turns
+        // that entity into a .sptprefab asset in the current folder.
+        AcceptEntityDropToCreatePrefab();
 
         string statusText = _selectedPath != null ? $"Selected: {Path.GetFileName(_selectedPath)}" : " ";
         ImGui.TextDisabled(statusText);
@@ -251,9 +256,9 @@ public class AssetBrowserPanel
             {
                 _pendingNavigate = entry.FullPath;
             }
-            else if (entry.Kind == AssetKind.Material)
+            else if (entry.Kind == AssetKind.Material || entry.Kind == AssetKind.Prefab)
             {
-                // Open the material in the Inspector for editing (mirrors how scenes open on double-click).
+                // Open the material/prefab in the Inspector for editing (mirrors how scenes open on double-click).
                 _context.Selection = null;
                 _context.SelectedAssetPath = entry.FullPath;
             }
@@ -313,6 +318,17 @@ public class AssetBrowserPanel
                     fixed (byte* p = payloadBytes)
                     {
                         ImGui.SetDragDropPayload("SCENE_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
+            else if (entry.Kind == AssetKind.Prefab)
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("PREFAB_FILE", (IntPtr)p, (uint)payloadBytes.Length);
                     }
                 }
             }
@@ -409,6 +425,7 @@ public class AssetBrowserPanel
     private static readonly Vector4 ImageColor = new(0.30f, 0.80f, 0.55f, 1.0f);
     private static readonly Vector4 ModelColor = new(0.98f, 0.62f, 0.26f, 1.0f);
     private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
+    private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
 
     private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
     {
@@ -448,6 +465,7 @@ public class AssetBrowserPanel
         AssetKind.Image => (EditorIcons.Image, ImageColor),
         AssetKind.Model => (EditorIcons.Cube, ModelColor),
         AssetKind.Material => (EditorIcons.Palette, MaterialColor),
+        AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
         _ => (EditorIcons.File, palette.TextDisabled),
     };
 
@@ -654,6 +672,7 @@ public class AssetBrowserPanel
         if (ImageExtensions.Contains(ext)) return AssetKind.Image;
         if (ModelExtensions.Contains(ext)) return AssetKind.Model;
         if (ext == ".sptmat") return AssetKind.Material;
+        if (ext == ".sptprefab") return AssetKind.Prefab;
         return AssetKind.Other;
     }
 
@@ -766,6 +785,57 @@ public class {className} : EntityBehaviour
         if (File.Exists(filepath)) return;
 
         new Spot.Assets.Material().Save(filepath);
+    }
+
+    // Accepts an entity dragged from the hierarchy onto the asset grid, writing it out as a .sptprefab in the
+    // current folder and marking the source entity as an instance of the new prefab.
+    private void AcceptEntityDropToCreatePrefab()
+    {
+        if (!ImGui.BeginDragDropTarget())
+        {
+            return;
+        }
+
+        unsafe
+        {
+            var payload = ImGui.AcceptDragDropPayload("ENTITY");
+            if (payload.NativePtr != null && _context.ActiveScene != null)
+            {
+                int entityId = *(int*)payload.Data;
+                CreatePrefabFromEntity(new Entity(entityId, _context.ActiveScene));
+            }
+        }
+
+        ImGui.EndDragDropTarget();
+    }
+
+    private void CreatePrefabFromEntity(Entity entity)
+    {
+        try
+        {
+            string path = UniqueAssetPath(_currentDirectory, SanitizeFileName(entity.Name), ".sptprefab");
+            File.WriteAllText(path, Prefab.Serialize(entity));
+
+            // Link the source entity to the new prefab so the hierarchy tints it as an instance.
+            string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
+            entity.AddComponent(new PrefabComponent { PrefabRef = reference });
+
+            _selectedPath = path;
+            ClearThumbnails();
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to create prefab: {0}", ex.Message);
+        }
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        foreach (char c in Path.GetInvalidFileNameChars())
+        {
+            name = name.Replace(c, '_');
+        }
+        return string.IsNullOrWhiteSpace(name) ? "Prefab" : name;
     }
 
     private void CommitInlineRename(AssetEntry entry)
