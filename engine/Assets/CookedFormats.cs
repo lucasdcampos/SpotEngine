@@ -193,6 +193,106 @@ public static class SpTex
     public static SpTexData ReadFile(string path) => Read(File.ReadAllBytes(path));
 }
 
+/// <summary>The decoded contents of a <c>.spaudio</c>: interleaved 16-bit PCM plus its channel and rate.</summary>
+public readonly struct SpAudioData
+{
+    /// <summary>Initializes decoded PCM audio.</summary>
+    /// <param name="pcm">Interleaved signed 16-bit PCM samples (one short per sample, channels interleaved).</param>
+    /// <param name="channels">Channel count (1 = mono, 2 = stereo).</param>
+    /// <param name="sampleRate">Sample rate in frames per second (e.g. 44100).</param>
+    public SpAudioData(short[] pcm, int channels, int sampleRate)
+    {
+        Pcm = pcm;
+        Channels = channels;
+        SampleRate = sampleRate;
+    }
+
+    /// <summary>Gets the interleaved signed 16-bit PCM samples.</summary>
+    public short[] Pcm { get; }
+
+    /// <summary>Gets the channel count (1 = mono, 2 = stereo).</summary>
+    public int Channels { get; }
+
+    /// <summary>Gets the sample rate in frames per second.</summary>
+    public int SampleRate { get; }
+}
+
+/// <summary>
+/// Reads and writes <c>.spaudio</c>, the engine-native cooked audio format: interleaved 16-bit PCM decoded
+/// once at import time so the runtime uploads it straight to an OpenAL buffer with no audio decoder present.
+/// Parsing is pure computation, so a cooked clip can be read off the render thread, mirroring the split the
+/// texture and mesh formats already use.
+/// </summary>
+/// <remarks>
+/// Layout (little-endian): magic <c>'S','P','A','U'</c>, <c>u32 version</c>, <c>u16 channels</c>,
+/// <c>u16 bitsPerSample</c> (16), <c>u32 sampleRate</c>, <c>u32 sampleCount</c> (total interleaved shorts),
+/// then <c>sampleCount</c> signed 16-bit samples.
+/// </remarks>
+public static class SpAudio
+{
+    private static ReadOnlySpan<byte> Magic => "SPAU"u8;
+
+    /// <summary>The format version this build writes and is able to read.</summary>
+    public const uint Version = 1;
+
+    private const ushort BitsPerSample = 16;
+
+    /// <summary>Serializes decoded PCM to a <c>.spaudio</c> byte blob.</summary>
+    /// <param name="channels">Channel count (1 = mono, 2 = stereo).</param>
+    /// <param name="sampleRate">Sample rate in frames per second.</param>
+    /// <param name="pcm">Interleaved signed 16-bit PCM samples.</param>
+    /// <returns>The encoded bytes, ready to write to disk.</returns>
+    public static byte[] Write(int channels, int sampleRate, ReadOnlySpan<short> pcm)
+    {
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
+
+        w.Write(Magic);
+        w.Write(Version);
+        w.Write((ushort)channels);
+        w.Write(BitsPerSample);
+        w.Write((uint)sampleRate);
+        w.Write((uint)pcm.Length);
+        w.Write(MemoryMarshal.AsBytes(pcm));
+
+        w.Flush();
+        return ms.ToArray();
+    }
+
+    /// <summary>Parses a <c>.spaudio</c> blob back into PCM. Safe to call off the render thread.</summary>
+    /// <param name="bytes">The encoded bytes.</param>
+    /// <returns>The decoded audio.</returns>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spaudio</c>.</exception>
+    public static SpAudioData Read(ReadOnlySpan<byte> bytes)
+    {
+        var cursor = new Cursor(bytes);
+        cursor.ExpectMagic(Magic, "spaudio");
+
+        uint version = cursor.ReadUInt32();
+        if (version != Version)
+        {
+            throw new InvalidDataException($"Unsupported .spaudio version {version}; expected {Version}.");
+        }
+
+        ushort channels = cursor.ReadUInt16();
+        ushort bits = cursor.ReadUInt16();
+        if (bits != BitsPerSample)
+        {
+            throw new InvalidDataException($"Unsupported .spaudio sample depth {bits}; expected {BitsPerSample}-bit.");
+        }
+
+        uint sampleRate = cursor.ReadUInt32();
+        uint sampleCount = cursor.ReadUInt32();
+        short[] pcm = cursor.ReadShorts(sampleCount);
+        return new SpAudioData(pcm, channels, (int)sampleRate);
+    }
+
+    /// <summary>Reads and parses a <c>.spaudio</c> file. Safe to call off the render thread.</summary>
+    /// <param name="path">The absolute path to the cooked audio file.</param>
+    /// <returns>The decoded audio.</returns>
+    public static SpAudioData ReadFile(string path) => Read(File.ReadAllBytes(path));
+}
+
 /// <summary>A forward-only reader over a cooked-asset byte blob that validates bounds as it goes.</summary>
 internal ref struct Cursor
 {
@@ -219,6 +319,18 @@ internal ref struct Cursor
     {
         ReadOnlySpan<byte> slice = Take(sizeof(uint));
         return BinaryPrimitives.ReadUInt32LittleEndian(slice);
+    }
+
+    public ushort ReadUInt16()
+    {
+        ReadOnlySpan<byte> slice = Take(sizeof(ushort));
+        return BinaryPrimitives.ReadUInt16LittleEndian(slice);
+    }
+
+    public short[] ReadShorts(uint count)
+    {
+        ReadOnlySpan<byte> slice = Take(checked((int)count * sizeof(short)));
+        return MemoryMarshal.Cast<byte, short>(slice).ToArray();
     }
 
     public float[] ReadFloats(uint count)

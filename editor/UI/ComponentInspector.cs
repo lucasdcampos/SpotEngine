@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using ImGuiNET;
 using Spot.Assets;
+using Spot.Audio;
 using Spot.Core;
 using Spot.Rendering;
 using Spot.Scenes;
@@ -332,6 +333,7 @@ internal static class ComponentInspector
         [typeof(Texture2D)] = DrawTextureSlot,
         [typeof(Model)] = DrawModelSlot,
         [typeof(Material)] = DrawMaterialSlot,
+        [typeof(AudioClip)] = DrawAudioClipSlot,
     };
 
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
@@ -361,6 +363,31 @@ internal static class ComponentInspector
             catch (Exception ex)
             {
                 Log.Error("Failed to load texture: {0}", ex.Message);
+            }
+        }
+    }
+
+    private static void DrawAudioClipSlot(Entity entity, object component, PropertyMeta meta)
+    {
+        var clip = (AudioClip?)meta.Prop.GetValue(component);
+        string? stored = (string?)meta.AssetPathProp!.GetValue(component);
+        string? display = AssetDatabase.ToDisplayPath(stored);
+
+        string[] patterns = { "*.wav", "*.ogg" };
+        if (EditorGui.AssetSlot(meta.Label, "AUDIO_FILE", patterns, display, out string? newPath))
+        {
+            try
+            {
+                // Store a stable guid: reference, portable across rename/move, matching the texture path.
+                string? storedRef = AssetDatabase.ToGuidRef(newPath);
+                var newClip = storedRef != null ? AudioClip.LoadRef(storedRef) : null;
+                clip?.Dispose();
+                meta.Prop.SetValue(component, newClip);
+                meta.AssetPathProp!.SetValue(component, storedRef);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to load audio clip: {0}", ex.Message);
             }
         }
     }

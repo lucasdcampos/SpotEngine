@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Audio;
 using Spot.Editor.UI;
 using Spot.Rendering;
 using Spot.Scenes;
@@ -12,7 +13,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Other }
 
     private readonly struct AssetEntry
     {
@@ -32,6 +33,7 @@ public class AssetBrowserPanel
 
     private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
     private static readonly string[] ModelExtensions = { ".obj", ".fbx", ".gltf", ".glb", ".dae", ".ply", ".stl" };
+    private static readonly string[] AudioExtensions = { ".wav", ".ogg" };
     private const int MaxThumbnails = 128;
 
     private readonly EditorContext _context;
@@ -332,6 +334,17 @@ public class AssetBrowserPanel
                     }
                 }
             }
+            else if (entry.Kind == AssetKind.Audio)
+            {
+                var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.FullPath + "\0");
+                unsafe
+                {
+                    fixed (byte* p = payloadBytes)
+                    {
+                        ImGui.SetDragDropPayload("AUDIO_FILE", (IntPtr)p, (uint)payloadBytes.Length);
+                    }
+                }
+            }
             else
             {
                 var payloadBytes = System.Text.Encoding.UTF8.GetBytes(entry.Name + "\0");
@@ -426,6 +439,32 @@ public class AssetBrowserPanel
     private static readonly Vector4 ModelColor = new(0.98f, 0.62f, 0.26f, 1.0f);
     private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
     private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
+    private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
+
+    private static AudioClip? _previewClip;
+    private static Voice _previewVoice;
+
+    private static void PlayAudioPreview(string sourcePath)
+    {
+        try
+        {
+            StopAudioPreview();
+            _previewClip = AudioClip.LoadRef(sourcePath); // a source path decodes directly, no cooking needed
+            _previewVoice = AudioManager.Play(_previewClip, spatial: false);
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.Error("Failed to preview audio '{0}': {1}", sourcePath, ex.Message);
+        }
+    }
+
+    private static void StopAudioPreview()
+    {
+        AudioManager.Stop(_previewVoice);
+        _previewVoice = default;
+        _previewClip?.Dispose();
+        _previewClip = null;
+    }
 
     private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
     {
@@ -466,6 +505,7 @@ public class AssetBrowserPanel
         AssetKind.Model => (EditorIcons.Cube, ModelColor),
         AssetKind.Material => (EditorIcons.Palette, MaterialColor),
         AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
+        AssetKind.Audio => (EditorIcons.Music, AudioColor),
         _ => (EditorIcons.File, palette.TextDisabled),
     };
 
@@ -497,6 +537,12 @@ public class AssetBrowserPanel
         if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
         {
             Spot.Assets.AssimpModelImporter.ExtractMaterials(entry.FullPath);
+        }
+
+        if (entry.Kind == AssetKind.Audio)
+        {
+            if (ImGui.MenuItem($"{EditorIcons.Play}  Play")) PlayAudioPreview(entry.FullPath);
+            if (ImGui.MenuItem($"{EditorIcons.Stop}  Stop")) StopAudioPreview();
         }
 
         if (entry.IsDirectory)
@@ -671,6 +717,7 @@ public class AssetBrowserPanel
         if (ext == ".sptscene") return AssetKind.Scene;
         if (ImageExtensions.Contains(ext)) return AssetKind.Image;
         if (ModelExtensions.Contains(ext)) return AssetKind.Model;
+        if (AudioExtensions.Contains(ext)) return AssetKind.Audio;
         if (ext == ".sptmat") return AssetKind.Material;
         if (ext == ".sptprefab") return AssetKind.Prefab;
         return AssetKind.Other;

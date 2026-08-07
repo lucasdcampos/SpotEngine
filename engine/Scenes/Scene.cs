@@ -53,6 +53,7 @@ public class Scene
         Spot.Physics.CharacterController3DSystem.Update(this, deltaTime);
         Spot.Physics.Physics2DSystem.Update(this, deltaTime);
         Spot.Physics.Physics3DSystem.Update(this, deltaTime);
+        AudioSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
     }
