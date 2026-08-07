@@ -195,21 +195,15 @@ public static class RenderSystem
 
         Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount), cameraPos);
         
-        Vector3 skyColor = Vector3.Zero;
-        Vector3 groundColor = Vector3.Zero;
-        
         foreach (Entity entity in scene.View<SkyboxComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
             var skybox = entity.GetComponent<SkyboxComponent>();
             if (!skybox.Enabled) continue;
-            
-            skyColor = skybox.SkyColor;
-            groundColor = skybox.GroundColor;
+
+            Renderer3D.DrawSkybox(skybox.SkyColor, skybox.GroundColor);
             break;
         }
-
-        Renderer3D.DrawSkybox(skyColor, groundColor);
 
         foreach (Entity entity in scene.View<DynamicCloudsComponent>())
         {
