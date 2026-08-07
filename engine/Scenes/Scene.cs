@@ -179,6 +179,27 @@ public class Scene
     public void Destroy(Entity entity) => _pendingDestroy.Add(entity.Id);
 
     /// <summary>
+    /// Removes every entity and component from the scene, resetting it to an empty state. Entity ids
+    /// are reset so a subsequent re-population is deterministic. Used by the editor to re-hydrate a
+    /// scene in place (for example when restoring an undo snapshot) without swapping the instance.
+    /// </summary>
+    internal void Clear()
+    {
+        _entities.Clear();
+        _pools.Clear();
+        _pendingDestroy.Clear();
+        _nextId = 1;
+    }
+
+    /// <summary>
+    /// Returns a handle to the entity with the given id if it is still alive, otherwise
+    /// <see langword="null"/>. Convenience for callers that hold a bare id (such as the editor
+    /// remapping a selection after a snapshot restore).
+    /// </summary>
+    internal Entity? EntityById(int? id) =>
+        id is int value && _entities.Contains(value) ? new Entity(value, this) : null;
+
+    /// <summary>
     /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the
     /// engine at the end of each frame.
     /// </summary>
