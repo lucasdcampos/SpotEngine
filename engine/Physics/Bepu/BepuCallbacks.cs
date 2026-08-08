@@ -65,7 +65,8 @@ internal struct BepuNarrowPhaseCallbacks : INarrowPhaseCallbacks
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool AllowContactGeneration(int workerIndex, CollidableReference a, CollidableReference b, ref float speculativeMargin)
-        => a.Mobility == CollidableMobility.Dynamic || b.Mobility == CollidableMobility.Dynamic;
+        => (a.Mobility == CollidableMobility.Dynamic || b.Mobility == CollidableMobility.Dynamic)
+           && PhysicsSettings.LayersCollide(_contacts.LayerOf(a), _contacts.LayerOf(b));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool AllowContactGeneration(int workerIndex, CollidablePair pair, int childIndexA, int childIndexB) => true;

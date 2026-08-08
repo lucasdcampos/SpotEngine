@@ -112,6 +112,41 @@ public class CollisionEventsTests
         Assert.True(box.GetComponent<TransformComponent>().Position.Y < -1f, "a trigger must not block the body; it should fall through");
     }
 
+    [Fact]
+    public void Backend_LayerMatrix_FiltersCollisions()
+    {
+        try
+        {
+            // Disable collisions between layer 1 (floor) and layer 2 (box): the box should fall through.
+            PhysicsSettings.SetLayerCollision(1, 2, false);
+
+            var scene = new Scene();
+            var floor = scene.Instantiate("floor");
+            floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20), Layer = 1 });
+            floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+
+            var box = scene.Instantiate("box");
+            box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One, Layer = 2 });
+            box.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
+            box.GetComponent<TransformComponent>().Position = new Vector3(0, 3, 0);
+
+            using var physics = new BepuPhysics3D();
+            bool sawContact = false;
+            for (int i = 0; i < 120; i++)
+            {
+                physics.Step(scene, Dt);
+                if (physics.Contacts.Count > 0) sawContact = true;
+            }
+
+            Assert.False(sawContact, "layers set not to collide must not report contacts");
+            Assert.True(box.GetComponent<TransformComponent>().Position.Y < -1f, "the box should pass through the floor it does not collide with");
+        }
+        finally
+        {
+            PhysicsSettings.ResetLayerCollisions();
+        }
+    }
+
     // --- Dispatcher enter/stay/exit diffing -----------------------------------------------------
 
     private static (Scene scene, Entity a, Entity b, CollisionRecorder ra, CollisionRecorder rb) TwoScriptedEntities()
