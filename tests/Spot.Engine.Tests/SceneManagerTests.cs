@@ -79,4 +79,92 @@ public class SceneManagerTests : IDisposable
         SceneManager.ApplyPendingSwitch();
         Assert.Null(SceneManager.Current);
     }
+
+    private sealed class Counter : EntityBehaviour
+    {
+        public int Created;
+        public int Destroyed;
+
+        public override void OnCreate() => Created++;
+
+        public override void OnDestroy() => Destroyed++;
+    }
+
+    [Fact]
+    public void PersistentEntity_SurvivesSceneSwitch_WithLiveScriptState()
+    {
+        var a = new RecordingScene("A", new List<string>());
+        SceneManager.Load(a);
+        SceneManager.ApplyPendingSwitch();
+
+        var entity = a.Instantiate("Player");
+        var counter = entity.AddScript<Counter>();
+        ScriptSystem.Update(a, 0f); // runs OnCreate, marks the script started
+        Assert.Equal(1, counter.Created);
+
+        entity.DontDestroyOnLoad();
+
+        var b = new RecordingScene("B", new List<string>());
+        SceneManager.Load(b);
+        SceneManager.ApplyPendingSwitch();
+
+        // The script is neither destroyed nor recreated: its live state carries over.
+        Assert.Equal(0, counter.Destroyed);
+        Assert.Equal(1, counter.Created);
+
+        // It now lives in the new scene (rebound), and is gone from the old one.
+        Assert.Same(b, counter.Entity.Scene);
+        Assert.True(counter.Entity.IsValid);
+        Assert.Contains(b.View<LabelComponent>(), x => x.Name == "Player");
+        Assert.Empty(a.View<LabelComponent>());
+    }
+
+    [Fact]
+    public void PersistentEntity_CarriesItsChildren()
+    {
+        var a = new RecordingScene("A", new List<string>());
+        SceneManager.Load(a);
+        SceneManager.ApplyPendingSwitch();
+
+        var root = a.Instantiate("Root");
+        var child = a.Instantiate("Child");
+        child.SetParent(root);
+        root.DontDestroyOnLoad();
+
+        var b = new RecordingScene("B", new List<string>());
+        SceneManager.Load(b);
+        SceneManager.ApplyPendingSwitch();
+
+        Assert.Equal(2, b.View<LabelComponent>().Count);
+        var roots = new List<Entity>();
+        foreach (var e in b.View<LabelComponent>())
+        {
+            if (e.Parent == null) roots.Add(e);
+        }
+
+        Assert.Single(roots);
+        Assert.Equal("Root", roots[0].Name);
+        var children = new List<Entity>(roots[0].Children);
+        Assert.Single(children);
+        Assert.Equal("Child", children[0].Name);
+    }
+
+    [Fact]
+    public void NonPersistentEntity_IsDestroyedOnSceneSwitch()
+    {
+        var a = new RecordingScene("A", new List<string>());
+        SceneManager.Load(a);
+        SceneManager.ApplyPendingSwitch();
+
+        var entity = a.Instantiate("Temp");
+        var counter = entity.AddScript<Counter>();
+        ScriptSystem.Update(a, 0f);
+
+        var b = new RecordingScene("B", new List<string>());
+        SceneManager.Load(b);
+        SceneManager.ApplyPendingSwitch();
+
+        Assert.Equal(1, counter.Destroyed);
+        Assert.Empty(b.View<LabelComponent>());
+    }
 }

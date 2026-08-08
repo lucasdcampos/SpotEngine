@@ -363,6 +363,121 @@ public class Scene
         return result;
     }
 
+    /// <summary>
+    /// Moves every persistent root entity (marked via <see cref="Entity.DontDestroyOnLoad"/>) and its
+    /// subtree from this scene into <paramref name="target"/>, preserving live component and script
+    /// state. Called by the <see cref="SceneManager"/> during a scene switch, before this scene is
+    /// torn down, so persistent objects carry over rather than being destroyed with the scene.
+    /// </summary>
+    internal void MigratePersistentEntitiesTo(Scene target)
+    {
+        if (ReferenceEquals(this, target))
+        {
+            return;
+        }
+
+        // Snapshot the roots first: adopting mutates this scene's entity set as it goes.
+        var roots = new List<int>();
+        foreach (int id in _entities)
+        {
+            if (GetComponent(new Entity(id, this), typeof(LabelComponent)) is LabelComponent label &&
+                label.Persistent &&
+                new Entity(id, this).Parent is null)
+            {
+                roots.Add(id);
+            }
+        }
+
+        foreach (int rootId in roots)
+        {
+            target.AdoptSubtree(this, rootId);
+        }
+    }
+
+    /// <summary>
+    /// Adopts the entity <paramref name="rootId"/> and all of its descendants from
+    /// <paramref name="source"/> into this scene, reusing the existing component and script instances so
+    /// their runtime state is preserved. Entity ids are re-minted in this scene and every stored entity
+    /// handle (transform, relationship, script) is rebound to the new ids and this scene.
+    /// </summary>
+    private void AdoptSubtree(Scene source, int rootId)
+    {
+        var order = new List<int>();
+        CollectSubtree(source, rootId, order);
+
+        // Pass 1: re-mint ids and move each entity's component instances into this scene's pools.
+        var remap = new Dictionary<int, int>(order.Count);
+        foreach (int oldId in order)
+        {
+            int newId = _nextId++;
+            remap[oldId] = newId;
+            _entities.Add(newId);
+
+            foreach (Dictionary<int, object> sourcePool in source._pools.Values)
+            {
+                if (sourcePool.Remove(oldId, out object? component))
+                {
+                    PoolFor(component.GetType())[newId] = component;
+                }
+            }
+
+            source._entities.Remove(oldId);
+        }
+
+        // Pass 2: rebind every stored entity handle now that all new ids exist.
+        foreach (int newId in remap.Values)
+        {
+            var entity = new Entity(newId, this);
+
+            if (TryGetComponent(entity, out TransformComponent? transform))
+            {
+                transform.Entity = entity;
+            }
+
+            if (TryGetComponent(entity, out RelationshipComponent? rel))
+            {
+                rel.Parent = Remap(rel.Parent, remap);
+                for (int i = 0; i < rel.Children.Count; i++)
+                {
+                    Entity? mapped = Remap(rel.Children[i], remap);
+                    if (mapped.HasValue)
+                    {
+                        rel.Children[i] = mapped.Value;
+                    }
+                }
+            }
+
+            if (TryGetComponent(entity, out ScriptComponent? scripts))
+            {
+                foreach (EntityBehaviour script in scripts.Scripts)
+                {
+                    script.Entity = entity;
+                }
+            }
+        }
+    }
+
+    // Rebinds an entity handle to this scene using the id remap; a handle outside the migrated subtree
+    // (which for a root's parent means it stays behind) becomes null so nothing dangles into the old scene.
+    private Entity? Remap(Entity? handle, Dictionary<int, int> remap) =>
+        handle is Entity value && remap.TryGetValue(value.Id, out int newId)
+            ? new Entity(newId, this)
+            : null;
+
+    // Depth-first list of an entity id and its descendants, gathered from the source scene's hierarchy
+    // before any migration mutates it.
+    private static void CollectSubtree(Scene source, int id, List<int> order)
+    {
+        order.Add(id);
+        if (source.GetComponent(new Entity(id, source), typeof(RelationshipComponent)) is RelationshipComponent rel)
+        {
+            foreach (Entity child in rel.Children.ToList())
+            {
+                CollectSubtree(source, child.Id, order);
+            }
+        }
+    }
+
     internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
 
     internal T AddComponent<T>(Entity entity, T component)

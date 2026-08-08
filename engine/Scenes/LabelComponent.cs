@@ -19,4 +19,12 @@ public sealed class LabelComponent : Component
     /// Gets or sets the entity name.
     /// </summary>
     public string Name { get; set; }
+
+    /// <summary>
+    /// Whether this entity survives a scene switch instead of being destroyed with its scene (the
+    /// engine's equivalent of Unity's <c>DontDestroyOnLoad</c>). Set through
+    /// <see cref="Entity.DontDestroyOnLoad"/>; a runtime concept, not serialized. Only meaningful on a
+    /// root entity — the whole subtree migrates with it.
+    /// </summary>
+    internal bool Persistent { get; set; }
 }

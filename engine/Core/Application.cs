@@ -295,23 +295,9 @@ public class Application
         }
         else if (!string.IsNullOrEmpty(_spec.StartScene))
         {
-            string scenePath = _spec.StartScene;
-            if (!string.IsNullOrEmpty(AssetPath.Root))
-            {
-                scenePath = Path.Combine(AssetPath.Root, scenePath);
-            }
-
-            if (File.Exists(scenePath))
-            {
-                var realScene = new Scene();
-                var serializer = new SceneSerializer(realScene);
-                serializer.Deserialize(scenePath);
-                SceneManager.Load(realScene);
-            }
-            else
-            {
-                Log.CoreError("Start scene not found: {0}", scenePath);
-            }
+            // Resolves guid: references and paths relative to the asset root, and logs (never throws)
+            // when the scene is missing or malformed — the same runtime path used for scene switches.
+            SceneManager.Load(_spec.StartScene);
         }
 
         _stopwatch = Stopwatch.StartNew();
