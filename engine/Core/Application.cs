@@ -354,6 +354,12 @@ public class Application
     {
         _frameFaulted = false;
         Input.NewFrame();
+
+        // The engine owns input while the dev console is open: cursor forced free, game input
+        // withheld. Synced every frame so it also covers closing the console via its window's X
+        // button (which flips IsOpen without going through Toggle).
+        Input.SetEngineCaptured(_console.IsOpen);
+
         _window!.PollEvents();
     }
 
@@ -482,7 +488,9 @@ public class Application
             dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
             dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
 
-            if (!e.Handled)
+            // While the engine owns input, keyboard/mouse events don't reach the game; non-input
+            // events (e.g. window resize) still flow so the scene keeps its framebuffers correct.
+            if (!e.Handled && !(Input.EngineCaptured && e.IsInCategory(EventCategory.Input)))
             {
                 SceneManager.DispatchEvent(e);
             }

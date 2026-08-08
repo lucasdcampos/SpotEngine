@@ -18,19 +18,41 @@ public static class Input
     private static readonly HashSet<MouseButton> ButtonsPressedThisFrame = new();
     private static readonly HashSet<MouseButton> ButtonsReleasedThisFrame = new();
 
+    // What the game last asked for via CursorLocked. Kept separate from the hardware state so the
+    // engine can override the cursor (e.g. while the dev console is open) and later restore exactly
+    // what the game wanted.
+    private static bool _desiredCursorLocked;
+
+    // True while the engine owns input: the cursor is forced free/visible and polled input is
+    // withheld from the game. Driven by Application from the console's open state.
+    private static bool _engineCaptured;
+
+    private static Vector2 _mousePosition;
+    private static Vector2 _mouseScrollDelta;
+
     /// <summary>
     /// Gets the mouse position in window pixels, with the origin at the top-left.
     /// </summary>
-    public static Vector2 MousePosition { get; private set; }
+    /// <remarks>
+    /// Stays live even while the engine has captured input, so consumers that track a previous
+    /// position (e.g. mouse-look) don't jump when capture ends.
+    /// </remarks>
+    public static Vector2 MousePosition => _mousePosition;
 
     /// <summary>
     /// Gets the mouse wheel movement accumulated during the current frame.
     /// </summary>
-    public static Vector2 MouseScrollDelta { get; private set; }
+    public static Vector2 MouseScrollDelta => _engineCaptured ? Vector2.Zero : _mouseScrollDelta;
 
     /// <summary>
     /// Gets or sets whether the cursor is locked and hidden.
     /// </summary>
+    /// <remarks>
+    /// The getter reflects the real, effective hardware state: while the engine has captured input
+    /// the cursor is forced free, so this reads <see langword="false"/> even if the game asked for a
+    /// locked cursor. Setting it records the game's request and applies it immediately unless the
+    /// engine is currently overriding the cursor, in which case it is applied when the override ends.
+    /// </remarks>
     public static bool CursorLocked
     {
         get
@@ -40,11 +62,43 @@ public static class Input
         }
         set
         {
-            var mice = Application.Instance.Window.Input.Mice;
-            if (mice.Count > 0)
+            _desiredCursorLocked = value;
+            if (!_engineCaptured)
             {
-                mice[0].Cursor.CursorMode = value ? Silk.NET.Input.CursorMode.Raw : Silk.NET.Input.CursorMode.Normal;
+                ApplyCursorMode(value);
             }
+        }
+    }
+
+    /// <summary>
+    /// Gets whether the engine currently owns input (cursor forced free, game input withheld).
+    /// </summary>
+    internal static bool EngineCaptured => _engineCaptured;
+
+    /// <summary>
+    /// Sets whether the engine owns input. While captured the cursor is forced free/visible and the
+    /// polled query methods report no input to the game; releasing capture restores the cursor state
+    /// the game last requested. Idempotent.
+    /// </summary>
+    /// <param name="captured">Whether the engine should own input.</param>
+    internal static void SetEngineCaptured(bool captured)
+    {
+        if (captured == _engineCaptured)
+        {
+            return;
+        }
+
+        _engineCaptured = captured;
+        ApplyCursorMode(captured ? false : _desiredCursorLocked);
+    }
+
+    // Writes the cursor mode to the hardware, guarding against having no mouse device.
+    private static void ApplyCursorMode(bool locked)
+    {
+        var mice = Application.Instance.Window.Input.Mice;
+        if (mice.Count > 0)
+        {
+            mice[0].Cursor.CursorMode = locked ? Silk.NET.Input.CursorMode.Raw : Silk.NET.Input.CursorMode.Normal;
         }
     }
 
@@ -53,42 +107,42 @@ public static class Input
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> while the key is down.</returns>
-    public static bool GetKey(Key key) => DownKeys.Contains(key);
+    public static bool GetKey(Key key) => !_engineCaptured && DownKeys.Contains(key);
 
     /// <summary>
     /// Returns whether the key was pressed during this frame.
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> on the frame the key goes down.</returns>
-    public static bool GetKeyDown(Key key) => PressedThisFrame.Contains(key);
+    public static bool GetKeyDown(Key key) => !_engineCaptured && PressedThisFrame.Contains(key);
 
     /// <summary>
     /// Returns whether the key was released during this frame.
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> on the frame the key goes up.</returns>
-    public static bool GetKeyUp(Key key) => ReleasedThisFrame.Contains(key);
+    public static bool GetKeyUp(Key key) => !_engineCaptured && ReleasedThisFrame.Contains(key);
 
     /// <summary>
     /// Returns whether the mouse button is currently held down.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> while the button is down.</returns>
-    public static bool GetMouseButton(MouseButton button) => DownButtons.Contains(button);
+    public static bool GetMouseButton(MouseButton button) => !_engineCaptured && DownButtons.Contains(button);
 
     /// <summary>
     /// Returns whether the mouse button was pressed during this frame.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> on the frame the button goes down.</returns>
-    public static bool GetMouseButtonDown(MouseButton button) => ButtonsPressedThisFrame.Contains(button);
+    public static bool GetMouseButtonDown(MouseButton button) => !_engineCaptured && ButtonsPressedThisFrame.Contains(button);
 
     /// <summary>
     /// Returns whether the mouse button was released during this frame.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> on the frame the button goes up.</returns>
-    public static bool GetMouseButtonUp(MouseButton button) => ButtonsReleasedThisFrame.Contains(button);
+    public static bool GetMouseButtonUp(MouseButton button) => !_engineCaptured && ButtonsReleasedThisFrame.Contains(button);
 
     /// <summary>
     /// Clears the per-frame state. Called by the application before polling the next frame's events.
@@ -99,7 +153,7 @@ public static class Input
         ReleasedThisFrame.Clear();
         ButtonsPressedThisFrame.Clear();
         ButtonsReleasedThisFrame.Clear();
-        MouseScrollDelta = Vector2.Zero;
+        _mouseScrollDelta = Vector2.Zero;
     }
 
     /// <summary>
@@ -138,11 +192,11 @@ public static class Input
                 break;
 
             case MouseMovedEvent moved:
-                MousePosition = new Vector2(moved.X, moved.Y);
+                _mousePosition = new Vector2(moved.X, moved.Y);
                 break;
 
             case MouseScrolledEvent scrolled:
-                MouseScrollDelta += new Vector2(scrolled.XOffset, scrolled.YOffset);
+                _mouseScrollDelta += new Vector2(scrolled.XOffset, scrolled.YOffset);
                 break;
         }
     }

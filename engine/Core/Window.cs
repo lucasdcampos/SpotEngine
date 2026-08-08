@@ -64,6 +64,17 @@ public sealed class Window : IDisposable
         _window = SilkWindow.Create(options);
         _window.Initialize();
 
+        // Center the window on the primary monitor by default. Hosts that manage their own window
+        // placement (e.g. the editor restoring a saved layout) re-apply their position afterwards.
+        try
+        {
+            _window.Center();
+        }
+        catch
+        {
+            // Centering is best-effort; never let window placement take the process down.
+        }
+
         _input = _window.CreateInput();
         SetupCallbacks();
 
