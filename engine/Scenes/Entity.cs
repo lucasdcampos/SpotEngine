@@ -36,6 +36,22 @@ public readonly struct Entity : IEquatable<Entity>
     }
 
     /// <summary>
+    /// Gets or sets the entity's tag (stored in its <see cref="LabelComponent"/>). Tags classify
+    /// entities for lookup; see <see cref="Scene.FindByTag"/> and <see cref="CompareTag"/>.
+    /// </summary>
+    public string Tag
+    {
+        get => GetComponent<LabelComponent>().Tag;
+        set => GetComponent<LabelComponent>().Tag = value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns whether the entity's <see cref="Tag"/> equals <paramref name="tag"/> (ordinal comparison).
+    /// </summary>
+    /// <param name="tag">The tag to compare against.</param>
+    public bool CompareTag(string tag) => string.Equals(Tag, tag, StringComparison.Ordinal);
+
+    /// <summary>
     /// Gets or sets a value indicating whether this entity is enabled.
     /// If disabled, it and its children will not be updated or rendered.
     /// </summary>
@@ -173,6 +189,53 @@ public readonly struct Entity : IEquatable<Entity>
     /// <typeparam name="T">The component type.</typeparam>
     public void RemoveComponent<T>()
         where T : class => OwningScene.RemoveComponent<T>(this);
+
+    /// <summary>
+    /// Returns the first component of type <typeparamref name="T"/> found on this entity or, failing
+    /// that, anywhere in its descendants (depth-first). Returns <see langword="null"/> if none exists.
+    /// </summary>
+    /// <typeparam name="T">The component type to search for.</typeparam>
+    public T? GetComponentInChildren<T>()
+        where T : class
+    {
+        if (TryGetComponent(out T? component))
+        {
+            return component;
+        }
+
+        foreach (Entity child in Children)
+        {
+            T? found = child.GetComponentInChildren<T>();
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the first component of type <typeparamref name="T"/> found on this entity or, failing
+    /// that, walking up its ancestors. Returns <see langword="null"/> if none exists.
+    /// </summary>
+    /// <typeparam name="T">The component type to search for.</typeparam>
+    public T? GetComponentInParent<T>()
+        where T : class
+    {
+        Entity? current = this;
+        while (current is Entity entity)
+        {
+            if (entity.TryGetComponent(out T? component))
+            {
+                return component;
+            }
+
+            current = entity.Parent;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Determines whether the entity has a component of the given runtime type.

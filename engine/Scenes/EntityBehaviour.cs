@@ -45,6 +45,18 @@ public abstract class EntityBehaviour
     protected Entity Instantiate(string name = "Entity") => Scene.Instantiate(name);
 
     /// <summary>
+    /// Finds the first entity in this script's scene with the given name, or <see langword="null"/>.
+    /// </summary>
+    /// <param name="name">The entity name to search for.</param>
+    protected Entity? Find(string name) => Scene.Find(name);
+
+    /// <summary>
+    /// Finds the first entity in this script's scene tagged <paramref name="tag"/>, or <see langword="null"/>.
+    /// </summary>
+    /// <param name="tag">The tag to search for.</param>
+    protected Entity? FindByTag(string tag) => Scene.FindByTag(tag);
+
+    /// <summary>
     /// Marks the given entity for destruction at the end of the frame.
     /// </summary>
     /// <param name="entity">The entity to destroy.</param>
