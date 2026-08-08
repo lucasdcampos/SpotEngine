@@ -18,11 +18,12 @@ public class CharacterController3DComponent : Component
     public float WalkSpeed { get; set; } = 4.0f;
     public float RunSpeed { get; set; } = 8.0f;
     public float CrouchSpeed { get; set; } = 2.5f;
-    public float JumpForce { get; set; } = 6.0f;
+    public float JumpForce { get; set; } = 5.5f;
+    public float NoClipSpeed { get; set; } = 20.0f;
 
     // Ground feel.
-    public float GroundAcceleration { get; set; } = 10.0f;
-    public float GroundFriction { get; set; } = 8.0f;
+    public float GroundAcceleration { get; set; } = 15.0f;
+    public float GroundFriction { get; set; } = 12.0f;
 
     // Air feel. AirAcceleration is intentionally large; MaxAirSpeed is the small cap on how much
     // speed you may gain *along* the wish direction each tick. Because the cap is on the projection
@@ -33,11 +34,16 @@ public class CharacterController3DComponent : Component
     public float MaxAirSpeed { get; set; } = 1.0f;
 
     // Gravity multiplier applied to the body while controlled (higher = snappier fall).
-    public float GravityMultiplier { get; set; } = 1.8f;
+    public float GravityMultiplier { get; set; } = 2.5f;
 
     // Crouch collider heights (units). Feet stay planted; the camera lowers by the difference.
     public float StandHeight { get; set; } = 1.7f;
     public float CrouchHeight { get; set; } = 0.9f;
+
+    // Head bobbing.
+    public bool EnableBobbing { get; set; } = true;
+    public float BobFrequency { get; set; } = 14.0f;
+    public float BobAmplitude { get; set; } = 0.05f;
 
     // Mouse look.
     public float MouseSensitivity { get; set; } = 0.1f;
@@ -46,12 +52,14 @@ public class CharacterController3DComponent : Component
 
     // Internal runtime state — hidden from the inspector and not serialized.
     [HideInInspector] public bool IsCrouching { get; set; }
+    [HideInInspector] public bool IsNoClip { get; set; }
     [HideInInspector] public bool IsGrounded { get; set; }
     [HideInInspector] public float CrouchAmount { get; set; }
     [HideInInspector] public float Pitch { get; set; }
     [HideInInspector] public float Yaw { get; set; }
     [HideInInspector] public Vector2 LastMousePos { get; set; }
     [HideInInspector] public bool FirstMouse { get; set; } = true;
+    [HideInInspector] public float BobTimer { get; set; }
     [HideInInspector] public float CameraBaseHeight { get; set; }
     [HideInInspector] public bool CameraCaptured { get; set; }
     [HideInInspector] public bool LoggedMissingBodyWarning { get; set; }
