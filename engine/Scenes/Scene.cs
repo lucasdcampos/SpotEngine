@@ -482,6 +482,60 @@ public class Scene
         }
     }
 
+    /// <summary>
+    /// Returns the first entity whose name equals <paramref name="name"/> (ordinal comparison), or
+    /// <see langword="null"/> if none matches. Names are not guaranteed unique; the first match wins.
+    /// </summary>
+    /// <param name="name">The entity name to search for.</param>
+    public Entity? Find(string name)
+    {
+        foreach (Entity entity in View<LabelComponent>())
+        {
+            if (string.Equals(GetComponent<LabelComponent>(entity).Name, name, StringComparison.Ordinal))
+            {
+                return entity;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns the first entity tagged <paramref name="tag"/>, or <see langword="null"/> if none matches.
+    /// </summary>
+    /// <param name="tag">The tag to search for.</param>
+    public Entity? FindByTag(string tag)
+    {
+        foreach (Entity entity in View<LabelComponent>())
+        {
+            if (string.Equals(GetComponent<LabelComponent>(entity).Tag, tag, StringComparison.Ordinal))
+            {
+                return entity;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Returns every entity tagged <paramref name="tag"/> as a snapshot list, safe to modify the scene
+    /// while iterating.
+    /// </summary>
+    /// <param name="tag">The tag to search for.</param>
+    public IReadOnlyList<Entity> FindEntitiesByTag(string tag)
+    {
+        var result = new List<Entity>();
+        foreach (Entity entity in View<LabelComponent>())
+        {
+            if (string.Equals(GetComponent<LabelComponent>(entity).Tag, tag, StringComparison.Ordinal))
+            {
+                result.Add(entity);
+            }
+        }
+
+        return result;
+    }
+
     internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
 
     internal T AddComponent<T>(Entity entity, T component)

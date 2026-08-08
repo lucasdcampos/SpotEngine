@@ -51,9 +51,15 @@ public class SceneSerializer
     {
         var obj = new JsonObject();
 
-        // Tag is structural: it holds the name and the entity's enabled state.
+        // Tag is structural: it holds the name, the entity's enabled state, and its category tag.
         var tag = entity.GetComponent<LabelComponent>();
-        obj["Tag"] = new JsonObject { ["Name"] = tag.Name, ["Enabled"] = entity.Enabled };
+        var tagObj = new JsonObject { ["Name"] = tag.Name, ["Enabled"] = entity.Enabled };
+        if (!string.IsNullOrEmpty(tag.Tag))
+        {
+            tagObj["Tag"] = tag.Tag;
+        }
+
+        obj["Tag"] = tagObj;
 
         // Every registered component is written generically by reflection.
         foreach (var (type, key) in ComponentSerialization.WriteOrder)
@@ -171,14 +177,17 @@ public class SceneSerializer
     {
         string name = "Entity";
         bool enabled = true;
+        string tag = string.Empty;
         if (entityObj["Tag"] is JsonObject tagObj)
         {
             name = tagObj["Name"]?.GetValue<string>() ?? "Entity";
             enabled = tagObj["Enabled"]?.GetValue<bool>() ?? true;
+            tag = tagObj["Tag"]?.GetValue<string>() ?? string.Empty;
         }
 
         var entity = scene.Instantiate(name);
         entity.Enabled = enabled;
+        entity.Tag = tag;
         if (parent != null)
         {
             entity.SetParent(parent);
