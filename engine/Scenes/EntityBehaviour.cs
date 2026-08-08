@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace Spot.Scenes;
 
 /// <summary>
@@ -7,6 +9,10 @@ namespace Spot.Scenes;
 /// </summary>
 public abstract class EntityBehaviour
 {
+    // Lazily created the first time the script schedules a coroutine or invoke, so scripts that never
+    // use scheduling pay nothing (no allocation, no per-frame tick).
+    private ScriptScheduler? _scheduler;
+
     /// <summary>
     /// Gets the entity this script is attached to.
     /// </summary>
@@ -66,6 +72,76 @@ public abstract class EntityBehaviour
     /// Marks this script's own entity for destruction at the end of the frame.
     /// </summary>
     protected void Destroy() => Scene.Destroy(Entity);
+
+    private ScriptScheduler Scheduler => _scheduler ??= new ScriptScheduler(this);
+
+    /// <summary>
+    /// Starts a coroutine: a method returning <see cref="IEnumerator"/> that <c>yield return</c>s to
+    /// suspend itself across frames. Yield <see langword="null"/> to wait one frame, a
+    /// <see cref="YieldInstruction"/> (such as <see cref="WaitForSeconds"/>, <see cref="WaitUntil"/>) to
+    /// wait for a condition, or another <see cref="IEnumerator"/> to run it as a nested coroutine before
+    /// resuming. The coroutine takes its first step on the next frame and stops automatically when the
+    /// entity is destroyed or its scene is left.
+    /// </summary>
+    /// <param name="routine">The coroutine body.</param>
+    /// <returns>A handle for stopping the coroutine or polling <see cref="Coroutine.IsRunning"/>.</returns>
+    protected Coroutine StartCoroutine(IEnumerator routine) => Scheduler.StartCoroutine(routine);
+
+    /// <summary>
+    /// Stops a coroutine previously started on this script. A no-op if it already finished.
+    /// </summary>
+    /// <param name="coroutine">The handle returned by <see cref="StartCoroutine"/>.</param>
+    protected void StopCoroutine(Coroutine coroutine) => _scheduler?.StopCoroutine(coroutine);
+
+    /// <summary>
+    /// Stops every coroutine currently running on this script.
+    /// </summary>
+    protected void StopAllCoroutines() => _scheduler?.StopAllCoroutines();
+
+    /// <summary>
+    /// Schedules <paramref name="action"/> to run once after <paramref name="delay"/> seconds on the
+    /// scaled clock (so it respects pause and slow motion).
+    /// </summary>
+    /// <param name="action">The callback to invoke.</param>
+    /// <param name="delay">The delay in scaled seconds before the callback runs.</param>
+    protected void Invoke(Action action, float delay) => Scheduler.Invoke(action, delay);
+
+    /// <summary>
+    /// Schedules <paramref name="action"/> to run after <paramref name="delay"/> seconds and then
+    /// repeatedly every <paramref name="interval"/> seconds until <see cref="CancelInvoke()"/> or the
+    /// entity is destroyed. Timing is on the scaled clock.
+    /// </summary>
+    /// <param name="action">The callback to invoke.</param>
+    /// <param name="delay">The delay in scaled seconds before the first call.</param>
+    /// <param name="interval">The interval in scaled seconds between subsequent calls.</param>
+    protected void InvokeRepeating(Action action, float delay, float interval) =>
+        Scheduler.InvokeRepeating(action, delay, interval);
+
+    /// <summary>
+    /// Cancels every pending invocation scheduled on this script.
+    /// </summary>
+    protected void CancelInvoke() => _scheduler?.CancelInvoke();
+
+    /// <summary>
+    /// Cancels every pending invocation whose callback is <paramref name="action"/>.
+    /// </summary>
+    /// <param name="action">The callback whose scheduled invocations should be cancelled.</param>
+    protected void CancelInvoke(Action action) => _scheduler?.CancelInvoke(action);
+
+    /// <summary>
+    /// Gets a value indicating whether any invocation scheduled via <see cref="Invoke"/> or
+    /// <see cref="InvokeRepeating"/> is still pending.
+    /// </summary>
+    /// <returns><see langword="true"/> if at least one invocation is pending.</returns>
+    protected bool IsInvoking() => _scheduler?.IsInvoking() ?? false;
+
+    /// <summary>
+    /// Advances this script's coroutines and scheduled invocations by one frame. Called by the
+    /// <see cref="ScriptSystem"/> after <see cref="OnUpdate"/>; does nothing until the script schedules
+    /// its first piece of work.
+    /// </summary>
+    internal void TickScheduling(float scaledDelta, float unscaledDelta) =>
+        _scheduler?.Tick(scaledDelta, unscaledDelta);
 
     /// <summary>
     /// Called once, on the first frame after the script is attached.
