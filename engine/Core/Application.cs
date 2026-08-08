@@ -374,6 +374,11 @@ public class Application
         // stalled frame simply runs in slow motion instead of blowing up the simulation.
         _deltaTime = Math.Min(_deltaTime, MaxDeltaTime);
 
+        // Publish the frame clock from the clamped real delta. Gameplay advances on the scaled delta
+        // (Time.DeltaTime, respecting Time.TimeScale); engine services stay on the real delta so
+        // pausing or slow-mo never starves audio, asset streaming, or the editor.
+        Spot.Core.Time.NewFrame(_deltaTime);
+
         try
         {
             // Finish any background asset loads (build their GPU buffers) before this frame renders, so
@@ -381,7 +386,7 @@ public class Application
             ModelImporter.ProcessPendingUploads();
 
             SceneManager.ApplyPendingSwitch();
-            SceneManager.Update(_deltaTime);
+            SceneManager.Update(Spot.Core.Time.DeltaTime);
 
             foreach (var service in _services)
             {
