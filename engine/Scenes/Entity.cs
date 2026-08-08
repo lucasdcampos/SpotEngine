@@ -202,6 +202,22 @@ public readonly struct Entity : IEquatable<Entity>
     public void RemoveComponent(Type type) => OwningScene.RemoveComponent(this, type);
 
     /// <summary>
+    /// Marks this entity to survive scene switches instead of being destroyed with its scene (the
+    /// engine's <c>DontDestroyOnLoad</c>). The whole subtree carries over with live component and script
+    /// state preserved, so it must be a root: an entity with a parent is detached to the scene root
+    /// first, matching Unity's behaviour.
+    /// </summary>
+    public void DontDestroyOnLoad()
+    {
+        if (Parent != null)
+        {
+            SetParent(null);
+        }
+
+        GetComponent<LabelComponent>().Persistent = true;
+    }
+
+    /// <summary>
     /// Attaches a new script of the given type to the entity.
     /// </summary>
     /// <typeparam name="T">The script type.</typeparam>
