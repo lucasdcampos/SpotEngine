@@ -1,0 +1,2446 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Sun",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          10,
+          0
+        ],
+        "Rotation": [
+          -40,
+          45,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Light": {
+        "Enabled": true,
+        "Type": 0,
+        "Color": [
+          0.94,
+          0.95,
+          0.87
+        ],
+        "Intensity": 1,
+        "AmbientIntensity": 0.35,
+        "CastShadows": true,
+        "Range": 10
+      },
+      "Skybox": {
+        "Enabled": true,
+        "SkyColor": [
+          0.216,
+          0.415,
+          0.602
+        ],
+        "GroundColor": [
+          0.259,
+          0.39,
+          0.469
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Post Processing",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "PostProcessing": {
+        "Enabled": true,
+        "Tonemap": 2,
+        "Exposure": 1,
+        "Gamma": 2.2,
+        "EnableVignette": true,
+        "VignetteIntensity": 0.03,
+        "EnableFXAA": true,
+        "EnableBloom": true,
+        "BloomThreshold": 1,
+        "BloomIntensity": 1
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Ground",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          60,
+          1,
+          60
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.85,
+          0.85,
+          0.88,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Player",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          2,
+          14
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "CharacterController3D": {
+        "Enabled": true,
+        "WalkSpeed": 4,
+        "RunSpeed": 8,
+        "CrouchSpeed": 2.5,
+        "JumpForce": 5.5,
+        "NoClipSpeed": 20,
+        "GroundAcceleration": 15,
+        "GroundFriction": 12,
+        "AirAcceleration": 100,
+        "MaxAirSpeed": 1,
+        "GravityMultiplier": 2.5,
+        "StandHeight": 1.7,
+        "CrouchHeight": 0.9,
+        "EnableBobbing": true,
+        "BobFrequency": 14,
+        "BobAmplitude": 0.05,
+        "MouseSensitivity": 0.1,
+        "MaxPitch": 89,
+        "LockMouse": true
+      },
+      "CapsuleCollider3D": {
+        "Enabled": true,
+        "Radius": 0.3,
+        "Length": 1.1,
+        "Offset": [
+          0,
+          0.85,
+          0
+        ]
+      },
+      "Children": [
+        {
+          "Tag": {
+            "Name": "Camera",
+            "Enabled": true
+          },
+          "Transform": {
+            "Enabled": true,
+            "Position": [
+              0,
+              1.6,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "Camera": {
+            "Primary": true,
+            "FixedAspectRatio": false,
+            "BackgroundColor": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ProjectionType": 1,
+            "ZoomLevel": 5,
+            "FieldOfView": 60,
+            "NearClip": 0.1,
+            "FarClip": 1000,
+            "Enabled": true
+          },
+          "AudioListener": {
+            "Enabled": true
+          }
+        }
+      ]
+    },
+    {
+      "Tag": {
+        "Name": "Stack0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -0.54844415,
+          1,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Stack1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          2.02,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Stack2",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0.1967322,
+          3.04,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Stack3",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          4.06,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.4,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Stack4",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -0.7479869,
+          5.08,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.4,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Stack5",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0.05586476,
+          6.1,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.45,
+          0.95,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Fall0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6,
+          3,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.25,
+          0.8,
+          0.35,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Fall1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -5.5268135,
+          5.2,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.25,
+          0.8,
+          0.35,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Fall2",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6.230619,
+          7.4,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.25,
+          0.8,
+          0.35,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Fall3",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6,
+          9.6,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.25,
+          0.8,
+          0.35,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Bounce0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          5.9995923,
+          4,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          1,
+          0.55,
+          0.1,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0.7,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Bounce1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          6.5175457,
+          6.2,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          1,
+          0.55,
+          0.1,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0.7,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Bounce2",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          6,
+          8.4,
+          2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          1,
+          0.55,
+          0.1,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0.7,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -1.05,
+          1,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          1,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr2",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          1.05,
+          1,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr3",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -0.53,
+          2.05,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr4",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0.53,
+          2.05,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Pyr5",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          3.1,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.62,
+          0.32,
+          0.92,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Ramp",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -10,
+          1.4,
+          -2
+        ],
+        "Rotation": [
+          -28,
+          -184.65395,
+          0
+        ],
+        "Scale": [
+          4,
+          0.3,
+          7
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.5,
+          0.5,
+          0.55,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.3,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Slide0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -10,
+          5,
+          -4
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.8,
+          0.8,
+          0.8
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.85,
+          0.85,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.05,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Slide1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -10,
+          5.5,
+          -2
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.8,
+          0.8,
+          0.8
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.2,
+          0.85,
+          0.85,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.05,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall00",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          9,
+          1,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall01",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          9,
+          2.02,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall02",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          9,
+          3.04,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall10",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          10.02,
+          1,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall11",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          10.02,
+          2.02,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall12",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          10.02,
+          3.04,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall20",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          11.04,
+          1,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall21",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          11.04,
+          2.02,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall22",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          11.04,
+          3.04,
+          -3
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.6,
+          0.6,
+          0.62,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Heavy",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -3,
+          3,
+          -9
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2,
+          2,
+          2
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.96,
+          0.85,
+          0.2,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 20,
+        "Friction": 0.6,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Light0",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -4.5,
+          1,
+          -9
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.7,
+          0.7,
+          0.7
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.92,
+          0.22,
+          0.22,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Light1",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -1.5,
+          1,
+          -9
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.7,
+          0.7,
+          0.7
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          0.92,
+          0.22,
+          0.22,
+          1
+        ]
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

@@ -35,6 +35,7 @@ public static class SceneManager
         {
             ScriptSystem.DestroyAll(s_current);
             s_current.OnExit();
+            s_current.TeardownPhysics();
         }
 
         s_current = s_pending;
@@ -64,6 +65,7 @@ public static class SceneManager
         {
             ScriptSystem.DestroyAll(s_current);
             s_current.OnExit();
+            s_current.TeardownPhysics();
         }
 
         s_current = null;

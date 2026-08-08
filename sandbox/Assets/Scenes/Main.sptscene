@@ -147,7 +147,12 @@
         ],
         "GravityScale": 1,
         "LinearDrag": 0,
-        "IsDynamic": false
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "BoxCollider3D": {
         "Enabled": true,
@@ -206,7 +211,12 @@
         ],
         "GravityScale": 2,
         "LinearDrag": 3,
-        "IsDynamic": true
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "BoxCollider3D": {
         "Enabled": true,
@@ -297,7 +307,12 @@
         ],
         "GravityScale": 1,
         "LinearDrag": 0,
-        "IsDynamic": true
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "CharacterController3D": {
         "Enabled": true,
@@ -501,7 +516,12 @@
         ],
         "GravityScale": 1,
         "LinearDrag": 0,
-        "IsDynamic": false
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "BoxCollider3D": {
         "Enabled": true,
@@ -559,8 +579,13 @@
           0
         ],
         "GravityScale": 1,
-        "LinearDrag": 5,
-        "IsDynamic": true
+        "LinearDrag": 0,
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "BoxCollider3D": {
         "Enabled": true,
@@ -627,7 +652,12 @@
         ],
         "GravityScale": 3,
         "LinearDrag": 4,
-        "IsDynamic": true
+        "IsDynamic": true,
+        "Mass": 1,
+        "Friction": 0.5,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
       },
       "BoxCollider3D": {
         "Enabled": true,
