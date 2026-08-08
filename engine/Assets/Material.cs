@@ -29,10 +29,10 @@ public sealed class Material
         public float[] Color { get; set; } = new float[4] { 1, 1, 1, 1 };
         public string? TexturePath { get; set; }
         public string? ShaderType { get; set; }
-        public float WaveSpeed { get; set; } = 1.0f;
+        public float WaveSpeed { get; set; } = 0.6f;
         public float WaveScale { get; set; } = 1.0f;
-        public float WaveStrength { get; set; } = 0.3f;
-        public float SpecularPower { get; set; } = 64.0f;
+        public float WaveStrength { get; set; } = 0.25f;
+        public float SpecularPower { get; set; } = 200.0f;
         public float Metallic { get; set; } = 0.0f;
         public float[] Emissive { get; set; } = new float[3] { 0.0f, 0.0f, 0.0f };
         public float EmissiveIntensity { get; set; } = 1.0f;
@@ -67,11 +67,14 @@ public sealed class Material
     /// <summary>If true, automatically tiles the texture based on the object's scale to prevent stretching.</summary>
     public bool AutoTile { get; set; } = false;
 
-    // Water specific properties
-    public float WaveSpeed { get; set; } = 1.0f;
+    // Water specific properties.
+    // WaveScale is a master frequency multiplier over an absolute, world-space wave band, so one
+    // material looks right from a puddle to an ocean; WaveStrength is overall surface bumpiness;
+    // SpecularPower sharpens the sun glint.
+    public float WaveSpeed { get; set; } = 0.6f;
     public float WaveScale { get; set; } = 1.0f;
-    public float WaveStrength { get; set; } = 0.3f;
-    public float SpecularPower { get; set; } = 64.0f;
+    public float WaveStrength { get; set; } = 0.25f;
+    public float SpecularPower { get; set; } = 200.0f;
 
     /// <summary>Gets the texture sampled across the surface, or <see langword="null"/> for a solid color.</summary>
     public Texture2D? Texture { get; private set; }

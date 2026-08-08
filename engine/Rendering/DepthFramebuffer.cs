@@ -66,12 +66,19 @@ public sealed class DepthFramebuffer : IDisposable
         // DepthComponent and Float for better precision
         _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.DepthComponent, Width, Height, 0, PixelFormat.DepthComponent, PixelType.Float, null);
         
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-        
+        // Linear filtering + hardware depth comparison turns every tap through a sampler2DShadow into a
+        // 2x2 bilinear percentage-closer sample, which is what smooths the blocky shadow edges. The
+        // shaders sample this as a sampler2DShadow with a LEQUAL compare.
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareMode, (int)GLEnum.CompareRefToTexture);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareFunc, (int)GLEnum.Lequal);
+
+        // Clamp-to-border with a "far" (1.0) border so anything sampled outside the shadowed region reads
+        // as fully lit instead of smearing the edge texels — the region just stops casting, no artifact.
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToBorder);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToBorder);
-        
+
         float[] borderColor = { 1.0f, 1.0f, 1.0f, 1.0f };
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor, borderColor);
 
