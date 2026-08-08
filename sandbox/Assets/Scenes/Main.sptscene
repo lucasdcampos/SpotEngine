@@ -197,17 +197,6 @@
           1
         ]
       },
-      "AudioSource": {
-        "ClipPath": "guid:ae9e04f6b94c43dfbe135ed77e5ca7d6",
-        "Volume": 1,
-        "Pitch": 1,
-        "Loop": true,
-        "PlayOnAwake": true,
-        "Spatial": true,
-        "MinDistance": 1,
-        "MaxDistance": 100,
-        "Enabled": true
-      },
       "PhysicsBody3D": {
         "Enabled": true,
         "Velocity": [
@@ -312,17 +301,21 @@
       },
       "CharacterController3D": {
         "Enabled": true,
-        "WalkSpeed": 8,
-        "RunSpeed": 6,
+        "WalkSpeed": 4,
+        "RunSpeed": 8,
         "CrouchSpeed": 2.5,
-        "JumpForce": 5,
-        "GroundAcceleration": 10,
-        "GroundFriction": 8,
+        "JumpForce": 5.5,
+        "NoClipSpeed": 20,
+        "GroundAcceleration": 15,
+        "GroundFriction": 12,
         "AirAcceleration": 100,
         "MaxAirSpeed": 1,
-        "GravityMultiplier": 1.8,
+        "GravityMultiplier": 2.5,
         "StandHeight": 1.7,
         "CrouchHeight": 0.9,
+        "EnableBobbing": true,
+        "BobFrequency": 14,
+        "BobAmplitude": 0.05,
         "MouseSensitivity": 0.1,
         "MaxPitch": 89,
         "LockMouse": true
@@ -703,6 +696,41 @@
           0,
           0,
           0
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Cube",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "MaterialPath": null,
+        "Color": [
+          1,
+          1,
+          1,
+          1
         ]
       }
     }
