@@ -22,6 +22,13 @@ internal interface IPhysics3D : IDisposable
     /// with the closest intersection within <paramref name="maxDistance"/>, otherwise <see langword="false"/>.
     /// </summary>
     bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit);
+
+    /// <summary>
+    /// The overlapping collidable pairs detected during the most recent <see cref="Step"/>, consumed by
+    /// the <see cref="CollisionDispatcher"/> to raise enter/stay/exit callbacks. A backend that does not
+    /// report contacts returns an empty list.
+    /// </summary>
+    IReadOnlyList<ContactPair> Contacts { get; }
 }
 
 /// <summary>

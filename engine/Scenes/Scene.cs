@@ -20,6 +20,7 @@ public class Scene
     private readonly HashSet<int> _pendingDestroy = new();
     private int _nextId = 1;
     private IPhysics3D? _physics3D;
+    private CollisionDispatcher? _collisions;
 
     /// <summary>
     /// Called once when the scene becomes active. Create resources and entities here.
@@ -55,7 +56,9 @@ public class Scene
         OnUpdate(deltaTime);
         Spot.Physics.CharacterController3DSystem.Update(this, deltaTime);
         Spot.Physics.Physics2DSystem.Update(this, deltaTime);
-        EnsurePhysics3D().Step(this, deltaTime);
+        IPhysics3D physics = EnsurePhysics3D();
+        physics.Step(this, deltaTime);
+        (_collisions ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
         AudioSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
@@ -251,6 +254,7 @@ public class Scene
             Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
         }
         _physics3D = null;
+        _collisions?.Reset();
     }
 
     /// <summary>

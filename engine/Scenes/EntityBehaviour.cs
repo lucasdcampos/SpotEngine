@@ -83,4 +83,53 @@ public abstract class EntityBehaviour
     public virtual void OnImGuiRender()
     {
     }
+
+    /// <summary>
+    /// Called on the physics step when this entity's (non-trigger) collider begins touching another.
+    /// </summary>
+    /// <param name="collision">The contact, including the other entity and a contact normal/point.</param>
+    public virtual void OnCollisionEnter(Physics.Collision collision)
+    {
+    }
+
+    /// <summary>
+    /// Called on each physics step while this entity's collider keeps touching another.
+    /// </summary>
+    /// <param name="collision">The contact, including the other entity and a contact normal/point.</param>
+    public virtual void OnCollisionStay(Physics.Collision collision)
+    {
+    }
+
+    /// <summary>
+    /// Called on the physics step when this entity's collider stops touching another.
+    /// </summary>
+    /// <param name="collision">The contact that ended (the other entity; normal/point are the last known values).</param>
+    public virtual void OnCollisionExit(Physics.Collision collision)
+    {
+    }
+
+    /// <summary>
+    /// Called on the physics step when another collider enters this entity's trigger volume (or this
+    /// entity's collider enters another's trigger). Triggers overlap without a physical response.
+    /// </summary>
+    /// <param name="other">The other entity in the overlap.</param>
+    public virtual void OnTriggerEnter(Entity other)
+    {
+    }
+
+    /// <summary>
+    /// Called on each physics step while another collider stays within this entity's trigger overlap.
+    /// </summary>
+    /// <param name="other">The other entity in the overlap.</param>
+    public virtual void OnTriggerStay(Entity other)
+    {
+    }
+
+    /// <summary>
+    /// Called on the physics step when a collider leaves this entity's trigger overlap.
+    /// </summary>
+    /// <param name="other">The other entity that left the overlap.</param>
+    public virtual void OnTriggerExit(Entity other)
+    {
+    }
 }

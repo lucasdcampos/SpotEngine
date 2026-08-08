@@ -51,8 +51,13 @@ internal sealed class BepuMaterials
 internal struct BepuNarrowPhaseCallbacks : INarrowPhaseCallbacks
 {
     private readonly BepuMaterials _materials;
+    private readonly BepuContacts _contacts;
 
-    public BepuNarrowPhaseCallbacks(BepuMaterials materials) => _materials = materials;
+    public BepuNarrowPhaseCallbacks(BepuMaterials materials, BepuContacts contacts)
+    {
+        _materials = materials;
+        _contacts = contacts;
+    }
 
     public void Initialize(Simulation simulation)
     {
@@ -69,6 +74,36 @@ internal struct BepuNarrowPhaseCallbacks : INarrowPhaseCallbacks
     public readonly bool ConfigureContactManifold<TManifold>(int workerIndex, CollidablePair pair, ref TManifold manifold, out PairMaterialProperties pairMaterial)
         where TManifold : unmanaged, IContactManifold<TManifold>
     {
+        // Record the pair for collision/trigger callbacks when it is actually touching (a contact with
+        // non-negative depth), so speculative near-misses within the margin don't fire events.
+        bool isTrigger = _contacts.IsTrigger(pair.A) || _contacts.IsTrigger(pair.B);
+        int count = manifold.Count;
+        float bestDepth = float.NegativeInfinity;
+        Vector3 bestNormal = default;
+        Vector3 bestOffset = default;
+        for (int i = 0; i < count; i++)
+        {
+            manifold.GetContact(i, out Vector3 offset, out Vector3 normal, out float depth, out int _);
+            if (depth > bestDepth)
+            {
+                bestDepth = depth;
+                bestNormal = normal;
+                bestOffset = offset;
+            }
+        }
+
+        if (bestDepth >= 0f)
+        {
+            _contacts.Record(workerIndex, new RawContact(pair.A, pair.B, isTrigger, bestNormal, bestOffset));
+        }
+
+        // A trigger reports overlap but generates no constraints, so bodies pass through it.
+        if (isTrigger)
+        {
+            pairMaterial = default;
+            return false;
+        }
+
         float fa = _materials.FrictionOf(pair.A);
         float fb = _materials.FrictionOf(pair.B);
         pairMaterial.FrictionCoefficient = MathF.Sqrt(MathF.Max(0f, fa) * MathF.Max(0f, fb));

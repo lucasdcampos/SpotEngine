@@ -99,6 +99,31 @@ internal static class ScriptSystem
     }
 
     /// <summary>
+    /// Invokes <paramref name="action"/> for each started, non-faulted script on an active entity whose
+    /// script component is enabled, applying the same guard/quarantine as the per-frame update. Used to
+    /// deliver out-of-band callbacks (such as physics collision events) without duplicating the gating.
+    /// </summary>
+    internal static void ForEachLiveScript(Entity entity, string phase, Action<EntityBehaviour> action)
+    {
+        if (!entity.IsValid || !entity.IsActiveInHierarchy()) return;
+        if (!entity.TryGetComponent(out ScriptComponent? scriptComp) || !scriptComp.Enabled) return;
+
+        foreach (EntityBehaviour script in scriptComp.Scripts.ToList())
+        {
+            if (script.Faulted || !script.Started) continue;
+
+            try
+            {
+                action(script);
+            }
+            catch (Exception ex)
+            {
+                Quarantine(script, phase, ex);
+            }
+        }
+    }
+
+    /// <summary>
     /// Disables a script that threw from a lifecycle hook and logs the fault once. The script is
     /// skipped on later frames so the failure is not repeated every frame.
     /// </summary>

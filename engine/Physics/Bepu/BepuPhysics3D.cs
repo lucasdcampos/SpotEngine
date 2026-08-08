@@ -31,38 +31,76 @@ internal sealed class BepuPhysics3D : IPhysics3D
     private readonly ThreadDispatcher _dispatcher;
     private readonly Simulation _simulation;
     private readonly BepuMaterials _materials = new();
+    private readonly BepuContacts _contacts = new();
 
     private readonly Dictionary<int, Tracked> _tracked = new();
     private readonly Dictionary<int, int> _bodyToEntity = new();
     private readonly Dictionary<int, int> _staticToEntity = new();
     private readonly HashSet<int> _seen = new();
     private readonly List<int> _toRemove = new();
+    private readonly List<ContactPair> _contactPairs = new();
 
     public BepuPhysics3D()
     {
         _dispatcher = new ThreadDispatcher(Math.Max(1, Environment.ProcessorCount - 1));
+        _contacts.Configure(_dispatcher.ThreadCount);
         _simulation = Simulation.Create(
             _pool,
-            new BepuNarrowPhaseCallbacks(_materials),
+            new BepuNarrowPhaseCallbacks(_materials, _contacts),
             new BepuPoseIntegratorCallbacks(),
             new SolveDescription(8, 1));
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<ContactPair> Contacts => _contactPairs;
+
     public void Step(Scene scene, float deltaTime)
     {
+        _contactPairs.Clear();
         if (deltaTime <= 0f) return;
 
         try
         {
+            _contacts.Reset();
             Sync(scene, deltaTime);
             _simulation.Timestep(deltaTime, _dispatcher);
             WriteBack(scene);
+            CollectContacts(scene);
         }
         catch (Exception ex)
         {
             Log.CoreError("BepuPhysics3D step failed: {0}", ex.Message);
         }
     }
+
+    // Resolves the narrow phase's raw touching pairs into engine-level contacts (entities + a world
+    // contact point), consumed by the CollisionDispatcher to raise enter/stay/exit callbacks.
+    private void CollectContacts(Scene scene)
+    {
+        _contacts.ForEach(raw =>
+        {
+            Entity? a = ResolveEntity(scene, raw.A);
+            Entity? b = ResolveEntity(scene, raw.B);
+            if (a is null || b is null) return;
+
+            Vector3 point = PositionOf(raw.A) + raw.OffsetA;
+            _contactPairs.Add(new ContactPair(a.Value, b.Value, raw.IsTrigger, raw.Normal, point));
+        });
+    }
+
+    private Entity? ResolveEntity(Scene scene, CollidableReference collidable)
+    {
+        int id;
+        bool found = collidable.Mobility == CollidableMobility.Static
+            ? _staticToEntity.TryGetValue(collidable.StaticHandle.Value, out id)
+            : _bodyToEntity.TryGetValue(collidable.BodyHandle.Value, out id);
+        return found ? scene.EntityById(id) : null;
+    }
+
+    private Vector3 PositionOf(CollidableReference collidable) =>
+        collidable.Mobility == CollidableMobility.Static
+            ? _simulation.Statics[collidable.StaticHandle].Pose.Position
+            : _simulation.Bodies[collidable.BodyHandle].Pose.Position;
 
     // --- Sync scene -> simulation -------------------------------------------------------------
 
@@ -101,6 +139,19 @@ internal sealed class BepuPhysics3D : IPhysics3D
                 if (_tracked.TryGetValue(entity.Id, out Tracked old)) DestroyTracked(entity.Id, old);
                 tracked = CreateTracked(entity.Id, key, desc, mass, freeze, shapeCenter, orientation, hasBody ? body!.Velocity : Vector3.Zero);
                 _tracked[entity.Id] = tracked;
+            }
+
+            // Publish this collidable's trigger flag for the narrow phase (re-set each step so a runtime
+            // toggle takes effect, and so a recycled handle never inherits a stale flag).
+            if (tracked.IsStatic)
+            {
+                _contacts.EnsureStatic(tracked.Static.Value);
+                _contacts.StaticTrigger[tracked.Static.Value] = desc.IsTrigger;
+            }
+            else
+            {
+                _contacts.EnsureBody(tracked.Body.Value);
+                _contacts.BodyTrigger[tracked.Body.Value] = desc.IsTrigger;
             }
 
             // Push authoring state into the simulation.
@@ -278,20 +329,20 @@ internal sealed class BepuPhysics3D : IPhysics3D
         if (entity.TryGetComponent(out BoxCollider3DComponent? box) && box!.Enabled)
         {
             Vector3 s = box.Size * scale;
-            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f);
+            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger);
             return true;
         }
         if (entity.TryGetComponent(out SphereCollider3DComponent? sphere) && sphere!.Enabled)
         {
             float r = sphere.Radius * scale.X;
-            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r);
+            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger);
             return true;
         }
         if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule) && capsule!.Enabled)
         {
             float r = capsule.Radius * scale.X;
             float len = capsule.Length * scale.Y;
-            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r);
+            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r, capsule.IsTrigger);
             return true;
         }
         desc = default;
@@ -360,5 +411,5 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
     private readonly record struct ShapeKey(int Kind, int Type, float A, float B, float C, bool Freeze, float Mass);
 
-    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY);
+    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY, bool IsTrigger);
 }
