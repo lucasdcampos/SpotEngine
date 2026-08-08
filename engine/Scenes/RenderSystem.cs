@@ -128,18 +128,10 @@ public static class RenderSystem
                     // We want lightDir to point TOWARDS the light source for shader math.
                     dirLightDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
                     
-                    if (light.CastShadows)
+                    if (light.CastShadows && Spot.Rendering.RenderSettings.Shadows)
                     {
                         castShadows = true;
-                        Vector3 lightPos = dirLightDir * 100.0f; 
-                        Matrix4x4 lightView = Matrix4x4.CreateLookAt(lightPos, Vector3.Zero, Vector3.UnitY);
-                        if (MathF.Abs(dirLightDir.Y) >= 0.999f) 
-                        {
-                            lightView = Matrix4x4.CreateLookAt(lightPos, Vector3.Zero, Vector3.UnitZ);
-                        }
-                        
-                        Matrix4x4 lightProj = Matrix4x4.CreateOrthographic(100.0f, 100.0f, 1.0f, 200.0f);
-                        lightSpaceMatrix = lightView * lightProj;
+                        lightSpaceMatrix = ComputeDirectionalShadowMatrix(dirLightDir, viewProjection, cameraPos);
                     }
                 }
             }
@@ -168,6 +160,7 @@ public static class RenderSystem
 
         if (castShadows)
         {
+            Renderer3D.EnsureShadowMapResolution(Spot.Rendering.RenderSettings.ShadowMapResolution);
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
             foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
             {
@@ -336,6 +329,56 @@ public static class RenderSystem
 
             PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess, bloomTexture);
         }
+    }
+
+    /// <summary>
+    /// Builds the light-space matrix for the directional shadow map. Unlike the old fixed box glued to
+    /// the world origin (which meant shadows only existed within ~50 m of it), the shadow frustum here
+    /// <b>follows the camera</b>, so shadows work anywhere in the world. Its size is
+    /// <see cref="RenderSettings.ShadowDistance"/>, it is pushed a little toward where the camera looks so
+    /// the map is spent on-screen, and the whole thing is <b>texel-snapped</b> so shadow edges stop
+    /// crawling/shimmering as the camera moves.
+    /// </summary>
+    private static Matrix4x4 ComputeDirectionalShadowMatrix(Vector3 lightDir, Matrix4x4 viewProjection, Vector3 cameraPos)
+    {
+        float size = MathF.Max(Spot.Rendering.RenderSettings.ShadowDistance, 1.0f);
+        float res = MathF.Max(Spot.Rendering.RenderSettings.ShadowMapResolution, 1);
+
+        // Camera forward, flattened to the horizontal plane, so the shadow box leads the camera into the
+        // scene it's looking at instead of centering half the texels behind the viewer.
+        Vector3 forward = new Vector3(0, 0, 1);
+        if (Matrix4x4.Invert(viewProjection, out Matrix4x4 invVP))
+        {
+            Vector4 n = Vector4.Transform(new Vector4(0, 0, -1, 1), invVP);
+            Vector4 f = Vector4.Transform(new Vector4(0, 0, 1, 1), invVP);
+            Vector3 dir = new Vector3(f.X, f.Y, f.Z) / f.W - new Vector3(n.X, n.Y, n.Z) / n.W;
+            if (dir.LengthSquared() > 1e-6f) forward = dir;
+        }
+        forward.Y = 0;
+        forward = forward.LengthSquared() > 1e-6f ? Vector3.Normalize(forward) : new Vector3(0, 0, 1);
+
+        Vector3 center = cameraPos + forward * (size * 0.25f);
+
+        // A generous slab along the light axis so tall geometry (and objects above/below the focus point)
+        // never clips out of the shadow depth range.
+        float depth = size * 3.0f;
+        Vector3 up = MathF.Abs(lightDir.Y) >= 0.999f ? Vector3.UnitZ : Vector3.UnitY;
+        Vector3 lightPos = center + lightDir * (depth * 0.5f);
+        Matrix4x4 lightView = Matrix4x4.CreateLookAt(lightPos, center, up);
+        Matrix4x4 lightProj = Matrix4x4.CreateOrthographic(size, size, 0.05f, depth);
+        Matrix4x4 lightSpace = lightView * lightProj;
+
+        // Texel snapping. The light view's orientation is fixed (only lightDir/up), so quantizing a fixed
+        // world reference (the origin) to whole shadow-map texels pins the texel grid in world space —
+        // the shadowed region then jumps in texel-sized steps instead of sliding continuously, which is
+        // what kills the shimmering "swimming" along shadow edges as the camera moves.
+        Vector4 originClip = Vector4.Transform(new Vector4(0, 0, 0, 1), lightSpace);
+        float half = res * 0.5f;
+        Vector2 texel = new Vector2(originClip.X, originClip.Y) * half;
+        Vector2 offset = (new Vector2(MathF.Round(texel.X), MathF.Round(texel.Y)) - texel) / half;
+        lightProj.M41 += offset.X;
+        lightProj.M42 += offset.Y;
+        return lightView * lightProj;
     }
 
     /// <summary>

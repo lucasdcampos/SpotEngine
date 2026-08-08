@@ -54,8 +54,10 @@ public static class Renderer3D
         uniform vec4 uColor;
         uniform sampler2D uTexture;
         uniform sampler2D uNormalMap;
-        uniform sampler2D uShadowMap;
-        
+        uniform sampler2DShadow uShadowMap;
+        uniform mat4 uLightSpaceMatrix;
+        uniform float uShadowTexelSize;
+
         uniform int uHasNormalMap;
         uniform float uMetallic;
         uniform vec3 uEmissiveColor;
@@ -83,28 +85,34 @@ public static class Renderer3D
 
         out vec4 fragColor;
 
-        float ShadowCalculation(vec4 fragPosLightSpace)
+        // Normal-offset shadows: instead of a depth bias measured in the light's NDC z (which balloons
+        // into meters of "peter-panning" gap once the shadow frustum is deep), push the sampled point off
+        // the surface along its normal by a couple of shadow texels' worth of world space, widened at
+        // grazing light angles where acne is worst. This is scale-stable and keeps the shadow glued to
+        // the object's contact point. Sampling is hardware PCF (sampler2DShadow) over a 5x5 kernel.
+        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
         {
-            vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
+            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
+            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
+
+            vec3 projCoords = lp.xyz / lp.w;
             projCoords = projCoords * 0.5 + 0.5;
             if (projCoords.z > 1.0) return 0.0;
-            
-            float currentDepth = projCoords.z;
-            float bias = max(0.005 * (1.0 - dot(normalize(vNormal), normalize(uLightDir))), 0.001);
-            
+
+            float depthRef = projCoords.z - 0.0015; // tiny residual constant bias
+
             float shadow = 0.0;
-            vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
-            for(int x = -1; x <= 1; ++x)
+            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+            for (int x = -2; x <= 2; ++x)
             {
-                for(int y = -1; y <= 1; ++y)
+                for (int y = -2; y <= 2; ++y)
                 {
-                    float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
-                    shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
-                }    
+                    // sampler2DShadow returns filtered visibility in [0,1] (1 = lit); accumulate occlusion.
+                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
+                }
             }
-            shadow /= 9.0;
-            
-            return shadow;
+            return shadow / 25.0;
         }
 
         vec3 getNormalFromMap(vec2 uv) {
@@ -153,7 +161,7 @@ public static class Renderer3D
                 float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
                 vec3 specular = uLightColor * spec * F0;
                 
-                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPosLightSpace) : 0.0;
+                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPos, normalize(vNormal), lightDir) : 0.0;
                 lighting += (uAmbientIntensity + (1.0 - shadow) * diffuse) * uLightColor + (1.0 - shadow) * specular;
             }
             else
@@ -216,20 +224,26 @@ public static class Renderer3D
 
         void main()
         {
-            // Simple low-frequency vertex displacement (Gerstner-lite)
-            vec3 pos = aPosition;
-            float time = uTime * uWaveSpeed;
-            // Only displace Y if normal points up
-            if (aNormal.y > 0.5) {
-                float wave = sin(pos.x * uWaveScale * 2.0 + time) * 0.1 
-                           + cos(pos.z * uWaveScale * 1.5 + time * 1.2) * 0.1;
-                pos.y += wave * uWaveStrength;
+            vec4 worldPos = uModel * vec4(aPosition, 1.0);
+            vec3 worldNormal = normalize(mat3(transpose(inverse(uModel))) * aNormal);
+
+            // Large, low-frequency swell computed in WORLD space, so the wavelength is the same
+            // absolute size whether this mesh is a 1-unit puddle or a 500-unit ocean (the old code
+            // displaced by *local* position, so identical geometry rippled differently once scaled).
+            // Kept gentle: the plane primitive is only lightly tessellated, and the fine detail is
+            // carried by the fragment normal, so the geometry just needs a soft undulating silhouette.
+            if (worldNormal.y > 0.5) {
+                float t = uTime * uWaveSpeed;
+                float f = 0.06 * max(uWaveScale, 0.001);
+                float swell = sin(worldPos.x * f + t) * 0.6
+                            + sin((worldPos.x + worldPos.z) * f * 0.7 - t * 0.8) * 0.4
+                            + cos(worldPos.z * f * 1.3 + t * 1.1) * 0.5;
+                worldPos.y += swell * uWaveStrength;
             }
-            
-            vec4 worldPos = uModel * vec4(pos, 1.0);
+
             vFragPos = worldPos.xyz;
             vFragPosLightSpace = uLightSpaceMatrix * worldPos;
-            vNormal = mat3(transpose(inverse(uModel))) * aNormal;
+            vNormal = worldNormal;
             vTexCoord = aTexCoord;
             gl_Position = uViewProjection * worldPos;
         }
@@ -245,7 +259,9 @@ public static class Renderer3D
 
         uniform vec4 uColor;
         uniform sampler2D uTexture;
-        uniform sampler2D uShadowMap;
+        uniform sampler2DShadow uShadowMap;
+        uniform mat4 uLightSpaceMatrix;
+        uniform float uShadowTexelSize;
         uniform float uTime;
         uniform vec3 uCameraPos;
 
@@ -273,146 +289,207 @@ public static class Renderer3D
         uniform int uPointLightCount;
         uniform PointLight uPointLights[4];
 
+        // Sky colours of the active procedural skybox, so the water reflects the same sky the scene
+        // shows. uHasSkybox is 0 when the scene has no skybox, in which case a neutral fallback is used.
+        uniform vec3 uSkyColor;
+        uniform vec3 uGroundColor;
+        uniform int uHasSkybox;
+
         out vec4 fragColor;
-        
+
         float hash(vec2 p) {
             vec3 p3  = fract(vec3(p.xyx) * .1031);
             p3 += dot(p3, p3.yzx + 33.33);
             return fract((p3.x + p3.y) * p3.z);
         }
 
-        float noise(vec2 x) {
-            vec2 i = floor(x);
-            vec2 f = fract(x);
-            float a = hash(i);
-            float b = hash(i + vec2(1.0, 0.0));
-            float c = hash(i + vec2(0.0, 1.0));
-            float d = hash(i + vec2(1.0, 1.0));
-            vec2 u = f * f * (3.0 - 2.0 * f);
-            return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+        // Value noise carrying its analytic derivative: returns (value in [-1,1], d/dx, d/dy). The
+        // derivative lets us build an exact surface normal from the summed height field instead of
+        // sampling noise twice and hoping — smoother, and cheaper per octave.
+        vec3 noised(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            vec2 u  = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+            vec2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
+            float a = hash(i + vec2(0.0, 0.0)) * 2.0 - 1.0;
+            float b = hash(i + vec2(1.0, 0.0)) * 2.0 - 1.0;
+            float c = hash(i + vec2(0.0, 1.0)) * 2.0 - 1.0;
+            float d = hash(i + vec2(1.0, 1.0)) * 2.0 - 1.0;
+            float k1 = b - a;
+            float k2 = c - a;
+            float k3 = a - b - c + d;
+            float value = a + k1 * u.x + k2 * u.y + k3 * u.x * u.y;
+            vec2 deriv = du * (vec2(k1, k2) + k3 * vec2(u.y, u.x));
+            return vec3(value, deriv);
         }
-        
-        float fbm(vec2 p) {
-            float v = 0.0;
-            float a = 0.5;
-            for(int i=0; i<3; i++) {
-                v += a * noise(p);
-                p *= 2.0;
-                a *= 0.5;
+
+        // Analytic sky colour for a reflected ray, rebuilding the same haze -> sky -> zenith gradient
+        // the procedural skybox uses (plus a reflected-sun disc), so a mirror-like grazing reflection
+        // reads as the real sky rather than a flat blue.
+        vec3 sampleSky(vec3 dir) {
+            vec3 skyC = uHasSkybox == 1 ? uSkyColor : vec3(0.55, 0.75, 1.0);
+            vec3 grdC = uHasSkybox == 1 ? uGroundColor : vec3(0.35, 0.37, 0.4);
+            float lum = dot(skyC, vec3(0.2126, 0.7152, 0.0722));
+            vec3 zenith = skyC * skyC;
+            vec3 haze = mix(skyC, vec3(lum), 0.35);
+            haze = mix(haze, vec3(0.82, 0.88, 0.95), 0.4);
+            float up = clamp(dir.y, 0.0, 1.0);
+            vec3 col = mix(haze, skyC, smoothstep(0.0, 0.25, up));
+            col = mix(col, zenith, smoothstep(0.18, 0.9, up));
+            if (dir.y < 0.0) col = mix(haze, grdC, clamp(-dir.y * 3.0, 0.0, 1.0));
+            if (uHasDirectionalLight == 1) {
+                float sd = max(dot(dir, normalize(uLightDir)), 0.0);
+                col += uLightColor * pow(sd, 900.0) * 7.0;  // reflected sun disc (blooms into sparkle)
+                col += uLightColor * pow(sd, 40.0) * 0.25;  // soft forward-scatter glow
             }
-            return v;
+            return col;
         }
-        
-        float ShadowCalculation(vec4 fragPosLightSpace, vec3 perturbedNormal)
+
+        // See the standard shader for the rationale: normal-offset receiver + hardware PCF (sampler2DShadow).
+        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
         {
-            vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
+            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
+            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
+
+            vec3 projCoords = lp.xyz / lp.w;
             projCoords = projCoords * 0.5 + 0.5;
             if (projCoords.z > 1.0) return 0.0;
-            
-            float currentDepth = projCoords.z;
-            float bias = max(0.005 * (1.0 - dot(perturbedNormal, normalize(uLightDir))), 0.001);
-            
+
+            float depthRef = projCoords.z - 0.0015;
+
             float shadow = 0.0;
-            vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
-            for(int x = -1; x <= 1; ++x)
+            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
+            for (int x = -2; x <= 2; ++x)
             {
-                for(int y = -1; y <= 1; ++y)
+                for (int y = -2; y <= 2; ++y)
                 {
-                    float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
-                    shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
-                }    
+                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
+                }
             }
-            shadow /= 9.0;
-            return shadow;
+            return shadow / 25.0;
         }
 
         void main()
         {
-            float time = uTime * uWaveSpeed;
-            float scale = uWaveScale * 2.0;
-            
-            // Create layered ripples using FBM
-            vec2 uv1 = vFragPos.xz * scale + vec2(time * 0.5, time * 0.3);
-            vec2 uv2 = vFragPos.xz * (scale * 2.0) - vec2(time * 0.3, time * 0.6);
-            
-            float n1 = fbm(uv1);
-            float n2 = fbm(uv2);
-            
-            // Perturb normal
-            vec3 normal = normalize(vNormal);
-            vec3 perturbedNormal = normalize(normal + vec3(n1 - 0.5, 0.0, n2 - 0.5) * (uWaveStrength * 1.5));
-            
+            // ---- Scale-independent wave normal ------------------------------------------------
+            // The height field is summed in WORLD space from octaves spanning a wide band of absolute
+            // wavelengths (big swell -> fine ripple). Because it's world-space, the SAME material reads
+            // as ripples on a small puddle and as ocean swell on a huge plane. Octaves whose wavelength
+            // falls below a couple of screen pixels are faded out (analytic LOD via fwidth), so a
+            // distant ocean stays crisp instead of shimmering with noise aliasing.
+            vec2 world = vFragPos.xz;
+            float texel = max(length(fwidth(world)), 1e-5);
+            float t = uTime * uWaveSpeed;
+
+            const int OCTAVES = 6;
+            float baseFreq = 0.05 * max(uWaveScale, 0.001);
+            mat2 rot = mat2(0.80, -0.60, 0.60, 0.80); // rotate each octave's domain to hide grid alignment
+
+            vec2 grad = vec2(0.0);
+            float amp = 1.0;
+            float freq = baseFreq;
+            float ampSum = 0.0;
+            vec2 p = world;
+            vec2 dir = vec2(1.0, 0.35); // per-octave scroll direction, rotated alongside the domain
+            for (int i = 0; i < OCTAVES; i++) {
+                float wavelength = 1.0 / freq;
+                float lod = smoothstep(1.5, 3.5, wavelength / texel);
+                vec3 n = noised(p * freq + dir * t);
+                grad += amp * freq * n.yz * lod;
+                ampSum += amp;
+                p = rot * p;
+                dir = rot * dir;
+                amp *= 0.5;
+                freq *= 2.0;
+            }
+            grad /= max(ampSum, 1e-4);
+
+            // Surface normal from the height gradient (water's up is world +Y). Bias toward the actual
+            // geometric normal so a non-horizontal water surface still shades sensibly.
+            vec3 geoN = normalize(vNormal);
+            float bump = uWaveStrength * 6.0;
+            vec3 N = normalize(vec3(-grad.x * bump, 1.0, -grad.y * bump));
+            N = normalize(mix(geoN, N, clamp(geoN.y, 0.0, 1.0)));
+
+            vec3 viewDir = normalize(uCameraPos - vFragPos);
+            if (dot(N, viewDir) < 0.0) N = -N;
+
+            // ---- Base water body colour -------------------------------------------------------
             vec2 scale2D = vec2(1.0);
             if (uAutoTile == 1) {
-                vec3 n = abs(normal);
-                if (n.x > n.y && n.x > n.z) scale2D = uModelScale.zy;
-                else if (n.y > n.x && n.y > n.z) scale2D = uModelScale.xz;
+                vec3 an = abs(geoN);
+                if (an.x > an.y && an.x > an.z) scale2D = uModelScale.zy;
+                else if (an.y > an.x && an.y > an.z) scale2D = uModelScale.xz;
                 else scale2D = uModelScale.xy;
             }
-            vec2 finalUV = vTexCoord * uTiling * scale2D;
-            
-            vec4 texColor = texture(uTexture, finalUV);
-            vec4 albedo = texColor * uColor;
-            
-            vec3 viewDir = normalize(uCameraPos - vFragPos);
-            
-            vec3 waterBase = vec3(0.0);
-            vec3 finalColor = vec3(0.0);
-            
-            // Fake reflection / fresnel
-            float fresnel = pow(1.0 - max(dot(viewDir, perturbedNormal), 0.0), 3.0);
-            vec3 skyColor = vec3(0.5, 0.7, 0.9);
-            // Fake sub-surface scattering color (cyan tint on waves)
-            vec3 scatterColor = mix(albedo.rgb, vec3(0.2, 0.8, 0.9), fresnel * 0.5 * uWaveStrength);
-            waterBase = mix(scatterColor, skyColor, fresnel * 0.6);
+            vec4 texColor = texture(uTexture, vTexCoord * uTiling * scale2D);
+            vec3 deep = (texColor * uColor).rgb;
+            // Shallow water reads lighter and greener; look straight down and you see the deep tint,
+            // look across the surface and it lifts toward the shallow tint.
+            vec3 shallow = mix(deep, deep * vec3(1.6, 2.0, 1.9) + vec3(0.0, 0.05, 0.06), 0.6);
+            float depthT = pow(clamp(dot(viewDir, geoN), 0.0, 1.0), 0.6);
+            vec3 bodyColor = mix(shallow, deep, depthT);
+
+            // ---- Reflection + Fresnel ---------------------------------------------------------
+            vec3 reflDir = reflect(-viewDir, N);
+            reflDir.y = abs(reflDir.y); // never sample below the world through a steep wave facet
+            vec3 reflection = sampleSky(reflDir);
+            // Schlick Fresnel with water's real F0 (~0.02): refractive body colour head-on, mirror at grazing.
+            float fres = 0.02 + 0.98 * pow(1.0 - max(dot(N, viewDir), 0.0), 5.0);
+
+            // ---- Lighting on the body ---------------------------------------------------------
+            vec3 ambient = uAmbientIntensity * (uHasSkybox == 1 ? mix(uLightColor, uSkyColor, 0.5) : uLightColor);
+            vec3 lit = bodyColor * ambient;
+            vec3 specularSum = vec3(0.0);
 
             if (uHasDirectionalLight == 1)
             {
-                vec3 lightDir = normalize(uLightDir);
-                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPosLightSpace, perturbedNormal) : 0.0;
-                
-                float diff = max(dot(perturbedNormal, lightDir), 0.0);
-                vec3 diffuse = diff * uLightColor;
-                
-                vec3 reflectDir = reflect(-lightDir, perturbedNormal);
-                float spec = pow(max(dot(viewDir, reflectDir), 0.0), uSpecularPower);
-                vec3 specular = spec * uLightColor * (uWaveStrength * 2.0 + 0.5);
-                
-                vec3 ambient = uAmbientIntensity * uLightColor;
-                finalColor += (ambient + (1.0 - shadow) * diffuse) * waterBase + (1.0 - shadow) * specular;
+                vec3 L = normalize(uLightDir);
+                float shadow = uCastShadows == 1 ? ShadowCalculation(vFragPos, N, L) : 0.0;
+                float diff = max(dot(N, L), 0.0);
+                lit += bodyColor * diff * uLightColor * (1.0 - shadow);
+
+                // Sub-surface scattering: wave crests backlit by the sun glow a warm green.
+                float sss = pow(max(dot(viewDir, -L), 0.0), 3.0) * clamp(grad.x * 0.5 + 0.5, 0.0, 1.0);
+                lit += uLightColor * vec3(0.15, 0.4, 0.35) * sss * (1.0 - shadow);
+
+                // Sharp Blinn-Phong sun glint (HDR, so it blooms into a sparkle highlight).
+                vec3 H = normalize(L + viewDir);
+                float spec = pow(max(dot(N, H), 0.0), uSpecularPower);
+                specularSum += spec * uLightColor * (1.0 - shadow) * 2.5;
             }
-            else
+
+            for (int i = 0; i < uPointLightCount && i < 4; i++)
             {
-                finalColor += uAmbientIntensity * uLightColor * waterBase;
-            }
-            
-            for(int i = 0; i < uPointLightCount && i < 4; i++)
-            {
-                vec3 lightDir = uPointLights[i].position - vFragPos;
-                float distance = length(lightDir);
-                if(distance < uPointLights[i].range)
+                vec3 Lv = uPointLights[i].position - vFragPos;
+                float dist = length(Lv);
+                if (dist < uPointLights[i].range)
                 {
-                    lightDir = normalize(lightDir);
-                    float diff = max(dot(perturbedNormal, lightDir), 0.0);
-                    float attenuation = 1.0 - (distance / uPointLights[i].range);
-                    attenuation = attenuation * attenuation;
-                    
-                    vec3 reflectDir = reflect(-lightDir, perturbedNormal);
-                    float spec = pow(max(dot(viewDir, reflectDir), 0.0), uSpecularPower);
-                    vec3 specular = spec * uPointLights[i].color * (uWaveStrength * 2.0 + 0.5);
-                    
-                    finalColor += uPointLights[i].color * uPointLights[i].intensity * diff * attenuation * waterBase + specular * attenuation * uPointLights[i].intensity;
+                    vec3 L = Lv / max(dist, 1e-4);
+                    float atten = 1.0 - (dist / uPointLights[i].range);
+                    atten *= atten;
+                    float diff = max(dot(N, L), 0.0);
+                    lit += bodyColor * uPointLights[i].color * uPointLights[i].intensity * diff * atten;
+                    vec3 H = normalize(L + viewDir);
+                    float spec = pow(max(dot(N, H), 0.0), uSpecularPower);
+                    specularSum += spec * uPointLights[i].color * uPointLights[i].intensity * atten * 2.0;
                 }
             }
 
+            // ---- Composite --------------------------------------------------------------------
+            vec3 color;
             if (uHasDirectionalLight == 0 && uPointLightCount == 0)
             {
-                fragColor = albedo;
+                // Unlit scene: still layer the sky reflection over the body so water never reads as flat paint.
+                color = mix(bodyColor, reflection, fres);
             }
             else
             {
-                fragColor = vec4(finalColor, albedo.a);
+                color = mix(lit, reflection, fres) + specularSum;
             }
+
+            fragColor = vec4(color, uColor.a);
         }
         """;
 
@@ -811,6 +888,12 @@ public static class Renderer3D
     private static PointLightData[] s_pointLights = new PointLightData[4];
     private static int s_pointLightCount = 0;
 
+    // Sky colours of the active skybox, captured by DrawSkybox and fed to the water shader so water
+    // reflects the same sky the scene renders. Reset each BeginScene; s_hasSkybox stays 0 with no skybox.
+    private static Vector3 s_skyColor = new Vector3(0.55f, 0.75f, 1.0f);
+    private static Vector3 s_groundColor = new Vector3(0.35f, 0.37f, 0.4f);
+    private static int s_hasSkybox = 0;
+
     /// <summary>
     /// Creates the shared shader and fallback texture. Called once by the application after the renderer is ready.
     /// </summary>
@@ -848,7 +931,9 @@ public static class Renderer3D
         s_ambientIntensity = ambientIntensity;
         s_lightSpaceMatrix = lightSpaceMatrix;
         s_castShadows = castShadows ? 1 : 0;
-        
+        // No skybox until DrawSkybox says otherwise this frame; water then falls back to a default sky.
+        s_hasSkybox = 0;
+
         s_pointLightCount = System.Math.Min(pointLights.Length, 4);
         for (int i = 0; i < s_pointLightCount; i++)
         {
@@ -858,6 +943,21 @@ public static class Renderer3D
 
     private static int s_prevFramebuffer;
     private static int[] s_prevViewport = new int[4];
+
+    /// <summary>
+    /// Ensures the directional shadow map exists at the requested resolution, rebuilding it if the
+    /// resolution changed. Cheap when unchanged; call it before <see cref="BeginShadowPass"/> so
+    /// <see cref="RenderSettings.ShadowMapResolution"/> can be tuned at runtime.
+    /// </summary>
+    public static void EnsureShadowMapResolution(int resolution)
+    {
+        resolution = System.Math.Clamp(resolution, 256, 8192);
+        if (s_shadowMap is null || s_shadowMap.Width != (uint)resolution)
+        {
+            s_shadowMap?.Dispose();
+            s_shadowMap = new DepthFramebuffer((uint)resolution, (uint)resolution);
+        }
+    }
 
     /// <summary>
     /// Begins a shadow map pass. Meshes drawn with <see cref="DrawShadowMesh"/> will be rendered to the shadow map.
@@ -876,7 +976,11 @@ public static class Renderer3D
         Renderer.ClearDepth();
         s_shadowShader!.Use();
         s_shadowShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
-        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Front);
+        // Render front faces (default culling) rather than front-culling. Front-culling pushes the
+        // occluder depth to the far side of solid meshes, which — combined with normal-offset receiver
+        // bias in the lit shaders — reads as a gap between an object and its shadow. Normal offset alone
+        // handles the acne that front-culling used to hide.
+        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Back);
     }
 
     /// <summary>
@@ -967,6 +1071,10 @@ public static class Renderer3D
             activeShader.SetUniform("uWaveScale", scale);
             activeShader.SetUniform("uWaveStrength", strength);
             activeShader.SetUniform("uSpecularPower", specPower);
+
+            activeShader.SetUniform("uSkyColor", s_skyColor);
+            activeShader.SetUniform("uGroundColor", s_groundColor);
+            activeShader.SetUniform("uHasSkybox", s_hasSkybox);
         }
 
         activeShader.SetUniform("uHasDirectionalLight", s_hasDirLight);
@@ -982,6 +1090,12 @@ public static class Renderer3D
             s_shadowMap!.BindDepthTexture(1);
             activeShader.SetUniform("uShadowMap", 1);
             activeShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
+            // World size of one shadow-map texel, so the shader's normal-offset bias is expressed in the
+            // same world units regardless of resolution/distance. Matches the box size used to build the
+            // light matrix (RenderSystem.ComputeDirectionalShadowMatrix).
+            float shadowSize = MathF.Max(RenderSettings.ShadowDistance, 1.0f);
+            float shadowRes = MathF.Max(s_shadowMap.Width, 1u);
+            activeShader.SetUniform("uShadowTexelSize", shadowSize / shadowRes);
             activeShader.SetUniform("uCastShadows", 1);
         }
         else
@@ -1014,6 +1128,11 @@ public static class Renderer3D
     public static void DrawSkybox(Vector3 skyColor, Vector3 groundColor)
     {
         if (s_skyboxShader == null || s_emptyVao == null) return;
+
+        // Remember the sky palette so water drawn later this frame can reflect it.
+        s_skyColor = skyColor;
+        s_groundColor = groundColor;
+        s_hasSkybox = 1;
 
         s_skyboxShader.Use();
         s_skyboxShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
