@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using ImGuiNET;
+using Silk.NET.Input;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace Spot.Core.Services;
@@ -14,6 +15,10 @@ public class ImGuiService : IEngineService
     private readonly ApplicationSpec _spec;
     private readonly List<ImFontPtr> _fonts = new();
     private ImGuiController? _controller;
+
+    // The window's input context, used to feed ImGui the merged keyboard modifier state each frame
+    // (see UpdateModifierKeys). Captured in Init.
+    private IInputContext? _input;
 
     // Keeps the icon-font glyph-range array pinned for the atlas's lifetime: ImGui stores the pointer
     // and only reads it when the atlas is (re)built, so the array must outlive font configuration.
@@ -60,6 +65,7 @@ public class ImGuiService : IEngineService
             Log.CoreWarn("UI font not found at '{0}', using the default font.", _spec.FontPath);
         }
 
+        _input = app.Window.Input;
         _controller = new ImGuiController(
             Spot.Rendering.Renderer.Api, app.Window.NativeWindow, app.Window.Input,
             fontConfig, () => ConfigureExtraFonts(havePrimary));
@@ -215,7 +221,39 @@ public class ImGuiService : IEngineService
 
     public void Update(float deltaTime)
     {
+        // Must run before the controller's Update (which calls ImGui.NewFrame): the queued key events
+        // are only consumed at NewFrame.
+        UpdateModifierKeys();
         _controller?.Update(deltaTime);
+    }
+
+    // Feeds ImGui the *merged* modifier state (Ctrl/Shift/Alt/Super). The Silk.NET ImGui controller only
+    // reports the physical LeftCtrl/RightCtrl keys, which ImGui does not fold into io.KeyMods on its own;
+    // without this, io.KeyMods stays 0 and every InputText shortcut that tests it — Ctrl+A (select all),
+    // Ctrl+C/V/X, Ctrl+Z, word-wise navigation — silently does nothing while plain typing still works.
+    // Reads the raw keyboards (not Spot.Core.Input) so shortcuts keep working even while the engine has
+    // captured input, e.g. editing in the developer console.
+    private void UpdateModifierKeys()
+    {
+        if (_input is null)
+        {
+            return;
+        }
+
+        bool ctrl = false, shift = false, alt = false, super = false;
+        foreach (IKeyboard keyboard in _input.Keyboards)
+        {
+            ctrl |= keyboard.IsKeyPressed(Silk.NET.Input.Key.ControlLeft) || keyboard.IsKeyPressed(Silk.NET.Input.Key.ControlRight);
+            shift |= keyboard.IsKeyPressed(Silk.NET.Input.Key.ShiftLeft) || keyboard.IsKeyPressed(Silk.NET.Input.Key.ShiftRight);
+            alt |= keyboard.IsKeyPressed(Silk.NET.Input.Key.AltLeft) || keyboard.IsKeyPressed(Silk.NET.Input.Key.AltRight);
+            super |= keyboard.IsKeyPressed(Silk.NET.Input.Key.SuperLeft) || keyboard.IsKeyPressed(Silk.NET.Input.Key.SuperRight);
+        }
+
+        ImGuiIOPtr io = ImGui.GetIO();
+        io.AddKeyEvent(ImGuiKey.ModCtrl, ctrl);
+        io.AddKeyEvent(ImGuiKey.ModShift, shift);
+        io.AddKeyEvent(ImGuiKey.ModAlt, alt);
+        io.AddKeyEvent(ImGuiKey.ModSuper, super);
     }
 
     public void ImGuiRender()

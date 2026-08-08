@@ -82,6 +82,11 @@ public sealed class DevConsole
     private bool _scrollToBottom;
     private bool _justOpened;
 
+    // Set when the input lost keyboard focus for a non-deliberate reason (e.g. selecting all and
+    // deleting the text, which ImGui otherwise leaves unfocused). Reasserts focus on the next frame so
+    // the console input stays "hot" like a real terminal.
+    private bool _reclaimFocus;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DevConsole"/> class.
     /// </summary>
@@ -161,7 +166,7 @@ public sealed class DevConsole
 
     private static Vector4 ColorFor(string text)
     {
-        if (text.Length >= 2 && text[0] == '>' && text[1] == ' ')
+        if (text.Length >= 2 && text[0] == ']' && text[1] == ' ')
         {
             return CommandColor;
         }
@@ -185,7 +190,7 @@ public sealed class DevConsole
             return;
         }
 
-        Print("> " + line);
+        Print("] " + line);
 
         string[] tokens = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length == 0)
@@ -216,15 +221,29 @@ public sealed class DevConsole
         ImGui.SetNextWindowSize(new Vector2(viewport.Size.X * 0.6f, viewport.Size.Y * 0.45f), ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X + 20.0f, viewport.Pos.Y + 20.0f), ImGuiCond.FirstUseEver);
 
-        if (!ImGui.Begin("Developer Console", ref _open, ImGuiWindowFlags.NoCollapse))
+        // Modern, Source-engine inspired styling: deep dark gray/brownish background, sharp edges
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.12f, 0.13f, 0.14f, 0.98f));
+        ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(0.08f, 0.09f, 0.10f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.TitleBgActive, new Vector4(0.18f, 0.20f, 0.22f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.25f, 0.27f, 0.30f, 1.0f));
+        
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 2.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8.0f, 8.0f));
+
+        if (!ImGui.Begin("Console", ref _open, ImGuiWindowFlags.NoCollapse))
         {
             ImGui.End();
+            ImGui.PopStyleVar(2);
+            ImGui.PopStyleColor(4);
             return;
         }
 
         DrawContents();
 
         ImGui.End();
+
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(4);
     }
 
     /// <summary>
@@ -240,8 +259,40 @@ public sealed class DevConsole
             ImGui.PushFont(MonospaceFont!.Value);
         }
 
-        float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing();
-        ImGui.BeginChild("##output", new Vector2(0.0f, -footerHeight), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar);
+        // A roomier command line, Source-console style. Pushed for the whole body so the footer height
+        // below (which reads the frame height) accounts for the taller input, and the Submit button and
+        // prompt inherit the same padding.
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8.0f, 7.0f));
+
+        bool consoleFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
+
+        float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing() + 4.0f;
+
+        DrawOutput(new Vector2(0.0f, -footerHeight));
+
+        // Subtly spaced from the output box
+        ImGui.Dummy(new Vector2(0, 2.0f));
+
+        DrawInputRow(consoleFocused);
+
+        ImGui.PopStyleVar();
+
+        if (pushedFont)
+        {
+            ImGui.PopFont();
+        }
+    }
+
+    // Draws the scrolling, colored log region. Right-clicking it offers copy/clear, the pragmatic
+    // stand-in for character-level selection (which ImGui can't do while keeping per-line colors).
+    private void DrawOutput(Vector2 size)
+    {
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.06f, 0.07f, 0.08f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 2.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
+
+        ImGui.BeginChild("##output", size, ImGuiChildFlags.Border, ImGuiWindowFlags.HorizontalScrollbar);
 
         // Snapshot the lines under the lock so a background thread appending output cannot mutate the
         // list while we enumerate it, then render from the copy without holding the lock.
@@ -253,13 +304,36 @@ public sealed class DevConsole
 
         // A touch more vertical spacing between log lines keeps a busy console legible.
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(ImGui.GetStyle().ItemSpacing.X, 3.0f));
+
+        ImGui.Dummy(new Vector2(0, 2.0f));
+        ImGui.Indent(6.0f);
+
         foreach (ConsoleLine line in _renderBuffer)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, line.Color);
             ImGui.TextUnformatted(line.Text);
             ImGui.PopStyleColor();
         }
+
+        ImGui.Unindent(6.0f);
+        ImGui.Dummy(new Vector2(0, 2.0f));
+
         ImGui.PopStyleVar();
+
+        if (ImGui.BeginPopupContextWindow("##output_ctx"))
+        {
+            if (ImGui.MenuItem("Copy all"))
+            {
+                ImGui.SetClipboardText(BuildLogText());
+            }
+
+            if (ImGui.MenuItem("Clear"))
+            {
+                ClearLines();
+            }
+
+            ImGui.EndPopup();
+        }
 
         if (_scrollToBottom)
         {
@@ -268,20 +342,62 @@ public sealed class DevConsole
         }
 
         ImGui.EndChild();
-        ImGui.Separator();
 
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(2);
+    }
+
+    // Draws the "] input  [Submit]" command line and keeps it focused while the console is open.
+    private void DrawInputRow(bool consoleFocused)
+    {
         const ImGuiInputTextFlags inputFlags = ImGuiInputTextFlags.EnterReturnsTrue
                                              | ImGuiInputTextFlags.EscapeClearsAll
                                              | ImGuiInputTextFlags.CallbackHistory;
 
-        if (_justOpened)
+        // Grab focus when the console just opened, or when we lost it for a non-deliberate reason last
+        // frame (see below). SetKeyboardFocusHere(0) targets the next widget: the input.
+        if (_justOpened || _reclaimFocus)
         {
             ImGui.SetKeyboardFocusHere(0);
             _justOpened = false;
+            _reclaimFocus = false;
         }
 
-        ImGui.SetNextItemWidth(-1.0f);
+        // The classic Source command prompt.
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextColored(CommandColor, "]");
+        ImGui.SameLine();
+
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.08f, 0.09f, 0.10f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
+
+        float submitButtonWidth = 80.0f;
+        ImGui.SetNextItemWidth(-submitButtonWidth - ImGui.GetStyle().ItemSpacing.X - 4.0f);
+
         bool submitted = ImGui.InputText("##input", _inputBuf, (uint)_inputBuf.Length, inputFlags, _textEditCallback);
+
+        // Captured immediately after the widget: true on the frame the input stops being active.
+        bool inputDeactivated = ImGui.IsItemDeactivated();
+
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(2);
+
+        ImGui.SameLine();
+
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.30f, 0.33f, 0.38f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.15f, 0.17f, 0.20f, 1.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
+
+        if (ImGui.Button("Submit", new Vector2(submitButtonWidth, 0)))
+        {
+            submitted = true;
+        }
+
+        ImGui.PopStyleVar();
+        ImGui.PopStyleColor(3);
 
         if (submitted)
         {
@@ -298,12 +414,40 @@ public sealed class DevConsole
             }
 
             _inputBuf[0] = 0;
-            ImGui.SetKeyboardFocusHere(-1);
         }
 
-        if (pushedFont)
+        // Keep the input glued to focus while the console owns the screen. Deleting all the text (e.g.
+        // Ctrl+A then Backspace) makes ImGui drop the input's active state; without this it would go
+        // unfocused mid-typing. We deliberately do NOT reclaim when the user pressed Escape (their way
+        // out of the field) or has a context popup open, so those interactions still work.
+        bool escape = ImGui.IsKeyPressed(ImGuiKey.Escape, false);
+        bool popupOpen = ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup);
+        if ((submitted || inputDeactivated) && consoleFocused && !escape && !popupOpen)
         {
-            ImGui.PopFont();
+            _reclaimFocus = true;
+        }
+    }
+
+    // Flattens the current log into newline-joined text for the clipboard.
+    private string BuildLogText()
+    {
+        var sb = new StringBuilder();
+        lock (_linesLock)
+        {
+            foreach (ConsoleLine line in _lines)
+            {
+                sb.Append(line.Text).Append('\n');
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private void ClearLines()
+    {
+        lock (_linesLock)
+        {
+            _lines.Clear();
         }
     }
 
@@ -324,13 +468,7 @@ public sealed class DevConsole
             }
         }, "List all available commands");
 
-        Register("clear", _ =>
-        {
-            lock (_linesLock)
-            {
-                _lines.Clear();
-            }
-        }, "Clear console output");
+        Register("clear", _ => ClearLines(), "Clear console output");
 
         Register("physics_debug", args =>
         {
