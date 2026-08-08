@@ -37,6 +37,10 @@ internal static class ScriptSystem
                     }
 
                     script.OnUpdate(deltaTime);
+
+                    // Advance coroutines/invokes after the script's own update, sharing its guard so a
+                    // scheduling fault is quarantined the same way. Unscaled delta drives realtime waits.
+                    script.TickScheduling(deltaTime, Time.UnscaledDeltaTime);
                 }
                 catch (Exception ex)
                 {
