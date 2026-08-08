@@ -53,7 +53,7 @@ internal static class CharacterController3DSystem
                 entity.AddComponent(collider);
             }
 
-            if (!body.Enabled || !collider.Enabled) continue;
+            if (!body.Enabled || (!collider.Enabled && !cc.IsNoClip)) continue;
 
             if (cc.FirstMouse)
             {
@@ -61,6 +61,21 @@ internal static class CharacterController3DSystem
                 cc.LastMousePos = Input.MousePosition;
                 cc.FirstMouse = false;
                 if (cc.LockMouse) Input.CursorLocked = true;
+            }
+
+            if (Input.GetKeyDown(Key.V))
+            {
+                cc.IsNoClip = !cc.IsNoClip;
+                collider.Enabled = !cc.IsNoClip;
+                if (cc.IsNoClip)
+                {
+                    body.Velocity = Vector3.Zero;
+                    body.IsDynamic = false;
+                }
+                else
+                {
+                    body.IsDynamic = true;
+                }
             }
 
             ApplyMouseLook(cc);
@@ -71,15 +86,23 @@ internal static class CharacterController3DSystem
             ApplyCrouch(cc, collider, deltaTime);
 
             var cameraEntity = ResolveCamera(scene, entity, cc);
-            ApplyCameraPose(entity, cameraEntity, transform, cc);
+            ApplyCameraPose(entity, cameraEntity, transform, cc, body, deltaTime);
 
-            // Grounded is set by the physics step when a floor contact pushed us up last frame. This
-            // beats the old "vertical velocity ≈ 0" heuristic, which also fired at the jump apex and
-            // let the player jump a second time there.
-            cc.IsGrounded = body.Grounded;
+            if (cc.IsNoClip)
+            {
+                cc.IsGrounded = false;
+                NoClipMove(cc, transform, deltaTime);
+            }
+            else
+            {
+                // Grounded is set by the physics step when a floor contact pushed us up last frame. This
+                // beats the old "vertical velocity ≈ 0" heuristic, which also fired at the jump apex and
+                // let the player jump a second time there.
+                cc.IsGrounded = body.Grounded;
 
-            Move(cc, body, deltaTime);
-            body.GravityScale = cc.GravityMultiplier;
+                Move(cc, body, deltaTime);
+                body.GravityScale = cc.GravityMultiplier;
+            }
         }
     }
 
@@ -133,12 +156,28 @@ internal static class CharacterController3DSystem
         return null;
     }
 
-    private static void ApplyCameraPose(Entity player, Entity? cameraEntity, TransformComponent bodyTransform, CharacterController3DComponent cc)
+    private static void ApplyCameraPose(Entity player, Entity? cameraEntity, TransformComponent bodyTransform, CharacterController3DComponent cc, PhysicsBody3DComponent body, float deltaTime)
     {
         if (!cameraEntity.HasValue) return;
         if (!cameraEntity.Value.TryGetComponent(out TransformComponent? camTransform)) return;
 
         float crouchDrop = (cc.StandHeight - cc.CrouchHeight) * cc.CrouchAmount;
+        float bobOffset = 0f;
+
+        if (cc.EnableBobbing && body.Grounded)
+        {
+            Vector3 horizontalVelocity = new Vector3(body.Velocity.X, 0, body.Velocity.Z);
+            float speed = horizontalVelocity.Length();
+            
+            if (speed > 0.1f)
+            {
+                float speedRatio = MathF.Min(speed / cc.RunSpeed, 1.0f);
+                cc.BobTimer += deltaTime * cc.BobFrequency * speedRatio;
+            }
+            
+            float amplitudeFactor = MathF.Min(speed / cc.WalkSpeed, 1.5f);
+            bobOffset = MathF.Sin(cc.BobTimer) * cc.BobAmplitude * amplitudeFactor;
+        }
 
         bool isChild = cameraEntity.Value.TryGetComponent(out RelationshipComponent? camRel)
                        && camRel.Parent?.Id == player.Id;
@@ -151,16 +190,38 @@ internal static class CharacterController3DSystem
                 cc.CameraBaseHeight = camTransform.Position.Y;
                 cc.CameraCaptured = true;
             }
-            camTransform.Position = new Vector3(camTransform.Position.X, cc.CameraBaseHeight - crouchDrop, camTransform.Position.Z);
+            camTransform.Position = new Vector3(camTransform.Position.X, cc.CameraBaseHeight - crouchDrop + bobOffset, camTransform.Position.Z);
             camTransform.Rotation = new Vector3(cc.Pitch, 0, 0); // yaw is inherited from the body
         }
         else
         {
             // Detached camera: follow the body and apply both yaw and pitch ourselves.
-            float eyeHeight = cc.StandHeight - 0.1f - crouchDrop;
+            float eyeHeight = cc.StandHeight - 0.1f - crouchDrop + bobOffset;
             camTransform.Position = bodyTransform.Position + new Vector3(0, eyeHeight, 0);
             camTransform.Rotation = new Vector3(cc.Pitch, cc.Yaw, 0);
         }
+    }
+
+    private static void NoClipMove(CharacterController3DComponent cc, TransformComponent transform, float deltaTime)
+    {
+        Vector3 input = Vector3.Zero;
+        if (Input.GetKey(Key.W)) input.Z -= 1;
+        if (Input.GetKey(Key.S)) input.Z += 1;
+        if (Input.GetKey(Key.A)) input.X -= 1;
+        if (Input.GetKey(Key.D)) input.X += 1;
+        if (Input.GetKey(Key.Space)) input.Y += 1;
+        if (Input.GetKey(Key.LeftControl)) input.Y -= 1;
+
+        if (input.LengthSquared() > 1e-6f) input = Vector3.Normalize(input);
+
+        // Noclip uses Pitch and Yaw to fly exactly where we look
+        Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(cc.Yaw * (MathF.PI / 180f), cc.Pitch * (MathF.PI / 180f), 0);
+        Vector3 wishDir = Vector3.Transform(input, rotation);
+
+        float speed = cc.NoClipSpeed;
+        if (Input.GetKey(Key.LeftShift)) speed *= 2.5f;
+
+        transform.Position += wishDir * speed * deltaTime;
     }
 
     private static void Move(CharacterController3DComponent cc, PhysicsBody3DComponent body, float deltaTime)
