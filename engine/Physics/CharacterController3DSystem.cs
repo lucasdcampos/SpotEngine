@@ -27,7 +27,7 @@ internal static class CharacterController3DSystem
             var cc = entity.GetComponent<CharacterController3DComponent>();
             if (!entity.TryGetComponent(out TransformComponent? transform) || !transform.Enabled) continue;
 
-            // A character needs a dynamic body and a collider; create sensible defaults if missing.
+            // A character needs a dynamic, upright body and a collider; create sensible defaults if missing.
             if (!entity.TryGetComponent(out PhysicsBody3DComponent? body))
             {
                 if (!cc.LoggedMissingBodyWarning)
@@ -38,19 +38,24 @@ internal static class CharacterController3DSystem
                 body = new PhysicsBody3DComponent { IsDynamic = true };
                 entity.AddComponent(body);
             }
-            if (!entity.TryGetComponent(out BoxCollider3DComponent? collider))
+            body.FreezeRotation = true; // an upright character must never tip over under the simulation
+
+            CharacterCollider? collider = ResolveCollider(entity);
+            if (collider is null)
             {
                 if (!cc.LoggedMissingColliderWarning)
                 {
-                    Log.CoreWarn("CharacterController3D on Entity {0} is missing a BoxCollider3DComponent. Adding one.", entity.Id);
+                    Log.CoreWarn("CharacterController3D on Entity {0} is missing a collider. Adding a capsule.", entity.Id);
                     cc.LoggedMissingColliderWarning = true;
                 }
-                collider = new BoxCollider3DComponent
+                var capsule = new CapsuleCollider3DComponent
                 {
-                    Size = new Vector3(0.6f, cc.StandHeight, 0.6f),
+                    Radius = 0.3f,
+                    Length = MathF.Max(0.1f, cc.StandHeight - 0.6f),
                     Offset = new Vector3(0, cc.StandHeight * 0.5f, 0)
                 };
-                entity.AddComponent(collider);
+                entity.AddComponent(capsule);
+                collider = new CharacterCollider(capsule);
             }
 
             if (!body.Enabled || (!collider.Enabled && !cc.IsNoClip)) continue;
@@ -118,17 +123,61 @@ internal static class CharacterController3DSystem
         cc.LastMousePos = Input.MousePosition;
     }
 
-    private static void ApplyCrouch(CharacterController3DComponent cc, BoxCollider3DComponent collider, float deltaTime)
+    private static void ApplyCrouch(CharacterController3DComponent cc, CharacterCollider collider, float deltaTime)
     {
         cc.IsCrouching = Input.GetKey(Key.LeftControl);
         float target = cc.IsCrouching ? 1f : 0f;
         cc.CrouchAmount = MoveTowards(cc.CrouchAmount, target, deltaTime * CrouchBlendSpeed);
 
-        // Blend the collider height and keep the feet planted at the transform origin
-        // (bottom = Offset.Y - Size.Y/2 = 0), so crouching shrinks from the head down.
+        // Blend the collider height and keep the feet planted at the transform origin, so crouching
+        // shrinks from the head down.
         float height = Lerp(cc.StandHeight, cc.CrouchHeight, cc.CrouchAmount);
-        collider.Size = new Vector3(collider.Size.X, height, collider.Size.Z);
-        collider.Offset = new Vector3(collider.Offset.X, height * 0.5f, collider.Offset.Z);
+        collider.SetHeight(height);
+    }
+
+    private static CharacterCollider? ResolveCollider(Entity entity)
+    {
+        if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule)) return new CharacterCollider(capsule);
+        if (entity.TryGetComponent(out BoxCollider3DComponent? box)) return new CharacterCollider(box);
+        return null;
+    }
+
+    /// <summary>
+    /// Adapts either a capsule or a box collider to the height/enabled operations the character needs,
+    /// so a character authored with either shape works. Feet stay planted at the transform origin.
+    /// </summary>
+    private sealed class CharacterCollider
+    {
+        private readonly BoxCollider3DComponent? _box;
+        private readonly CapsuleCollider3DComponent? _capsule;
+
+        public CharacterCollider(BoxCollider3DComponent box) => _box = box;
+        public CharacterCollider(CapsuleCollider3DComponent capsule) => _capsule = capsule;
+
+        public bool Enabled
+        {
+            get => _box?.Enabled ?? _capsule!.Enabled;
+            set
+            {
+                if (_box is not null) _box.Enabled = value;
+                else _capsule!.Enabled = value;
+            }
+        }
+
+        public void SetHeight(float height)
+        {
+            if (_box is not null)
+            {
+                _box.Size = new Vector3(_box.Size.X, height, _box.Size.Z);
+                _box.Offset = new Vector3(_box.Offset.X, height * 0.5f, _box.Offset.Z);
+            }
+            else
+            {
+                float radius = _capsule!.Radius;
+                _capsule.Length = MathF.Max(0.05f, height - 2f * radius);
+                _capsule.Offset = new Vector3(_capsule.Offset.X, height * 0.5f, _capsule.Offset.Z);
+            }
+        }
     }
 
     private static Entity? ResolveCamera(Scene scene, Entity player, CharacterController3DComponent cc)

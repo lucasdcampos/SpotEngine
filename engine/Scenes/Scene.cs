@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using Spot.Core;
 using Spot.Events;
+using Spot.Physics;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -17,6 +19,7 @@ public class Scene
     private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
     private readonly HashSet<int> _pendingDestroy = new();
     private int _nextId = 1;
+    private IPhysics3D? _physics3D;
 
     /// <summary>
     /// Called once when the scene becomes active. Create resources and entities here.
@@ -52,10 +55,49 @@ public class Scene
         OnUpdate(deltaTime);
         Spot.Physics.CharacterController3DSystem.Update(this, deltaTime);
         Spot.Physics.Physics2DSystem.Update(this, deltaTime);
-        Spot.Physics.Physics3DSystem.Update(this, deltaTime);
+        EnsurePhysics3D().Step(this, deltaTime);
         AudioSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
+    }
+
+    /// <summary>
+    /// Lazily builds this scene's 3D physics backend from <see cref="PhysicsSettings.Backend"/>. If the
+    /// preferred backend fails to initialize, falls back to the legacy AABB solver so play never dies.
+    /// </summary>
+    private IPhysics3D EnsurePhysics3D()
+    {
+        if (_physics3D is not null) return _physics3D;
+
+        if (PhysicsSettings.Backend == Physics3DBackend.Bepu)
+        {
+            try
+            {
+                _physics3D = new Physics.Bepu.BepuPhysics3D();
+                return _physics3D;
+            }
+            catch (Exception ex)
+            {
+                Log.CoreError("Failed to initialize the Bepu physics backend ({0}); falling back to the legacy solver.", ex.Message);
+            }
+        }
+
+        _physics3D = new LegacyPhysics3D();
+        return _physics3D;
+    }
+
+    /// <summary>
+    /// Casts a ray against this scene's 3D physics and returns the closest hit within
+    /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
+    /// </summary>
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
+    {
+        if (_physics3D is null)
+        {
+            hit = default;
+            return false;
+        }
+        return _physics3D.Raycast(this, origin, direction, maxDistance, out hit);
     }
 
     /// <summary>
@@ -189,6 +231,26 @@ public class Scene
         _pools.Clear();
         _pendingDestroy.Clear();
         _nextId = 1;
+        TeardownPhysics();
+    }
+
+    /// <summary>
+    /// Disposes the runtime physics backend, if one was built. Called by the <see cref="SceneManager"/>
+    /// when the scene is exited so the native-free simulation and its buffers are released. Safe to call
+    /// when no backend exists; a later <see cref="UpdateRuntime"/> rebuilds one on demand.
+    /// </summary>
+    internal void TeardownPhysics()
+    {
+        if (_physics3D is null) return;
+        try
+        {
+            _physics3D.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
+        }
+        _physics3D = null;
     }
 
     /// <summary>
