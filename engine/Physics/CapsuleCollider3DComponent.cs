@@ -16,4 +16,10 @@ public class CapsuleCollider3DComponent : Component
     public float Radius { get; set; } = 0.3f;
     public float Length { get; set; } = 1.0f;
     public Vector3 Offset { get; set; } = Vector3.Zero;
+
+    /// <summary>
+    /// When true, the collider reports overlaps as trigger callbacks (<see cref="EntityBehaviour.OnTriggerEnter"/>)
+    /// without producing a physical response, so other bodies pass through it. Bepu backend only.
+    /// </summary>
+    public bool IsTrigger { get; set; }
 }
