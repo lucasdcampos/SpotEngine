@@ -1,4 +1,7 @@
 using System.Collections;
+using System.Numerics;
+using Spot.Core;
+using Spot.Rendering;
 
 namespace Spot.Scenes;
 
@@ -142,6 +145,126 @@ public abstract class EntityBehaviour
     /// </summary>
     internal void TickScheduling(float scaledDelta, float unscaledDelta) =>
         _scheduler?.Tick(scaledDelta, unscaledDelta);
+
+    /// <summary>
+    /// Tweens a scalar from <paramref name="from"/> to <paramref name="to"/> over
+    /// <paramref name="duration"/> seconds, calling <paramref name="onUpdate"/> with the eased value
+    /// each frame. Runs as a coroutine, so stop it with the returned handle or let it end with the entity.
+    /// </summary>
+    /// <param name="from">The starting value.</param>
+    /// <param name="to">The ending value.</param>
+    /// <param name="duration">The duration in seconds; non-positive snaps straight to <paramref name="to"/>.</param>
+    /// <param name="onUpdate">Receives the interpolated value each frame.</param>
+    /// <param name="ease">The easing curve. Defaults to <see cref="Ease.Linear"/>.</param>
+    /// <param name="onComplete">Optional callback run once the tween reaches its end.</param>
+    /// <param name="unscaled">When true, advances on the real clock, ignoring pause and slow motion.</param>
+    /// <returns>A handle to the running tween coroutine.</returns>
+    protected Coroutine Tween(
+        float from,
+        float to,
+        float duration,
+        Action<float> onUpdate,
+        Ease ease = Ease.Linear,
+        Action? onComplete = null,
+        bool unscaled = false) =>
+        StartCoroutine(TweenRoutine(
+            t => onUpdate(from + (to - from) * t), duration, ease, onComplete, unscaled));
+
+    /// <summary>
+    /// Tweens a vector from <paramref name="from"/> to <paramref name="to"/> over
+    /// <paramref name="duration"/> seconds, calling <paramref name="onUpdate"/> each frame.
+    /// </summary>
+    /// <param name="from">The starting vector.</param>
+    /// <param name="to">The ending vector.</param>
+    /// <param name="duration">The duration in seconds; non-positive snaps straight to <paramref name="to"/>.</param>
+    /// <param name="onUpdate">Receives the interpolated vector each frame.</param>
+    /// <param name="ease">The easing curve. Defaults to <see cref="Ease.Linear"/>.</param>
+    /// <param name="onComplete">Optional callback run once the tween reaches its end.</param>
+    /// <param name="unscaled">When true, advances on the real clock, ignoring pause and slow motion.</param>
+    /// <returns>A handle to the running tween coroutine.</returns>
+    protected Coroutine Tween(
+        Vector3 from,
+        Vector3 to,
+        float duration,
+        Action<Vector3> onUpdate,
+        Ease ease = Ease.Linear,
+        Action? onComplete = null,
+        bool unscaled = false) =>
+        StartCoroutine(TweenRoutine(
+            t => onUpdate(Vector3.Lerp(from, to, t)), duration, ease, onComplete, unscaled));
+
+    /// <summary>
+    /// Tweens this entity's local <see cref="TransformComponent.Position"/> to <paramref name="to"/>.
+    /// </summary>
+    /// <param name="to">The target local position.</param>
+    /// <param name="duration">The duration in seconds.</param>
+    /// <param name="ease">The easing curve.</param>
+    /// <param name="onComplete">Optional callback run when the tween finishes.</param>
+    /// <param name="unscaled">When true, ignores pause and slow motion.</param>
+    /// <returns>A handle to the running tween coroutine.</returns>
+    protected Coroutine TweenPosition(
+        Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
+    {
+        var transform = GetComponent<TransformComponent>();
+        return Tween(transform.Position, to, duration, v => transform.Position = v, ease, onComplete, unscaled);
+    }
+
+    /// <summary>
+    /// Tweens this entity's <see cref="TransformComponent.Scale"/> to <paramref name="to"/>.
+    /// </summary>
+    /// <param name="to">The target scale.</param>
+    /// <param name="duration">The duration in seconds.</param>
+    /// <param name="ease">The easing curve.</param>
+    /// <param name="onComplete">Optional callback run when the tween finishes.</param>
+    /// <param name="unscaled">When true, ignores pause and slow motion.</param>
+    /// <returns>A handle to the running tween coroutine.</returns>
+    protected Coroutine TweenScale(
+        Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
+    {
+        var transform = GetComponent<TransformComponent>();
+        return Tween(transform.Scale, to, duration, v => transform.Scale = v, ease, onComplete, unscaled);
+    }
+
+    /// <summary>
+    /// Tweens this entity's <see cref="TransformComponent.Rotation"/> (Euler degrees) to
+    /// <paramref name="to"/>, interpolating each axis linearly.
+    /// </summary>
+    /// <param name="to">The target Euler rotation in degrees.</param>
+    /// <param name="duration">The duration in seconds.</param>
+    /// <param name="ease">The easing curve.</param>
+    /// <param name="onComplete">Optional callback run when the tween finishes.</param>
+    /// <param name="unscaled">When true, ignores pause and slow motion.</param>
+    /// <returns>A handle to the running tween coroutine.</returns>
+    protected Coroutine TweenRotation(
+        Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
+    {
+        var transform = GetComponent<TransformComponent>();
+        return Tween(transform.Rotation, to, duration, v => transform.Rotation = v, ease, onComplete, unscaled);
+    }
+
+    // Shared tween body: drives normalized eased progress from 0 to 1 over the duration, applying it via
+    // apply, then snaps to exactly 1 at the end so the target is hit precisely regardless of frame timing.
+    private static IEnumerator TweenRoutine(
+        Action<float> apply, float duration, Ease ease, Action? onComplete, bool unscaled)
+    {
+        if (duration <= 0.0f)
+        {
+            apply(1.0f);
+            onComplete?.Invoke();
+            yield break;
+        }
+
+        float elapsed = 0.0f;
+        while (elapsed < duration)
+        {
+            apply(Easing.Evaluate(ease, elapsed / duration));
+            yield return null;
+            elapsed += unscaled ? Time.UnscaledDeltaTime : Time.DeltaTime;
+        }
+
+        apply(1.0f);
+        onComplete?.Invoke();
+    }
 
     /// <summary>
     /// Called once, on the first frame after the script is attached.
