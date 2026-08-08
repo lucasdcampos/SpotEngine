@@ -22,4 +22,10 @@ public class CapsuleCollider3DComponent : Component
     /// without producing a physical response, so other bodies pass through it. Bepu backend only.
     /// </summary>
     public bool IsTrigger { get; set; }
+
+    /// <summary>
+    /// The collision layer (0..31) this collider belongs to. Which layers interact is configured via
+    /// <see cref="PhysicsSettings.SetLayerCollision"/>. Bepu backend only.
+    /// </summary>
+    public int Layer { get; set; }
 }

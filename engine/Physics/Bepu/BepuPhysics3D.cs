@@ -143,15 +143,18 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
             // Publish this collidable's trigger flag for the narrow phase (re-set each step so a runtime
             // toggle takes effect, and so a recycled handle never inherits a stale flag).
+            byte layer = (byte)Math.Clamp(desc.Layer, 0, PhysicsSettings.LayerCount - 1);
             if (tracked.IsStatic)
             {
                 _contacts.EnsureStatic(tracked.Static.Value);
                 _contacts.StaticTrigger[tracked.Static.Value] = desc.IsTrigger;
+                _contacts.StaticLayer[tracked.Static.Value] = layer;
             }
             else
             {
                 _contacts.EnsureBody(tracked.Body.Value);
                 _contacts.BodyTrigger[tracked.Body.Value] = desc.IsTrigger;
+                _contacts.BodyLayer[tracked.Body.Value] = layer;
             }
 
             // Push authoring state into the simulation.
@@ -329,20 +332,20 @@ internal sealed class BepuPhysics3D : IPhysics3D
         if (entity.TryGetComponent(out BoxCollider3DComponent? box) && box!.Enabled)
         {
             Vector3 s = box.Size * scale;
-            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger);
+            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger, box.Layer);
             return true;
         }
         if (entity.TryGetComponent(out SphereCollider3DComponent? sphere) && sphere!.Enabled)
         {
             float r = sphere.Radius * scale.X;
-            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger);
+            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger, sphere.Layer);
             return true;
         }
         if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule) && capsule!.Enabled)
         {
             float r = capsule.Radius * scale.X;
             float len = capsule.Length * scale.Y;
-            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r, capsule.IsTrigger);
+            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r, capsule.IsTrigger, capsule.Layer);
             return true;
         }
         desc = default;
@@ -411,5 +414,5 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
     private readonly record struct ShapeKey(int Kind, int Type, float A, float B, float C, bool Freeze, float Mass);
 
-    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY, bool IsTrigger);
+    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY, bool IsTrigger, int Layer);
 }

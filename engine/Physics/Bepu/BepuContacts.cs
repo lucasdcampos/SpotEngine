@@ -18,6 +18,10 @@ internal sealed class BepuContacts
     public bool[] BodyTrigger = new bool[128];
     public bool[] StaticTrigger = new bool[128];
 
+    // Indexed by handle value; the collision layer (0..31) of that body/static's collider.
+    public byte[] BodyLayer = new byte[128];
+    public byte[] StaticLayer = new byte[128];
+
     private List<RawContact>[] _perWorker = Array.Empty<List<RawContact>>();
 
     /// <summary>Allocates one record buffer per worker thread. Idempotent for a given worker count.</summary>
@@ -42,11 +46,19 @@ internal sealed class BepuContacts
         }
     }
 
-    public void EnsureBody(int index) => Grow(ref BodyTrigger, index);
+    public void EnsureBody(int index)
+    {
+        Grow(ref BodyTrigger, index);
+        Grow(ref BodyLayer, index);
+    }
 
-    public void EnsureStatic(int index) => Grow(ref StaticTrigger, index);
+    public void EnsureStatic(int index)
+    {
+        Grow(ref StaticTrigger, index);
+        Grow(ref StaticLayer, index);
+    }
 
-    private static void Grow(ref bool[] array, int index)
+    private static void Grow<T>(ref T[] array, int index)
     {
         if (index < array.Length) return;
         Array.Resize(ref array, Math.Max(index + 1, array.Length * 2));
@@ -63,6 +75,19 @@ internal sealed class BepuContacts
 
         int bv = r.BodyHandle.Value;
         return bv >= 0 && bv < BodyTrigger.Length && BodyTrigger[bv];
+    }
+
+    /// <summary>The collision layer of the collidable's collider (0 when unknown).</summary>
+    public int LayerOf(CollidableReference r)
+    {
+        if (r.Mobility == CollidableMobility.Static)
+        {
+            int sv = r.StaticHandle.Value;
+            return sv >= 0 && sv < StaticLayer.Length ? StaticLayer[sv] : 0;
+        }
+
+        int bv = r.BodyHandle.Value;
+        return bv >= 0 && bv < BodyLayer.Length ? BodyLayer[bv] : 0;
     }
 
     /// <summary>Records a touching pair from a narrow-phase worker into that worker's buffer.</summary>
