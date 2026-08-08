@@ -21,13 +21,16 @@ public class AssetBrowserPanel
         public readonly string Name;
         public readonly bool IsDirectory;
         public readonly AssetKind Kind;
+        // Only meaningful for directories: whether the folder contains anything (drives the empty/full icon).
+        public readonly bool HasContents;
 
-        public AssetEntry(string fullPath, string name, bool isDirectory, AssetKind kind)
+        public AssetEntry(string fullPath, string name, bool isDirectory, AssetKind kind, bool hasContents = false)
         {
             FullPath = fullPath;
             Name = name;
             IsDirectory = isDirectory;
             Kind = kind;
+            HasContents = hasContents;
         }
     }
 
@@ -458,11 +461,67 @@ public class AssetBrowserPanel
             return;
         }
 
+        // Folders are drawn as a vector shape (rather than a font glyph) so they can read as a modern folder
+        // and visibly distinguish an empty folder from one that holds assets.
+        if (entry.Kind == AssetKind.Folder)
+        {
+            DrawFolderIcon(drawList, iconMin, size, entry.HasContents);
+            return;
+        }
+
         // Everything else is a centered icon-font glyph tinted per kind — the same font the Hierarchy and
         // viewport use, drawn from the large icon atlas so it stays crisp at tile sizes (48–128px).
         (string glyph, Vector4 color) = GlyphFor(entry.Kind, palette);
         DrawGlyph(drawList, iconMin, size, glyph, color);
     }
+
+    // Folders are always the same neutral gray; whether they hold assets is conveyed solely by the papers.
+    private static readonly Vector4 FolderColor = new(0.56f, 0.60f, 0.66f, 1.0f);
+    private static readonly Vector4 FolderPaperColor = new(0.94f, 0.95f, 0.97f, 1.0f);
+    private static readonly Vector4 FolderPaperColorBack = new(0.80f, 0.83f, 0.88f, 1.0f);
+
+    // Draws a modern flat folder scaled into the square icon box. The folder is always gray; a folder with
+    // contents shows a couple of sheets peeking out of the pocket, an empty one is just a closed folder.
+    private static void DrawFolderIcon(ImDrawListPtr dl, Vector2 iconMin, float size, bool hasContents)
+    {
+        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.74f));
+        uint front = ImGui.GetColorU32(FolderColor);
+
+        float x0 = iconMin.X + size * 0.13f;
+        float x1 = iconMin.X + size * 0.87f;
+        float backTop = iconMin.Y + size * 0.31f;
+        float bottom = iconMin.Y + size * 0.76f;
+        float r = size * 0.055f;
+
+        // Tab on the back panel (top-left), rounded across the top only.
+        float tabW = (x1 - x0) * 0.42f;
+        float tabH = size * 0.10f;
+        dl.AddRectFilled(new Vector2(x0, backTop - tabH), new Vector2(x0 + tabW, backTop + r), back, r,
+            ImDrawFlags.RoundCornersTop);
+
+        // Back panel of the folder.
+        dl.AddRectFilled(new Vector2(x0, backTop), new Vector2(x1, bottom), back, r);
+
+        float pocketTop = backTop + size * 0.14f;
+
+        // Sheets peeking above the front pocket signal that the folder is non-empty.
+        if (hasContents)
+        {
+            float sw = (x1 - x0) * 0.58f;
+            float sx = x0 + (x1 - x0 - sw) * 0.5f;
+            float sr = size * 0.035f;
+            uint paperBack = ImGui.GetColorU32(FolderPaperColorBack);
+            uint paper = ImGui.GetColorU32(FolderPaperColor);
+            // Back sheet, nudged aside; front sheet, higher and centered. Both hidden below by the pocket.
+            dl.AddRectFilled(new Vector2(sx + size * 0.05f, backTop + size * 0.055f), new Vector2(sx + sw + size * 0.05f, bottom), paperBack, sr, ImDrawFlags.RoundCornersTop);
+            dl.AddRectFilled(new Vector2(sx, backTop + size * 0.02f), new Vector2(sx + sw, bottom), paper, sr, ImDrawFlags.RoundCornersTop);
+        }
+
+        // Front pocket, lighter than the back so the rim + tab stay visible above it.
+        dl.AddRectFilled(new Vector2(x0, pocketTop), new Vector2(x1, bottom), front, r, ImDrawFlags.RoundCornersBottom);
+    }
+
+    private static Vector4 Scale(Vector4 c, float f) => new(c.X * f, c.Y * f, c.Z * f, c.W);
 
     // Picks the Font Awesome glyph and tint for a non-preview asset kind.
     private static (string Glyph, Vector4 Color) GlyphFor(AssetKind kind, EditorPalette palette) => kind switch
@@ -674,7 +733,7 @@ public class AssetBrowserPanel
         {
             if (Matches(dir.Name))
             {
-                result.Add(new AssetEntry(dir.FullName, dir.Name, true, AssetKind.Folder));
+                result.Add(new AssetEntry(dir.FullName, dir.Name, true, AssetKind.Folder, DirectoryHasContents(dir)));
             }
         }
         foreach (var file in dirInfo.GetFiles().OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
@@ -691,6 +750,14 @@ public class AssetBrowserPanel
             }
         }
         return result;
+    }
+
+    // Cheap "does this folder hold anything" probe for the empty/full folder icon. Enumeration stops at the
+    // first entry; an unreadable directory is treated as empty rather than throwing.
+    private static bool DirectoryHasContents(DirectoryInfo dir)
+    {
+        try { return dir.EnumerateFileSystemInfos().Any(); }
+        catch { return false; }
     }
 
     private static AssetKind Classify(string name)
