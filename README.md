@@ -46,7 +46,7 @@ dotnet run --project tools/Spot.Cli -- help
 |---|---|
 | `engine/` | The engine library (`Spot.Engine`) |
 | `editor/` | The ImGui-based editor |
-| `game/` | A sample game |
+| `sandbox/` | A sample game |
 | `tools/` | `Spot.Build` (project/build library) and the `spot` CLI |
 
 ## License
