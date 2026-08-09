@@ -4,7 +4,7 @@ Spot is a 2D/3D game engine written in C# (.NET 10), built on [Silk.NET](https:/
 (windowing, OpenGL, input, Assimp) and [Dear ImGui](https://github.com/ocornut/imgui). It ships with an
 ImGui-based editor, a sample game, and a `spot` command-line tool for creating and building projects.
 
-<img src="assets/screenshot.png">
+<img src="assets/screenshot2.png">
 
 ## Requirements
 
