@@ -26,6 +26,25 @@ The editor is organized into dockable panels you can rearrange and save into a l
   you import and organize assets.
 - **Project settings** — project-wide configuration such as the start scene.
 
+## Importing models into a scene
+
+To place a model (FBX, OBJ, glTF, ...) in your scene, **drag it from the asset browser** onto the
+scene view or into the hierarchy — or right-click it and choose **Add to Scene (with materials)**.
+Dropping onto an entity in the hierarchy adds the model as a child of that entity; dropping onto empty
+space or the viewport adds it at the root.
+
+The import does two things automatically:
+
+- **Rebuilds the hierarchy.** The model's node tree becomes an entity hierarchy — one entity per node,
+  each with its own transform, and each mesh part as its own renderer. You can then move, hide, or
+  restyle individual parts.
+- **Applies the materials.** The model's materials (base color and base texture, including textures
+  embedded in the file) are extracted into a `<Model>_Materials` folder next to the source and assigned
+  to the matching parts, so the model shows up textured without any manual wiring.
+
+Right-clicking a model also still offers **Extract Materials (Embedded)**, which only writes the
+embedded textures and materials out to the folder without adding anything to the scene.
+
 ## Edit mode and play mode
 
 The editor has two modes:

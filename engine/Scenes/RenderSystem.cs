@@ -173,10 +173,7 @@ public static class RenderSystem
                 if (meshRenderer.Model is null) continue;
 
                 Matrix4x4 world = transform.Matrix;
-                foreach (Mesh mesh in meshRenderer.Model.Meshes)
-                {
-                    Renderer3D.DrawShadowMesh(world, mesh);
-                }
+                DrawShadowMeshes(meshRenderer, world);
             }
             Renderer3D.EndShadowPass();
         }
@@ -230,10 +227,7 @@ public static class RenderSystem
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
-            foreach (Mesh mesh in meshRenderer.Model.Meshes)
-            {
-                Renderer3D.DrawMesh(world, mesh, color, texture, shaderType, meshRenderer.Material);
-            }
+            DrawMeshes(meshRenderer, world, color, texture, shaderType);
         }
 
         Renderer3D.EndScene();
@@ -379,6 +373,45 @@ public static class RenderSystem
         lightProj.M41 += offset.X;
         lightProj.M42 += offset.Y;
         return lightView * lightProj;
+    }
+
+    /// <summary>
+    /// Draws a renderer's geometry, honoring <see cref="MeshComponent.SubmeshIndex"/>: the whole model
+    /// when it is negative, otherwise the single named submesh (skipped silently when out of range).
+    /// </summary>
+    private static void DrawMeshes(MeshComponent meshRenderer, Matrix4x4 world, Vector4 color, Texture2D? texture, int shaderType)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index < 0)
+        {
+            foreach (Mesh mesh in meshes)
+            {
+                Renderer3D.DrawMesh(world, mesh, color, texture, shaderType, meshRenderer.Material);
+            }
+        }
+        else if (index < meshes.Count)
+        {
+            Renderer3D.DrawMesh(world, meshes[index], color, texture, shaderType, meshRenderer.Material);
+        }
+    }
+
+    /// <summary>The <see cref="DrawMeshes"/> counterpart for the shadow pass (depth only).</summary>
+    private static void DrawShadowMeshes(MeshComponent meshRenderer, Matrix4x4 world)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index < 0)
+        {
+            foreach (Mesh mesh in meshes)
+            {
+                Renderer3D.DrawShadowMesh(world, mesh);
+            }
+        }
+        else if (index < meshes.Count)
+        {
+            Renderer3D.DrawShadowMesh(world, meshes[index]);
+        }
     }
 
     /// <summary>

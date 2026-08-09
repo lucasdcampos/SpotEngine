@@ -34,6 +34,12 @@ Spot imports 3D models from common formats (via Assimp) and draws them with **ma
 textures. It also ships simple built-in **primitives** (cube, plane, sphere, and friends) so you can
 block out scenes without external assets.
 
+A mesh renderer points at a model and, optionally, a single **submesh** of it (its `SubmeshIndex`;
+the default of `-1` draws the whole model). This is what lets a model with many parts be spread
+across an **entity hierarchy** — one entity per part, each drawing its own submesh with its own
+material — rather than collapsed onto a single object. Dragging a model into a scene builds exactly
+that hierarchy; see [The Editor](editor.md).
+
 Lighting supports a **directional** light (a sun, with an ambient term) and **point** lights.
 Directional lights can cast real-time **shadows**. A **skybox** and optional **dynamic clouds**
 provide the backdrop.
