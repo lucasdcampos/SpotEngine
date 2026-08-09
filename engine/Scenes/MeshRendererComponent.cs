@@ -25,6 +25,16 @@ public sealed class MeshComponent : Component
     public string? ModelPath { get; set; }
 
     /// <summary>
+    /// Gets or sets which submesh of the <see cref="Model"/> this renderer draws. A value of
+    /// <c>-1</c> (the default) draws every submesh — the whole model on one entity. A value
+    /// <c>&gt;= 0</c> draws only that single submesh, which is how an imported model is spread across an
+    /// entity hierarchy: one entity per part, each pointing at the same model but a different submesh.
+    /// Out-of-range values draw nothing.
+    /// </summary>
+    [HideInInspector]
+    public int SubmeshIndex { get; set; } = -1;
+
+    /// <summary>
     /// Gets or sets the material applied to the model. When set, its color and texture are used; when
     /// <see langword="null"/>, the model falls back to the plain <see cref="Color"/>.
     /// </summary>

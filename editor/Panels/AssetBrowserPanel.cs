@@ -562,6 +562,15 @@ public class AssetBrowserPanel
             _context.SelectedAssetPath = entry.FullPath;
         }
 
+        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Add to Scene (with materials)"))
+        {
+            if (_context.ActiveScene != null)
+            {
+                var root = Spot.Scenes.ModelInstantiator.Instantiate(_context.ActiveScene, entry.FullPath);
+                if (root != null) _context.Selection = root.Value;
+            }
+        }
+
         if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
         {
             Spot.Assets.AssimpModelImporter.ExtractMaterials(entry.FullPath);

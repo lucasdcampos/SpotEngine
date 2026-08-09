@@ -50,6 +50,26 @@ public class ViewportPanel
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
             bool isHovered = ImGui.IsItemHovered();
 
+            // Dragging a model from the Asset Browser onto the viewport imports it into the scene as a
+            // faithful entity hierarchy with its materials applied, then selects the new root.
+            if (handleInput && ImGui.BeginDragDropTarget())
+            {
+                unsafe
+                {
+                    var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
+                    if (modelPayload.NativePtr != null && _context.ActiveScene != null)
+                    {
+                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
+                        if (path != null)
+                        {
+                            Entity? root = ModelInstantiator.Instantiate(_context.ActiveScene, path);
+                            if (root != null) _context.Selection = root.Value;
+                        }
+                    }
+                }
+                ImGui.EndDragDropTarget();
+            }
+
             // Non-interactive HUD (orientation gizmo, FPS, camera readout), drawn on every scene
             // viewport whether focused or not so the overlays stay stable while you work.
             if (_camera != null)
