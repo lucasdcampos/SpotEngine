@@ -7,56 +7,66 @@ Spot's build tooling turns a project into a standalone application you can distr
 
 A project is a folder on disk containing:
 
-- An **assets** folder with your content — scenes, models, textures, and so on.
+- An **`Assets/`** folder with your content — scenes, models, textures, audio, prefabs, and so on.
 - A **project file** (`.sptproj`) that records the project's name, where its assets live, and which
-  scene the game should start on.
+  scene the game starts on.
 
 The editor and the command-line tool both read and write this format, so you can move between them
 freely.
 
-## The build tool
+## The build tooling
 
-The **build tool** packages a project into a **self-contained, standalone build** — an application
-that includes everything it needs to run, so players don't need to install anything extra. It can
-target Windows or Linux.
+Two pieces of tooling operate on a project, and both share the same underlying library
+(`Spot.Build`), so the editor and the CLI do exactly the same thing:
 
-The same tooling is available in two places:
+- **`Spot.Build`** — the library that scaffolds a project, generates its build files, and publishes
+  a build. The editor calls it in-process.
+- **The `spot` CLI** — a thin command-line front-end over that library, convenient for scripting,
+  automation, and headless workflows.
 
-- **Inside the editor**, through its project menu — convenient while you're working.
-- **As the `spot` command-line tool** — convenient for scripting, automation, and headless workflows.
+A published build is **self-contained and standalone** — it bundles the engine and everything the
+game needs, so players don't install anything extra. Builds can target **Windows** or **Linux**.
 
-Both do the same thing, because the editor uses the same build library under the hood.
-
-## Building a game
+## From project to shippable app
 
 Producing a distributable build generally follows these steps:
 
-1. **Create or open a project** — either in the editor, or with the CLI's project-creation command.
-2. **Build your content** — lay out scenes and entities, and set the scene the game starts on.
-3. **Publish a build** — choose a target platform (Windows or Linux) and let the tool produce a
-   standalone build into the project's output folder.
+1. **Create or open a project** — in the editor, or with the CLI's `new` command.
+2. **Build your content** — lay out scenes and entities, import assets, and set the start scene.
+3. **Cook the assets** — turn source assets into engine-native artifacts and a manifest (see
+   [Assets](assets.md)). This runs as part of a build.
+4. **Publish a build** — choose a platform and let the tool generate the project files, bundle the
+   engine, cook content, and produce the final self-contained application into the project's build
+   folder. The output is a folder you can zip up and hand to a player.
 
-Under the hood the tool generates the necessary project files, bundles the engine, and produces the
-final self-contained application. The output is a folder you can zip up and hand to a player.
+## Using the `spot` CLI
 
-### Using the command-line tool
-
-The `spot` CLI exposes the same operations. At a high level:
+The CLI exposes these operations. At a high level:
 
 ```bash
-# Create a new project
+# Create a new project (folder, Assets/, .sptproj, build files)
 dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>
 
-# Publish a standalone build (windows | linux)
+# Regenerate a project's build files (and copy the engine DLL)
+dotnet run --project tools/Spot.Cli -- generate --project <dir>
+
+# Cook source assets into engine-native artifacts + a manifest
+dotnet run --project tools/Spot.Cli -- cook --project <dir>
+
+# Rewrite asset references to stable guid: references (and add .meta sidecars)
+dotnet run --project tools/Spot.Cli -- migrate --project <dir>
+
+# Publish a self-contained standalone build (windows | linux)
 dotnet run --project tools/Spot.Cli -- build windows --project <dir>
 
-# List all commands
+# List all commands and options
 dotnet run --project tools/Spot.Cli -- help
 ```
 
-The exact commands and options are printed by `help`; run it to see the current set.
+The exact options are printed by `help`; run it to see the current set.
 
 ## Related
 
 - [The Editor](editor.md) — the visual way to build a project
+- [Assets](assets.md) — the cooking pipeline a build runs
 - [Scenes](scenes.md) — the content a project is made of
