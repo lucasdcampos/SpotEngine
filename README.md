@@ -22,7 +22,7 @@ dotnet build SpotEngine.slnx
 
 ```bash
 dotnet run --project editor    # launch the editor
-dotnet run --project game      # run the sample game
+dotnet run --project sandbox/Sandbox.csproj      # run the sandbox project
 ```
 
 ## The `spot` CLI
