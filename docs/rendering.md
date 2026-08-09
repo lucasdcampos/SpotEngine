@@ -1,17 +1,19 @@
 # Rendering
 
-Spot renders both 2D and 3D. The rendering system is **layered** so you can work at whatever level of
-control you need.
+Spot renders both 2D and 3D. The renderer is **layered** so you can work at whatever level of
+control you need, and the default look is tuned so that simply lighting a scene well looks good
+without hand-configuring the pipeline.
 
 ## The automatic path
 
 The simplest way to draw is to do nothing special: give your entities the right components — a
-transform plus a sprite or a mesh — and add a camera to the scene. The engine's rendering system walks
-the scene each frame and draws everything visible through the camera. For most games this is all you
-need.
+transform plus a sprite or a mesh — and add a camera to the scene. The engine's rendering system
+walks the scene each frame and draws everything visible through the camera. For most games this is
+all you need.
 
-A **camera** defines the viewpoint. A scene can have a camera marked as the primary one, and the scene
-is rendered from its perspective. Cameras can be 2D (orthographic) or 3D (perspective).
+A **camera** defines the viewpoint. A scene renders through the camera marked *primary*, and cameras
+can be **2D** (orthographic) or **3D** (perspective). The camera also carries the background color
+the scene clears to.
 
 ## The layers
 
@@ -23,16 +25,36 @@ Underneath the automatic path are progressively lower-level tools:
 - **Low level** — a core renderer wraps draw calls and render state, and exposes the underlying
   graphics API directly for full control.
 
-You can mix these. A scene can let the engine draw its entities and then issue extra custom drawing on
-top.
+You can mix these: a scene can let the engine draw its entities and then issue extra custom drawing
+on top.
 
-## 3D content
+## 3D content and lighting
 
-Spot can import 3D models from common formats (via Assimp) and draw them with materials and textures.
-A basic lighting model with a directional light is available, and the engine provides simple built-in
-primitives (such as cubes, planes, and spheres) so you can block out scenes without external assets.
+Spot imports 3D models from common formats (via Assimp) and draws them with **materials** and
+textures. It also ships simple built-in **primitives** (cube, plane, sphere, and friends) so you can
+block out scenes without external assets.
+
+Lighting supports a **directional** light (a sun, with an ambient term) and **point** lights.
+Directional lights can cast real-time **shadows**. A **skybox** and optional **dynamic clouds**
+provide the backdrop.
+
+## Post-processing and quality
+
+Two surfaces control the final image, and they have different jobs:
+
+- **Global render settings** are pipeline/quality knobs that apply to every scene: whether rendering
+  goes through an HDR buffer, whether shadows are enabled, and the shadow map's distance and
+  resolution. By default the engine renders in HDR with a full, tasteful default look (ACES tone
+  mapping, FXAA, gated bloom, a faint vignette) even with no per-scene component present.
+- **A Post Processing component** is the *per-scene artistic* control: add it to a scene to customize
+  that look — tone mapping, bloom, vignette, and so on. Adding it is about *customizing* the look,
+  not switching quality on.
+
+This split follows the engine's convention that graphics are tuned through global settings and a few
+existing components rather than scattered ad-hoc knobs.
 
 ## Related
 
 - [Entities & Components](entities-and-components.md) — the visible components (sprite, mesh, camera, light)
-- [Scenes](scenes.md) — where rendering fits in the frame
+- [Assets](assets.md) — how models, textures, and materials are imported
+- [Architecture](architecture.md) — where rendering sits in the frame

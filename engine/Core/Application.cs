@@ -311,7 +311,7 @@ public class Application
     {
         if (!string.IsNullOrEmpty(_spec.AssetRoot))
         {
-            AssetPath.Root = _spec.AssetRoot;
+            AssetPath.Root = ResolveContentPath(_spec.AssetRoot);
         }
 
         if (string.IsNullOrEmpty(_spec.ManifestPath))
@@ -325,6 +325,8 @@ public class Application
             manifestPath = Path.Combine(_spec.ContentDirectory, manifestPath);
         }
 
+        manifestPath = ResolveContentPath(manifestPath);
+
         if (File.Exists(manifestPath))
         {
             AssetManifest.Load(manifestPath);
@@ -335,6 +337,12 @@ public class Application
             Log.CoreError("Content manifest not found: {0}", manifestPath);
         }
     }
+
+    // Cooked content ships next to the executable, so a relative content path must resolve against the
+    // app's base directory — not the current working directory, which lets a shipped game run from any
+    // launch location (e.g. `dotnet run` from the repo root). Absolute paths are returned unchanged.
+    private static string ResolveContentPath(string path) =>
+        Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
 
     private void PollEvents()
     {
