@@ -76,6 +76,14 @@ public class ApplicationSpec
     /// </summary>
     public string? StartScene { get; set; }
 
+    /// <summary>
+    /// Gets or sets the project's default input bindings: action names mapped to the keys/buttons that
+    /// trigger them (e.g. "forward" -> W, Up). Applied at startup via <see cref="Input.SetDefaultBindings"/>
+    /// so both the editor and shipped games get them, and so the <c>resetbinds</c> console command can
+    /// restore them after runtime rebinds. The game manages its own action names.
+    /// </summary>
+    public Dictionary<string, InputBinding[]> DefaultBindings { get; set; } = new();
+
     /// <summary>Gets the effective asset root: the cooked <see cref="ContentDirectory"/> if set, else <see cref="AssetDirectory"/>.</summary>
     public string? AssetRoot =>
         !string.IsNullOrEmpty(ContentDirectory) ? ContentDirectory : AssetDirectory;
@@ -287,6 +295,11 @@ public class Application
         {
             service.Init(this);
         }
+
+        // Apply the project's default input bindings before any scene loads, since a scene's scripts
+        // may query actions in OnCreate. Works for editor play and shipped games alike, as both build
+        // the spec in code.
+        Input.SetDefaultBindings(_spec.DefaultBindings);
 
         _running = true;
         if (startScene is not null)

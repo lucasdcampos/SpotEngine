@@ -511,6 +511,76 @@ public sealed class DevConsole
                 Print($"Wireframe toggled to {Spot.Rendering.RendererDebug.Wireframe}");
             }
         }, "Toggles wireframe rendering for 3D meshes");
+
+        Register("bind", args =>
+        {
+            if (args.Count < 2)
+            {
+                Print("[error] Usage: bind <key> <action>  (e.g. 'bind w forward')");
+                return;
+            }
+
+            if (!InputBinding.TryParse(args[0], out InputBinding binding))
+            {
+                Print($"[error] Unknown key or button: '{args[0]}'");
+                return;
+            }
+
+            string action = args[1];
+            Input.Bind(action, binding);
+            Print($"Bound {binding} -> {action}");
+        }, "Binds a key/button to an action (e.g., 'bind w forward')");
+
+        Register("unbind", args =>
+        {
+            if (args.Count < 1)
+            {
+                Print("[error] Usage: unbind <key|action>  (e.g. 'unbind w' or 'unbind forward')");
+                return;
+            }
+
+            string token = args[0];
+
+            // A token that names a key/button unbinds that physical input everywhere; otherwise it's
+            // treated as an action name and the whole action is removed. This lets both 'unbind w' and
+            // 'unbind forward' do the obvious thing.
+            if (InputBinding.TryParse(token, out InputBinding binding))
+            {
+                Print(Input.Unbind(binding) ? $"Unbound {binding}" : $"{binding} was not bound to any action");
+            }
+            else if (Input.UnbindAction(token))
+            {
+                Print($"Unbound action '{token}'");
+            }
+            else
+            {
+                Print($"[error] '{token}' is not a known key/button or a bound action");
+            }
+        }, "Unbinds a key/button, or a whole action by name (e.g., 'unbind w' or 'unbind forward')");
+
+        Register("bindings", _ =>
+        {
+            List<string> names = Input.GetActionNames().ToList();
+            if (names.Count == 0)
+            {
+                Print("No input bindings.");
+                return;
+            }
+
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            Print("Input bindings:");
+            foreach (string name in names)
+            {
+                string keys = string.Join(", ", Input.GetBindings(name).Select(b => b.ToString()));
+                Print($"  {name}: {keys}");
+            }
+        }, "Lists all action bindings");
+
+        Register("resetbinds", _ =>
+        {
+            Input.ResetBindingsToDefaults();
+            Print("Input bindings reset to defaults.");
+        }, "Resets all input bindings to the project defaults");
     }
 
     private string GetInputText()
