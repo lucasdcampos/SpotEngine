@@ -2592,12 +2592,13 @@
       },
       "Animator": {
         "ModelPath": "Models/ybot.fbx",
-        "DefaultClip": "idle",
+        "DefaultClip": "dance",
         "PlayOnStart": true,
         "Speed": 1,
         "Loop": true,
         "ExtraClipPaths": [
-          "guid:859f7f7d3714439db676d83552e0213a"
+          "guid:859f7f7d3714439db676d83552e0213a",
+          "guid:c28544976e3f47928564b6b2844bd11c"
         ],
         "Enabled": true
       },
