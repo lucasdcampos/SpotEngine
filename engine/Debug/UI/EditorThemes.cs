@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using static Spot.Editor.UI.EditorPalette;
+using static Spot.Engine.Debug.UI.EditorPalette;
 
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 /// <summary>
 /// Built-in editor themes. Add new entries here (or build them at runtime) and hand them to

@@ -2,7 +2,7 @@ using System;
 using ImGuiNET;
 using Spot.Core;
 
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 /// <summary>
 /// Named access to the fonts the engine baked into the ImGui atlas. The editor registers them, in a

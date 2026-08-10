@@ -1,5 +1,6 @@
 using ImGuiNET;
 using Spot.Core;
+using Spot.Engine.Debug.UI;
 using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;

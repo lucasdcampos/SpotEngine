@@ -8,6 +8,7 @@ using Silk.NET.Windowing;
 using Spot.Core;
 using Spot.Build;
 using Spot.Scenes;
+using Spot.Engine.Debug.UI;
 using Spot.Editor.UI;
 using Spot.Editor.Utils;
 

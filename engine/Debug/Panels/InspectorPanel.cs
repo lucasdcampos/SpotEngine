@@ -3,13 +3,13 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Scenes;
 using Spot.Assets;
-using Spot.Editor.UI;
+using Spot.Engine.Debug.UI;
 
-namespace Spot.Editor.Panels;
+namespace Spot.Engine.Debug.Panels;
 
 public class InspectorPanel
 {
-    private readonly EditorContext _context;
+    private readonly ISelectionContext _context;
     private Spot.Rendering.Framebuffer? _materialPreviewFb;
 
     // Prefab editing state: the inspected prefab is loaded into an isolated scene so its components can be
@@ -19,7 +19,7 @@ public class InspectorPanel
     private string? _prefabPath;
     private string _prefabLastJson = "";
 
-    public InspectorPanel(EditorContext context)
+    public InspectorPanel(ISelectionContext context)
     {
         _context = context;
     }
@@ -171,7 +171,7 @@ public class InspectorPanel
             _materialPreviewFb = new Spot.Rendering.Framebuffer(previewSize, previewSize);
         }
         
-        Spot.Editor.UI.MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
+        MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
         
         float availX = ImGui.GetContentRegionAvail().X;
         float xOffset = (availX - previewSize) * 0.5f;

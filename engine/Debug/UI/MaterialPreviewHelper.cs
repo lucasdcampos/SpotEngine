@@ -4,7 +4,7 @@ using Silk.NET.OpenGL;
 using Spot.Assets;
 using Spot.Rendering;
 
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 public static class MaterialPreviewHelper
 {

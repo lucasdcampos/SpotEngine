@@ -171,6 +171,11 @@ public class Application
     private ImGuiService? _imguiService;
 
     /// <summary>
+    /// Gets the runtime debugger service.
+    /// </summary>
+    public Spot.Engine.Debug.RuntimeDebuggerService? Debugger { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
     /// </summary>
     /// <param name="spec">The application specification.</param>
@@ -290,6 +295,8 @@ public class Application
         AddService(new AudioService());
         _imguiService = new ImGuiService(_spec);
         AddService(_imguiService);
+        Debugger = new Spot.Engine.Debug.RuntimeDebuggerService();
+        AddService(Debugger);
 
         foreach (var service in _services)
         {
@@ -362,10 +369,9 @@ public class Application
         _frameFaulted = false;
         Input.NewFrame();
 
-        // The engine owns input while the dev console is open: cursor forced free, game input
-        // withheld. Synced every frame so it also covers closing the console via its window's X
-        // button (which flips IsOpen without going through Toggle).
-        Input.SetEngineCaptured(_console.IsOpen);
+        // The engine owns input while the dev console or debugger panels are open: 
+        // cursor forced free, game input withheld.
+        Input.SetEngineCaptured(_console.IsOpen || (Debugger != null && Debugger.IsOpen));
 
         _window!.PollEvents();
     }
