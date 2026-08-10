@@ -4346,6 +4346,69 @@
           }
         }
       ]
+    },
+    {
+      "ParticleSystem": {
+        "PlayOnAwake": true,
+        "Shape": 2,
+        "StartColor": [
+          1,
+          0.5,
+          0.1,
+          1
+        ],
+        "StartLifetime": 3.0,
+        "EndColor": [
+          1,
+          0.1,
+          0.1,
+          0
+        ],
+        "MaxParticles": 1000,
+        "Radius": 0.5,
+        "StartSize": 0.5,
+        "ConeAngle": 25.0,
+        "BoxSize": [
+          1,
+          1,
+          1
+        ],
+        "SpinSpeed": 45.0,
+        "StartSpeed": 5.0,
+        "Duration": 5.0,
+        "Enabled": true,
+        "Damping": 0.5,
+        "EmissionRate": 50.0,
+        "Gravity": 1.0,
+        "Randomness": 0.3,
+        "RenderMode": 0,
+        "Space": 0,
+        "EndSize": 2.0,
+        "Looping": true,
+        "Blend": 1
+      },
+      "Transform": {
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Enabled": true,
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Position": [
+          0,
+          5,
+          0
+        ]
+      },
+      "Tag": {
+        "Enabled": true,
+        "Name": "Particle Emitter Demo"
+      }
     }
   ]
 }
