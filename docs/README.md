@@ -22,13 +22,14 @@ Spot is a 2D/3D game engine written in C# (.NET 10) on [Silk.NET](https://github
 6. [Rendering](rendering.md) — how things get drawn, lighting, and post-processing
 7. [Physics](physics.md) — 2D and 3D simulation, colliders, and collisions
 8. [Audio](audio.md) — playing and spatializing sound
-9. [Animation](animation.md) — skeletal animation for rigged models
-10. [Assets](assets.md) — importing, cooking, and referencing content
+9. [Input](input.md) — reading keys directly and binding named actions
+10. [Animation](animation.md) — skeletal animation for rigged models
+11. [Assets](assets.md) — importing, cooking, and referencing content
 
 **Tools**
 
-11. [The Editor](editor.md) — the visual tool for building scenes
-12. [Projects & Building a Game](projects-and-building.md) — the project format and shipping a build
+12. [The Editor](editor.md) — the visual tool for building scenes
+13. [Projects & Building a Game](projects-and-building.md) — the project format and shipping a build
 
 ## Quick start
 

@@ -54,5 +54,6 @@ gameplay scripts live in your game's project rather than in the engine itself.
 ## Related
 
 - [Entities & Components](entities-and-components.md) — what scripts operate on
+- [Input](input.md) — reading keys and named actions from a script's update
 - [Physics](physics.md) — the collision and trigger callbacks scripts receive
 - [Scenes](scenes.md) — the lifecycle that drives scripts
