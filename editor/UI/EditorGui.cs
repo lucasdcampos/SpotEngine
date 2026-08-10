@@ -260,13 +260,14 @@ public static class EditorGui
     // ----- Entity icons ----------------------------------------------------------------------------
 
     /// <summary>A broad visual category for an entity, derived from its most defining component.</summary>
-    public enum EntityIcon { Empty, Mesh, Camera, Light, Sprite, Skybox }
+    public enum EntityIcon { Empty, Mesh, Camera, Light, Sprite, Skybox, Particles }
 
     /// <summary>Picks the icon that best represents what an entity is.</summary>
     public static EntityIcon IconFor(Entity entity)
     {
         if (entity.HasComponent<CameraComponent>()) return EntityIcon.Camera;
         if (entity.HasComponent<LightComponent>()) return EntityIcon.Light;
+        if (entity.HasComponent<ParticleSystemComponent>()) return EntityIcon.Particles;
         if (entity.HasComponent<DynamicCloudsComponent>() || entity.HasComponent<SkyboxComponent>()) return EntityIcon.Skybox;
         if (entity.HasComponent<MeshComponent>()) return EntityIcon.Mesh;
         if (entity.HasComponent<Sprite2DComponent>()) return EntityIcon.Sprite;
@@ -281,6 +282,7 @@ public static class EditorGui
         EntityIcon.Mesh => EditorIcons.Cube,
         EntityIcon.Sprite => EditorIcons.Image,
         EntityIcon.Skybox => EditorIcons.Cloud,
+        EntityIcon.Particles => EditorIcons.Sparkles,
         _ => EditorIcons.Circle,
     };
 
@@ -310,6 +312,7 @@ public static class EditorGui
             EntityIcon.Light => p.GizmoHover,
             EntityIcon.Sprite => p.AxisY,
             EntityIcon.Skybox => new Vector4(0.62f, 0.80f, 1.0f, 1.0f),
+            EntityIcon.Particles => new Vector4(1.0f, 0.6f, 0.2f, 1.0f),
             _ => p.TextDisabled,
         };
         uint col = ImGui.GetColorU32(new Vector4(tint.X, tint.Y, tint.Z, tint.W * alpha));
@@ -373,6 +376,17 @@ public static class EditorGui
                 dl.AddCircleFilled(center + new Vector2(-r * 0.45f, r * 0.15f), r * 0.42f, col, 12);
                 dl.AddCircleFilled(center + new Vector2(r * 0.45f, r * 0.15f), r * 0.40f, col, 12);
                 dl.AddCircleFilled(center + new Vector2(0.0f, -r * 0.18f), r * 0.55f, col, 14);
+                break;
+            }
+            case EntityIcon.Particles:
+            {
+                // A stylized asterisk/sparkle: three crossed lines.
+                for (int i = 0; i < 3; i++)
+                {
+                    float a = (MathF.PI / 3.0f) * i;
+                    Vector2 d = new(MathF.Cos(a), MathF.Sin(a));
+                    dl.AddLine(center - d * radius * 0.75f, center + d * radius * 0.75f, col, 1.8f);
+                }
                 break;
             }
             default:
