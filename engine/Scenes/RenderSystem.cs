@@ -252,6 +252,8 @@ public static class RenderSystem
             Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Fill);
         }
 
+        ParticleRenderSystem.Render(scene, viewProjection);
+
         Renderer2D.BeginScene(viewProjection);
 
         foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
