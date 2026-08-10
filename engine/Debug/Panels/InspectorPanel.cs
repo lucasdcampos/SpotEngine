@@ -18,6 +18,7 @@ public class InspectorPanel
     private Entity? _prefabRoot;
     private string? _prefabPath;
     private string _prefabLastJson = "";
+    private string _componentSearchFilter = "";
 
     public InspectorPanel(ISelectionContext context)
     {
@@ -80,30 +81,48 @@ public class InspectorPanel
     private void DrawAddComponentButton(Entity entity)
     {
         if (ImGui.Button("Add Component", new Vector2(-1.0f, 0.0f)))
+        {
             ImGui.OpenPopup("AddComponent");
+            _componentSearchFilter = "";
+            ImGui.SetNextWindowFocus();
+        }
 
         if (ImGui.BeginPopup("AddComponent"))
         {
-            // The menu is built from the same discovered component list as the inspector: any component
-            // marked addable that the entity doesn't already have.
-            foreach (var info in ComponentInspector.ComponentTypes)
-            {
-                if (!info.Addable || entity.HasComponent(info.Type))
-                    continue;
+            ImGui.SetNextItemWidth(250f);
+            if (ImGui.IsWindowAppearing())
+                ImGui.SetKeyboardFocusHere();
+            ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _componentSearchFilter, 256);
+            
+            ImGui.Spacing();
 
-                if (ImGui.MenuItem(info.DisplayName))
+            if (ImGui.BeginChild("ComponentList", new Vector2(250f, 300f), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar))
+            {
+                // The menu is built from the same discovered component list as the inspector: any component
+                // marked addable that the entity doesn't already have.
+                foreach (var info in ComponentInspector.ComponentTypes)
                 {
-                    try
+                    if (!info.Addable || entity.HasComponent(info.Type))
+                        continue;
+
+                    if (!string.IsNullOrEmpty(_componentSearchFilter) && !info.DisplayName.Contains(_componentSearchFilter, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (ImGui.MenuItem(info.DisplayName))
                     {
-                        var component = (Component)Activator.CreateInstance(info.Type)!;
-                        entity.AddComponent(component);
+                        try
+                        {
+                            var component = (Component)Activator.CreateInstance(info.Type)!;
+                            entity.AddComponent(component);
+                        }
+                        catch (Exception ex)
+                        {
+                            Spot.Core.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
+                        }
+                        ImGui.CloseCurrentPopup();
                     }
-                    catch (Exception ex)
-                    {
-                        Spot.Core.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
-                    }
-                    ImGui.CloseCurrentPopup();
                 }
+                ImGui.EndChild();
             }
             ImGui.EndPopup();
         }
