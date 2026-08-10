@@ -31,7 +31,14 @@ public sealed class MeshComponent : Component
     /// entity hierarchy: one entity per part, each pointing at the same model but a different submesh.
     /// Out-of-range values draw nothing.
     /// </summary>
+    /// <remarks>
+    /// Set in code by <see cref="ModelInstantiator"/> when a model is spread across an entity hierarchy, so it
+    /// is <see cref="SerializeHiddenAttribute">serialized despite being hidden</see> — otherwise a multi-part
+    /// model would lose which submesh each part draws on save/load (and a skinned part could not resolve its
+    /// bones).
+    /// </remarks>
     [HideInInspector]
+    [SerializeHidden]
     public int SubmeshIndex { get; set; } = -1;
 
     /// <summary>

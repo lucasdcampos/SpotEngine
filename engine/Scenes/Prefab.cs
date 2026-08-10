@@ -20,8 +20,6 @@ namespace Spot.Scenes;
 /// </remarks>
 public static class Prefab
 {
-    private static readonly JsonSerializerOptions s_writeOptions = new() { WriteIndented = true };
-
     /// <summary>Serializes an entity and its descendants to prefab JSON.</summary>
     /// <param name="entity">The entity to capture as a prefab.</param>
     public static string Serialize(Entity entity)
@@ -31,7 +29,7 @@ public static class Prefab
         // A prefab definition must not carry an instance link back to a prefab (including itself).
         root.Remove("Prefab");
 
-        return new JsonObject { ["Root"] = root }.ToJsonString(s_writeOptions);
+        return new JsonObject { ["Root"] = root }.ToJsonString(SceneJson.WriteOptions);
     }
 
     /// <summary>
@@ -53,7 +51,7 @@ public static class Prefab
 
         try
         {
-            if (JsonNode.Parse(json) is JsonObject rootObj && rootObj["Root"] is JsonObject entityObj)
+            if (SceneJson.Parse(json) is JsonObject rootObj && rootObj["Root"] is JsonObject entityObj)
             {
                 return SceneSerializer.ReadEntity(scene, entityObj, parent);
             }

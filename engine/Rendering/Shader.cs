@@ -97,6 +97,25 @@ public sealed class Shader : IDisposable
     public unsafe void SetUniform(string name, Matrix4x4 value) =>
         _gl.UniformMatrix4(GetUniformLocation(name), 1, false, (float*)&value);
 
+    /// <summary>
+    /// Sets a <c>mat4</c> array uniform (for example a skinning bone palette) from a span of matrices.
+    /// </summary>
+    /// <param name="name">The uniform array name (its base, e.g. <c>uBones</c>).</param>
+    /// <param name="values">The matrices to upload, one per array element.</param>
+    /// <remarks>Like the single-matrix overload, matrices are uploaded untransposed (see <see cref="SetUniform(string, Matrix4x4)"/>).</remarks>
+    public unsafe void SetUniform(string name, ReadOnlySpan<Matrix4x4> values)
+    {
+        if (values.IsEmpty)
+        {
+            return;
+        }
+
+        fixed (Matrix4x4* ptr = values)
+        {
+            _gl.UniformMatrix4(GetUniformLocation(name), (uint)values.Length, false, (float*)ptr);
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose() => _gl.DeleteProgram(_handle);
 

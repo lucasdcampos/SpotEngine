@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
+using Spot.Scenes;
 
 namespace Spot.Assets;
 
@@ -14,8 +14,6 @@ namespace Spot.Assets;
 /// </summary>
 public sealed class PrefabImporter : IAssetImporter
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
-
     // Component reference-property keys whose values are asset paths (kept in sync with the scene migrator).
     private static readonly string[] ReferenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath" };
 
@@ -31,12 +29,12 @@ public sealed class PrefabImporter : IAssetImporter
     /// <inheritdoc />
     public CookedArtifact Cook(string sourcePath, AssetMeta meta, IGuidResolver resolver)
     {
-        JsonNode? root = JsonNode.Parse(File.ReadAllText(sourcePath))
+        JsonNode? root = SceneJson.Parse(File.ReadAllText(sourcePath))
             ?? throw new InvalidDataException($"Prefab '{sourcePath}' is not valid JSON.");
 
         Rewrite(root, resolver);
 
-        byte[] bytes = Encoding.UTF8.GetBytes(root.ToJsonString(Options));
+        byte[] bytes = Encoding.UTF8.GetBytes(root.ToJsonString(SceneJson.WriteOptions));
         return new CookedArtifact(bytes, Id);
     }
 

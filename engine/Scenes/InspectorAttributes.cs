@@ -41,6 +41,17 @@ public sealed class HideInInspectorAttribute : Attribute
 {
 }
 
+/// <summary>
+/// Marks a <see cref="HideInInspectorAttribute"/> property as authored data that must still be serialized —
+/// data set in code (not by the inspector) that has to persist across save/load, such as a mesh part's
+/// submesh index. Without it, a hidden property is treated as runtime state and dropped when the scene is
+/// saved.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class SerializeHiddenAttribute : Attribute
+{
+}
+
 /// <summary>Overrides the label the inspector derives from a property or field name.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class InspectorLabelAttribute : Attribute

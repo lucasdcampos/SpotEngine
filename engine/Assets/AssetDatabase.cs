@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Core;
+using Spot.Scenes;
 
 namespace Spot.Assets;
 
@@ -15,6 +16,9 @@ public static class AssetDatabase
 {
     private static readonly Dictionary<string, IAssetImporter> s_importersByExt = new(StringComparer.OrdinalIgnoreCase);
     private static readonly List<IAssetImporter> s_importers = new();
+
+    // Bump when a cooked format changes so the editor's Library cache re-cooks unchanged sources. See EnsureCooked.
+    private const string CookFormatVersion = "|cook3-skeletal-anim-nopivots";
 
     // Guid maps for the most recently refreshed project. Keys are full, normalized source paths.
     private static readonly Dictionary<string, string> s_sourceToGuid = new(StringComparer.OrdinalIgnoreCase);
@@ -203,7 +207,10 @@ public static class AssetDatabase
         string shardDir = Path.Combine(libraryRoot, meta.Guid[..2]);
         string cooked = Path.Combine(shardDir, meta.Guid + importer.CookedExtension);
         string hashFile = cooked + ".src";
-        string hash = AssetMeta.ComputeSourceHash(sourcePath, meta.Settings);
+        // The cooked-format version is folded into the staleness key so a change in what an importer emits
+        // (e.g. skeletons/clips added to .spmesh, or file-based clip names) re-cooks the editor's Library
+        // cache even when the source bytes are unchanged. Bump it whenever a cooked format changes.
+        string hash = AssetMeta.ComputeSourceHash(sourcePath, meta.Settings) + CookFormatVersion;
 
         if (File.Exists(cooked) && File.Exists(hashFile) && File.ReadAllText(hashFile) == hash)
         {
@@ -324,7 +331,7 @@ public static class AssetDatabase
 
             try
             {
-                JsonNode? root = JsonNode.Parse(File.ReadAllText(file));
+                JsonNode? root = SceneJson.Parse(File.ReadAllText(file));
                 int changes = RewriteReferences(root);
                 if (changes == 0)
                 {
@@ -335,7 +342,7 @@ public static class AssetDatabase
                 Log.CoreInfo("{0}: {1} reference(s) migrated{2}", Path.GetFileName(file), changes, dryRun ? " (dry run)" : string.Empty);
                 if (!dryRun)
                 {
-                    File.WriteAllText(file, root!.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                    File.WriteAllText(file, root!.ToJsonString(SceneJson.WriteOptions));
                 }
             }
             catch (Exception ex)
@@ -403,12 +410,51 @@ public static class AssetDatabase
                 string relative = Path.GetRelativePath(assetsRoot, file);
                 string outPath = Path.Combine(contentRoot, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
-                File.Copy(file, outPath, overwrite: true);
+
+                // Scenes are shipped by path, but their asset references must go out as guid: references so the
+                // runtime resolves them through the manifest. A raw source path — e.g. the .fbx and .sptmat that
+                // a model dragged into the scene leaves behind — has no cooked artifact next to it in Content and
+                // would fail to load in the built game. Rewrite references on the way out; the source scene on
+                // disk is left untouched. Fonts (and any scene that won't parse) fall back to a verbatim copy.
+                if (Path.GetExtension(file).Equals(".sptscene", StringComparison.OrdinalIgnoreCase)
+                    && TryRewriteSceneReferences(file, out string rewritten))
+                {
+                    File.WriteAllText(outPath, rewritten);
+                }
+                else
+                {
+                    File.Copy(file, outPath, overwrite: true);
+                }
             }
             catch (Exception ex)
             {
                 Log.CoreError("Failed to copy asset '{0}' into content: {1}", file, ex.Message);
             }
+        }
+    }
+
+    // Reads a scene file and returns its JSON with every asset reference rewritten to a guid: reference (leaving
+    // pseudo-paths and unknown paths as-is). Returns false so the caller copies the file verbatim when it can't
+    // be parsed, per the engine's never-crash rule.
+    private static bool TryRewriteSceneReferences(string sceneFile, out string json)
+    {
+        try
+        {
+            if (SceneJson.Parse(File.ReadAllText(sceneFile)) is not JsonNode root)
+            {
+                json = string.Empty;
+                return false;
+            }
+
+            RewriteReferences(root);
+            json = root.ToJsonString(SceneJson.WriteOptions);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to rewrite references in scene '{0}': {1}", sceneFile, ex.Message);
+            json = string.Empty;
+            return false;
         }
     }
 

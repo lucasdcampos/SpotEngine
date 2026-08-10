@@ -24,6 +24,15 @@ public interface IModelImporter
     IReadOnlyList<MeshData> ImportMeshData(string path);
 
     /// <summary>
+    /// Imports the CPU-side geometry <em>and</em> skinning/animation data of the model, doing no GPU work.
+    /// Like <see cref="ImportMeshData"/> it is safe to call off the main thread; the caller builds the GPU
+    /// meshes on the render thread. This is the path used to cook and to load skinned, animated models.
+    /// </summary>
+    /// <param name="path">The path to the model file.</param>
+    /// <returns>The model's submeshes (rigid or skinned) and animation clips.</returns>
+    CookedModel ImportModel(string path);
+
+    /// <summary>
     /// Imports the model at the given path, building its GPU meshes. Must run on the render thread.
     /// </summary>
     /// <param name="path">The path to the model file.</param>

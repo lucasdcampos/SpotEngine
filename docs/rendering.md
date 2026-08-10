@@ -40,6 +40,9 @@ across an **entity hierarchy** — one entity per part, each drawing its own sub
 material — rather than collapsed onto a single object. Dragging a model into a scene builds exactly
 that hierarchy; see [The Editor](editor.md).
 
+A **rigged** model is drawn the same way but skinned: its mesh follows a skeleton of bone entities that
+an Animator poses each frame. See [Animation](animation.md).
+
 Lighting supports a **directional** light (a sun, with an ambient term) and **point** lights.
 Directional lights can cast real-time **shadows**. A **skybox** and optional **dynamic clouds**
 provide the backdrop.

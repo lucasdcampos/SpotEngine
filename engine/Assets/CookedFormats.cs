@@ -1,45 +1,82 @@
 using System.Buffers.Binary;
+using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Text;
+using Spot.Animation;
 using Spot.Rendering;
 
 namespace Spot.Assets;
 
 /// <summary>
-/// Reads and writes <c>.spmesh</c>, the engine-native cooked mesh format: a straight serialization of the
-/// interleaved vertex/index data the importers already produce (<see cref="MeshData"/>). Parsing is pure
-/// computation with no GL calls, so a cooked mesh can be read on a background thread and turned into a
-/// drawable <see cref="Mesh"/> on the render thread — exactly the split the async model path already uses.
+/// Reads and writes <c>.spmesh</c>, the engine-native cooked mesh format: a serialization of the interleaved
+/// vertex/index data the importers produce (<see cref="MeshData"/>) together with any skinning bones and
+/// animation clips (<see cref="CookedModel"/>). Parsing is pure computation with no GL calls, so a cooked
+/// model can be read on a background thread and turned into a drawable <see cref="Model"/> on the render
+/// thread — exactly the split the async model path already uses.
 /// </summary>
 /// <remarks>
 /// Layout (little-endian): magic <c>'S','P','M','H'</c>, <c>u32 version</c>, <c>u32 submeshCount</c>, then per
-/// submesh <c>u32 vertexFloatCount</c>, <c>u32 indexCount</c>, the vertex floats, and the index uints.
-/// All multi-byte values are little-endian, matching every runtime identifier the engine ships to.
+/// submesh <c>u32 floatsPerVertex</c>, <c>u32 vertexFloatCount</c>, <c>u32 indexCount</c>, the vertex floats,
+/// the index uints, <c>u32 boneCount</c> and, per bone, a length-prefixed UTF-8 name plus its 16-float
+/// inverse-bind matrix; then <c>u32 clipCount</c> and, per clip, a name, <c>float duration</c>,
+/// <c>u32 channelCount</c> and per channel a node name and its position/rotation/scale key arrays. Version 1
+/// omits <c>floatsPerVertex</c>, bones and clips (rigid meshes only) and is still read for older cooked assets.
 /// </remarks>
 public static class SpMesh
 {
     private static ReadOnlySpan<byte> Magic => "SPMH"u8;
 
-    /// <summary>The format version this build writes and is able to read.</summary>
-    public const uint Version = 1;
+    /// <summary>The format version this build writes.</summary>
+    public const uint Version = 2;
 
-    /// <summary>Serializes cooked submeshes to a <c>.spmesh</c> byte blob.</summary>
+    /// <summary>Serializes cooked submeshes (rigid only) to a <c>.spmesh</c> byte blob.</summary>
     /// <param name="submeshes">The CPU geometry to write, one entry per submesh.</param>
     /// <returns>The encoded bytes, ready to write to disk.</returns>
-    public static byte[] Write(IReadOnlyList<MeshData> submeshes)
+    public static byte[] Write(IReadOnlyList<MeshData> submeshes) => Write(new CookedModel(submeshes, null));
+
+    /// <summary>Serializes a cooked model (geometry + skinning + clips) to a <c>.spmesh</c> byte blob.</summary>
+    /// <param name="model">The CPU model data to write.</param>
+    /// <returns>The encoded bytes, ready to write to disk.</returns>
+    public static byte[] Write(CookedModel model)
     {
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);
 
         w.Write(Magic);
         w.Write(Version);
-        w.Write((uint)submeshes.Count);
+        w.Write((uint)model.Submeshes.Count);
 
-        foreach (MeshData submesh in submeshes)
+        foreach (MeshData submesh in model.Submeshes)
         {
+            int floatsPerVertex = submesh.Skinned ? Mesh.SkinnedFloatsPerVertex : Mesh.FloatsPerVertex;
+            w.Write((uint)floatsPerVertex);
             w.Write((uint)submesh.Vertices.Length);
             w.Write((uint)submesh.Indices.Length);
             w.Write(MemoryMarshal.AsBytes(submesh.Vertices.AsSpan()));
             w.Write(MemoryMarshal.AsBytes(submesh.Indices.AsSpan()));
+
+            IReadOnlyList<BoneInfo> bones = submesh.Bones ?? Array.Empty<BoneInfo>();
+            w.Write((uint)bones.Count);
+            foreach (BoneInfo bone in bones)
+            {
+                WriteString(w, bone.Name);
+                WriteMatrix(w, bone.InverseBind);
+            }
+        }
+
+        w.Write((uint)model.Animations.Count);
+        foreach (AnimationClip clip in model.Animations)
+        {
+            WriteString(w, clip.Name);
+            w.Write(clip.Duration);
+            w.Write((uint)clip.Channels.Count);
+            foreach (AnimationChannel channel in clip.Channels)
+            {
+                WriteString(w, channel.NodeName);
+                WriteVectorKeys(w, channel.PositionKeys);
+                WriteQuaternionKeys(w, channel.RotationKeys);
+                WriteVectorKeys(w, channel.ScaleKeys);
+            }
         }
 
         w.Flush();
@@ -50,35 +87,165 @@ public static class SpMesh
     /// <param name="bytes">The encoded bytes.</param>
     /// <returns>The decoded submeshes.</returns>
     /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spmesh</c>.</exception>
-    public static IReadOnlyList<MeshData> Read(ReadOnlySpan<byte> bytes)
+    public static IReadOnlyList<MeshData> Read(ReadOnlySpan<byte> bytes) => ReadModel(bytes).Submeshes;
+
+    /// <summary>Parses a <c>.spmesh</c> blob into a full cooked model. Safe to call off the render thread.</summary>
+    /// <param name="bytes">The encoded bytes.</param>
+    /// <returns>The decoded model (geometry, skinning and clips).</returns>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spmesh</c>.</exception>
+    public static CookedModel ReadModel(ReadOnlySpan<byte> bytes)
     {
         var cursor = new Cursor(bytes);
         cursor.ExpectMagic(Magic, "spmesh");
 
         uint version = cursor.ReadUInt32();
-        if (version != Version)
+        if (version != 1 && version != 2)
         {
-            throw new InvalidDataException($"Unsupported .spmesh version {version}; expected {Version}.");
+            throw new InvalidDataException($"Unsupported .spmesh version {version}; expected 1 or 2.");
         }
 
         uint submeshCount = cursor.ReadUInt32();
         var submeshes = new List<MeshData>((int)submeshCount);
         for (uint i = 0; i < submeshCount; i++)
         {
+            // Version 1 has no per-submesh floatsPerVertex and no bones — every mesh is rigid.
+            uint floatsPerVertex = version >= 2 ? cursor.ReadUInt32() : (uint)Mesh.FloatsPerVertex;
             uint vertexFloatCount = cursor.ReadUInt32();
             uint indexCount = cursor.ReadUInt32();
             float[] vertices = cursor.ReadFloats(vertexFloatCount);
             uint[] indices = cursor.ReadUInts(indexCount);
-            submeshes.Add(new MeshData(vertices, indices));
+
+            IReadOnlyList<BoneInfo>? bones = null;
+            if (version >= 2)
+            {
+                uint boneCount = cursor.ReadUInt32();
+                if (boneCount > 0)
+                {
+                    var list = new BoneInfo[boneCount];
+                    for (uint b = 0; b < boneCount; b++)
+                    {
+                        string name = cursor.ReadString();
+                        Matrix4x4 inverseBind = cursor.ReadMatrix4x4();
+                        list[b] = new BoneInfo(name, inverseBind);
+                    }
+
+                    bones = list;
+                }
+            }
+
+            bool skinned = floatsPerVertex == (uint)Mesh.SkinnedFloatsPerVertex;
+            submeshes.Add(new MeshData(vertices, indices, skinned, bones));
         }
 
-        return submeshes;
+        IReadOnlyList<AnimationClip> animations = Array.Empty<AnimationClip>();
+        if (version >= 2)
+        {
+            uint clipCount = cursor.ReadUInt32();
+            if (clipCount > 0)
+            {
+                var clips = new AnimationClip[clipCount];
+                for (uint i = 0; i < clipCount; i++)
+                {
+                    string name = cursor.ReadString();
+                    float duration = cursor.ReadSingle();
+                    uint channelCount = cursor.ReadUInt32();
+                    var channels = new AnimationChannel[channelCount];
+                    for (uint c = 0; c < channelCount; c++)
+                    {
+                        string node = cursor.ReadString();
+                        Keyframe<Vector3>[] positionKeys = ReadVectorKeys(ref cursor);
+                        Keyframe<Quaternion>[] rotationKeys = ReadQuaternionKeys(ref cursor);
+                        Keyframe<Vector3>[] scaleKeys = ReadVectorKeys(ref cursor);
+                        channels[c] = new AnimationChannel(node, positionKeys, rotationKeys, scaleKeys);
+                    }
+
+                    clips[i] = new AnimationClip(name, duration, channels);
+                }
+
+                animations = clips;
+            }
+        }
+
+        return new CookedModel(submeshes, animations);
     }
 
-    /// <summary>Reads and parses a <c>.spmesh</c> file. Safe to call off the render thread.</summary>
+    /// <summary>Reads and parses a <c>.spmesh</c> file into CPU geometry. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked mesh file.</param>
     /// <returns>The decoded submeshes.</returns>
     public static IReadOnlyList<MeshData> ReadFile(string path) => Read(File.ReadAllBytes(path));
+
+    /// <summary>Reads and parses a <c>.spmesh</c> file into a full cooked model. Safe to call off the render thread.</summary>
+    /// <param name="path">The absolute path to the cooked mesh file.</param>
+    /// <returns>The decoded model (geometry, skinning and clips).</returns>
+    public static CookedModel ReadModelFile(string path) => ReadModel(File.ReadAllBytes(path));
+
+    private static void WriteString(BinaryWriter w, string value)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(value);
+        w.Write((uint)bytes.Length);
+        w.Write(bytes);
+    }
+
+    private static void WriteMatrix(BinaryWriter w, Matrix4x4 m)
+    {
+        w.Write(m.M11); w.Write(m.M12); w.Write(m.M13); w.Write(m.M14);
+        w.Write(m.M21); w.Write(m.M22); w.Write(m.M23); w.Write(m.M24);
+        w.Write(m.M31); w.Write(m.M32); w.Write(m.M33); w.Write(m.M34);
+        w.Write(m.M41); w.Write(m.M42); w.Write(m.M43); w.Write(m.M44);
+    }
+
+    private static void WriteVectorKeys(BinaryWriter w, IReadOnlyList<Keyframe<Vector3>> keys)
+    {
+        w.Write((uint)keys.Count);
+        foreach (Keyframe<Vector3> key in keys)
+        {
+            w.Write(key.Time);
+            w.Write(key.Value.X);
+            w.Write(key.Value.Y);
+            w.Write(key.Value.Z);
+        }
+    }
+
+    private static void WriteQuaternionKeys(BinaryWriter w, IReadOnlyList<Keyframe<Quaternion>> keys)
+    {
+        w.Write((uint)keys.Count);
+        foreach (Keyframe<Quaternion> key in keys)
+        {
+            w.Write(key.Time);
+            w.Write(key.Value.X);
+            w.Write(key.Value.Y);
+            w.Write(key.Value.Z);
+            w.Write(key.Value.W);
+        }
+    }
+
+    private static Keyframe<Vector3>[] ReadVectorKeys(ref Cursor cursor)
+    {
+        uint count = cursor.ReadUInt32();
+        var keys = new Keyframe<Vector3>[count];
+        for (uint i = 0; i < count; i++)
+        {
+            float time = cursor.ReadSingle();
+            var value = new Vector3(cursor.ReadSingle(), cursor.ReadSingle(), cursor.ReadSingle());
+            keys[i] = new Keyframe<Vector3>(time, value);
+        }
+
+        return keys;
+    }
+
+    private static Keyframe<Quaternion>[] ReadQuaternionKeys(ref Cursor cursor)
+    {
+        uint count = cursor.ReadUInt32();
+        var keys = new Keyframe<Quaternion>[count];
+        for (uint i = 0; i < count; i++)
+        {
+            float time = cursor.ReadSingle();
+            var value = new Quaternion(cursor.ReadSingle(), cursor.ReadSingle(), cursor.ReadSingle(), cursor.ReadSingle());
+            keys[i] = new Keyframe<Quaternion>(time, value);
+        }
+
+        return keys;
+    }
 }
 
 /// <summary>The decoded contents of a <c>.sptex</c>: raw RGBA pixels plus the sampling hint.</summary>
@@ -325,6 +492,28 @@ internal ref struct Cursor
     {
         ReadOnlySpan<byte> slice = Take(sizeof(ushort));
         return BinaryPrimitives.ReadUInt16LittleEndian(slice);
+    }
+
+    public float ReadSingle()
+    {
+        ReadOnlySpan<byte> slice = Take(sizeof(float));
+        return BinaryPrimitives.ReadSingleLittleEndian(slice);
+    }
+
+    public string ReadString()
+    {
+        uint length = ReadUInt32();
+        ReadOnlySpan<byte> slice = Take(checked((int)length));
+        return Encoding.UTF8.GetString(slice);
+    }
+
+    public Matrix4x4 ReadMatrix4x4()
+    {
+        return new Matrix4x4(
+            ReadSingle(), ReadSingle(), ReadSingle(), ReadSingle(),
+            ReadSingle(), ReadSingle(), ReadSingle(), ReadSingle(),
+            ReadSingle(), ReadSingle(), ReadSingle(), ReadSingle(),
+            ReadSingle(), ReadSingle(), ReadSingle(), ReadSingle());
     }
 
     public short[] ReadShorts(uint count)

@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using ImGuiNET;
+using Spot.Animation;
 using Spot.Assets;
 using Spot.Audio;
 using Spot.Core;
@@ -339,7 +340,161 @@ internal static class ComponentInspector
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
     {
         [typeof(ScriptComponent)] = DrawScriptComponent,
+        [typeof(AnimatorComponent)] = DrawAnimatorComponent,
     };
+
+    // The Animator needs a couple of bespoke widgets the generic drawer can't produce: a Default-Clip
+    // dropdown populated from the model's clips, and a list of extra clip files. The rest are plain toggles.
+    // (Playback isn't previewed in the editor — the editor viewport stays in edit mode; animations run in the
+    // built game, so there are no Play/Stop buttons here.)
+    private static void DrawAnimatorComponent(Entity entity, object component)
+    {
+        var animator = (AnimatorComponent)component;
+
+        bool enabled = animator.Enabled;
+        if (EditorGui.Checkbox("Enabled", ref enabled))
+            animator.Enabled = enabled;
+
+        // The model the clips (and skeleton) come from — usually set on import, but retargetable here.
+        DrawNamedProperty(entity, component, typeof(AnimatorComponent), "Model");
+
+        string[] clipNames = GetClipNames(animator);
+        var options = new string[clipNames.Length + 1];
+        options[0] = "(none)";
+        Array.Copy(clipNames, 0, options, 1, clipNames.Length);
+
+        int current = 0;
+        if (!string.IsNullOrEmpty(animator.DefaultClip))
+        {
+            int idx = Array.IndexOf(clipNames, animator.DefaultClip);
+            current = idx >= 0 ? idx + 1 : 0;
+        }
+
+        if (EditorGui.Combo("Default Clip", ref current, options))
+            animator.DefaultClip = current == 0 ? null : options[current];
+
+        bool playOnStart = animator.PlayOnStart;
+        if (EditorGui.Checkbox("Play On Start", ref playOnStart))
+            animator.PlayOnStart = playOnStart;
+
+        float speed = animator.Speed;
+        if (EditorGui.DragFloat("Speed", ref speed, 0.05f, 0.0f, 100.0f))
+            animator.Speed = speed;
+
+        bool loop = animator.Loop;
+        if (EditorGui.Checkbox("Loop", ref loop))
+            animator.Loop = loop;
+
+        DrawExtraClips(animator);
+    }
+
+    // Lists the extra clip files as removable rows and offers a slot to add another animation file. Paths are
+    // stored as portable guid references, matching the other asset slots.
+    private static void DrawExtraClips(AnimatorComponent animator)
+    {
+        ImGui.Separator();
+        ImGui.TextDisabled("Extra Clips");
+
+        int removeAt = -1;
+        for (int i = 0; i < animator.ExtraClipPaths.Length; i++)
+        {
+            ImGui.PushID(i);
+            ImGui.AlignTextToFramePadding();
+            // Show the file's name (which is how animation files are identified — Mixamo names every clip
+            // "mixamo.com"), not the raw guid ref or absolute path that ToDisplayPath resolves to.
+            string reference = animator.ExtraClipPaths[i];
+            string display = AssetDatabase.ToDisplayPath(reference) ?? reference;
+            string label = System.IO.Path.GetFileNameWithoutExtension(display);
+            ImGui.TextUnformatted(string.IsNullOrEmpty(label) ? display : label);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(display);
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - ImGui.GetFrameHeight());
+            if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
+                removeAt = i;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove clip file");
+            ImGui.PopID();
+        }
+
+        if (removeAt >= 0)
+        {
+            var list = animator.ExtraClipPaths.ToList();
+            list.RemoveAt(removeAt);
+            animator.ExtraClipPaths = list.ToArray();
+        }
+
+        string[] patterns = { "*.fbx", "*.gltf", "*.glb", "*.dae", "*.obj" };
+        if (EditorGui.AssetSlot("Add Clip", "MODEL_FILE", patterns, null, out string? newPath))
+        {
+            string? storedRef = AssetDatabase.ToGuidRef(newPath);
+            if (!string.IsNullOrEmpty(storedRef) && !animator.ExtraClipPaths.Contains(storedRef))
+            {
+                var list = animator.ExtraClipPaths.ToList();
+                list.Add(storedRef);
+                animator.ExtraClipPaths = list.ToArray();
+            }
+        }
+    }
+
+    // Collects clip names from the animator's model plus any extra files. Model.Load is cached, so this is
+    // cheap after the first inspector frame; failures are ignored so a missing file can't break the panel.
+    private static string[] GetClipNames(AnimatorComponent animator)
+    {
+        var names = new List<string>();
+
+        Model? model = animator.Model;
+        if (model is null && !string.IsNullOrEmpty(animator.ModelPath))
+        {
+            try
+            {
+                model = Model.Load(animator.ModelPath);
+                animator.Model = model;
+            }
+            catch
+            {
+                // A model that can't resolve yet just yields no names; the dropdown shows "(none)".
+            }
+        }
+
+        if (model != null)
+        {
+            foreach (AnimationClip clip in model.Animations)
+            {
+                if (!names.Contains(clip.Name)) names.Add(clip.Name);
+            }
+        }
+
+        foreach (string path in animator.ExtraClipPaths)
+        {
+            if (string.IsNullOrEmpty(path)) continue;
+            try
+            {
+                foreach (AnimationClip clip in Model.Load(path).Animations)
+                {
+                    if (!names.Contains(clip.Name)) names.Add(clip.Name);
+                }
+            }
+            catch
+            {
+                // Ignore a clip file that can't load; the others still populate the list.
+            }
+        }
+
+        return names.ToArray();
+    }
+
+    // Draws one named property of a component through the generic path (used to reuse the Model asset slot
+    // inside a custom component drawer).
+    private static void DrawNamedProperty(Entity entity, object component, Type type, string propertyName)
+    {
+        foreach (PropertyMeta meta in MetaFor(type))
+        {
+            if (meta.Prop.Name == propertyName)
+            {
+                DrawProperty(entity, component, meta);
+                return;
+            }
+        }
+    }
 
     private static void DrawTextureSlot(Entity entity, object component, PropertyMeta meta)
     {
