@@ -62,7 +62,6 @@ internal static class CharacterController3DSystem
 
             if (cc.FirstMouse)
             {
-                Log.CoreInfo("CharacterController3D active on Entity {0} — mouse look initialized.", entity.Id);
                 cc.LastMousePos = Input.MousePosition;
                 cc.FirstMouse = false;
                 if (cc.LockMouse) Input.CursorLocked = true;

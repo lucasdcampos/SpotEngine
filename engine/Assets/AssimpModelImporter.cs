@@ -170,11 +170,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         int floatsPerVertex = skinned ? RenderMesh.SkinnedFloatsPerVertex : RenderMesh.FloatsPerVertex;
         var vertices = new float[vertexCount * floatsPerVertex];
 
-        if (mesh->MTextureCoords[0] == null)
-        {
-            Log.CoreWarn("Imported mesh has no texture coordinates (UVs); a material texture will show as a flat color.");
-        }
-
         for (int i = 0; i < vertexCount; i++)
         {
             int cursor = i * floatsPerVertex;
@@ -439,7 +434,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
                             System.Buffer.MemoryCopy(tex->PcData, pData, byteCount, byteCount);
                         }
                         System.IO.File.WriteAllBytes(imagePath, data);
-                        Log.CoreInfo($"Extracted embedded texture: {imagePath}");
 
                         // Create a corresponding material
                         string matPath = Path.Combine(directory, texName + ".sptmat");
@@ -448,7 +442,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
                             var mat = new Material();
                             mat.SetTexture(imagePath);
                             mat.Save(matPath);
-                            Log.CoreInfo($"Created material: {matPath}");
                         }
                     }
                 }
@@ -524,7 +517,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
 
                     material.Save(matPath);
                     result[(int)i] = matPath;
-                    Log.CoreInfo($"Created material: {matPath}");
                 }
                 catch (Exception ex)
                 {
@@ -632,7 +624,6 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         }
 
         File.WriteAllBytes(outPath, data);
-        Log.CoreInfo($"Extracted embedded texture: {outPath}");
         return true;
     }
 

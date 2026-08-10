@@ -545,7 +545,6 @@ public class Application
     private bool OnWindowResize(WindowResizeEvent e)
     {
         Renderer.Api.Viewport(0, 0, (uint)e.Width, (uint)e.Height);
-        Log.CoreInfo("Window resized: {0}x{1}", e.Width, e.Height);
         return false;
     }
 }
