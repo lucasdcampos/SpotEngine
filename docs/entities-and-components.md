@@ -33,6 +33,7 @@ The built-in components include:
 | Core | **Transform** (position/rotation/scale), the label (name, tag, enabled), and the hierarchy relationship |
 | 2D | **Sprite** — an image to draw |
 | 3D | **Mesh Renderer** — a model and its material; **Camera**; **Light** (directional or point); **Skybox**; **Dynamic Clouds** |
+| Effects | **Particle System** — CPU-simulated batched particle emitter |
 | Post | **Post Processing** — per-scene tone-mapping/bloom/vignette look |
 | Physics | **Physics Body** (2D/3D), **Box/Sphere/Capsule Colliders**, **Character Controller** |
 | Audio | **Audio Source**, **Audio Listener** |
