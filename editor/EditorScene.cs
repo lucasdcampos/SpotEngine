@@ -752,23 +752,54 @@ public class EditorScene : Scene
 
         if (_showAbout)
         {
-            ImGui.OpenPopup("About Spot Editor");
+            ImGui.OpenPopup("About Spot Engine");
         }
 
         bool aboutOpen = true;
-        if (ImGui.BeginPopupModal("About Spot Editor", ref aboutOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        ImGui.SetNextWindowSize(new Vector2(360, 190), ImGuiCond.Appearing);
+        if (ImGui.BeginPopupModal("About Spot Engine", ref aboutOpen, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar))
         {
-            ImGui.Text("Spot Editor");
-            ImGui.TextDisabled("A lightweight 2D/3D game engine.");
-            ImGui.Separator();
-            ImGui.Text($"Engine Version: {Spot.SpotEngine.GetVersion()}");
-            ImGui.Text("Powered by Silk.NET and ImGuiNET");
+            float windowWidth = ImGui.GetWindowSize().X;
             ImGui.Spacing();
-            if (ImGui.Button("Close", new Vector2(120, 0)))
-            {
-                _showAbout = false;
-                ImGui.CloseCurrentPopup();
-            }
+            ImGui.Spacing();
+            
+            // Icon
+            ImGui.PushFont(Spot.Engine.Debug.UI.EditorFonts.Icons);
+            string icon = Spot.Engine.Debug.UI.EditorIcons.Cubes;
+            float iconWidth = ImGui.CalcTextSize(icon).X;
+            ImGui.SetCursorPosX((windowWidth - iconWidth) * 0.5f);
+            ImGui.TextColored(Spot.Engine.Debug.UI.EditorThemeManager.Current.Palette.Accent, icon);
+            ImGui.PopFont();
+
+            ImGui.Spacing();
+
+            // Title
+            string title = "Spot Engine";
+            Spot.Engine.Debug.UI.EditorFonts.PushTitle();
+            float titleWidth = ImGui.CalcTextSize(title).X;
+            ImGui.SetCursorPosX((windowWidth - titleWidth) * 0.5f);
+            ImGui.Text(title);
+            Spot.Engine.Debug.UI.EditorFonts.Pop();
+            
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            // Info
+            string versionText = $"Version: {Spot.SpotEngine.GetVersion()}";
+            float vWidth = ImGui.CalcTextSize(versionText).X;
+            ImGui.SetCursorPosX((windowWidth - vWidth) * 0.5f);
+            ImGui.TextDisabled(versionText);
+
+            string subtitle = "A lightweight 2D/3D game engine";
+            float sWidth = ImGui.CalcTextSize(subtitle).X;
+            ImGui.SetCursorPosX((windowWidth - sWidth) * 0.5f);
+            ImGui.TextDisabled(subtitle);
+
+            ImGui.Spacing();
+
+            
             ImGui.EndPopup();
         }
         else if (!aboutOpen)
