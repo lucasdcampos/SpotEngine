@@ -36,7 +36,7 @@ public static class EditorIcons
     public const string EllipsisV = "";  // ellipsis-vertical
     public const string Times = "";   // xmark (used as a "clear"/"none" affordance)
     public const string Music = "";   // music
-    public const string Sparkles = "\uf890"; // sparkles
+    public const string Fire = "\uf06d";    // fire (used for particles)
 
     // Every codepoint above; the engine bakes exactly these (as an ImGui [lo,hi,…,0] range) so the
     // atlas stays small instead of loading all ~1500 Font Awesome glyphs.
@@ -45,7 +45,7 @@ public static class EditorIcons
         0xf030, 0xf03d, 0xf0eb, 0xf1b2, 0xf1b3, 0xf03e, 0xf0c2, 0xf111,
         0xf121, 0xf15b, 0xf07b, 0xf07c, 0xf53f, 0xf0e8, 0xf185, 0xf013,
         0xf002, 0xf0b2, 0xf2f1, 0xf31e, 0xf04b, 0xf04d, 0xf142, 0xf00d,
-        0xf001, 0xf890,
+        0xf001, 0xf06d,
     };
 
     /// <summary>The ImGui glyph range (<c>[lo, hi, …, 0]</c>) covering exactly <see cref="Codepoints"/>.</summary>
