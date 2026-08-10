@@ -119,6 +119,13 @@ internal static class ComponentInspector
             if (!ShowIfSatisfied(meta, component))
                 continue;
 
+            if (meta.Header != null)
+            {
+                ImGui.Spacing();
+                ImGui.TextDisabled(meta.Header);
+                ImGui.Separator();
+            }
+
             ImGui.PushID(meta.Prop.Name);
             try
             {
@@ -142,6 +149,7 @@ internal static class ComponentInspector
     {
         public PropertyInfo Prop { get; } = prop;
         public string Label { get; set; } = prop.Name;
+        public string? Header { get; set; }
         public bool HasRange { get; set; }
         public float Min { get; set; }
         public float Max { get; set; }
@@ -184,6 +192,7 @@ internal static class ComponentInspector
             var meta = new PropertyMeta(prop);
 
             meta.Label = prop.GetCustomAttribute<InspectorLabelAttribute>()?.Label ?? Humanize(prop.Name);
+            meta.Header = prop.GetCustomAttribute<InspectorHeaderAttribute>()?.Header;
 
             var range = prop.GetCustomAttribute<InspectorRangeAttribute>();
             if (range != null)

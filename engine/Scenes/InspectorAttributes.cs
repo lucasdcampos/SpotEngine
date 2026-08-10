@@ -67,6 +67,20 @@ public sealed class InspectorLabelAttribute : Attribute
     public string Label { get; }
 }
 
+/// <summary>Draws a header above the property to group related fields.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public sealed class InspectorHeaderAttribute : Attribute
+{
+    /// <summary>Initializes the attribute with the header text.</summary>
+    public InspectorHeaderAttribute(string header)
+    {
+        Header = header;
+    }
+
+    /// <summary>Gets the header text.</summary>
+    public string Header { get; }
+}
+
 /// <summary>
 /// Configures the drag range and step for a <see cref="float"/> property, matching the parameters of
 /// the editor's drag-float widget.
