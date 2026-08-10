@@ -196,21 +196,6 @@ public class EditorScene : Scene
         Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, "Library"));
     }
 
-    // Rewrites this project's scene/material references to stable guid: references (a one-time upgrade), then
-    // reloads so the open scenes pick up the migrated files.
-    private void MigrateAssets()
-    {
-        var project = Project.Active;
-        if (project == null)
-        {
-            return;
-        }
-
-        int changed = Spot.Assets.AssetDatabase.MigrateReferences(project.GetAssetDirectory());
-        Log.CoreInfo("Migrated {0} file(s) to guid references; reloading.", changed);
-        LoadStartScene();
-    }
-
     private void LoadStartScene()
     {
         _openScenes.Clear();
@@ -776,6 +761,9 @@ public class EditorScene : Scene
             ImGui.Text("Spot Editor");
             ImGui.TextDisabled("A lightweight 2D/3D game engine.");
             ImGui.Separator();
+            ImGui.Text($"Engine Version: {Spot.SpotEngine.GetVersion()}");
+            ImGui.Text("Powered by Silk.NET and ImGuiNET");
+            ImGui.Spacing();
             if (ImGui.Button("Close", new Vector2(120, 0)))
             {
                 _showAbout = false;
@@ -1077,7 +1065,6 @@ public class EditorScene : Scene
                     if (ImGui.MenuItem("Full Reset (Includes Program.cs)")) Spot.Build.ProjectGenerator.Generate(Project.Active!, overwriteProgram: true);
                     ImGui.EndMenu();
                 }
-                if (ImGui.MenuItem("Migrate Assets to GUID References")) MigrateAssets();
                 ImGui.Separator();
             }
             
