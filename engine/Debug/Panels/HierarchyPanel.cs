@@ -4,14 +4,14 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Scenes;
 using Spot.Rendering;
-using Spot.Editor.UI;
+using Spot.Engine.Debug.UI;
 
-namespace Spot.Editor.Panels;
+namespace Spot.Engine.Debug.Panels;
 
 public class HierarchyPanel
 {
     public Action<Entity>? OnEntityDoubleClicked;
-    private readonly EditorContext _context;
+    private readonly ISelectionContext _context;
 
     private int _renamingEntityId = -1;
     private string _entityRenameBuffer = "";
@@ -29,7 +29,7 @@ public class HierarchyPanel
     private static string? s_entityClipboardJson;
     private static Entity? s_cutEntity;
 
-    public HierarchyPanel(EditorContext context)
+    public HierarchyPanel(ISelectionContext context)
     {
         _context = context;
     }
@@ -97,7 +97,7 @@ public class HierarchyPanel
                     if (payload.NativePtr != null)
                     {
                         int payloadId = *(int*)payload.Data;
-                        Entity draggedEntity = new Entity(payloadId, _context.ActiveScene);
+                        Entity draggedEntity = new Entity(payloadId, _context.ActiveScene!);
                         draggedEntity.SetParent(null);
                     }
 

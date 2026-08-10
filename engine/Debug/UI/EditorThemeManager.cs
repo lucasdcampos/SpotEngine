@@ -1,4 +1,4 @@
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 /// <summary>
 /// Owns the editor's active theme. This is the seam for future theme customization: a preferences

@@ -1,7 +1,7 @@
 using System.Numerics;
 using ImGuiNET;
 
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 /// <summary>
 /// A named set of colors used by the editor. Every field is a plain <see cref="Vector4"/> (RGBA,

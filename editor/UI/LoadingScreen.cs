@@ -3,6 +3,8 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Rendering;
 
+using Spot.Engine.Debug.UI;
+using Spot.Editor.UI;
 namespace Spot.Editor.UI;
 
 /// <summary>

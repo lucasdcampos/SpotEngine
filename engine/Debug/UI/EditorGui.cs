@@ -8,7 +8,7 @@ using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Core;
 
-namespace Spot.Editor.UI;
+namespace Spot.Engine.Debug.UI;
 
 /// <summary>
 /// Reusable ImGui widgets for the editor's inspector-style panels. Centralizing these here keeps

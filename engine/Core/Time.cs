@@ -27,6 +27,12 @@ public static class Time
     public static float UnscaledDeltaTime { get; private set; }
 
     /// <summary>
+    /// If true, the next frame will advance by a fixed delta time regardless of TimeScale, 
+    /// then reset this flag to false. Useful for step-by-step debugging while paused.
+    /// </summary>
+    public static bool StepNextFrame { get; set; }
+
+    /// <summary>
     /// Gets or sets the multiplier applied to <see cref="DeltaTime"/>. 1 is normal speed, 0 pauses
     /// gameplay, values in between are slow motion. Negative values are clamped to 0.
     /// </summary>
@@ -66,7 +72,17 @@ public static class Time
     internal static void NewFrame(float unscaledDeltaTime)
     {
         UnscaledDeltaTime = unscaledDeltaTime;
-        DeltaTime = unscaledDeltaTime * _timeScale;
+
+        if (StepNextFrame)
+        {
+            DeltaTime = FixedDeltaTime;
+            StepNextFrame = false;
+        }
+        else
+        {
+            DeltaTime = unscaledDeltaTime * _timeScale;
+        }
+
         UnscaledTime += unscaledDeltaTime;
         ElapsedTime += DeltaTime;
         FrameCount++;

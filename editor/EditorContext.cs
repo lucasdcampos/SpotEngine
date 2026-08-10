@@ -1,8 +1,9 @@
 using Spot.Scenes;
+using Spot.Engine.Debug;
 
 namespace Spot.Editor;
 
-public class EditorContext
+public class EditorContext : ISelectionContext
 {
     public Scene? ActiveScene { get; set; }
 
