@@ -47,9 +47,6 @@ public class HierarchyPanel
 
         if (_context.ActiveScene != null)
         {
-            DrawActionBar();
-            ImGui.Separator();
-
             SyncRootOrder();
             foreach (int rootId in _rootOrder.ToList())
             {
@@ -454,27 +451,6 @@ public class HierarchyPanel
             if (_context.Selection != null && _context.Selection.Value == entity)
                 _context.Selection = null;
         }
-    }
-
-    // Compact Copy / Cut / Duplicate / Paste button strip at the top of the panel. Mirrors the shortcuts
-    // and the per-item context menu so the actions are discoverable without right-clicking.
-    private void DrawActionBar()
-    {
-        bool hasSel = _context.Selection != null;
-        bool canPaste = s_entityClipboardJson != null;
-
-        ImGui.BeginDisabled(!hasSel);
-        if (ImGui.SmallButton("Copy")) CopyEntity(_context.Selection!.Value);
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Cut")) CutEntity(_context.Selection!.Value);
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Duplicate")) DuplicateEntity(_context.Selection!.Value);
-        ImGui.EndDisabled();
-
-        ImGui.SameLine();
-        ImGui.BeginDisabled(!canPaste);
-        if (ImGui.SmallButton("Paste")) PasteEntity(_context.Selection);
-        ImGui.EndDisabled();
     }
 
     private void CopyEntity(Entity entity)

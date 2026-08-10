@@ -104,7 +104,6 @@ public class AssetBrowserPanel
         _pendingNavigate = null;
 
         DrawToolbar();
-        DrawActionBar();
         ImGui.Separator();
 
         float bottomHeight = ImGui.GetTextLineHeightWithSpacing();
@@ -1084,26 +1083,6 @@ public class {className} : EntityBehaviour
         }
     }
 
-    // Compact Copy / Cut / Duplicate / Paste button strip beneath the toolbar. Mirrors the shortcuts and
-    // per-item context menu so the actions are discoverable without right-clicking.
-    private void DrawActionBar()
-    {
-        bool hasSelection = _selectedPath != null && (File.Exists(_selectedPath) || Directory.Exists(_selectedPath));
-        bool canPaste = s_clipboardPath != null;
-
-        ImGui.BeginDisabled(!hasSelection);
-        if (ImGui.SmallButton("Copy")) CopySelected(cut: false);
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Cut")) CopySelected(cut: true);
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Duplicate")) DuplicateAsset(_selectedPath!);
-        ImGui.EndDisabled();
-
-        ImGui.SameLine();
-        ImGui.BeginDisabled(!canPaste);
-        if (ImGui.SmallButton("Paste")) PasteClipboardInto(_currentDirectory);
-        ImGui.EndDisabled();
-    }
 
     private void CopySelected(bool cut)
     {
