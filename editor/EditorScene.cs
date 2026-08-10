@@ -60,6 +60,7 @@ public enum EditorState
 public class EditorScene : Scene
 {
     private EditorState _state = EditorState.Edit;
+    private Entity? _lastSelectedParticleEntity = null;
 
     private bool _isCreatingProject = false;
     private bool _showAbout = false;
@@ -252,6 +253,38 @@ public class EditorScene : Scene
         {
             sceneData.Scene.OnUpdate(deltaTime);
             sceneData.Scene.FlushDestroyed();
+        }
+
+        if (_state == EditorState.Edit)
+        {
+            Entity? currentSelected = _context.Selection;
+            
+            if (_lastSelectedParticleEntity.HasValue && currentSelected != _lastSelectedParticleEntity)
+            {
+                // Only clear if the entity is still alive in the scene
+                if (_activeSceneData != null && _activeSceneData.Scene.IsAlive(_lastSelectedParticleEntity.Value))
+                {
+                    if (_lastSelectedParticleEntity.Value.TryGetComponent(out ParticleSystemComponent? oldParticles))
+                    {
+                        oldParticles.Clear();
+                        oldParticles.Stop();
+                    }
+                }
+            }
+
+            if (currentSelected.HasValue && currentSelected.Value.IsActiveInHierarchy() && currentSelected.Value.TryGetComponent(out ParticleSystemComponent? particles))
+            {
+                if (!particles.IsPlaying)
+                {
+                    particles.Play();
+                }
+                Spot.Scenes.ParticleSystem.UpdateEntity(currentSelected.Value, deltaTime);
+                _lastSelectedParticleEntity = currentSelected;
+            }
+            else
+            {
+                _lastSelectedParticleEntity = null;
+            }
         }
     }
 
