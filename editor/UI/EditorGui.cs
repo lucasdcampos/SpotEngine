@@ -282,7 +282,7 @@ public static class EditorGui
         EntityIcon.Mesh => EditorIcons.Cube,
         EntityIcon.Sprite => EditorIcons.Image,
         EntityIcon.Skybox => EditorIcons.Cloud,
-        EntityIcon.Particles => EditorIcons.Sparkles,
+        EntityIcon.Particles => EditorIcons.Fire,
         _ => EditorIcons.Circle,
     };
 
