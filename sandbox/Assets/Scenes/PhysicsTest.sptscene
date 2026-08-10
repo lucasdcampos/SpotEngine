@@ -4348,66 +4348,67 @@
       ]
     },
     {
-      "ParticleSystem": {
-        "PlayOnAwake": true,
-        "Shape": 2,
-        "StartColor": [
-          1,
-          0.5,
-          0.1,
-          1
-        ],
-        "StartLifetime": 3.0,
-        "EndColor": [
-          1,
-          0.1,
-          0.1,
-          0
-        ],
-        "MaxParticles": 1000,
-        "Radius": 0.5,
-        "StartSize": 0.5,
-        "ConeAngle": 25.0,
-        "BoxSize": [
-          1,
-          1,
-          1
-        ],
-        "SpinSpeed": 45.0,
-        "StartSpeed": 5.0,
-        "Duration": 5.0,
-        "Enabled": true,
-        "Damping": 0.5,
-        "EmissionRate": 50.0,
-        "Gravity": 1.0,
-        "Randomness": 0.3,
-        "RenderMode": 0,
-        "Space": 0,
-        "EndSize": 2.0,
-        "Looping": true,
-        "Blend": 1
+      "Tag": {
+        "Name": "Particles",
+        "Enabled": true
       },
       "Transform": {
-        "Scale": [
-          1,
-          1,
-          1
-        ],
         "Enabled": true,
+        "Position": [
+          0,
+          2.6146433,
+          0
+        ],
         "Rotation": [
           0,
           0,
           0
         ],
-        "Position": [
-          0,
-          5,
-          0
+        "Scale": [
+          1,
+          1,
+          1
         ]
       },
-      "Tag": {
+      "ParticleSystem": {
         "Enabled": true,
-        "Name": "Particle Emitter Demo"
+        "PlayOnAwake": true,
+        "Looping": true,
+        "Duration": 5,
+        "MaxParticles": 256,
+        "EmissionRate": 24,
+        "Shape": 3,
+        "BoxSize": [
+          1,
+          1,
+          1
+        ],
+        "Radius": 0.5,
+        "ConeAngle": 25,
+        "StartLifetime": 2,
+        "StartSpeed": 2,
+        "StartSize": 0.3,
+        "SpinSpeed": 0,
+        "StartColor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "EndColor": [
+          1,
+          1,
+          1,
+          0
+        ],
+        "EndSize": 0,
+        "Gravity": 0,
+        "Damping": 0,
+        "Randomness": 0.2,
+        "Space": 0,
+        "RenderMode": 1,
+        "Blend": 0,
+        "TexturePath": null
       }
     }
   ]

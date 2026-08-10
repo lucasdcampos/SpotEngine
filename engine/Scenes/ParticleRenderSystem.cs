@@ -89,11 +89,12 @@ public static class ParticleRenderSystem
             }
         }
 
-        // Build an orthonormal right/up perpendicular to the view direction. Guard the degenerate case
-        // where the camera looks straight up or down (forward parallel to world up).
+        // Build an orthonormal right/up perpendicular to the view direction. 
+        // We want the quad normal (Cross(right, up)) to point TOWARD the camera (-forward), 
+        // otherwise backface culling will discard the particles.
         Vector3 worldUp = MathF.Abs(forward.Y) >= 0.999f ? Vector3.UnitZ : Vector3.UnitY;
-        right = Vector3.Cross(worldUp, forward);
+        right = Vector3.Cross(forward, worldUp);
         right = right.LengthSquared() > 1e-6f ? Vector3.Normalize(right) : Vector3.UnitX;
-        up = Vector3.Normalize(Vector3.Cross(forward, right));
+        up = Vector3.Normalize(Vector3.Cross(right, forward));
     }
 }

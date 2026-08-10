@@ -73,6 +73,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Playback --------------------------------------------------------------------------------
 
     /// <summary>Gets or sets whether the emitter starts playing automatically when the scene begins running.</summary>
+    [InspectorHeader("Playback")]
     public bool PlayOnAwake { get; set; } = true;
 
     /// <summary>Gets or sets whether emission repeats forever. When off, emission stops after <see cref="Duration"/>.</summary>
@@ -86,6 +87,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Emission --------------------------------------------------------------------------------
 
     /// <summary>Gets or sets the hard cap on simultaneously alive particles. The buffer is sized to this.</summary>
+    [InspectorHeader("Emission")]
     [InspectorRange(1.0f, 100000.0f, 1.0f)]
     public int MaxParticles { get; set; } = 256;
 
@@ -96,6 +98,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Emitter shape ---------------------------------------------------------------------------
 
     /// <summary>Gets or sets the volume new particles spawn from.</summary>
+    [InspectorHeader("Shape")]
     public ParticleEmitterShape Shape { get; set; } = ParticleEmitterShape.Cone;
 
     /// <summary>Gets or sets the box extents (full size) for a <see cref="ParticleEmitterShape.Box"/> emitter.</summary>
@@ -115,6 +118,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Initial particle state ------------------------------------------------------------------
 
     /// <summary>Gets or sets how long (seconds) each particle lives.</summary>
+    [InspectorHeader("Initial State")]
     [InspectorRange(0.01f, 60.0f, 0.05f)]
     public float StartLifetime { get; set; } = 2.0f;
 
@@ -137,6 +141,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Over-lifetime ---------------------------------------------------------------------------
 
     /// <summary>Gets or sets the color particles fade to over their life. Defaults to transparent white (fade out).</summary>
+    [InspectorHeader("Over Lifetime")]
     [InspectorColor]
     public Vector4 EndColor { get; set; } = new(1.0f, 1.0f, 1.0f, 0.0f);
 
@@ -159,6 +164,7 @@ public sealed class ParticleSystemComponent : Component
     // ----- Simulation & rendering ------------------------------------------------------------------
 
     /// <summary>Gets or sets whether particles follow the emitter (<see cref="ParticleSimulationSpace.Local"/>) or are left in world space.</summary>
+    [InspectorHeader("Simulation & Rendering")]
     public ParticleSimulationSpace Space { get; set; } = ParticleSimulationSpace.Local;
 
     /// <summary>Gets or sets whether particles billboard toward the camera (3D) or lie flat on the XY plane (2D).</summary>
