@@ -145,12 +145,9 @@ public static class ModelImporter
             return cached;
         }
 
-        var sw = Stopwatch.StartNew();
         Model model = cooked ? BuildFromSpMesh(fullPath) : ImportFromSource(fullPath);
-        sw.Stop();
         model.SourcePath = fullPath;
         s_cache[fullPath] = model;
-        Log.CoreInfo("Loaded model '{0}' in {1:0} ms", path, sw.Elapsed.TotalMilliseconds);
         return model;
     }
 
@@ -283,13 +280,9 @@ public static class ModelImporter
             // A synchronous Load for the same path may have cached it meanwhile; don't build twice.
             if (!s_cache.ContainsKey(result.FullPath))
             {
-                var sw = Stopwatch.StartNew();
                 Model model = BuildModel(result.Cooked.Value);
                 model.SourcePath = result.FullPath;
-                sw.Stop();
                 s_cache[result.FullPath] = model;
-                Log.CoreInfo("Loaded model '{0}' — parse {1:0} ms, GPU upload {2:0} ms",
-                    result.FullPath, result.ParseMs, sw.Elapsed.TotalMilliseconds);
             }
 
             if (budget.Elapsed.TotalMilliseconds > budgetMs)

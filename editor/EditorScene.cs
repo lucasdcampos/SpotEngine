@@ -66,6 +66,15 @@ public class EditorScene : Scene
 
     private bool _isCreatingProject = false;
     private bool _showAbout = false;
+
+    // Environment details shown on the About dialog's "System" tab. Queried once, the first time the
+    // dialog needs them (the GL strings require a current context, which only exists inside a frame),
+    // then cached so the popup doesn't re-probe the runtime and driver every frame it is open.
+    private string? _sysRuntime;
+    private string? _sysOs;
+    private string? _sysArch;
+    private string? _sysGpu;
+    private string? _sysGl;
     private string _newProjectName = "MyProject";
     private string _newProjectLocation = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
 
@@ -750,62 +759,7 @@ public class EditorScene : Scene
             _isCreatingProject = false;
         }
 
-        if (_showAbout)
-        {
-            ImGui.OpenPopup("About Spot Engine");
-        }
-
-        bool aboutOpen = true;
-        ImGui.SetNextWindowSize(new Vector2(360, 190), ImGuiCond.Appearing);
-        if (ImGui.BeginPopupModal("About Spot Engine", ref aboutOpen, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar))
-        {
-            float windowWidth = ImGui.GetWindowSize().X;
-            ImGui.Spacing();
-            ImGui.Spacing();
-            
-            // Icon
-            ImGui.PushFont(Spot.Engine.Debug.UI.EditorFonts.Icons);
-            string icon = Spot.Engine.Debug.UI.EditorIcons.Cubes;
-            float iconWidth = ImGui.CalcTextSize(icon).X;
-            ImGui.SetCursorPosX((windowWidth - iconWidth) * 0.5f);
-            ImGui.TextColored(Spot.Engine.Debug.UI.EditorThemeManager.Current.Palette.Accent, icon);
-            ImGui.PopFont();
-
-            ImGui.Spacing();
-
-            // Title
-            string title = "Spot Engine";
-            Spot.Engine.Debug.UI.EditorFonts.PushTitle();
-            float titleWidth = ImGui.CalcTextSize(title).X;
-            ImGui.SetCursorPosX((windowWidth - titleWidth) * 0.5f);
-            ImGui.Text(title);
-            Spot.Engine.Debug.UI.EditorFonts.Pop();
-            
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            // Info
-            string versionText = $"Version: {Spot.SpotEngine.GetVersion()}";
-            float vWidth = ImGui.CalcTextSize(versionText).X;
-            ImGui.SetCursorPosX((windowWidth - vWidth) * 0.5f);
-            ImGui.TextDisabled(versionText);
-
-            string subtitle = "A lightweight 2D/3D game engine";
-            float sWidth = ImGui.CalcTextSize(subtitle).X;
-            ImGui.SetCursorPosX((windowWidth - sWidth) * 0.5f);
-            ImGui.TextDisabled(subtitle);
-
-            ImGui.Spacing();
-
-            
-            ImGui.EndPopup();
-        }
-        else if (!aboutOpen)
-        {
-            _showAbout = false;
-        }
+        DrawAboutPopup();
 
         DrawUnsavedChangesModals();
 
@@ -830,6 +784,271 @@ public class EditorScene : Scene
             string title = Project.Active?.Config.Name ?? "Loading";
             LoadingScreen.Present(EditorThemeManager.Current.Palette, title, "Loading project...");
         }
+    }
+
+    // ----- About dialog --------------------------------------------------------------------------
+
+    // The open-source projects Spot is built on, shown on the About dialog's "Credits" tab. Kept in
+    // sync with THIRDPARTY.md (versions live there; only the name + license are surfaced here).
+    private static readonly (string Name, string License)[] AboutLibraries =
+    {
+        ("Silk.NET",       "MIT"),
+        ("Dear ImGui",     "MIT"),
+        ("BepuPhysics",    "Apache-2.0"),
+        ("OpenAL Soft",    "LGPL-2.1"),
+        ("Assimp",         "BSD-3-Clause"),
+        ("Serilog",        "Apache-2.0"),
+        ("StbImageSharp",  "Public Domain"),
+        ("StbVorbisSharp", "Public Domain"),
+    };
+
+    private const string RepoUrl = "https://github.com/lucasdcampos/spotengine";
+
+    // A short feature line on the "About" tab: an accent-colored icon glyph followed by a description.
+    private static readonly (string Glyph, string Text)[] AboutHighlights =
+    {
+        (EditorIcons.Cube, "Real-time 2D & 3D rendering — HDR, bloom, ACES tonemapping & FXAA"),
+        (EditorIcons.Sun,  "Dynamic lighting, shadows, skyboxes & GPU particles"),
+        (EditorIcons.Move, "3D physics & character controllers powered by BepuPhysics"),
+        (EditorIcons.Music, "3D positional audio via OpenAL"),
+        (EditorIcons.Code, "C# scripting with coroutines, tweening & input actions"),
+        (EditorIcons.Gear, "Project tooling, asset cooking & self-contained platform builds"),
+    };
+
+    /// <summary>
+    /// Draws the Help &gt; About modal: a centered header (icon / name / version) over a tabbed body
+    /// (overview + highlights, host system details, and third-party credits). Opened by setting
+    /// <see cref="_showAbout"/>; from there ImGui owns the popup's lifetime.
+    /// </summary>
+    private void DrawAboutPopup()
+    {
+        if (_showAbout)
+        {
+            ImGui.OpenPopup("About Spot Engine");
+            _showAbout = false; // Consume the request; the modal stays open on its own until dismissed.
+        }
+
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.Pos + viewport.Size * 0.5f, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(500, 560), ImGuiCond.Appearing);
+
+        bool open = true;
+        if (!ImGui.BeginPopupModal("About Spot Engine", ref open,
+                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse))
+        {
+            return;
+        }
+
+        var palette = EditorThemeManager.Current.Palette;
+        float windowWidth = ImGui.GetWindowSize().X;
+        float padX = ImGui.GetStyle().WindowPadding.X;
+
+        void Center(float itemWidth) =>
+            ImGui.SetCursorPosX(MathF.Max((windowWidth - itemWidth) * 0.5f, padX));
+
+        // ---- Header ---------------------------------------------------------------------------
+        ImGui.Spacing();
+        ImGui.PushFont(EditorFonts.Icons);
+        Center(ImGui.CalcTextSize(EditorIcons.Cubes).X);
+        ImGui.TextColored(palette.Accent, EditorIcons.Cubes);
+        ImGui.PopFont();
+
+        ImGui.Spacing();
+
+        EditorFonts.PushTitle();
+        Center(ImGui.CalcTextSize("Spot Engine").X);
+        ImGui.TextUnformatted("Spot Engine");
+        EditorFonts.Pop();
+
+        const string tagline = "A lightweight 2D/3D game engine for .NET";
+        Center(ImGui.CalcTextSize(tagline).X);
+        ImGui.TextDisabled(tagline);
+
+        string version = $"Version {SpotEngine.GetVersion()}";
+        Center(ImGui.CalcTextSize(version).X);
+        ImGui.TextColored(palette.Accent, version);
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        // ---- Body (tabs) ----------------------------------------------------------------------
+        // Reserve room at the bottom for the footer (separator + Close button) so the tab content
+        // gets its own scroll region and the button never drifts as tabs change height.
+        float footer = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y * 2.0f;
+        var bodySize = new Vector2(0.0f, -footer);
+        // Inset each tab's content from the child's edges so text never sits flush against the border.
+        // AlwaysUseWindowPadding makes the borderless children honor this padding on all sides.
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(14.0f, 10.0f));
+        const ImGuiChildFlags bodyFlags = ImGuiChildFlags.AlwaysUseWindowPadding;
+        if (ImGui.BeginTabBar("AboutTabs"))
+        {
+            if (ImGui.BeginTabItem("About"))
+            {
+                ImGui.BeginChild("AboutOverview", bodySize, bodyFlags);
+                DrawAboutOverviewTab(palette);
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("System"))
+            {
+                ImGui.BeginChild("AboutSystem", bodySize, bodyFlags);
+                DrawAboutSystemTab();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Credits"))
+            {
+                ImGui.BeginChild("AboutCredits", bodySize, bodyFlags);
+                DrawAboutCreditsTab(palette);
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+        ImGui.PopStyleVar();
+
+        // ---- Footer ---------------------------------------------------------------------------
+        ImGui.Separator();
+        const float closeWidth = 120.0f;
+        ImGui.SetCursorPosX((windowWidth - closeWidth) * 0.5f);
+        if (ImGui.Button("Close", new Vector2(closeWidth, 0.0f)))
+            ImGui.CloseCurrentPopup();
+
+        ImGui.EndPopup();
+    }
+
+    private static void DrawAboutOverviewTab(EditorPalette palette)
+    {
+        ImGui.Spacing();
+        ImGui.PushTextWrapPos(0.0f);
+        ImGui.TextUnformatted(
+            "Spot is a data-driven game engine built on .NET 10, Silk.NET and Dear ImGui. It pairs a " +
+            "docking editor with an entity/component runtime spanning rendering, physics, audio and " +
+            "scripting, plus a command-line pipeline for creating, cooking and shipping standalone games.");
+        ImGui.PopTextWrapPos();
+
+        AboutHeading(palette, "Highlights");
+        foreach (var (glyph, text) in AboutHighlights)
+        {
+            ImGui.TextColored(palette.Accent, glyph);
+            ImGui.SameLine(0.0f, 10.0f);
+            ImGui.TextUnformatted(text);
+        }
+
+        AboutHeading(palette, "Links");
+        if (ImGui.Button("GitHub")) OpenUrl(RepoUrl);
+        ImGui.SameLine();
+        if (ImGui.Button("Documentation")) OpenUrl($"{RepoUrl}#readme");
+        ImGui.SameLine();
+        if (ImGui.Button("Report an Issue")) OpenUrl($"{RepoUrl}/issues");
+    }
+
+    private void DrawAboutSystemTab()
+    {
+        _sysRuntime ??= System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+        _sysOs ??= System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+        _sysArch ??= System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString();
+        _sysGpu ??= QueryGlString(Silk.NET.OpenGL.StringName.Renderer);
+        _sysGl ??= QueryGlString(Silk.NET.OpenGL.StringName.Version);
+
+        ImGui.Spacing();
+        AboutInfoRow("Engine", $"Spot {SpotEngine.GetVersion()}");
+        AboutInfoRow("Runtime", _sysRuntime);
+        AboutInfoRow("Operating System", _sysOs);
+        AboutInfoRow("Architecture", _sysArch);
+        AboutInfoRow("Graphics", _sysGpu);
+        AboutInfoRow("OpenGL", _sysGl);
+
+        ImGui.Spacing();
+        ImGui.Spacing();
+        if (ImGui.Button("Copy to clipboard"))
+        {
+            ImGui.SetClipboardText(
+                $"Spot Engine {SpotEngine.GetVersion()}\n" +
+                $"Runtime: {_sysRuntime}\n" +
+                $"OS: {_sysOs} ({_sysArch})\n" +
+                $"Graphics: {_sysGpu}\n" +
+                $"OpenGL: {_sysGl}");
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Copy these details for a bug report");
+    }
+
+    private static void DrawAboutCreditsTab(EditorPalette palette)
+    {
+        ImGui.Spacing();
+        ImGui.PushTextWrapPos(0.0f);
+        ImGui.TextUnformatted("Spot is free, open-source software, made possible by these projects:");
+        ImGui.PopTextWrapPos();
+        ImGui.Spacing();
+
+        foreach (var (name, license) in AboutLibraries)
+        {
+            ImGui.Bullet();
+            ImGui.SameLine();
+            ImGui.TextUnformatted(name);
+            ImGui.SameLine(230.0f);
+            ImGui.TextDisabled(license);
+        }
+
+        AboutHeading(palette, string.Empty);
+        Center("© 2026 Lucas Maciel de Campos");
+        ImGui.TextUnformatted("© 2026 Lucas Maciel de Campos");
+        Center("Released under the MIT License.");
+        ImGui.TextDisabled("Released under the MIT License.");
+
+        // Centers the next single-line widget within the current content region.
+        static void Center(string text) => ImGui.SetCursorPosX(MathF.Max(
+            (ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(text).X) * 0.5f, 0.0f));
+    }
+
+    // A small section divider used inside the About tabs: an optional title in the heavier face over a
+    // separator, with a little breathing room above so sections read as distinct blocks.
+    private static void AboutHeading(EditorPalette palette, string title)
+    {
+        ImGui.Spacing();
+        ImGui.Spacing();
+        if (!string.IsNullOrEmpty(title))
+        {
+            EditorFonts.PushTitle();
+            ImGui.TextColored(palette.Accent, title);
+            EditorFonts.Pop();
+        }
+        ImGui.Separator();
+        ImGui.Spacing();
+    }
+
+    // A two-column "key: value" line for the System tab. The value wraps to the window edge so long
+    // driver strings stay readable inside the fixed-width dialog.
+    private static void AboutInfoRow(string key, string value)
+    {
+        ImGui.TextDisabled(key);
+        ImGui.SameLine(170.0f);
+        ImGui.PushTextWrapPos(0.0f);
+        ImGui.TextUnformatted(value);
+        ImGui.PopTextWrapPos();
+    }
+
+    // Reads a string from the active OpenGL context (GPU name, driver version). Best-effort: if the
+    // renderer isn't initialized yet it must not take the editor down, so failures return a placeholder.
+    private static string QueryGlString(Silk.NET.OpenGL.StringName name)
+    {
+        try { return Renderer.Api.GetStringS(name) ?? "Unknown"; }
+        catch { return "Unavailable"; }
+    }
+
+    // Opens a URL in the user's default browser. Best-effort — a missing handler must never throw.
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true,
+            });
+        }
+        catch { /* no browser / blocked shell handler: nothing useful to do */ }
     }
 
     private void CreateProject(string name, string location)

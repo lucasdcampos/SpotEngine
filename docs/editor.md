@@ -26,6 +26,20 @@ The editor is organized into dockable panels you can rearrange and save into a l
   you import and organize assets.
 - **Project settings** — project-wide configuration such as the start scene.
 
+## The menu bar
+
+Along the top, the menu bar groups project, edit, view, and help actions, with the play/stop control
+centered in it. Under **Help → About** is a dialog that identifies the build and gathers useful
+reference material in one place:
+
+- **About** — a short overview of the engine, a list of feature highlights, and quick links to the
+  project's GitHub repository, documentation, and issue tracker.
+- **System** — the host environment (engine version, .NET runtime, operating system, architecture,
+  and the active GPU and OpenGL version). **Copy to clipboard** puts these details on the clipboard,
+  formatted for pasting into a bug report.
+- **Credits** — the open-source libraries Spot is built on, with their licenses, plus the copyright
+  and license notice.
+
 ## Importing models into a scene
 
 To place a model (FBX, OBJ, glTF, ...) in your scene, **drag it from the asset browser** onto the
