@@ -62,6 +62,20 @@ public class ComponentSerializationTests
     }
 
     [Fact]
+    public void PersistsSerializeHiddenSubmeshIndex()
+    {
+        // SubmeshIndex is [HideInInspector] but [SerializeHidden] — authored in code (by ModelInstantiator for
+        // a multi-part model) and must survive save/load, or a skinned part loses which submesh it draws.
+        var mesh = new MeshComponent { ModelPath = "primitive:Cube", SubmeshIndex = 2 };
+
+        JsonObject json = ComponentSerialization.Serialize(mesh);
+        Assert.Equal(2, json["SubmeshIndex"]!.GetValue<int>());
+
+        var loaded = (MeshComponent)ComponentSerialization.Deserialize(typeof(MeshComponent), json);
+        Assert.Equal(2, loaded.SubmeshIndex);
+    }
+
+    [Fact]
     public void SkipsInspectorHiddenRuntimeState()
     {
         var cc = new CharacterController3DComponent { WalkSpeed = 5f };

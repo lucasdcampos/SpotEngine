@@ -55,6 +55,11 @@ entities, their components, their parent/child relationships, and the scripts at
 entity (by type name). Loading catches and logs bad or missing data rather than throwing, so a
 broken scene never crashes the engine.
 
+Parent/child relationships are stored as nested `Children` arrays, so a scene file can be as deeply
+nested as its entity hierarchy. Deep hierarchies are common — a rigged model dragged in from an FBX
+brings in a full bone tree — so scene and prefab JSON is read and written with a raised nesting limit
+rather than the default cap of 64.
+
 ## Related
 
 - [Entities & Components](entities-and-components.md) — what lives inside a scene

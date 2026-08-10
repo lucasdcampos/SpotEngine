@@ -122,6 +122,45 @@ public class SerializationTests
     }
 
     [Fact]
+    public void Scene_RoundTripsDeeplyNestedHierarchy()
+    {
+        // A deep parent/child chain — e.g. a rigged model imported from FBX, whose Assimp pivot nodes push the
+        // tree well past System.Text.Json's default nesting cap of 64 (each level is two JSON levels). This used
+        // to throw while serializing the scene, spamming the editor's dirty-tracking loop. The chain here is
+        // deeper than that cap on both counts, so it exercises the raised limit on write and read.
+        const int depth = 120;
+        var scene = new Scene();
+        Entity current = scene.Instantiate("Bone0");
+        for (int i = 1; i < depth; i++)
+        {
+            Entity child = scene.Instantiate($"Bone{i}");
+            child.SetParent(current);
+            current = child;
+        }
+
+        string json = string.Empty;
+        var writeException = Record.Exception(() => json = new SceneSerializer(scene).SerializeToString());
+        Assert.Null(writeException);
+
+        var loaded = new Scene();
+        bool ok = false;
+        var readException = Record.Exception(() => ok = new SceneSerializer(loaded).DeserializeFromString(json));
+        Assert.Null(readException);
+        Assert.True(ok);
+
+        // The whole chain survives: walk from the root down and confirm every level is present and parented.
+        Entity node = FindByName(loaded, "Bone0");
+        Assert.False(node.Parent.HasValue);
+        for (int i = 1; i < depth; i++)
+        {
+            Entity next = FindByName(loaded, $"Bone{i}");
+            Assert.True(next.Parent.HasValue);
+            Assert.Equal($"Bone{i - 1}", next.Parent!.Value.Name);
+            node = next;
+        }
+    }
+
+    [Fact]
     public void Deserialize_MissingAssetDegradesGracefully()
     {
         // A sprite pointing at a texture that does not exist must not crash deserialization: the loader

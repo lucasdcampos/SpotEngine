@@ -36,6 +36,24 @@
         "CastShadows": true,
         "Range": 10
       },
+      "DynamicClouds": {
+        "Enabled": true,
+        "ColorTop": [
+          1,
+          1,
+          1
+        ],
+        "ColorBottom": [
+          0.8,
+          0.85,
+          0.9
+        ],
+        "Speed": 1,
+        "Density": 0.57,
+        "Height": 0.3,
+        "Opacity": 0.6,
+        "Volume": 1.35
+      },
       "Skybox": {
         "Enabled": true,
         "SkyColor": [
@@ -112,6 +130,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.85,
@@ -147,7 +166,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -218,7 +239,9 @@
           0,
           0.85,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       },
       "Children": [
         {
@@ -292,6 +315,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -327,7 +351,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -356,6 +382,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -391,7 +418,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -420,6 +449,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -455,7 +485,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -484,6 +516,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -519,7 +552,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -548,6 +583,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -583,7 +619,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -612,6 +650,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -647,7 +686,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -676,6 +717,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.25,
@@ -711,7 +753,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -740,6 +784,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.25,
@@ -775,7 +820,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -804,6 +851,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.25,
@@ -839,7 +887,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -868,6 +918,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.25,
@@ -903,7 +954,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -932,6 +985,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           1,
@@ -967,7 +1021,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -996,6 +1052,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           1,
@@ -1031,7 +1088,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1060,6 +1119,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           1,
@@ -1095,7 +1155,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1124,6 +1186,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1159,7 +1222,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1188,6 +1253,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1223,7 +1289,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1252,6 +1320,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1287,7 +1356,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1316,6 +1387,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1351,7 +1423,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1380,6 +1454,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1415,7 +1490,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1444,6 +1521,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.62,
@@ -1479,7 +1557,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1508,6 +1588,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.5,
@@ -1543,7 +1624,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1572,6 +1655,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -1607,7 +1691,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1636,6 +1722,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.2,
@@ -1671,7 +1758,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1700,6 +1789,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -1735,7 +1825,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1764,6 +1856,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -1799,7 +1892,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1828,6 +1923,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -1863,7 +1959,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1892,6 +1990,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -1927,7 +2026,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -1956,6 +2057,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -1991,7 +2093,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2020,6 +2124,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -2055,7 +2160,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2084,6 +2191,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -2119,7 +2227,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2148,6 +2258,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -2183,7 +2294,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2212,6 +2325,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.6,
@@ -2247,7 +2361,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2276,6 +2392,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.96,
@@ -2311,7 +2428,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2340,6 +2459,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.92,
@@ -2375,7 +2495,9 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
     },
     {
@@ -2404,6 +2526,7 @@
       "MeshRenderer": {
         "Enabled": true,
         "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
           0.92,
@@ -2439,8 +2562,1789 @@
           0,
           0,
           0
-        ]
+        ],
+        "IsTrigger": false,
+        "Layer": 0
       }
+    },
+    {
+      "Tag": {
+        "Name": "ybot",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -2.8944936,
+          0.5021282,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.01,
+          0.01,
+          0.01
+        ]
+      },
+      "Animator": {
+        "ModelPath": "Models/ybot.fbx",
+        "DefaultClip": "idle",
+        "PlayOnStart": true,
+        "Speed": 1,
+        "Loop": true,
+        "ExtraClipPaths": [
+          "guid:859f7f7d3714439db676d83552e0213a"
+        ],
+        "Enabled": true
+      },
+      "Children": [
+        {
+          "Tag": {
+            "Name": "mixamorig:Hips",
+            "Enabled": true
+          },
+          "Transform": {
+            "Enabled": true,
+            "Position": [
+              -6.7570118E-06,
+              99.79194,
+              4.84474E-05
+            ],
+            "Rotation": [
+              1.7453292E-08,
+              -0.00019999998,
+              0.0049999994
+            ],
+            "Scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "Children": [
+            {
+              "Tag": {
+                "Name": "mixamorig:Spine",
+                "Enabled": true
+              },
+              "Transform": {
+                "Enabled": true,
+                "Position": [
+                  0.0008597856,
+                  9.923462,
+                  -1.2273349
+                ],
+                "Rotation": [
+                  -6.963456,
+                  -4.29021E-05,
+                  0.00070513337
+                ],
+                "Scale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "Children": [
+                {
+                  "Tag": {
+                    "Name": "mixamorig:Spine1",
+                    "Enabled": true
+                  },
+                  "Transform": {
+                    "Enabled": true,
+                    "Position": [
+                      6.920259E-19,
+                      11.731978,
+                      -1.9984014E-15
+                    ],
+                    "Rotation": [
+                      0.022470538,
+                      -4.186743E-07,
+                      -0.001067543
+                    ],
+                    "Scale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "Children": [
+                    {
+                      "Tag": {
+                        "Name": "mixamorig:Spine2",
+                        "Enabled": true
+                      },
+                      "Transform": {
+                        "Enabled": true,
+                        "Position": [
+                          1.931492E-11,
+                          13.458837,
+                          6.261658E-13
+                        ],
+                        "Rotation": [
+                          6.6169534,
+                          0.00027475832,
+                          0.0003929465
+                        ],
+                        "Scale": [
+                          1,
+                          0.99999994,
+                          0.99999994
+                        ]
+                      },
+                      "Children": [
+                        {
+                          "Tag": {
+                            "Name": "mixamorig:Neck",
+                            "Enabled": true
+                          },
+                          "Transform": {
+                            "Enabled": true,
+                            "Position": [
+                              2.548123E-05,
+                              15.027761,
+                              0.87790686
+                            ],
+                            "Rotation": [
+                              0.32403162,
+                              0,
+                              0
+                            ],
+                            "Scale": [
+                              1,
+                              1,
+                              1
+                            ]
+                          },
+                          "Children": [
+                            {
+                              "Tag": {
+                                "Name": "mixamorig:Head",
+                                "Enabled": true
+                              },
+                              "Transform": {
+                                "Enabled": true,
+                                "Position": [
+                                  2.5625486E-06,
+                                  10.321838,
+                                  3.1424289
+                                ],
+                                "Rotation": [
+                                  0,
+                                  0,
+                                  0
+                                ],
+                                "Scale": [
+                                  1,
+                                  1,
+                                  1
+                                ]
+                              },
+                              "Children": [
+                                {
+                                  "Tag": {
+                                    "Name": "mixamorig:HeadTop_End",
+                                    "Enabled": true
+                                  },
+                                  "Transform": {
+                                    "Enabled": true,
+                                    "Position": [
+                                      0.00015451595,
+                                      18.47467,
+                                      6.6363993
+                                    ],
+                                    "Rotation": [
+                                      0,
+                                      0,
+                                      0
+                                    ],
+                                    "Scale": [
+                                      1,
+                                      1,
+                                      1
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "Tag": {
+                            "Name": "mixamorig:LeftShoulder",
+                            "Enabled": true
+                          },
+                          "Transform": {
+                            "Enabled": true,
+                            "Position": [
+                              6.1058245,
+                              9.106292,
+                              0.7570625
+                            ],
+                            "Rotation": [
+                              88.753525,
+                              -105.06308,
+                              153.3222
+                            ],
+                            "Scale": [
+                              1,
+                              1,
+                              1
+                            ]
+                          },
+                          "Children": [
+                            {
+                              "Tag": {
+                                "Name": "mixamorig:LeftArm",
+                                "Enabled": true
+                              },
+                              "Transform": {
+                                "Enabled": true,
+                                "Position": [
+                                  4.425508E-15,
+                                  12.922286,
+                                  5.1318054E-15
+                                ],
+                                "Rotation": [
+                                  -1.1792465,
+                                  -0.2423459,
+                                  11.613984
+                                ],
+                                "Scale": [
+                                  1,
+                                  1,
+                                  1
+                                ]
+                              },
+                              "Children": [
+                                {
+                                  "Tag": {
+                                    "Name": "mixamorig:LeftForeArm",
+                                    "Enabled": true
+                                  },
+                                  "Transform": {
+                                    "Enabled": true,
+                                    "Position": [
+                                      3.0594116E-09,
+                                      27.404682,
+                                      -1.5165657E-14
+                                    ],
+                                    "Rotation": [
+                                      0,
+                                      0,
+                                      0
+                                    ],
+                                    "Scale": [
+                                      1,
+                                      1,
+                                      1
+                                    ]
+                                  },
+                                  "Children": [
+                                    {
+                                      "Tag": {
+                                        "Name": "mixamorig:LeftHand",
+                                        "Enabled": true
+                                      },
+                                      "Transform": {
+                                        "Enabled": true,
+                                        "Position": [
+                                          -1.2820418E-05,
+                                          27.614464,
+                                          2.3361065E-07
+                                        ],
+                                        "Rotation": [
+                                          0,
+                                          0,
+                                          0
+                                        ],
+                                        "Scale": [
+                                          1,
+                                          1,
+                                          1
+                                        ]
+                                      },
+                                      "Children": [
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:LeftHandThumb1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              -3.002975,
+                                              3.788809,
+                                              2.167149
+                                            ],
+                                            "Rotation": [
+                                              29.999935,
+                                              8.379744E-06,
+                                              26.564955
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:LeftHandThumb2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -4.2914137E-15,
+                                                  4.7449703,
+                                                  4.1509595E-14
+                                                ],
+                                                "Rotation": [
+                                                  0.000795961,
+                                                  1.2787723E-09,
+                                                  9.205005E-05
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:LeftHandThumb3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -5.8842357E-13,
+                                                      4.3821287,
+                                                      5.148569E-12
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:LeftHandThumb4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          -5.1284655E-06,
+                                                          3.4590778,
+                                                          4.0346345E-07
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.0005760837,
+                                                          14.473544,
+                                                          8.332483
+                                                        ],
+                                                        "Scale": [
+                                                          0.99999994,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:LeftHandIndex1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              -2.822044,
+                                              12.266617,
+                                              0.23182517
+                                            ],
+                                            "Rotation": [
+                                              6.380399E-05,
+                                              6.215485E-10,
+                                              0.0005581485
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:LeftHandIndex2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -1.4760154E-15,
+                                                  3.8919678,
+                                                  -4.0356122E-16
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  -0.00071210857
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:LeftHandIndex3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      4.0713228E-11,
+                                                      3.4151611,
+                                                      -8.8020384E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:LeftHandIndex4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          5.8547226E-07,
+                                                          3.0779877,
+                                                          1.6270026E-14
+                                                        ],
+                                                        "Rotation": [
+                                                          0.000108655266,
+                                                          0.45855108,
+                                                          0.0026108029
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:LeftHandMiddle1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              -1.8344155E-05,
+                                              12.775528,
+                                              -1.0320899E-06
+                                            ],
+                                            "Rotation": [
+                                              0,
+                                              0,
+                                              0
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:LeftHandMiddle2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -3.5437385E-15,
+                                                  3.613968,
+                                                  -4.571066E-15
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  0
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:LeftHandMiddle3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      2.8508499E-05,
+                                                      3.4597626,
+                                                      -7.1831796E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:LeftHandMiddle4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          -3.047389E-05,
+                                                          3.680191,
+                                                          -5.584387E-14
+                                                        ],
+                                                        "Rotation": [
+                                                          0.00019055328,
+                                                          0.5247653,
+                                                          -0.07495932
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          0.99999994
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:LeftHandRing1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              2.2166305,
+                                              12.14701,
+                                              -0.009996226
+                                            ],
+                                            "Rotation": [
+                                              6.380399E-05,
+                                              6.0962857E-10,
+                                              0.00054744445
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:LeftHandRing2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  5.83369E-16,
+                                                  3.6011887,
+                                                  1.3420342E-14
+                                                ],
+                                                "Rotation": [
+                                                  -0.00026434282,
+                                                  4.267072E-09,
+                                                  -0.00092487934
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:LeftHandRing3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -7.1516106E-13,
+                                                      3.307312,
+                                                      2.0187907E-13
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:LeftHandRing4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          -2.4172632E-05,
+                                                          3.660118,
+                                                          1.6886514E-05
+                                                        ],
+                                                        "Rotation": [
+                                                          0.00031912097,
+                                                          0.8475818,
+                                                          0.088327944
+                                                        ],
+                                                        "Scale": [
+                                                          0.99999994,
+                                                          1,
+                                                          0.99999994
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:LeftHandPinky1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              4.7258315,
+                                              10.908195,
+                                              0.22613217
+                                            ],
+                                            "Rotation": [
+                                              0.0003268279,
+                                              9.219906E-08,
+                                              0.016163299
+                                            ],
+                                            "Scale": [
+                                              0.99999994,
+                                              0.99999994,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:LeftHandPinky2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -6.59024E-15,
+                                                  4.136657,
+                                                  2.3783597E-15
+                                                ],
+                                                "Rotation": [
+                                                  -0.0006823338,
+                                                  5.020394E-07,
+                                                  -0.0421564
+                                                ],
+                                                "Scale": [
+                                                  0.99999994,
+                                                  0.99999994,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:LeftHandPinky3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      4.38563E-13,
+                                                      2.5948346,
+                                                      1.4550224E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0.00041930994,
+                                                      1.927227E-07,
+                                                      0.026334213
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:LeftHandPinky4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          -2.969839E-13,
+                                                          2.9238663,
+                                                          -2.4052602E-15
+                                                        ],
+                                                        "Rotation": [
+                                                          0.00014987768,
+                                                          0.46981454,
+                                                          -0.06589747
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "Tag": {
+                            "Name": "mixamorig:RightShoulder",
+                            "Enabled": true
+                          },
+                          "Transform": {
+                            "Enabled": true,
+                            "Position": [
+                              -6.1056957,
+                              9.106383,
+                              0.7570756
+                            ],
+                            "Rotation": [
+                              88.75306,
+                              105.05817,
+                              -153.32729
+                            ],
+                            "Scale": [
+                              1,
+                              0.99999994,
+                              0.99999994
+                            ]
+                          },
+                          "Children": [
+                            {
+                              "Tag": {
+                                "Name": "mixamorig:RightArm",
+                                "Enabled": true
+                              },
+                              "Transform": {
+                                "Enabled": true,
+                                "Position": [
+                                  3.913536E-15,
+                                  12.922287,
+                                  -8.437695E-15
+                                ],
+                                "Rotation": [
+                                  -1.1796521,
+                                  0.2424267,
+                                  -11.613863
+                                ],
+                                "Scale": [
+                                  1,
+                                  1,
+                                  1
+                                ]
+                              },
+                              "Children": [
+                                {
+                                  "Tag": {
+                                    "Name": "mixamorig:RightForeArm",
+                                    "Enabled": true
+                                  },
+                                  "Transform": {
+                                    "Enabled": true,
+                                    "Position": [
+                                      8.327427E-09,
+                                      27.404682,
+                                      -1.7360679E-14
+                                    ],
+                                    "Rotation": [
+                                      0,
+                                      0,
+                                      0
+                                    ],
+                                    "Scale": [
+                                      1,
+                                      1,
+                                      1
+                                    ]
+                                  },
+                                  "Children": [
+                                    {
+                                      "Tag": {
+                                        "Name": "mixamorig:RightHand",
+                                        "Enabled": true
+                                      },
+                                      "Transform": {
+                                        "Enabled": true,
+                                        "Position": [
+                                          1.2842843E-05,
+                                          27.614464,
+                                          1.54924E-05
+                                        ],
+                                        "Rotation": [
+                                          0,
+                                          0,
+                                          0
+                                        ],
+                                        "Scale": [
+                                          1,
+                                          1,
+                                          1
+                                        ]
+                                      },
+                                      "Children": [
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:RightHandThumb1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              3.0029745,
+                                              3.7888088,
+                                              2.167149
+                                            ],
+                                            "Rotation": [
+                                              29.999949,
+                                              2.2181677E-05,
+                                              -26.564941
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              0.99999994,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:RightHandThumb2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -5.5743713E-15,
+                                                  4.7449703,
+                                                  -1.20164295E-14
+                                                ],
+                                                "Rotation": [
+                                                  0.00096873776,
+                                                  -7.649195E-10,
+                                                  -4.524099E-05
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:RightHandThumb3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -1.8705114E-13,
+                                                      4.3821354,
+                                                      -4.0958218E-12
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:RightHandThumb4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          1.1177533E-05,
+                                                          3.459071,
+                                                          -2.3241859E-05
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.0071795955,
+                                                          -14.646254,
+                                                          -8.362804
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          0.99999994,
+                                                          0.9999999
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:RightHandIndex1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              2.8220425,
+                                              12.266617,
+                                              0.23182522
+                                            ],
+                                            "Rotation": [
+                                              6.380369E-05,
+                                              -6.0535976E-10,
+                                              -0.0005436137
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:RightHandIndex2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  2.6530512E-16,
+                                                  3.8919678,
+                                                  -3.7523153E-15
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  0.0006905598
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:RightHandIndex3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -5.167483E-12,
+                                                      3.4151611,
+                                                      9.823766E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:RightHandIndex4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          -1.2771573E-06,
+                                                          3.0779877,
+                                                          7.899497E-16
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.007297184,
+                                                          -0.7688465,
+                                                          0.15756245
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:RightHandMiddle1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              1.6632155E-05,
+                                              12.775528,
+                                              -1.0320894E-06
+                                            ],
+                                            "Rotation": [
+                                              0,
+                                              0,
+                                              0
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:RightHandMiddle2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  1.9695803E-16,
+                                                  3.613968,
+                                                  -1.6965379E-14
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  0
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:RightHandMiddle3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -2.942148E-05,
+                                                      3.4597626,
+                                                      1.3562805E-13
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:RightHandMiddle4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          2.8549066E-05,
+                                                          3.680191,
+                                                          -3.7050766E-14
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.0072212974,
+                                                          -0.7672074,
+                                                          -0.195718
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:RightHandRing1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              -2.2166324,
+                                              12.147003,
+                                              -0.00999627
+                                            ],
+                                            "Rotation": [
+                                              6.380406E-05,
+                                              -6.1298483E-10,
+                                              -0.0005504578
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:RightHandRing2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -1.0704184E-15,
+                                                  3.6011963,
+                                                  -3.1102237E-14
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  0.000924878
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:RightHandRing3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -6.053308E-12,
+                                                      3.307312,
+                                                      -8.903002E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      0
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:RightHandRing4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          2.4172625E-05,
+                                                          3.660118,
+                                                          -4.2633052E-14
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.0073256986,
+                                                          -0.8724172,
+                                                          -0.03434846
+                                                        ],
+                                                        "Scale": [
+                                                          0.99999994,
+                                                          1,
+                                                          1
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "Tag": {
+                                            "Name": "mixamorig:RightHandPinky1",
+                                            "Enabled": true
+                                          },
+                                          "Transform": {
+                                            "Enabled": true,
+                                            "Position": [
+                                              -4.725833,
+                                              10.908195,
+                                              0.22613208
+                                            ],
+                                            "Rotation": [
+                                              6.3804E-05,
+                                              -3.9967465E-10,
+                                              -0.00035890646
+                                            ],
+                                            "Scale": [
+                                              1,
+                                              1,
+                                              1
+                                            ]
+                                          },
+                                          "Children": [
+                                            {
+                                              "Tag": {
+                                                "Name": "mixamorig:RightHandPinky2",
+                                                "Enabled": true
+                                              },
+                                              "Transform": {
+                                                "Enabled": true,
+                                                "Position": [
+                                                  -5.0128426E-16,
+                                                  4.13665,
+                                                  -4.0428164E-14
+                                                ],
+                                                "Rotation": [
+                                                  0,
+                                                  0,
+                                                  0.0011911074
+                                                ],
+                                                "Scale": [
+                                                  1,
+                                                  1,
+                                                  1
+                                                ]
+                                              },
+                                              "Children": [
+                                                {
+                                                  "Tag": {
+                                                    "Name": "mixamorig:RightHandPinky3",
+                                                    "Enabled": true
+                                                  },
+                                                  "Transform": {
+                                                    "Enabled": true,
+                                                    "Position": [
+                                                      -3.9495204E-12,
+                                                      2.594841,
+                                                      -4.292107E-14
+                                                    ],
+                                                    "Rotation": [
+                                                      0,
+                                                      0,
+                                                      -0.001195014
+                                                    ],
+                                                    "Scale": [
+                                                      1,
+                                                      1,
+                                                      1
+                                                    ]
+                                                  },
+                                                  "Children": [
+                                                    {
+                                                      "Tag": {
+                                                        "Name": "mixamorig:RightHandPinky4",
+                                                        "Enabled": true
+                                                      },
+                                                      "Transform": {
+                                                        "Enabled": true,
+                                                        "Position": [
+                                                          4.3620255E-12,
+                                                          2.9238663,
+                                                          9.807259E-14
+                                                        ],
+                                                        "Rotation": [
+                                                          -0.0072781825,
+                                                          -0.9739257,
+                                                          0.25287247
+                                                        ],
+                                                        "Scale": [
+                                                          1,
+                                                          1,
+                                                          0.99999994
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Tag": {
+                "Name": "mixamorig:LeftUpLeg",
+                "Enabled": true
+              },
+              "Transform": {
+                "Enabled": true,
+                "Position": [
+                  9.123874,
+                  -6.6571884,
+                  -0.055403106
+                ],
+                "Rotation": [
+                  0.72767156,
+                  0.0044818954,
+                  -179.65967
+                ],
+                "Scale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "Children": [
+                {
+                  "Tag": {
+                    "Name": "mixamorig:LeftLeg",
+                    "Enabled": true
+                  },
+                  "Transform": {
+                    "Enabled": true,
+                    "Position": [
+                      -4.7961635E-14,
+                      40.599438,
+                      1.1701751E-13
+                    ],
+                    "Rotation": [
+                      -2.0757,
+                      0.033218957,
+                      -0.67911583
+                    ],
+                    "Scale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "Children": [
+                    {
+                      "Tag": {
+                        "Name": "mixamorig:LeftFoot",
+                        "Enabled": true
+                      },
+                      "Transform": {
+                        "Enabled": true,
+                        "Position": [
+                          -8.881784E-15,
+                          42.099026,
+                          2.0872193E-14
+                        ],
+                        "Rotation": [
+                          65.27044,
+                          7.0208974,
+                          7.898923
+                        ],
+                        "Scale": [
+                          1,
+                          1,
+                          0.99999994
+                        ]
+                      },
+                      "Children": [
+                        {
+                          "Tag": {
+                            "Name": "mixamorig:LeftToeBase",
+                            "Enabled": true
+                          },
+                          "Transform": {
+                            "Enabled": true,
+                            "Position": [
+                              2.4546744E-15,
+                              15.72156,
+                              -1.5528811E-14
+                            ],
+                            "Rotation": [
+                              26.23926,
+                              -4.4944997,
+                              -2.8573835
+                            ],
+                            "Scale": [
+                              0.99999994,
+                              1,
+                              1
+                            ]
+                          },
+                          "Children": [
+                            {
+                              "Tag": {
+                                "Name": "mixamorig:LeftToe_End",
+                                "Enabled": true
+                              },
+                              "Transform": {
+                                "Enabled": true,
+                                "Position": [
+                                  1.7763568E-15,
+                                  10,
+                                  4.8907474E-09
+                                ],
+                                "Rotation": [
+                                  0,
+                                  0,
+                                  0
+                                ],
+                                "Scale": [
+                                  1,
+                                  1,
+                                  1
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Tag": {
+                "Name": "mixamorig:RightUpLeg",
+                "Enabled": true
+              },
+              "Transform": {
+                "Enabled": true,
+                "Position": [
+                  -9.125032,
+                  -6.6556015,
+                  -0.055352744
+                ],
+                "Rotation": [
+                  0.7257953,
+                  -0.0042789285,
+                  179.6496
+                ],
+                "Scale": [
+                  0.99999994,
+                  0.99999994,
+                  1
+                ]
+              },
+              "Children": [
+                {
+                  "Tag": {
+                    "Name": "mixamorig:RightLeg",
+                    "Enabled": true
+                  },
+                  "Transform": {
+                    "Enabled": true,
+                    "Position": [
+                      5.3290705E-15,
+                      40.599438,
+                      2.6645353E-14
+                    ],
+                    "Rotation": [
+                      -2.0794554,
+                      -0.03324131,
+                      0.67911816
+                    ],
+                    "Scale": [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "Children": [
+                    {
+                      "Tag": {
+                        "Name": "mixamorig:RightFoot",
+                        "Enabled": true
+                      },
+                      "Transform": {
+                        "Enabled": true,
+                        "Position": [
+                          -2.1316282E-14,
+                          42.099026,
+                          -6.261658E-14
+                        ],
+                        "Rotation": [
+                          65.27229,
+                          -7.0213847,
+                          -7.899459
+                        ],
+                        "Scale": [
+                          0.99999994,
+                          1,
+                          1
+                        ]
+                      },
+                      "Children": [
+                        {
+                          "Tag": {
+                            "Name": "mixamorig:RightToeBase",
+                            "Enabled": true
+                          },
+                          "Transform": {
+                            "Enabled": true,
+                            "Position": [
+                              2.3694832E-15,
+                              15.721559,
+                              3.4555692E-15
+                            ],
+                            "Rotation": [
+                              26.242884,
+                              4.441464,
+                              2.8324533
+                            ],
+                            "Scale": [
+                              1,
+                              1,
+                              1
+                            ]
+                          },
+                          "Children": [
+                            {
+                              "Tag": {
+                                "Name": "mixamorig:RightToe_End",
+                                "Enabled": true
+                              },
+                              "Transform": {
+                                "Enabled": true,
+                                "Position": [
+                                  3.1880578E-09,
+                                  10,
+                                  5.687534E-09
+                                ],
+                                "Rotation": [
+                                  0,
+                                  0,
+                                  0
+                                ],
+                                "Scale": [
+                                  1,
+                                  1,
+                                  1
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Tag": {
+            "Name": "Alpha_Surface",
+            "Enabled": true
+          },
+          "Transform": {
+            "Enabled": true,
+            "Position": [
+              0,
+              0,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "MeshRenderer": {
+            "Enabled": true,
+            "ModelPath": "Models/ybot.fbx",
+            "SubmeshIndex": 0,
+            "MaterialPath": "Models/ybot_Materials/Alpha_Body_MAT.sptmat",
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          "SkinnedMeshRenderer": {
+            "Enabled": true
+          }
+        },
+        {
+          "Tag": {
+            "Name": "Alpha_Joints",
+            "Enabled": true
+          },
+          "Transform": {
+            "Enabled": true,
+            "Position": [
+              0,
+              0,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "MeshRenderer": {
+            "Enabled": true,
+            "ModelPath": "Models/ybot.fbx",
+            "SubmeshIndex": 1,
+            "MaterialPath": "Models/ybot_Materials/Alpha_Joints_MAT.sptmat",
+            "Color": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          "SkinnedMeshRenderer": {
+            "Enabled": true
+          }
+        }
+      ]
     }
   ]
 }

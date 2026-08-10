@@ -36,9 +36,32 @@ public static class ModelImporter
     private sealed class LoadResult
     {
         public string FullPath { get; init; } = string.Empty;
-        public IReadOnlyList<MeshData>? Data { get; init; }
+        public CookedModel? Cooked { get; init; }
         public double ParseMs { get; init; }
         public string? Error { get; init; }
+    }
+
+    /// <summary>
+    /// Builds a drawable <see cref="Model"/> from CPU model data, uploading each submesh (rigid or skinned)
+    /// to the GPU and carrying its bones and animation clips across. Must run on the render thread.
+    /// </summary>
+    /// <param name="cooked">The CPU-side geometry, skinning and clips.</param>
+    /// <returns>The GPU-ready model.</returns>
+    internal static Model BuildModel(CookedModel cooked)
+    {
+        var meshes = new List<Mesh>(cooked.Submeshes.Count);
+        var bones = new IReadOnlyList<Spot.Animation.BoneInfo>?[cooked.Submeshes.Count];
+        bool anySkinned = false;
+
+        for (int i = 0; i < cooked.Submeshes.Count; i++)
+        {
+            MeshData md = cooked.Submeshes[i];
+            meshes.Add(new Mesh(md.Vertices, md.Indices, md.Skinned));
+            bones[i] = md.Bones;
+            anySkinned |= md.Skinned;
+        }
+
+        return new Model(meshes, anySkinned ? bones : null, cooked.Animations);
     }
 
     /// <summary>
@@ -131,17 +154,7 @@ public static class ModelImporter
         return model;
     }
 
-    private static Model BuildFromSpMesh(string fullPath)
-    {
-        IReadOnlyList<MeshData> data = SpMesh.ReadFile(fullPath);
-        var meshes = new List<Mesh>(data.Count);
-        foreach (MeshData md in data)
-        {
-            meshes.Add(new Mesh(md.Vertices, md.Indices));
-        }
-
-        return new Model(meshes);
-    }
+    private static Model BuildFromSpMesh(string fullPath) => BuildModel(SpMesh.ReadModelFile(fullPath));
 
     private static Model ImportFromSource(string fullPath)
     {
@@ -193,10 +206,10 @@ public static class ModelImporter
         }
 
         // Cooked meshes just need their blob read on the worker; source models go through Assimp there.
-        Func<IReadOnlyList<MeshData>> parse;
+        Func<CookedModel> parse;
         if (cooked)
         {
-            parse = () => SpMesh.ReadFile(fullPath);
+            parse = () => SpMesh.ReadModelFile(fullPath);
         }
         else
         {
@@ -208,7 +221,7 @@ public static class ModelImporter
                 return null;
             }
 
-            parse = () => importer.ImportMeshData(fullPath);
+            parse = () => importer.ImportModel(fullPath);
         }
 
         s_inFlight.Add(fullPath);
@@ -218,7 +231,7 @@ public static class ModelImporter
 
     // Runs a CPU-only parse (Assimp or .spmesh read) on a gated background worker, then queues the resulting
     // geometry back for GPU upload on the render thread. The queue is the only cross-thread structure.
-    private static void QueueParse(string fullPath, Func<IReadOnlyList<MeshData>> parse)
+    private static void QueueParse(string fullPath, Func<CookedModel> parse)
     {
         _ = Task.Run(async () =>
         {
@@ -226,9 +239,9 @@ public static class ModelImporter
             var sw = Stopwatch.StartNew();
             try
             {
-                IReadOnlyList<MeshData> data = parse();
+                CookedModel data = parse();
                 sw.Stop();
-                s_completed.Enqueue(new LoadResult { FullPath = fullPath, Data = data, ParseMs = sw.Elapsed.TotalMilliseconds });
+                s_completed.Enqueue(new LoadResult { FullPath = fullPath, Cooked = data, ParseMs = sw.Elapsed.TotalMilliseconds });
             }
             catch (Exception ex)
             {
@@ -260,7 +273,7 @@ public static class ModelImporter
         {
             s_inFlight.Remove(result.FullPath);
 
-            if (result.Error != null || result.Data == null)
+            if (result.Error != null || result.Cooked is null)
             {
                 Log.CoreError("Failed to load model '{0}': {1}", result.FullPath, result.Error ?? "no geometry");
                 s_failed.Add(result.FullPath);
@@ -271,12 +284,8 @@ public static class ModelImporter
             if (!s_cache.ContainsKey(result.FullPath))
             {
                 var sw = Stopwatch.StartNew();
-                var meshes = new List<Mesh>(result.Data.Count);
-                foreach (MeshData md in result.Data)
-                {
-                    meshes.Add(new Mesh(md.Vertices, md.Indices));
-                }
-                var model = new Model(meshes) { SourcePath = result.FullPath };
+                Model model = BuildModel(result.Cooked.Value);
+                model.SourcePath = result.FullPath;
                 sw.Stop();
                 s_cache[result.FullPath] = model;
                 Log.CoreInfo("Loaded model '{0}' — parse {1:0} ms, GPU upload {2:0} ms",

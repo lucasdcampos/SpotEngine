@@ -1,6 +1,8 @@
 using System.IO;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Spot.Animation;
 using Spot.Assets;
 using Spot.Rendering;
 using Xunit;
@@ -70,6 +72,83 @@ public class AssetPipelineTests
     public void SpMesh_Read_RejectsBadMagic()
     {
         Assert.Throws<InvalidDataException>(() => SpMesh.Read(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }));
+    }
+
+    [Fact]
+    public void SpMesh_RoundTrips_SkinnedBonesAndClips()
+    {
+        var bones = new[]
+        {
+            new BoneInfo("mixamorig:Hips", Matrix4x4.CreateTranslation(1, 2, 3)),
+            new BoneInfo("mixamorig:Spine", Matrix4x4.CreateScale(2)),
+        };
+
+        // One skinned vertex: eight rigid floats followed by four bone indices and four weights.
+        var skinnedVerts = new float[Mesh.SkinnedFloatsPerVertex];
+        for (int i = 0; i < skinnedVerts.Length; i++) skinnedVerts[i] = i * 0.25f;
+
+        var skinned = new MeshData(skinnedVerts, new uint[] { 0 }, skinned: true, bones);
+        var rigid = new MeshData(new float[] { 0, 0, 0, 0, 1, 0, 0.5f, 0.5f }, new uint[] { 0 });
+
+        var channel = new AnimationChannel(
+            "mixamorig:Hips",
+            new[] { new Keyframe<Vector3>(0f, Vector3.Zero), new Keyframe<Vector3>(1f, new Vector3(1, 2, 3)) },
+            new[] { new Keyframe<Quaternion>(0f, Quaternion.Identity) },
+            new[] { new Keyframe<Vector3>(0f, Vector3.One) });
+        var clip = new AnimationClip("Run", 1.5f, new[] { channel });
+
+        byte[] blob = SpMesh.Write(new CookedModel(new[] { skinned, rigid }, new[] { clip }));
+        CookedModel loaded = SpMesh.ReadModel(blob);
+
+        Assert.Equal(2, loaded.Submeshes.Count);
+
+        Assert.True(loaded.Submeshes[0].Skinned);
+        Assert.Equal(skinnedVerts, loaded.Submeshes[0].Vertices);
+        Assert.NotNull(loaded.Submeshes[0].Bones);
+        Assert.Equal(2, loaded.Submeshes[0].Bones!.Count);
+        Assert.Equal("mixamorig:Hips", loaded.Submeshes[0].Bones![0].Name);
+        Assert.Equal(bones[0].InverseBind, loaded.Submeshes[0].Bones![0].InverseBind);
+
+        Assert.False(loaded.Submeshes[1].Skinned);
+        Assert.Null(loaded.Submeshes[1].Bones);
+
+        Assert.Single(loaded.Animations);
+        AnimationClip loadedClip = loaded.Animations[0];
+        Assert.Equal("Run", loadedClip.Name);
+        Assert.Equal(1.5f, loadedClip.Duration, 3);
+        Assert.Single(loadedClip.Channels);
+        Assert.Equal("mixamorig:Hips", loadedClip.Channels[0].NodeName);
+        Assert.Equal(2, loadedClip.Channels[0].PositionKeys.Count);
+        Assert.Equal(new Vector3(1, 2, 3), loadedClip.Channels[0].PositionKeys[1].Value);
+    }
+
+    [Fact]
+    public void SpMesh_Reads_Version1BlobAsRigidWithoutBonesOrClips()
+    {
+        // Hand-write a version-1 blob (no floatsPerVertex, no bones, no clip table) to prove the reader still
+        // accepts assets cooked by older builds.
+        var vertices = new float[] { 0, 0, 0, 0, 1, 0, 0.5f, 0.5f };
+        var indices = new uint[] { 0 };
+
+        using var ms = new MemoryStream();
+        using (var w = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            w.Write(new byte[] { (byte)'S', (byte)'P', (byte)'M', (byte)'H' });
+            w.Write(1u);                        // version
+            w.Write(1u);                        // submeshCount
+            w.Write((uint)vertices.Length);
+            w.Write((uint)indices.Length);
+            foreach (float f in vertices) w.Write(f);
+            foreach (uint i in indices) w.Write(i);
+        }
+
+        CookedModel loaded = SpMesh.ReadModel(ms.ToArray());
+
+        Assert.Single(loaded.Submeshes);
+        Assert.False(loaded.Submeshes[0].Skinned);
+        Assert.Null(loaded.Submeshes[0].Bones);
+        Assert.Equal(vertices, loaded.Submeshes[0].Vertices);
+        Assert.Empty(loaded.Animations);
     }
 
     [Fact]
@@ -313,6 +392,53 @@ public class AssetPipelineTests
 
             // Scenes are copied through by path, not cooked to a guid.
             Assert.True(File.Exists(Path.Combine(contentRoot, "Scenes", "Main.sptscene")));
+        }
+        finally
+        {
+            if (Directory.Exists(contentRoot))
+            {
+                Directory.Delete(contentRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void AssetDatabase_CookAll_RewritesSceneModelAndMaterialReferencesToGuids()
+    {
+        using var temp = new TempDir();
+        SeedProject(temp.Path);
+
+        // A model source alongside the seeded texture/material...
+        File.WriteAllText(Path.Combine(temp.Path, "model.obj"), "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+
+        // ...and a scene that references both by raw source path — exactly what dragging a model into the scene
+        // leaves behind before any guid migration. This overwrites the empty scene the seed wrote.
+        File.WriteAllText(Path.Combine(temp.Path, "Scenes", "Main.sptscene"), """
+        {
+          "Entities": [
+            {
+              "Tag": { "Name": "Model", "Enabled": true },
+              "Mesh": { "ModelPath": "model.obj", "SubmeshIndex": 0, "MaterialPath": "Materials/mat.sptmat" }
+            }
+          ]
+        }
+        """);
+
+        string contentRoot = Path.Combine(temp.Path, "..", "content-" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            AssetDatabase.CookAll(temp.Path, contentRoot);
+
+            Assert.True(AssetDatabase.TryGetGuid("model.obj", out string modelGuid));
+            Assert.True(AssetDatabase.TryGetGuid("Materials/mat.sptmat", out string matGuid));
+
+            // The shipped scene must reference cooked artifacts by guid (resolved via the manifest at runtime),
+            // never the raw source paths that have no counterpart in Content — otherwise the model and its
+            // materials fail to load in the built game even though they render in the editor.
+            JsonObject mesh = JsonNode.Parse(File.ReadAllText(Path.Combine(contentRoot, "Scenes", "Main.sptscene")))!
+                .AsObject()["Entities"]!.AsArray()[0]!.AsObject()["Mesh"]!.AsObject();
+            Assert.Equal(AssetRef.MakeGuidRef(modelGuid), mesh["ModelPath"]!.GetValue<string>());
+            Assert.Equal(AssetRef.MakeGuidRef(matGuid), mesh["MaterialPath"]!.GetValue<string>());
         }
         finally
         {

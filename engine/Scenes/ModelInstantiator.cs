@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using Spot.Animation;
 using Spot.Assets;
 using Spot.Core;
 using Spot.Rendering;
@@ -51,7 +52,9 @@ public static class ModelInstantiator
             ModelSceneInfo info = s_importer.ImportSceneInfo(modelPath);
 
             string rootName = Path.GetFileNameWithoutExtension(modelPath);
-            return BuildNode(scene, info, info.Root, parent, modelPath, materials, rootName);
+            Entity root = BuildNode(scene, info, info.Root, parent, modelPath, materials, rootName);
+            AddAnimator(root, info, modelPath);
+            return root;
         }
         catch (Exception ex)
         {
@@ -122,6 +125,46 @@ public static class ModelInstantiator
         }
 
         entity.AddComponent(mesh);
+
+        // A skinned submesh gets a companion marker so the render system draws it through the skinning path,
+        // posing it from the bone entities rather than this entity's transform.
+        if (meshIndex >= 0 && meshIndex < info.MeshSkinned.Count && info.MeshSkinned[meshIndex])
+        {
+            entity.AddComponent(new SkinnedMeshComponent());
+        }
+    }
+
+    // Adds an Animator to the root of a skinned/animated model. It anchors bone resolution (the skinned
+    // meshes walk up to it) and plays the model's clips; even a rig with no clips gets one as the anchor.
+    private static void AddAnimator(Entity root, ModelSceneInfo info, string modelPath)
+    {
+        bool skinned = false;
+        for (int i = 0; i < info.MeshSkinned.Count; i++)
+        {
+            if (info.MeshSkinned[i])
+            {
+                skinned = true;
+                break;
+            }
+        }
+
+        if (!skinned && info.ClipNames.Count == 0)
+        {
+            return;
+        }
+
+        var animator = new AnimatorComponent { ModelPath = modelPath };
+        if (info.ClipNames.Count > 0)
+        {
+            animator.DefaultClip = info.ClipNames[0];
+            animator.PlayOnStart = true;
+        }
+        else
+        {
+            animator.PlayOnStart = false;
+        }
+
+        root.AddComponent(animator);
     }
 
     private static void ApplyTransform(TransformComponent transform, Matrix4x4 local)
@@ -136,37 +179,7 @@ public static class ModelInstantiator
         }
 
         transform.Position = translation;
-        transform.Rotation = ToEulerDegrees(rotation);
+        transform.Rotation = AnimationMath.ToEulerDegrees(rotation);
         transform.Scale = scale;
-    }
-
-    /// <summary>
-    /// Converts a rotation quaternion to Euler angles in degrees using the same yaw(Y)/pitch(X)/roll(Z)
-    /// convention <see cref="TransformComponent.LocalMatrix"/> rebuilds them with (via
-    /// <see cref="Matrix4x4.CreateFromYawPitchRoll"/>), so the transform round-trips.
-    /// </summary>
-    private static Vector3 ToEulerDegrees(Quaternion q)
-    {
-        q = Quaternion.Normalize(q);
-        float x = q.X, y = q.Y, z = q.Z, w = q.W;
-
-        float sinPitch = Math.Clamp(2.0f * (w * x - y * z), -1.0f, 1.0f);
-        float pitch = MathF.Asin(sinPitch);
-
-        float yaw, roll;
-        if (MathF.Abs(sinPitch) > 0.99999f)
-        {
-            // Gimbal lock (looking straight up/down): fold the rotation into yaw and zero the roll.
-            yaw = MathF.Atan2(-2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z));
-            roll = 0.0f;
-        }
-        else
-        {
-            yaw = MathF.Atan2(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y));
-            roll = MathF.Atan2(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z));
-        }
-
-        const float radToDeg = 180.0f / MathF.PI;
-        return new Vector3(pitch * radToDeg, yaw * radToDeg, roll * radToDeg);
     }
 }

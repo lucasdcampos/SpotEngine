@@ -856,6 +856,87 @@ public static class Renderer3D
         }
         """;
 
+    /// <summary>
+    /// The maximum number of bones a single skinned draw can upload. Must match <c>MAX_BONES</c> in the
+    /// skinned shader sources below; a skeleton with more bones is clamped (and logged) rather than crashing.
+    /// </summary>
+    public const int MaxBones = 128;
+
+    // Skinned counterpart of the standard vertex shader: it blends up to four bone matrices per vertex into a
+    // skinning matrix that already yields world space (each bone matrix is InverseBind * boneWorld), so — unlike
+    // the rigid shader — it does not use uModel. The fragment stage is shared with the standard shader.
+    private const string SkinnedVertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoord;
+        layout (location = 3) in vec4 aBoneIndices;
+        layout (location = 4) in vec4 aBoneWeights;
+
+        uniform mat4 uViewProjection;
+        uniform mat4 uLightSpaceMatrix;
+
+        const int MAX_BONES = 128;
+        uniform mat4 uBones[MAX_BONES];
+
+        out vec3 vFragPos;
+        out vec4 vFragPosLightSpace;
+        out vec3 vNormal;
+        out vec2 vTexCoord;
+
+        mat4 skinMatrix()
+        {
+            mat4 skin =
+                uBones[int(aBoneIndices.x)] * aBoneWeights.x +
+                uBones[int(aBoneIndices.y)] * aBoneWeights.y +
+                uBones[int(aBoneIndices.z)] * aBoneWeights.z +
+                uBones[int(aBoneIndices.w)] * aBoneWeights.w;
+
+            float total = aBoneWeights.x + aBoneWeights.y + aBoneWeights.z + aBoneWeights.w;
+            return total > 0.0001 ? skin * (1.0 / total) : mat4(1.0);
+        }
+
+        void main()
+        {
+            mat4 skin = skinMatrix();
+            vec4 worldPos = skin * vec4(aPosition, 1.0);
+            vFragPos = worldPos.xyz;
+            vFragPosLightSpace = uLightSpaceMatrix * worldPos;
+            vNormal = mat3(skin) * aNormal;
+            vTexCoord = aTexCoord;
+            gl_Position = uViewProjection * worldPos;
+        }
+        """;
+
+    // Skinned counterpart of the shadow vertex shader, so animated meshes cast animated shadows.
+    private const string SkinnedShadowVertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 3) in vec4 aBoneIndices;
+        layout (location = 4) in vec4 aBoneWeights;
+
+        uniform mat4 uLightSpaceMatrix;
+
+        const int MAX_BONES = 128;
+        uniform mat4 uBones[MAX_BONES];
+
+        void main()
+        {
+            mat4 skin =
+                uBones[int(aBoneIndices.x)] * aBoneWeights.x +
+                uBones[int(aBoneIndices.y)] * aBoneWeights.y +
+                uBones[int(aBoneIndices.z)] * aBoneWeights.z +
+                uBones[int(aBoneIndices.w)] * aBoneWeights.w;
+
+            float total = aBoneWeights.x + aBoneWeights.y + aBoneWeights.z + aBoneWeights.w;
+            if (total <= 0.0001) skin = mat4(1.0); else skin = skin * (1.0 / total);
+
+            gl_Position = uLightSpaceMatrix * skin * vec4(aPosition, 1.0);
+        }
+        """;
+
 
     private static Shader? s_shader;
     private static Shader? s_waterShader;
@@ -863,6 +944,8 @@ public static class Renderer3D
     private static Shader? s_cloudsShader;
     private static Shader? s_gridShader;
     private static Shader? s_shadowShader;
+    private static Shader? s_skinnedShader;
+    private static Shader? s_skinnedShadowShader;
     private static VertexArray? s_emptyVao;
     private static Texture2D? s_whiteTexture;
     private static DepthFramebuffer? s_shadowMap;
@@ -905,6 +988,8 @@ public static class Renderer3D
         s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
         s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
         s_shadowShader = new Shader(ShadowVertexShaderSource, ShadowFragmentShaderSource);
+        s_skinnedShader = new Shader(SkinnedVertexShaderSource, FragmentShaderSource);
+        s_skinnedShadowShader = new Shader(SkinnedShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_emptyVao = new VertexArray();
         
         s_shadowMap = new DepthFramebuffer(2048, 2048);
@@ -1077,42 +1162,130 @@ public static class Renderer3D
             activeShader.SetUniform("uHasSkybox", s_hasSkybox);
         }
 
-        activeShader.SetUniform("uHasDirectionalLight", s_hasDirLight);
+        ApplyLighting(activeShader);
+
+        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    /// <summary>
+    /// Draws a skinned mesh with the given bone palette. The mesh must use the skinned vertex layout; the
+    /// palette holds one matrix per bone (<c>InverseBind * boneWorld</c>, which already yields world space),
+    /// so no model matrix is needed. Only the standard (lit) shader is supported for skinned meshes.
+    /// </summary>
+    /// <param name="mesh">The skinned mesh to draw.</param>
+    /// <param name="bones">The bone matrices, one per bone (capped at <see cref="MaxBones"/>).</param>
+    /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
+    /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
+    /// <param name="material">The surface material, or <see langword="null"/> for defaults.</param>
+    public static void DrawSkinnedMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones, Vector4 color, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    {
+        Shader? activeShader = s_skinnedShader;
+        if (activeShader is null || s_whiteTexture is null)
+        {
+            return;
+        }
+
+        (texture ?? s_whiteTexture).Bind(0);
+
+        activeShader.Use();
+        activeShader.SetUniform("uViewProjection", s_viewProjection);
+        activeShader.SetUniform("uColor", color);
+        activeShader.SetUniform("uTexture", 0);
+        activeShader.SetUniform("uCameraPos", s_cameraPosition);
+        activeShader.SetUniform("uBones", ClampBones(bones));
+
+        // Skinning replaces the model matrix, so auto-tiling (which scales UVs by the model matrix) is off.
+        activeShader.SetUniform("uTiling", material?.Tiling ?? Vector2.One);
+        activeShader.SetUniform("uAutoTile", 0);
+
+        activeShader.SetUniform("uMetallic", material?.Metallic ?? 0.0f);
+        activeShader.SetUniform("uEmissiveColor", material?.EmissiveColor ?? Vector3.Zero);
+        activeShader.SetUniform("uEmissiveIntensity", material?.EmissiveIntensity ?? 1.0f);
+
+        if (material?.NormalMap != null)
+        {
+            material.NormalMap.Bind(2);
+            activeShader.SetUniform("uNormalMap", 2);
+            activeShader.SetUniform("uHasNormalMap", 1);
+        }
+        else
+        {
+            activeShader.SetUniform("uHasNormalMap", 0);
+        }
+
+        ApplyLighting(activeShader);
+
+        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    /// <summary>
+    /// Draws a skinned mesh into the shadow map with the given bone palette. Must be called between
+    /// <see cref="BeginShadowPass"/> and <see cref="EndShadowPass"/>.
+    /// </summary>
+    /// <param name="mesh">The skinned mesh to draw.</param>
+    /// <param name="bones">The bone matrices, one per bone (capped at <see cref="MaxBones"/>).</param>
+    public static void DrawSkinnedShadowMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones)
+    {
+        if (s_skinnedShadowShader is null)
+        {
+            return;
+        }
+
+        s_skinnedShadowShader.Use();
+        s_skinnedShadowShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
+        s_skinnedShadowShader.SetUniform("uBones", ClampBones(bones));
+        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    // Caps a bone palette at MaxBones so a rig larger than the shader's uniform array can't overrun it.
+    private static ReadOnlySpan<Matrix4x4> ClampBones(ReadOnlySpan<Matrix4x4> bones)
+    {
+        if (bones.Length <= MaxBones)
+        {
+            return bones;
+        }
+
+        Spot.Core.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
+        return bones[..MaxBones];
+    }
+
+    // Uploads the directional light, shadow map and point lights shared by the standard and skinned shaders.
+    private static void ApplyLighting(Shader shader)
+    {
+        shader.SetUniform("uHasDirectionalLight", s_hasDirLight);
         if (s_hasDirLight == 1)
         {
-            activeShader.SetUniform("uLightDir", s_lightDir);
-            activeShader.SetUniform("uLightColor", s_lightColor);
-            activeShader.SetUniform("uAmbientIntensity", s_ambientIntensity);
+            shader.SetUniform("uLightDir", s_lightDir);
+            shader.SetUniform("uLightColor", s_lightColor);
+            shader.SetUniform("uAmbientIntensity", s_ambientIntensity);
         }
-        
+
         if (s_castShadows == 1)
         {
             s_shadowMap!.BindDepthTexture(1);
-            activeShader.SetUniform("uShadowMap", 1);
-            activeShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
+            shader.SetUniform("uShadowMap", 1);
+            shader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
             // World size of one shadow-map texel, so the shader's normal-offset bias is expressed in the
             // same world units regardless of resolution/distance. Matches the box size used to build the
             // light matrix (RenderSystem.ComputeDirectionalShadowMatrix).
             float shadowSize = MathF.Max(RenderSettings.ShadowDistance, 1.0f);
             float shadowRes = MathF.Max(s_shadowMap.Width, 1u);
-            activeShader.SetUniform("uShadowTexelSize", shadowSize / shadowRes);
-            activeShader.SetUniform("uCastShadows", 1);
+            shader.SetUniform("uShadowTexelSize", shadowSize / shadowRes);
+            shader.SetUniform("uCastShadows", 1);
         }
         else
         {
-            activeShader.SetUniform("uCastShadows", 0);
+            shader.SetUniform("uCastShadows", 0);
         }
 
-        activeShader.SetUniform("uPointLightCount", s_pointLightCount);
+        shader.SetUniform("uPointLightCount", s_pointLightCount);
         for (int i = 0; i < s_pointLightCount; i++)
         {
-            activeShader.SetUniform($"uPointLights[{i}].position", s_pointLights[i].Position);
-            activeShader.SetUniform($"uPointLights[{i}].color", s_pointLights[i].Color);
-            activeShader.SetUniform($"uPointLights[{i}].intensity", s_pointLights[i].Intensity);
-            activeShader.SetUniform($"uPointLights[{i}].range", s_pointLights[i].Range);
+            shader.SetUniform($"uPointLights[{i}].position", s_pointLights[i].Position);
+            shader.SetUniform($"uPointLights[{i}].color", s_pointLights[i].Color);
+            shader.SetUniform($"uPointLights[{i}].intensity", s_pointLights[i].Intensity);
+            shader.SetUniform($"uPointLights[{i}].range", s_pointLights[i].Range);
         }
-
-        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
     }
 
     /// <summary>

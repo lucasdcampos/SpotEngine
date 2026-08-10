@@ -212,9 +212,14 @@ internal static class ComponentSerialization
 
             bool isAssetPath = assetPathNames.Contains(prop.Name);
 
-            // Skip inspector-hidden properties (runtime state, computed values) unless they are an asset
-            // path we must persist. This mirrors the inspector: what you can author is what gets saved.
-            if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null && !isAssetPath) continue;
+            // Skip inspector-hidden properties (runtime state, computed values) unless they are an asset path
+            // or explicitly marked SerializeHidden — hidden data that is authored in code and must persist.
+            if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null
+                && !isAssetPath
+                && prop.GetCustomAttribute<SerializeHiddenAttribute>() == null)
+            {
+                continue;
+            }
 
             members.Add(new Member(prop, isAssetPath));
         }
@@ -344,7 +349,8 @@ internal static class ComponentSerialization
 
     private static bool IsSupported(Type t) =>
         t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
-        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4);
+        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4) ||
+        t == typeof(string[]);
 
     private static JsonNode? ToNode(object? value) => value switch
     {
@@ -357,8 +363,20 @@ internal static class ComponentSerialization
         Vector2 v => new JsonArray(v.X, v.Y),
         Vector3 v => new JsonArray(v.X, v.Y, v.Z),
         Vector4 v => new JsonArray(v.X, v.Y, v.Z, v.W),
+        string[] a => ToStringArray(a),
         _ => null,
     };
+
+    private static JsonArray ToStringArray(string[] values)
+    {
+        var array = new JsonArray();
+        foreach (string value in values)
+        {
+            array.Add(value);
+        }
+
+        return array;
+    }
 
     private static object? FromNode(JsonNode node, Type targetType)
     {
@@ -367,6 +385,18 @@ internal static class ComponentSerialization
         if (targetType == typeof(float)) return node.GetValue<float>();
         if (targetType == typeof(string)) return node.GetValue<string>();
         if (targetType.IsEnum) return Enum.ToObject(targetType, node.GetValue<int>());
+
+        if (targetType == typeof(string[]))
+        {
+            JsonArray a = node.AsArray();
+            var result = new string[a.Count];
+            for (int i = 0; i < a.Count; i++)
+            {
+                result[i] = a[i]?.GetValue<string>() ?? string.Empty;
+            }
+
+            return result;
+        }
 
         if (targetType == typeof(Vector2))
         {

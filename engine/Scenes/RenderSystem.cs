@@ -172,6 +172,13 @@ public static class RenderSystem
                 ResolveAssets(meshRenderer);
                 if (meshRenderer.Model is null) continue;
 
+                if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                    skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+                {
+                    DrawSkinnedShadowMeshes(meshRenderer, palette);
+                    continue;
+                }
+
                 Matrix4x4 world = transform.Matrix;
                 DrawShadowMeshes(meshRenderer, world);
             }
@@ -223,9 +230,17 @@ public static class RenderSystem
                 continue;
             }
 
-            Matrix4x4 world = entity.GetComponent<TransformComponent>().Matrix;
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
+
+            if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+            {
+                DrawSkinnedMeshes(meshRenderer, palette, color, texture);
+                continue;
+            }
+
+            Matrix4x4 world = transform.Matrix;
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
             DrawMeshes(meshRenderer, world, color, texture, shaderType);
         }
@@ -411,6 +426,32 @@ public static class RenderSystem
         else if (index < meshes.Count)
         {
             Renderer3D.DrawShadowMesh(world, meshes[index]);
+        }
+    }
+
+    /// <summary>
+    /// Draws a skinned renderer's submesh with the bone palette produced from the live skeleton. A skinned
+    /// part always names a single submesh (its <see cref="MeshComponent.SubmeshIndex"/>), so only that one is
+    /// drawn — and only when it actually uses the skinned vertex layout.
+    /// </summary>
+    private static void DrawSkinnedMeshes(MeshComponent meshRenderer, ReadOnlySpan<Matrix4x4> palette, Vector4 color, Texture2D? texture)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index >= 0 && index < meshes.Count && meshes[index].IsSkinned)
+        {
+            Renderer3D.DrawSkinnedMesh(meshes[index], palette, color, texture, meshRenderer.Material);
+        }
+    }
+
+    /// <summary>The <see cref="DrawSkinnedMeshes"/> counterpart for the shadow pass (depth only).</summary>
+    private static void DrawSkinnedShadowMeshes(MeshComponent meshRenderer, ReadOnlySpan<Matrix4x4> palette)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index >= 0 && index < meshes.Count && meshes[index].IsSkinned)
+        {
+            Renderer3D.DrawSkinnedShadowMesh(meshes[index], palette);
         }
     }
 

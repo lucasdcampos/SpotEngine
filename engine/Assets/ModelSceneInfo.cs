@@ -44,11 +44,17 @@ public sealed class ModelNodeInfo
 /// </summary>
 public sealed class ModelSceneInfo
 {
-    /// <summary>Initializes the scene info with its root node and per-submesh material slots.</summary>
-    public ModelSceneInfo(ModelNodeInfo root, IReadOnlyList<int> meshMaterialIndex)
+    /// <summary>Initializes the scene info with its root node, per-submesh material slots and skinning, and clips.</summary>
+    public ModelSceneInfo(
+        ModelNodeInfo root,
+        IReadOnlyList<int> meshMaterialIndex,
+        IReadOnlyList<bool> meshSkinned,
+        IReadOnlyList<string> clipNames)
     {
         Root = root;
         MeshMaterialIndex = meshMaterialIndex;
+        MeshSkinned = meshSkinned;
+        ClipNames = clipNames;
     }
 
     /// <summary>Gets the root node of the model's hierarchy.</summary>
@@ -59,4 +65,10 @@ public sealed class ModelSceneInfo
     /// that submesh uses — an index into the source file's material list.
     /// </summary>
     public IReadOnlyList<int> MeshMaterialIndex { get; }
+
+    /// <summary>Gets, for each submesh, whether it is skinned (has bones) and needs a skinned renderer.</summary>
+    public IReadOnlyList<bool> MeshSkinned { get; }
+
+    /// <summary>Gets the names of the animation clips baked into the model (empty when it has none).</summary>
+    public IReadOnlyList<string> ClipNames { get; }
 }

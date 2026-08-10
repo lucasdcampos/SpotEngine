@@ -19,6 +19,16 @@ compact runtime formats — written into a project's content folder alongside a 
 each GUID to its cooked artifact. Cooking is done by the `spot cook` command (and as part of a build;
 see [Projects & Building a Game](projects-and-building.md)).
 
+A cooked mesh carries more than geometry: if the source model is **rigged**, its cooked form also holds
+the **skeleton** (each bone's inverse-bind matrix) and any **animation clips** baked into the file, so a
+shipped game plays animation with no importer present. See [Animation](animation.md).
+
+Scenes are shipped by path rather than cooked to a GUID, but their asset references are still rewritten
+to `guid:` references as they're copied into the content folder — the source scene on disk is left
+untouched. This is why a model dragged into a scene (which leaves behind raw source paths to the `.fbx`
+and its extracted `.sptmat` materials) renders in a build as well as in the editor: the cook resolves
+those paths to the GUIDs of the cooked mesh and materials.
+
 A companion **migrate** step generates any missing `.meta` sidecars and rewrites older path-based
 references in scenes and materials to `guid:` references, so existing content moves onto the pipeline.
 

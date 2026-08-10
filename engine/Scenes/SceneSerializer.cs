@@ -19,8 +19,6 @@ namespace Spot.Scenes;
 /// </summary>
 public class SceneSerializer
 {
-    private static readonly JsonSerializerOptions s_writeOptions = new() { WriteIndented = true };
-
     private readonly Scene _scene;
 
     public SceneSerializer(Scene scene)
@@ -40,7 +38,7 @@ public class SceneSerializer
         }
 
         var root = new JsonObject { ["Entities"] = entities };
-        return root.ToJsonString(s_writeOptions);
+        return root.ToJsonString(SceneJson.WriteOptions);
     }
 
     /// <summary>
@@ -140,7 +138,7 @@ public class SceneSerializer
         JsonNode? root;
         try
         {
-            root = JsonNode.Parse(json);
+            root = SceneJson.Parse(json);
         }
         catch (JsonException ex)
         {
