@@ -11,30 +11,39 @@ namespace Spot.Scenes;
 /// move while a scene is running — never in the editor's edit mode. Each emitter is isolated in its own
 /// guard so one faulty emitter can neither crash nor freeze the rest.
 /// </summary>
-internal static class ParticleSystem
+public static class ParticleSystem
 {
     public static void Update(Scene scene, float deltaTime)
     {
         foreach (Entity entity in scene.View<TransformComponent, ParticleSystemComponent>())
         {
-            ParticleSystemComponent particles = entity.GetComponent<ParticleSystemComponent>();
-            TransformComponent transform = entity.GetComponent<TransformComponent>();
-            if (!entity.IsActiveInHierarchy() || !particles.Enabled || !transform.Enabled)
-            {
-                continue;
-            }
+            UpdateEntity(entity, deltaTime);
+        }
+    }
 
-            try
-            {
-                particles.EmitterWorld = transform.Matrix;
-                particles.EmitterRotation = RotationOnly(transform.WorldRotation);
-                particles.Simulate(deltaTime);
-            }
-            catch (Exception ex)
-            {
-                Log.CoreWarn("Particle emitter on entity {0} faulted and was disabled: {1}", entity.Id, ex.Message);
-                particles.Enabled = false;
-            }
+    public static void UpdateEntity(Entity entity, float deltaTime)
+    {
+        if (!entity.TryGetComponent(out ParticleSystemComponent? particles) || 
+            !entity.TryGetComponent(out TransformComponent? transform))
+        {
+            return;
+        }
+
+        if (!entity.IsActiveInHierarchy() || !particles.Enabled || !transform.Enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            particles.EmitterWorld = transform.Matrix;
+            particles.EmitterRotation = RotationOnly(transform.WorldRotation);
+            particles.Simulate(deltaTime);
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Particle emitter on entity {0} faulted and was disabled: {1}", entity.Id, ex.Message);
+            particles.Enabled = false;
         }
     }
 
