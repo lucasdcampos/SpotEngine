@@ -20,11 +20,13 @@ public class GraphicsService : IEngineService
         Renderer3D.Init();
         PostProcessingRenderer.Init();
         BloomRenderer.Init();
+        ParticleRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     }
 
     public void Shutdown()
     {
+        ParticleRenderer.Shutdown();
         Renderer2D.Shutdown();
     }
 }

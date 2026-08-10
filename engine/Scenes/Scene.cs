@@ -60,6 +60,7 @@ public class Scene
         physics.Step(this, deltaTime);
         (_collisions ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
         AnimationSystem.Update(this, deltaTime);
+        ParticleSystem.Update(this, deltaTime);
         AudioSystem.Update(this, deltaTime);
         ScriptSystem.Update(this, deltaTime);
         FlushDestroyed();
