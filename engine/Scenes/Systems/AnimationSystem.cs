@@ -18,19 +18,8 @@ public static class AnimationSystem
     /// <param name="deltaTime">The elapsed time in seconds since the previous frame.</param>
     public static void Update(Scene scene, float deltaTime)
     {
-        foreach (Entity entity in scene.View<AnimatorComponent>())
+        foreach ((Entity entity, AnimatorComponent animator) in scene.ViewActive<AnimatorComponent>())
         {
-            if (!entity.IsActiveInHierarchy())
-            {
-                continue;
-            }
-
-            AnimatorComponent animator = entity.GetComponent<AnimatorComponent>();
-            if (!animator.Enabled)
-            {
-                continue;
-            }
-
             try
             {
                 animator.Tick(entity, deltaTime);

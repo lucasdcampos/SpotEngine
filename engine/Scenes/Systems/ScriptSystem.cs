@@ -11,16 +11,12 @@ internal static class ScriptSystem
 {
     public static void Update(Scene scene, float deltaTime)
     {
-        // Materialize the entities and their scripts first so a script that spawns or destroys
-        // entities during its update cannot invalidate the iterator (the classic "collection was
-        // modified" crash). Each script runs inside its own guard so one fault neither crashes the
-        // engine nor stops the others.
-        foreach (Entity entity in scene.View<ScriptComponent>().ToList())
+        // ViewActive snapshots the active, enabled script components first so a script that spawns or
+        // destroys entities during its update cannot invalidate the iterator (the classic "collection was
+        // modified" crash). Each script runs inside its own guard so one fault neither crashes the engine
+        // nor stops the others.
+        foreach ((Entity _, ScriptComponent scriptComp) in scene.ViewActive<ScriptComponent>())
         {
-            if (!entity.IsActiveInHierarchy()) continue;
-            var scriptComp = entity.GetComponent<ScriptComponent>();
-            if (!scriptComp.Enabled) continue;
-
             foreach (EntityBehaviour script in scriptComp.Scripts.ToList())
             {
                 if (script.Faulted)
