@@ -57,7 +57,7 @@ public static class ProjectBuilder
 
         // Cook source assets into Content/ so the published build ships only engine-native artifacts.
         // The generated .csproj copies Content/ (not Assets/) to the output.
-        string contentRoot = Path.Combine(project.ProjectDirectory, "Content");
+        string contentRoot = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
@@ -77,7 +77,7 @@ public static class ProjectBuilder
         // the self-contained runtime copy and single-file bundling, cutting Play iteration time from
         // tens of seconds to a normal incremental build. It lives in its own folder so it never
         // clobbers a distributable build.
-        string outputDir = Path.Combine(project.ProjectDirectory, "Build",
+        string outputDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder,
             fastDebug ? "play" : FolderName(platform));
         string csprojFile = project.Config.Name + ".csproj";
 

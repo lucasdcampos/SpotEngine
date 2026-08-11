@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Spot.Assets;
+using Spot.Core;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -366,7 +367,7 @@ public static class RenderSystem
             if (dir.LengthSquared() > 1e-6f) forward = dir;
         }
         forward.Y = 0;
-        forward = forward.LengthSquared() > 1e-6f ? Vector3.Normalize(forward) : new Vector3(0, 0, 1);
+        forward = SpotMath.SafeNormalize(forward, new Vector3(0, 0, 1));
 
         Vector3 center = cameraPos + forward * (size * 0.25f);
 

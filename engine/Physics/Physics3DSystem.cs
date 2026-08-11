@@ -10,8 +10,6 @@ namespace Spot.Physics;
 /// </summary>
 internal static class Physics3DSystem
 {
-    public static Vector3 Gravity = new Vector3(0, -9.81f, 0);
-
     public static void Update(Scene scene, float deltaTime)
     {
         // 1. Update velocities and positions for dynamic bodies
@@ -32,7 +30,7 @@ internal static class Physics3DSystem
                     // Apply linear drag (damping) to gradually reduce velocity over time
                     body.Velocity -= body.Velocity * body.LinearDrag * deltaTime;
                 }
-                body.Velocity += Gravity * body.GravityScale * deltaTime;
+                body.Velocity += PhysicsSettings.Gravity * body.GravityScale * deltaTime;
                 transform.Position += body.Velocity * deltaTime;
             }
         }
