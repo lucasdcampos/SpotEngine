@@ -174,5 +174,81 @@ public sealed class Window : IDisposable
             mouse.MouseDown += (_, button) => _callback?.Invoke(new MouseButtonPressedEvent((MouseButton)(int)button));
             mouse.MouseUp += (_, button) => _callback?.Invoke(new MouseButtonReleasedEvent((MouseButton)(int)button));
         }
+
+        _input.ConnectionChanged += (device, connected) =>
+        {
+            if (device is IGamepad gamepad)
+            {
+                if (connected)
+                {
+                    SetupGamepad(gamepad);
+                    _callback?.Invoke(new GamepadConnectedEvent(gamepad.Index));
+                }
+                else
+                {
+                    _callback?.Invoke(new GamepadDisconnectedEvent(gamepad.Index));
+                }
+            }
+        };
+
+        foreach (IGamepad gamepad in _input.Gamepads)
+        {
+            SetupGamepad(gamepad);
+        }
+    }
+
+    private void SetupGamepad(IGamepad gamepad)
+    {
+        gamepad.ButtonDown += (gp, button) => _callback?.Invoke(new GamepadButtonPressedEvent(gp.Index, MapGamepadButton(button.Name)));
+        gamepad.ButtonUp += (gp, button) => _callback?.Invoke(new GamepadButtonReleasedEvent(gp.Index, MapGamepadButton(button.Name)));
+        
+        gamepad.ThumbstickMoved += (gp, thumbstick) => 
+        {
+            if (thumbstick.Index == 0)
+            {
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftX, thumbstick.X));
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftY, thumbstick.Y));
+            }
+            else if (thumbstick.Index == 1)
+            {
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightX, thumbstick.X));
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightY, thumbstick.Y));
+            }
+        };
+
+        gamepad.TriggerMoved += (gp, trigger) =>
+        {
+            if (trigger.Index == 0)
+            {
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftTrigger, trigger.Position));
+            }
+            else if (trigger.Index == 1)
+            {
+                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightTrigger, trigger.Position));
+            }
+        };
+    }
+
+    private static GamepadButton MapGamepadButton(ButtonName name)
+    {
+        return name switch
+        {
+            ButtonName.A => GamepadButton.A,
+            ButtonName.B => GamepadButton.B,
+            ButtonName.X => GamepadButton.X,
+            ButtonName.Y => GamepadButton.Y,
+            ButtonName.LeftBumper => GamepadButton.LeftBumper,
+            ButtonName.RightBumper => GamepadButton.RightBumper,
+            ButtonName.Back => GamepadButton.Back,
+            ButtonName.Start => GamepadButton.Start,
+            ButtonName.Home => GamepadButton.Guide,
+            ButtonName.LeftStick => GamepadButton.LeftThumb,
+            ButtonName.RightStick => GamepadButton.RightThumb,
+            ButtonName.DPadUp => GamepadButton.DPadUp,
+            ButtonName.DPadRight => GamepadButton.DPadRight,
+            ButtonName.DPadDown => GamepadButton.DPadDown,
+            ButtonName.DPadLeft => GamepadButton.DPadLeft,
+            _ => GamepadButton.A
+        };
     }
 }

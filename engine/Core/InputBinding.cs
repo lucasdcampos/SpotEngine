@@ -13,6 +13,12 @@ public enum InputDeviceKind
 
     /// <summary>A mouse button (see <see cref="MouseButton"/>).</summary>
     Mouse,
+
+    /// <summary>A gamepad button.</summary>
+    GamepadButton,
+
+    /// <summary>A gamepad analog axis.</summary>
+    GamepadAxis,
 }
 
 /// <summary>
@@ -39,6 +45,16 @@ public readonly record struct InputBinding(InputDeviceKind Device, int Code)
     /// <param name="button">The button to bind.</param>
     /// <returns>The binding.</returns>
     public static InputBinding Mouse(SMouse button) => new(InputDeviceKind.Mouse, (int)button);
+
+    /// <summary>Creates a binding for the given gamepad button.</summary>
+    /// <param name="button">The button to bind.</param>
+    /// <returns>The binding.</returns>
+    public static InputBinding Gamepad(GamepadButton button) => new(InputDeviceKind.GamepadButton, (int)button);
+
+    /// <summary>Creates a binding for the given gamepad axis.</summary>
+    /// <param name="axis">The axis to bind.</param>
+    /// <returns>The binding.</returns>
+    public static InputBinding Gamepad(GamepadAxis axis) => new(InputDeviceKind.GamepadAxis, (int)axis);
 
     /// <summary>
     /// Parses a console/config token (e.g. "w", "space", "up", "0", "f1", "mouse0", "lmb") into a
@@ -84,6 +100,16 @@ public readonly record struct InputBinding(InputDeviceKind Device, int Code)
         if (Device == InputDeviceKind.Mouse)
         {
             return "mouse" + Code.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (Device == InputDeviceKind.GamepadButton)
+        {
+            return "gamepad_" + ((GamepadButton)Code).ToString().ToLowerInvariant();
+        }
+
+        if (Device == InputDeviceKind.GamepadAxis)
+        {
+            return "gamepad_" + ((GamepadAxis)Code).ToString().ToLowerInvariant();
         }
 
         var key = (SKey)Code;
@@ -142,6 +168,47 @@ public readonly record struct InputBinding(InputDeviceKind Device, int Code)
         AddKey(SKey.Slash, "/");
         AddKey(SKey.Minus, "-");
         AddKey(SKey.Apostrophe, "'");
+
+        void AddGamepadBtn(GamepadButton button, params string[] names)
+        {
+            var b = Gamepad(button);
+            foreach (string n in names)
+            {
+                a[n] = b;
+            }
+        }
+
+        void AddGamepadAxis(GamepadAxis axis, params string[] names)
+        {
+            var b = Gamepad(axis);
+            foreach (string n in names)
+            {
+                a[n] = b;
+            }
+        }
+
+        AddGamepadBtn(GamepadButton.A, "gamepad_a", "gp_a");
+        AddGamepadBtn(GamepadButton.B, "gamepad_b", "gp_b");
+        AddGamepadBtn(GamepadButton.X, "gamepad_x", "gp_x");
+        AddGamepadBtn(GamepadButton.Y, "gamepad_y", "gp_y");
+        AddGamepadBtn(GamepadButton.LeftBumper, "gamepad_lb", "gp_lb", "gamepad_leftbumper");
+        AddGamepadBtn(GamepadButton.RightBumper, "gamepad_rb", "gp_rb", "gamepad_rightbumper");
+        AddGamepadBtn(GamepadButton.Back, "gamepad_back", "gp_back");
+        AddGamepadBtn(GamepadButton.Start, "gamepad_start", "gp_start");
+        AddGamepadBtn(GamepadButton.Guide, "gamepad_guide", "gp_guide");
+        AddGamepadBtn(GamepadButton.LeftThumb, "gamepad_lthumb", "gp_lsb");
+        AddGamepadBtn(GamepadButton.RightThumb, "gamepad_rthumb", "gp_rsb");
+        AddGamepadBtn(GamepadButton.DPadUp, "gamepad_dpadup", "gp_dpadup");
+        AddGamepadBtn(GamepadButton.DPadDown, "gamepad_dpaddown", "gp_dpaddown");
+        AddGamepadBtn(GamepadButton.DPadLeft, "gamepad_dpadleft", "gp_dpadleft");
+        AddGamepadBtn(GamepadButton.DPadRight, "gamepad_dpadright", "gp_dpadright");
+
+        AddGamepadAxis(GamepadAxis.LeftX, "gamepad_lx", "gp_lx");
+        AddGamepadAxis(GamepadAxis.LeftY, "gamepad_ly", "gp_ly");
+        AddGamepadAxis(GamepadAxis.RightX, "gamepad_rx", "gp_rx");
+        AddGamepadAxis(GamepadAxis.RightY, "gamepad_ry", "gp_ry");
+        AddGamepadAxis(GamepadAxis.LeftTrigger, "gamepad_lt", "gp_lt", "gamepad_lefttrigger");
+        AddGamepadAxis(GamepadAxis.RightTrigger, "gamepad_rt", "gp_rt", "gamepad_righttrigger");
 
         return a;
     }

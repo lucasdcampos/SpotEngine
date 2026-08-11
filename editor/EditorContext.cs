@@ -1,5 +1,5 @@
 using Spot.Scenes;
-using Spot.Engine.Debug;
+using Spot.DebugUI;
 
 namespace Spot.Editor;
 

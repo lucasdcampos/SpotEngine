@@ -1,6 +1,6 @@
 using Spot.Assets;
 using Spot.Core;
-using Spot.Engine.Debug.UI;
+using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 
 namespace Spot.Editor;
