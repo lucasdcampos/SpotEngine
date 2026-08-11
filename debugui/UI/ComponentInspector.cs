@@ -12,7 +12,7 @@ using Spot.Core;
 using Spot.Rendering;
 using Spot.Scenes;
 
-namespace Spot.Engine.Debug.UI;
+namespace Spot.DebugUI.UI;
 
 /// <summary>
 /// Draws component inspectors automatically from component metadata. Each component "teaches" the

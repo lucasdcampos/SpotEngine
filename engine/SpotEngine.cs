@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Spot.Editor")]
+[assembly: InternalsVisibleTo("Spot.DebugUI")]
 [assembly: InternalsVisibleTo("Spot.Engine.Tests")]
 
 namespace Spot;

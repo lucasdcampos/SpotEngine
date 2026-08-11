@@ -1,12 +1,12 @@
 using ImGuiNET;
 using Spot.Core;
 using Spot.Core.Services;
-using Spot.Engine.Debug.Panels;
+using Spot.DebugUI.Panels;
 using Spot.Scenes;
 
-namespace Spot.Engine.Debug;
+namespace Spot.DebugUI;
 
-public class RuntimeDebuggerService : IEngineService, ISelectionContext
+public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugOverlay
 {
     public Scene? ActiveScene => SceneManager.Current;
     public Entity? Selection { get; set; }

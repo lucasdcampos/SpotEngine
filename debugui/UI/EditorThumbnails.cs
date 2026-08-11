@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Spot.Rendering;
 
-namespace Spot.Engine.Debug.UI;
+namespace Spot.DebugUI.UI;
 
 /// <summary>
 /// A small, process-wide cache of image thumbnails keyed by asset path, so widgets that show many

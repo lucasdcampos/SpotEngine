@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/engine/">
     <Project Path="engine/Spot.Engine.csproj" />
+    <Project Path="debugui/Spot.DebugUI.csproj" />
   </Folder>
   <Folder Name="/sandbox/" />
   <Folder Name="/editor/">

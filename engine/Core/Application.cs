@@ -173,7 +173,7 @@ public class Application
     /// <summary>
     /// Gets the runtime debugger service.
     /// </summary>
-    public Spot.Core.IEngineService? Debugger { get; set; }
+    public IDebugOverlay? Debugger { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
@@ -372,10 +372,9 @@ public class Application
         _frameFaulted = false;
         Input.NewFrame();
 
-        // The engine owns input while the dev console or debugger panels are open: 
+        // The engine owns input while the dev console or debugger panels are open:
         // cursor forced free, game input withheld.
-        // TODO: Re-add debugger capture check if needed via an interface.
-        Input.SetEngineCaptured(_console.IsOpen);
+        Input.SetEngineCaptured(_console.IsOpen || (Debugger?.IsOpen ?? false));
 
         _window!.PollEvents();
     }

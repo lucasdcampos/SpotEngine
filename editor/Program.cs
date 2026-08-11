@@ -1,5 +1,6 @@
 using Spot.Assets;
 using Spot.Core;
+using Spot.DebugUI;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 
@@ -40,6 +41,9 @@ public static class Program
             ModelImporter.Register(new AssimpModelImporter());
 
             var app = new Spot.Core.Application(spec);
+            // Host the in-game debug overlay (hierarchy/inspector/time panels), now that it lives in
+            // Spot.DebugUI rather than being auto-wired by the engine.
+            app.Debugger = new RuntimeDebuggerService();
             app.Run(new LauncherScene());
         }
         catch (Exception ex)
