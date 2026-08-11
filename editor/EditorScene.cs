@@ -103,6 +103,7 @@ public class EditorScene : Scene
     private bool _showGame = true;
     private bool _showHierarchy = true;
     private bool _showInspector = true;
+    private uint _lastGameDockId;
     private bool _showConsole = true;
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
@@ -611,7 +612,8 @@ public class EditorScene : Scene
             }
             if (sceneData.FirstFrame)
             {
-                ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
+                uint targetDock = _lastGameDockId != 0 ? _lastGameDockId : dockspaceId;
+                ImGui.SetNextWindowDockID(targetDock, ImGuiCond.FirstUseEver);
                 sceneData.FirstFrame = false;
             }
 
@@ -669,6 +671,7 @@ public class EditorScene : Scene
         {
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
             bool open = ImGui.Begin("Game", ref _showGame, ImGuiWindowFlags.NoCollapse);
+            _lastGameDockId = ImGui.GetWindowDockID();
             ImGui.PopStyleVar();
             if (open)
             {
@@ -1239,8 +1242,8 @@ public class EditorScene : Scene
             ImGui.GetColorU32(palette.TextDisabled), subtitle);
     }
 
-    // Rebuilds the default docked arrangement: Hierarchy on the left, Inspector on the right,
-    // Console/Asset Browser tabbed along the bottom, and the Scene/Game viewports in the center.
+    // Rebuilds the default docked arrangement: Hierarchy and Inspector on the right,
+    // Asset Browser and Console side-by-side along the bottom, and the Scene/Game viewports in the center.
     private void BuildDefaultLayout(uint dockspaceId, Vector2 size)
     {
         ImGuiDock.igDockBuilderRemoveNode(dockspaceId);
@@ -1248,22 +1251,24 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderSetNodeSize(dockspaceId, size);
 
         uint center = dockspaceId;
-        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Left, 0.20f, out uint left, out center);
-        ImGuiDock.igDockBuilderSplitNode(left, ImGuiDir.Down, 0.40f, out uint leftBottom, out uint leftTop);
         ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Right, 0.25f, out uint right, out center);
-        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.25f, out uint bottom, out center);
+        ImGuiDock.igDockBuilderSplitNode(right, ImGuiDir.Down, 0.60f, out uint rightBottom, out uint rightTop);
+        ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.30f, out uint bottom, out center);
+        ImGuiDock.igDockBuilderSplitNode(bottom, ImGuiDir.Left, 0.50f, out uint bottomLeft, out uint bottomRight);
 
-        ImGuiDock.igDockBuilderDockWindow("Scene", leftTop);
-        ImGuiDock.igDockBuilderDockWindow("Asset Browser", leftBottom);
-        ImGuiDock.igDockBuilderDockWindow("Properties", right);
-        ImGuiDock.igDockBuilderDockWindow("Console", bottom);
+        ImGuiDock.igDockBuilderDockWindow("Scene", rightTop);
+        ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
+        ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
+        ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
         
-        foreach (var sceneData in _openScenes)
+        for (int i = 0; i < _openScenes.Count; i++)
         {
+            var sceneData = _openScenes[i];
             string sceneName = sceneData.FilePath != null
                 ? System.IO.Path.GetFileNameWithoutExtension(sceneData.FilePath)
                 : "Untitled";
-            string title = $"{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{sceneData.GetHashCode()}";
+            string stableId = sceneData.FilePath != null ? sceneData.FilePath : $"Untitled_{i}";
+            string title = $"{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{stableId}";
             ImGuiDock.igDockBuilderDockWindow(title, center);
         }
 
