@@ -19,6 +19,7 @@ dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/buil
 | Project | Output | Notes |
 |---|---|---|
 | `engine/Spot.Engine` | library (namespace `Spot`) | the engine core |
+| `debugui/Spot.DebugUI` | library (namespace `Spot.DebugUI`) | ImGui debug/authoring panels (hierarchy, inspector, theming); referenced by the editor and hostable as the runtime debug overlay. Kept out of the engine so the runtime carries no authoring UI |
 | `editor/Spot.Editor` | exe | ImGui docking editor |
 | `sandbox/Sandbox` | exe | data-driven showcase project |
 | `tools/Spot.Build` | library | `.sptproj` → buildable app (used by editor + CLI) |
@@ -28,6 +29,6 @@ dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/buil
 ## Rules
 
 - **Never crash the engine.** Bad input, a throwing script, a broken scene, or a faulty panel must log and continue, never take the process down. Preserve the existing safety nets (`Application.Run` frame try/catch, `ScriptSystem` script quarantine, loaders that catch and log).
-- **Warnings are errors** in `Spot.Engine`, `Sandbox`, and `Spot.Build` (`TreatWarningsAsErrors`). New code there must be warning-clean. Nullable reference types and `ImplicitUsings` are on everywhere.
+- **Warnings are errors** in `Spot.Engine`, `Spot.DebugUI`, `Sandbox`, and `Spot.Build` (`TreatWarningsAsErrors`). New code there must be warning-clean. Nullable reference types and `ImplicitUsings` are on everywhere.
 - **Before marking a task complete**, always build (`dotnet build SpotEngine.slnx`) and run the tests (`dotnet test SpotEngine.slnx`), and confirm both pass.
 - **Always update the docs** under `docs/` when you change behavior, add features, or alter architecture.

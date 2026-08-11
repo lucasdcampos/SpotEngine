@@ -25,14 +25,25 @@ subsystems initialized once and updated every frame. The core services are **gra
 context and renderer), **audio** (the sound device), and **ImGui** (the editor/UI layer). Services
 run on the real frame time so pausing or slow motion in gameplay never starves them.
 
+A host can also supply an optional **debug overlay** — the in-game hierarchy/inspector/time panels
+toggled at runtime. Its ImGui panels live in a separate `Spot.DebugUI` assembly rather than in the
+engine, so the runtime never carries the authoring UI; a game opts in by referencing that assembly and
+setting `Application.Debugger`. The editor hosts it automatically.
+
 ## Systems
 
 Where services are global subsystems, **systems** are the per-frame logic that walks the active
-scene and acts on entities with the right components. When a scene updates in play mode it runs its
-systems in order — physics (character controllers, then 2D and 3D simulation, then collision
-dispatch), audio, and finally scripts — and then flushes any entities queued for destruction. You
-rarely call systems directly; you add components and the systems do the rest. See
-[Entities & Components](entities-and-components.md).
+scene and acts on entities with the right components. Each scene owns an ordered **system registry**,
+seeded with the engine's built-in systems and run every play-mode frame in a fixed order — character
+controllers, 2D physics, 3D physics (simulation plus collision dispatch), animation, particles, audio,
+and finally scripts — after which the scene flushes any entities queued for destruction. Scripts run
+last, so a script's update sees the world after physics has resolved it that frame.
+
+You rarely call systems directly; you add components and the built-in systems do the rest. To add your
+own simulation, implement `ISystem` (or wrap a callback in `DelegateSystem`) and register it with
+`Scene.RegisterSystem`, choosing where it runs relative to the built-ins via the `SystemOrder` slots.
+Every system runs inside a guard, so a faulty one is logged once and skipped rather than taking the
+frame down. See [Entities & Components](entities-and-components.md).
 
 ## Time
 
