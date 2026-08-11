@@ -6,7 +6,7 @@ namespace Spot.Scenes;
 /// <summary>
 /// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2DComponent"/> it is
 /// data-only: it holds what to draw (a <see cref="Assets.Model"/> and a color) and a render system
-/// draws it together with the entity's <see cref="Rendering.TransformComponent"/>.
+/// draws it together with the entity's <see cref="TransformComponent"/>.
 /// </summary>
 [ComponentMenu("Mesh Renderer", Order = 20)]
 [SceneComponent("MeshRenderer")]

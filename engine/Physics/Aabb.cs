@@ -1,5 +1,5 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Scenes;
 
 namespace Spot.Physics;
 

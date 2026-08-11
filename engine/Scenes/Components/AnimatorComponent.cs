@@ -122,7 +122,7 @@ public sealed class AnimatorComponent : Component
         foreach (AnimationChannel channel in clip.Channels)
         {
             if (!_nodesByName.TryGetValue(AnimationSystem.NormalizeBoneName(channel.NodeName), out Entity node) ||
-                !node.TryGetComponent(out Rendering.TransformComponent? transform))
+                !node.TryGetComponent(out TransformComponent? transform))
             {
                 continue;
             }
