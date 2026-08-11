@@ -5,9 +5,9 @@ using Spot.Build;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
-using Spot.Engine.Debug.Panels;
+using Spot.DebugUI.Panels;
 using Spot.Editor.Scenes;
-using Spot.Engine.Debug.UI;
+using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 using Spot.Events;
 

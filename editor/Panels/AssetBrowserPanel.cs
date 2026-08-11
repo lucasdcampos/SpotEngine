@@ -5,7 +5,7 @@ using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Audio;
-using Spot.Engine.Debug.UI;
+using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 using Spot.Rendering;
 using Spot.Scenes;
@@ -821,7 +821,7 @@ public class AssetBrowserPanel
         {
             fb = new Spot.Rendering.Framebuffer(128, 128);
             var material = Spot.Assets.Material.Load(path);
-            Spot.Engine.Debug.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb);
+            Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb);
             _materialPreviews[path] = fb;
             return true;
         }

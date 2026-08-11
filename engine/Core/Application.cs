@@ -173,7 +173,7 @@ public class Application
     /// <summary>
     /// Gets the runtime debugger service.
     /// </summary>
-    public Spot.Engine.Debug.RuntimeDebuggerService? Debugger { get; private set; }
+    public Spot.Core.IEngineService? Debugger { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
@@ -295,8 +295,11 @@ public class Application
         AddService(new AudioService());
         _imguiService = new ImGuiService(_spec);
         AddService(_imguiService);
-        Debugger = new Spot.Engine.Debug.RuntimeDebuggerService();
-        AddService(Debugger);
+        // Debugger is now injected by the host (e.g. Sandbox/Editor) since it moved to Spot.DebugUI.
+        if (Debugger != null)
+        {
+            AddService(Debugger);
+        }
 
         foreach (var service in _services)
         {
@@ -371,7 +374,8 @@ public class Application
 
         // The engine owns input while the dev console or debugger panels are open: 
         // cursor forced free, game input withheld.
-        Input.SetEngineCaptured(_console.IsOpen || (Debugger != null && Debugger.IsOpen));
+        // TODO: Re-add debugger capture check if needed via an interface.
+        Input.SetEngineCaptured(_console.IsOpen);
 
         _window!.PollEvents();
     }

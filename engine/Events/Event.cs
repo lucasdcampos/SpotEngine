@@ -22,6 +22,11 @@ public enum EventType
     MouseButtonReleased,
     MouseMoved,
     MouseScrolled,
+    GamepadButtonPressed,
+    GamepadButtonReleased,
+    GamepadAxisMoved,
+    GamepadConnected,
+    GamepadDisconnected,
 }
 
 /// <summary>
@@ -36,6 +41,7 @@ public enum EventCategory
     Keyboard = 1 << 2,
     Mouse = 1 << 3,
     MouseButton = 1 << 4,
+    Gamepad = 1 << 5,
 }
 
 /// <summary>

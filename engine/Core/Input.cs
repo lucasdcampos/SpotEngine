@@ -18,6 +18,18 @@ public static class Input
     private static readonly HashSet<MouseButton> ButtonsPressedThisFrame = new();
     private static readonly HashSet<MouseButton> ButtonsReleasedThisFrame = new();
 
+    private static readonly HashSet<GamepadButton> DownGamepadButtons = new();
+    private static readonly HashSet<GamepadButton> GamepadButtonsPressedThisFrame = new();
+    private static readonly HashSet<GamepadButton> GamepadButtonsReleasedThisFrame = new();
+
+    private static readonly Dictionary<(int, GamepadButton), bool> _gamepadButtonsByIndex = new();
+    private static readonly Dictionary<(int, GamepadAxis), float> _gamepadAxes = new();
+    private static readonly Dictionary<(int, GamepadAxis), float> _prevGamepadAxes = new();
+
+    private static readonly HashSet<string> _activeCustomActions = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _customActionsPressedThisFrame = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _customActionsReleasedThisFrame = new(StringComparer.OrdinalIgnoreCase);
+
     // What the game last asked for via CursorLocked. Kept separate from the hardware state so the
     // engine can override the cursor (e.g. while the dev console is open) and later restore exactly
     // what the game wanted.
@@ -151,13 +163,76 @@ public static class Input
     public static bool GetMouseButtonUp(MouseButton button) => !_engineCaptured && ButtonsReleasedThisFrame.Contains(button);
 
     /// <summary>
+    /// Returns whether the gamepad button is currently held down on any connected gamepad.
+    /// </summary>
+    public static bool GetGamepadButton(GamepadButton button) => !_engineCaptured && DownGamepadButtons.Contains(button);
+
+    /// <summary>
+    /// Returns whether the gamepad button was pressed during this frame on any connected gamepad.
+    /// </summary>
+    public static bool GetGamepadButtonDown(GamepadButton button) => !_engineCaptured && GamepadButtonsPressedThisFrame.Contains(button);
+
+    /// <summary>
+    /// Returns whether the gamepad button was released during this frame on any connected gamepad.
+    /// </summary>
+    public static bool GetGamepadButtonUp(GamepadButton button) => !_engineCaptured && GamepadButtonsReleasedThisFrame.Contains(button);
+
+    /// <summary>
+    /// Returns whether the gamepad button is currently held down on a specific gamepad.
+    /// </summary>
+    public static bool GetGamepadButton(int gamepadIndex, GamepadButton button) 
+        => !_engineCaptured && _gamepadButtonsByIndex.TryGetValue((gamepadIndex, button), out bool down) && down;
+
+    /// <summary>
+    /// Gets the current value of a gamepad axis for a specific gamepad. Returns 0 if disconnected or centered.
+    /// </summary>
+    public static float GetGamepadAxis(int gamepadIndex, GamepadAxis axis)
+        => _engineCaptured ? 0f : (_gamepadAxes.TryGetValue((gamepadIndex, axis), out float val) ? val : 0f);
+
+    private static float GetGamepadAxisAnyIndex(GamepadAxis axis)
+    {
+        float maxVal = 0f;
+        foreach (var kvp in _gamepadAxes)
+        {
+            if (kvp.Key.Item2 == axis && Math.Abs(kvp.Value) > Math.Abs(maxVal))
+            {
+                maxVal = kvp.Value;
+            }
+        }
+        return maxVal;
+    }
+
+    private static float GetPrevGamepadAxisAnyIndex(GamepadAxis axis)
+    {
+        float maxVal = 0f;
+        foreach (var kvp in _prevGamepadAxes)
+        {
+            if (kvp.Key.Item2 == axis && Math.Abs(kvp.Value) > Math.Abs(maxVal))
+            {
+                maxVal = kvp.Value;
+            }
+        }
+        return maxVal;
+    }
+
+    /// <summary>
     /// Returns whether any input bound to the named action is currently held down.
     /// </summary>
     /// <param name="action">The action name (case-insensitive), e.g. "forward".</param>
     /// <returns><see langword="true"/> while any bound key/button is down.</returns>
     public static bool GetAction(string action)
     {
-        if (_engineCaptured || !_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
+        if (_engineCaptured)
+        {
+            return false;
+        }
+
+        if (_activeCustomActions.Contains(action))
+        {
+            return true;
+        }
+
+        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
         {
             return false;
         }
@@ -184,7 +259,17 @@ public static class Input
     /// <returns><see langword="true"/> on the frame the action goes active.</returns>
     public static bool GetActionDown(string action)
     {
-        if (_engineCaptured || !_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
+        if (_engineCaptured)
+        {
+            return false;
+        }
+
+        if (_customActionsPressedThisFrame.Contains(action))
+        {
+            return true;
+        }
+
+        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
         {
             return false;
         }
@@ -215,7 +300,17 @@ public static class Input
     /// <returns><see langword="true"/> on the frame the action goes inactive.</returns>
     public static bool GetActionUp(string action)
     {
-        if (_engineCaptured || !_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
+        if (_engineCaptured)
+        {
+            return false;
+        }
+
+        if (_customActionsReleasedThisFrame.Contains(action))
+        {
+            return true;
+        }
+
+        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
         {
             return false;
         }
@@ -229,6 +324,30 @@ public static class Input
         }
 
         return releasedThisFrame && !stillHeld;
+    }
+
+    /// <summary>
+    /// Explicitly sets the state of an action. This allows developers to trigger actions via custom input devices
+    /// or virtual UI buttons without needing to emulate a physical key press.
+    /// </summary>
+    /// <param name="action">The action name (case-insensitive).</param>
+    /// <param name="isActive">Whether the action should be considered active.</param>
+    public static void SetActionState(string action, bool isActive)
+    {
+        if (isActive)
+        {
+            if (_activeCustomActions.Add(action))
+            {
+                _customActionsPressedThisFrame.Add(action);
+            }
+        }
+        else
+        {
+            if (_activeCustomActions.Remove(action))
+            {
+                _customActionsReleasedThisFrame.Add(action);
+            }
+        }
     }
 
     /// <summary>
@@ -350,17 +469,41 @@ public static class Input
 
     // Whether a single binding is held / went down / went up this frame, dispatching to the keyboard or
     // mouse frame state the action layer is built on.
-    private static bool IsHeld(InputBinding binding) => binding.Device == InputDeviceKind.Keyboard
-        ? DownKeys.Contains((Key)binding.Code)
-        : DownButtons.Contains((MouseButton)binding.Code);
+    private static bool IsHeld(InputBinding binding)
+    {
+        return binding.Device switch
+        {
+            InputDeviceKind.Keyboard => DownKeys.Contains((Key)binding.Code),
+            InputDeviceKind.Mouse => DownButtons.Contains((MouseButton)binding.Code),
+            InputDeviceKind.GamepadButton => DownGamepadButtons.Contains((GamepadButton)binding.Code),
+            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f,
+            _ => false
+        };
+    }
 
-    private static bool IsPressed(InputBinding binding) => binding.Device == InputDeviceKind.Keyboard
-        ? PressedThisFrame.Contains((Key)binding.Code)
-        : ButtonsPressedThisFrame.Contains((MouseButton)binding.Code);
+    private static bool IsPressed(InputBinding binding)
+    {
+        return binding.Device switch
+        {
+            InputDeviceKind.Keyboard => PressedThisFrame.Contains((Key)binding.Code),
+            InputDeviceKind.Mouse => ButtonsPressedThisFrame.Contains((MouseButton)binding.Code),
+            InputDeviceKind.GamepadButton => GamepadButtonsPressedThisFrame.Contains((GamepadButton)binding.Code),
+            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f && Math.Abs(GetPrevGamepadAxisAnyIndex((GamepadAxis)binding.Code)) < 0.5f,
+            _ => false
+        };
+    }
 
-    private static bool IsReleased(InputBinding binding) => binding.Device == InputDeviceKind.Keyboard
-        ? ReleasedThisFrame.Contains((Key)binding.Code)
-        : ButtonsReleasedThisFrame.Contains((MouseButton)binding.Code);
+    private static bool IsReleased(InputBinding binding)
+    {
+        return binding.Device switch
+        {
+            InputDeviceKind.Keyboard => ReleasedThisFrame.Contains((Key)binding.Code),
+            InputDeviceKind.Mouse => ButtonsReleasedThisFrame.Contains((MouseButton)binding.Code),
+            InputDeviceKind.GamepadButton => GamepadButtonsReleasedThisFrame.Contains((GamepadButton)binding.Code),
+            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) < 0.5f && Math.Abs(GetPrevGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f,
+            _ => false
+        };
+    }
 
     /// <summary>
     /// Clears the per-frame state. Called by the application before polling the next frame's events.
@@ -371,7 +514,17 @@ public static class Input
         ReleasedThisFrame.Clear();
         ButtonsPressedThisFrame.Clear();
         ButtonsReleasedThisFrame.Clear();
+        GamepadButtonsPressedThisFrame.Clear();
+        GamepadButtonsReleasedThisFrame.Clear();
+        _customActionsPressedThisFrame.Clear();
+        _customActionsReleasedThisFrame.Clear();
         _mouseScrollDelta = Vector2.Zero;
+
+        _prevGamepadAxes.Clear();
+        foreach (var kvp in _gamepadAxes)
+        {
+            _prevGamepadAxes[kvp.Key] = kvp.Value;
+        }
     }
 
     /// <summary>
@@ -386,6 +539,15 @@ public static class Input
         DownButtons.Clear();
         ButtonsPressedThisFrame.Clear();
         ButtonsReleasedThisFrame.Clear();
+        DownGamepadButtons.Clear();
+        GamepadButtonsPressedThisFrame.Clear();
+        GamepadButtonsReleasedThisFrame.Clear();
+        _gamepadButtonsByIndex.Clear();
+        _gamepadAxes.Clear();
+        _prevGamepadAxes.Clear();
+        _activeCustomActions.Clear();
+        _customActionsPressedThisFrame.Clear();
+        _customActionsReleasedThisFrame.Clear();
         _mousePosition = Vector2.Zero;
         _mouseScrollDelta = Vector2.Zero;
         _actions.Clear();
@@ -434,6 +596,57 @@ public static class Input
 
             case MouseScrolledEvent scrolled:
                 _mouseScrollDelta += new Vector2(scrolled.XOffset, scrolled.YOffset);
+                break;
+
+            case GamepadButtonPressedEvent gpPressed:
+                if (DownGamepadButtons.Add(gpPressed.Button))
+                {
+                    GamepadButtonsPressedThisFrame.Add(gpPressed.Button);
+                }
+                _gamepadButtonsByIndex[(gpPressed.GamepadIndex, gpPressed.Button)] = true;
+                break;
+
+            case GamepadButtonReleasedEvent gpReleased:
+                // Only consider it globally released if no other gamepad is holding it
+                _gamepadButtonsByIndex[(gpReleased.GamepadIndex, gpReleased.Button)] = false;
+                
+                bool stillHeldAnywhere = false;
+                foreach (var kvp in _gamepadButtonsByIndex)
+                {
+                    if (kvp.Key.Item2 == gpReleased.Button && kvp.Value)
+                    {
+                        stillHeldAnywhere = true;
+                        break;
+                    }
+                }
+
+                if (!stillHeldAnywhere)
+                {
+                    DownGamepadButtons.Remove(gpReleased.Button);
+                    GamepadButtonsReleasedThisFrame.Add(gpReleased.Button);
+                }
+                break;
+
+            case GamepadAxisMovedEvent gpAxis:
+                _gamepadAxes[(gpAxis.GamepadIndex, gpAxis.Axis)] = gpAxis.Value;
+                break;
+
+            case GamepadDisconnectedEvent gpDconn:
+                // Cleanup axes and buttons for this gamepad
+                var keysToRemove = _gamepadAxes.Keys.Where(k => k.Item1 == gpDconn.GamepadIndex).ToList();
+                foreach (var k in keysToRemove) _gamepadAxes.Remove(k);
+                
+                var btnKeysToRemove = _gamepadButtonsByIndex.Keys.Where(k => k.Item1 == gpDconn.GamepadIndex).ToList();
+                foreach (var k in btnKeysToRemove)
+                {
+                    _gamepadButtonsByIndex.Remove(k);
+                    // Re-evaluate global state
+                    bool held = _gamepadButtonsByIndex.Any(kvp => kvp.Key.Item2 == k.Item2 && kvp.Value);
+                    if (!held)
+                    {
+                        DownGamepadButtons.Remove(k.Item2);
+                    }
+                }
                 break;
         }
     }
