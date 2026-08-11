@@ -35,6 +35,15 @@ given component (or combination of components) — this is how systems iterate �
 **name** or by **tag**. Views return a snapshot, so it's always safe to create or destroy entities
 while iterating.
 
+## Custom systems
+
+Each scene runs an ordered set of **systems** every play-mode frame — the built-in physics, animation,
+particle, audio, and script systems. You can extend that set with your own: implement `ISystem` (or wrap
+a callback in `DelegateSystem`) and register it with `Scene.RegisterSystem`, choosing where it runs
+relative to the built-ins with the `SystemOrder` slots. This is the home for simulation that spans many
+entities and doesn't belong on a single script. A system that throws is logged once and skipped, in
+keeping with the engine's never-crash rule. See [Architecture](architecture.md#systems).
+
 ## Switching scenes
 
 Only one scene is active at a time. You request a switch to another scene, and the change takes
