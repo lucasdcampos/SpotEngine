@@ -1,6 +1,6 @@
 using Spot.Scenes;
 
-namespace Spot.Engine.Debug;
+namespace Spot.DebugUI;
 
 public interface ISelectionContext
 {

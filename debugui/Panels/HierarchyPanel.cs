@@ -4,9 +4,9 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Scenes;
 using Spot.Rendering;
-using Spot.Engine.Debug.UI;
+using Spot.DebugUI.UI;
 
-namespace Spot.Engine.Debug.Panels;
+namespace Spot.DebugUI.Panels;
 
 public class HierarchyPanel
 {

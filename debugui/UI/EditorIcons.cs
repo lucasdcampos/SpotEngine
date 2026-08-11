@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Spot.Engine.Debug.UI;
+namespace Spot.DebugUI.UI;
 
 /// <summary>
 /// Font Awesome 6 Free (Solid) icon glyphs, baked into the body font by the engine (see Program.cs /
