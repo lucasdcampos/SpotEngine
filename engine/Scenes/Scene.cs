@@ -23,6 +23,36 @@ public class Scene
     private CollisionDispatcher? _collisions;
 
     /// <summary>
+    /// The ordered play-mode systems this scene runs each frame from <see cref="UpdateRuntime"/>. Every
+    /// scene starts with the engine's built-in systems registered; use <see cref="RegisterSystem(ISystem)"/>
+    /// to add your own. See <see cref="ISystem"/> and <see cref="SystemOrder"/>.
+    /// </summary>
+    public SystemRegistry Systems { get; } = new();
+
+    /// <summary>
+    /// Creates a scene with the engine's built-in play-mode systems registered (character controllers, 2D
+    /// and 3D physics, animation, particles, audio, and scripts, in that order). Register additional systems
+    /// from a subclass constructor or <see cref="OnEnter"/> via <see cref="RegisterSystem(ISystem)"/>.
+    /// </summary>
+    public Scene()
+    {
+        Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, Physics2DSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
+        Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Particles, ParticleSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Audio, AudioSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Scripts, ScriptSystem.Update));
+    }
+
+    /// <summary>
+    /// Registers a custom play-mode system to run each frame alongside the built-ins. See <see cref="ISystem"/>
+    /// for the contract and <see cref="SystemOrder"/> for how to place it relative to the built-in systems.
+    /// </summary>
+    /// <param name="system">The system to register.</param>
+    public void RegisterSystem(ISystem system) => Systems.Add(system);
+
+    /// <summary>
     /// Called once when the scene becomes active. Create resources and entities here.
     /// </summary>
     public virtual void OnEnter()
@@ -54,16 +84,20 @@ public class Scene
     public void UpdateRuntime(float deltaTime)
     {
         OnUpdate(deltaTime);
-        Spot.Physics.CharacterController3DSystem.Update(this, deltaTime);
-        Spot.Physics.Physics2DSystem.Update(this, deltaTime);
+        Systems.Update(this, deltaTime);
+        FlushDestroyed();
+    }
+
+    /// <summary>
+    /// Runs the 3D physics step and dispatches its collision events. Wrapped so the physics backend and the
+    /// contacts it produces stay encapsulated on the scene while the built-in physics <see cref="ISystem"/>
+    /// simply triggers it in order (see <see cref="SystemOrder.Physics3D"/>).
+    /// </summary>
+    private void StepPhysics3D(float deltaTime)
+    {
         IPhysics3D physics = EnsurePhysics3D();
         physics.Step(this, deltaTime);
         (_collisions ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
-        AnimationSystem.Update(this, deltaTime);
-        ParticleSystem.Update(this, deltaTime);
-        AudioSystem.Update(this, deltaTime);
-        ScriptSystem.Update(this, deltaTime);
-        FlushDestroyed();
     }
 
     /// <summary>
@@ -363,6 +397,34 @@ public class Scene
             if (larger.ContainsKey(id))
             {
                 result.Add(new Entity(id, this));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns every entity that has a component of type <typeparamref name="T"/> which is both enabled and
+    /// on an entity active in the hierarchy — the standard gate a system applies before touching a
+    /// component — paired with that component. The result is a snapshot, so it is safe to spawn or destroy
+    /// entities while iterating (for example from a script or a custom <see cref="ISystem"/>).
+    /// </summary>
+    /// <typeparam name="T">The component type to match.</typeparam>
+    public IReadOnlyList<(Entity Entity, T Component)> ViewActive<T>()
+        where T : Component
+    {
+        var result = new List<(Entity, T)>();
+        foreach (Entity entity in View<T>())
+        {
+            if (!entity.IsActiveInHierarchy())
+            {
+                continue;
+            }
+
+            T component = GetComponent<T>(entity);
+            if (component.Enabled)
+            {
+                result.Add((entity, component));
             }
         }
 
