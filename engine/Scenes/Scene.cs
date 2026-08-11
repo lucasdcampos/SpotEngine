@@ -586,7 +586,7 @@ public class Scene
     /// while iterating.
     /// </summary>
     /// <param name="tag">The tag to search for.</param>
-    public IReadOnlyList<Entity> FindEntitiesByTag(string tag)
+    public IReadOnlyList<Entity> FindAllByTag(string tag)
     {
         var result = new List<Entity>();
         foreach (Entity entity in View<LabelComponent>())
@@ -664,6 +664,17 @@ public class Scene
         _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out object? value)
             ? value
             : null;
+
+    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component)
+    {
+        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out component))
+        {
+            return true;
+        }
+
+        component = null;
+        return false;
+    }
 
     internal Component AddComponent(Entity entity, Component component)
     {

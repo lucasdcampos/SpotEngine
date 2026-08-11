@@ -125,11 +125,11 @@ internal static class ComponentSerialization
             {
                 if (assetRef.Asset.PropertyType == typeof(Texture2D))
                 {
-                    assetRef.Asset.SetValue(component, Texture2D.LoadRef(p));
+                    assetRef.Asset.SetValue(component, Texture2D.Load(p));
                 }
                 else if (assetRef.Asset.PropertyType == typeof(AudioClip))
                 {
-                    assetRef.Asset.SetValue(component, AudioClip.LoadRef(p));
+                    assetRef.Asset.SetValue(component, AudioClip.Load(p));
                 }
             }
             catch (Exception ex)

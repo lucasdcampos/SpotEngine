@@ -20,7 +20,7 @@ public class EntityQueryTests
     }
 
     [Fact]
-    public void FindByTag_And_FindEntitiesByTag_MatchOnTag()
+    public void FindByTag_And_FindAllByTag_MatchOnTag()
     {
         var scene = new Scene();
         var a = scene.Instantiate("A");
@@ -34,7 +34,7 @@ public class EntityQueryTests
         Assert.NotNull(first);
         Assert.Contains(first!.Value.Id, new[] { a.Id, b.Id });
 
-        var enemies = scene.FindEntitiesByTag("Enemy");
+        var enemies = scene.FindAllByTag("Enemy");
         Assert.Equal(2, enemies.Count);
 
         Assert.True(c.CompareTag("Player"));
@@ -93,5 +93,24 @@ public class EntityQueryTests
         Entity? restored = loaded.FindByTag("Pickup");
         Assert.NotNull(restored);
         Assert.Equal("Tagged", restored!.Value.Name);
+    }
+
+    [Fact]
+    public void NonGenericComponentAccess_ReturnsNullWhereGenericThrows()
+    {
+        var scene = new Scene();
+        var e = scene.Instantiate();
+        e.AddComponent(new BoxCollider3DComponent());
+
+        // Type-based access returns the component when present and null when absent, never throwing.
+        Assert.NotNull(e.GetComponent(typeof(BoxCollider3DComponent)));
+        Assert.Null(e.GetComponent(typeof(CapsuleCollider3DComponent)));
+        Assert.True(e.TryGetComponent(typeof(BoxCollider3DComponent), out object? found));
+        Assert.IsType<BoxCollider3DComponent>(found);
+        Assert.False(e.TryGetComponent(typeof(CapsuleCollider3DComponent), out object? missing));
+        Assert.Null(missing);
+
+        // The generic getter, by contrast, throws when the component is absent.
+        Assert.Throws<InvalidOperationException>(() => e.GetComponent<CapsuleCollider3DComponent>());
     }
 }

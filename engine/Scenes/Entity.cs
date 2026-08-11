@@ -159,10 +159,13 @@ public readonly struct Entity : IEquatable<Entity>
         where T : class => OwningScene.AddComponent(this, component);
 
     /// <summary>
-    /// Gets the entity's component of the given type.
+    /// Gets the entity's component of the given type, throwing if it is absent. Use
+    /// <see cref="TryGetComponent{T}(out T)"/> when the component may not be present. (The non-generic
+    /// <see cref="GetComponent(Type)"/> returns <see langword="null"/> instead of throwing.)
     /// </summary>
     /// <typeparam name="T">The component type.</typeparam>
     /// <returns>The component.</returns>
+    /// <exception cref="InvalidOperationException">The entity has no component of type <typeparamref name="T"/>.</exception>
     public T GetComponent<T>()
         where T : class => OwningScene.GetComponent<T>(this);
 
@@ -245,11 +248,24 @@ public readonly struct Entity : IEquatable<Entity>
     public bool HasComponent(Type type) => OwningScene.HasComponent(this, type);
 
     /// <summary>
-    /// Gets the entity's component of the given runtime type, or <see langword="null"/> if absent.
+    /// Gets the entity's component of the given runtime type, or <see langword="null"/> if absent. The
+    /// runtime-<see cref="Type"/> overloads mirror the generic ones for callers that only know the type at
+    /// runtime (such as a reflection-based inspector); note this returns <see langword="null"/> when absent,
+    /// whereas the generic <see cref="GetComponent{T}()"/> throws.
     /// </summary>
     /// <param name="type">The component type.</param>
     /// <returns>The component, or <see langword="null"/>.</returns>
     public object? GetComponent(Type type) => OwningScene.GetComponent(this, type);
+
+    /// <summary>
+    /// Tries to get the entity's component of the given runtime type — the non-generic counterpart to
+    /// <see cref="TryGetComponent{T}(out T)"/>.
+    /// </summary>
+    /// <param name="type">The component type.</param>
+    /// <param name="component">The component, if present.</param>
+    /// <returns><see langword="true"/> if the component was found; otherwise <see langword="false"/>.</returns>
+    public bool TryGetComponent(Type type, [NotNullWhen(true)] out object? component) =>
+        OwningScene.TryGetComponent(this, type, out component);
 
     /// <summary>
     /// Attaches a component to the entity, replacing any existing component of the same runtime type.

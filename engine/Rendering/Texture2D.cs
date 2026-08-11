@@ -113,7 +113,7 @@ public sealed class Texture2D : IDisposable
     /// </summary>
     /// <param name="storedRef">The stored reference (a <c>guid:</c> reference or a source image path).</param>
     /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
-    public static Texture2D LoadRef(string storedRef)
+    public static Texture2D Load(string storedRef)
     {
         if (AssetRef.IsGuidRef(storedRef))
         {

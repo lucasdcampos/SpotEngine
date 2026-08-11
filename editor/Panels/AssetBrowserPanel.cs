@@ -421,7 +421,7 @@ public class AssetBrowserPanel
         try
         {
             StopAudioPreview();
-            _previewClip = AudioClip.LoadRef(sourcePath); // a source path decodes directly, no cooking needed
+            _previewClip = AudioClip.Load(sourcePath); // a source path decodes directly, no cooking needed
             _previewVoice = AudioManager.Play(_previewClip, spatial: false);
         }
         catch (Exception ex)

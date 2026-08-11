@@ -106,7 +106,7 @@ public sealed class Material
             return;
         }
 
-        Texture = Texture2D.LoadRef(path);
+        Texture = Texture2D.Load(path);
         TexturePath = path;
     }
 
@@ -125,7 +125,7 @@ public sealed class Material
             return;
         }
 
-        NormalMap = Texture2D.LoadRef(path);
+        NormalMap = Texture2D.Load(path);
         NormalMapPath = path;
     }
 
