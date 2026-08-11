@@ -203,7 +203,7 @@ public class EditorScene : Scene
         }
 
         Spot.Assets.AssetDatabase.Refresh(project.GetAssetDirectory());
-        Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, "Library"));
+        Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.LibraryFolder));
     }
 
     private void LoadStartScene()

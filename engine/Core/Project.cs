@@ -8,7 +8,7 @@ public class ProjectConfig
 {
     public string Name { get; set; } = "New Project";
     public string StartScene { get; set; } = "Scenes/Main.sptscene";
-    public string AssetDirectory { get; set; } = "Assets";
+    public string AssetDirectory { get; set; } = ProjectStructure.AssetsFolder;
 }
 
 public class Project

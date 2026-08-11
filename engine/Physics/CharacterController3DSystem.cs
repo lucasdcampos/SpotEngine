@@ -260,7 +260,7 @@ internal static class CharacterController3DSystem
         if (Input.GetKey(Key.Space)) input.Y += 1;
         if (Input.GetKey(Key.LeftControl)) input.Y -= 1;
 
-        if (input.LengthSquared() > 1e-6f) input = Vector3.Normalize(input);
+        input = SpotMath.SafeNormalize(input, input);
 
         // Noclip uses Pitch and Yaw to fly exactly where we look
         Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(cc.Yaw * (MathF.PI / 180f), cc.Pitch * (MathF.PI / 180f), 0);
@@ -280,7 +280,7 @@ internal static class CharacterController3DSystem
         if (Input.GetKey(Key.S)) input.Z += 1;
         if (Input.GetKey(Key.A)) input.X -= 1;
         if (Input.GetKey(Key.D)) input.X += 1;
-        if (input.LengthSquared() > 1e-6f) input = Vector3.Normalize(input);
+        input = SpotMath.SafeNormalize(input, input);
 
         // Rotate into world space by yaw so movement follows where we look.
         Vector3 wishDir = Vector3.Transform(input, Matrix4x4.CreateRotationY(cc.Yaw * (MathF.PI / 180f)));

@@ -75,16 +75,10 @@ internal static class AudioSystem
             }
 
             Matrix4x4 m = transform.Matrix;
-            Vector3 forward = SafeNormalize(new Vector3(m.M31, m.M32, m.M33), Vector3.UnitZ);
-            Vector3 up = SafeNormalize(new Vector3(m.M21, m.M22, m.M23), Vector3.UnitY);
+            Vector3 forward = SpotMath.SafeNormalize(new Vector3(m.M31, m.M32, m.M33), Vector3.UnitZ);
+            Vector3 up = SpotMath.SafeNormalize(new Vector3(m.M21, m.M22, m.M23), Vector3.UnitY);
             AudioManager.SetListener(transform.WorldPosition, forward, up);
             return; // first active listener wins
         }
-    }
-
-    private static Vector3 SafeNormalize(Vector3 v, Vector3 fallback)
-    {
-        float length = v.Length();
-        return length > 1e-6f ? v / length : fallback;
     }
 }

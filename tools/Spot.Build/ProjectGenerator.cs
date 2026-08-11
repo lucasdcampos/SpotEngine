@@ -28,7 +28,7 @@ public static class ProjectGenerator
 
     private static void CopyEngineDll(string projectDirectory)
     {
-        string engineBinDir = Path.Combine(projectDirectory, "EngineBin");
+        string engineBinDir = Path.Combine(projectDirectory, Spot.Core.ProjectStructure.EngineBinFolder);
         Directory.CreateDirectory(engineBinDir);
 
         string sourceDllPath = typeof(Project).Assembly.Location;
@@ -148,7 +148,7 @@ class Program
         var spec = new ApplicationSpec
         {{
             Name = ""{name}"",
-            ContentDirectory = ""Content"",
+            ContentDirectory = ""{Spot.Core.ProjectStructure.ContentFolder}"",
             ManifestPath = ""manifest.json"",
             StartScene = ""{startScene}""
         }};

@@ -1,4 +1,5 @@
 using System.Numerics;
+using Spot.Core;
 using Spot.Rendering;
 
 namespace Spot.Scenes;
@@ -94,7 +95,7 @@ public static class ParticleRenderSystem
         // otherwise backface culling will discard the particles.
         Vector3 worldUp = MathF.Abs(forward.Y) >= 0.999f ? Vector3.UnitZ : Vector3.UnitY;
         right = Vector3.Cross(forward, worldUp);
-        right = right.LengthSquared() > 1e-6f ? Vector3.Normalize(right) : Vector3.UnitX;
+        right = SpotMath.SafeNormalize(right, Vector3.UnitX);
         up = Vector3.Normalize(Vector3.Cross(right, forward));
     }
 }

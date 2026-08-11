@@ -107,7 +107,7 @@ internal static class Program
     {
         var (_, options) = ParseArgs(args, 1);
         var project = ResolveProject(options.GetValueOrDefault("project"));
-        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, "Content");
+        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
 
         Console.WriteLine($"Cooking assets for '{project.Config.Name}' -> {outDir}");
         string manifest = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), outDir);
