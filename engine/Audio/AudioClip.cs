@@ -52,7 +52,7 @@ public sealed class AudioClip : IDisposable
     /// </summary>
     /// <param name="storedRef">The stored reference (a <c>guid:</c> reference or a source audio path).</param>
     /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
-    public static AudioClip LoadRef(string storedRef)
+    public static AudioClip Load(string storedRef)
     {
         if (AssetRef.IsGuidRef(storedRef))
         {

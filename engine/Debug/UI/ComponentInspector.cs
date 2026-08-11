@@ -519,7 +519,7 @@ internal static class ComponentInspector
                 // Store a stable guid: reference (portable across rename/move) and preview the cooked texture,
                 // so what the editor shows matches what a build ships.
                 string? storedRef = AssetDatabase.ToGuidRef(newPath);
-                var newTexture = storedRef != null ? Texture2D.LoadRef(storedRef) : null;
+                var newTexture = storedRef != null ? Texture2D.Load(storedRef) : null;
                 texture?.Dispose();
                 meta.Prop.SetValue(component, newTexture);
                 meta.AssetPathProp!.SetValue(component, storedRef);
@@ -544,7 +544,7 @@ internal static class ComponentInspector
             {
                 // Store a stable guid: reference, portable across rename/move, matching the texture path.
                 string? storedRef = AssetDatabase.ToGuidRef(newPath);
-                var newClip = storedRef != null ? AudioClip.LoadRef(storedRef) : null;
+                var newClip = storedRef != null ? AudioClip.Load(storedRef) : null;
                 clip?.Dispose();
                 meta.Prop.SetValue(component, newClip);
                 meta.AssetPathProp!.SetValue(component, storedRef);
