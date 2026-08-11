@@ -254,6 +254,23 @@ public class Application
         _services.Add(service);
     }
 
+    // Best-effort discovery of the optional runtime debug overlay from Spot.DebugUI, if that assembly ships
+    // alongside the app. Loaded by name so the engine never references the ImGui authoring panels directly;
+    // returns null (and the app runs without the overlay) when the assembly is absent.
+    private static IDebugOverlay? TryLoadOptionalDebugOverlay()
+    {
+        try
+        {
+            Type? type = Type.GetType("Spot.DebugUI.RuntimeDebuggerService, Spot.DebugUI");
+            return type is not null ? Activator.CreateInstance(type) as IDebugOverlay : null;
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Optional debug overlay (Spot.DebugUI) could not be loaded: {0}", ex.Message);
+            return null;
+        }
+    }
+
     /// <summary>
     /// Runs the main application loop until the application stops.
     /// </summary>
@@ -295,7 +312,10 @@ public class Application
         AddService(new AudioService());
         _imguiService = new ImGuiService(_spec);
         AddService(_imguiService);
-        // Debugger is now injected by the host (e.g. Sandbox/Editor) since it moved to Spot.DebugUI.
+        // The host may inject a debug overlay (the editor does); otherwise, if the optional Spot.DebugUI
+        // assembly ships alongside the app, host its overlay automatically so any build can inspect its
+        // scene at runtime — without the engine taking a compile-time dependency on the ImGui panels.
+        Debugger ??= TryLoadOptionalDebugOverlay();
         if (Debugger != null)
         {
             AddService(Debugger);

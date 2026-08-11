@@ -32,13 +32,22 @@ public static class ProjectGenerator
         Directory.CreateDirectory(engineBinDir);
 
         string sourceDllPath = typeof(Project).Assembly.Location;
-        string targetDllPath = Path.Combine(engineBinDir, "Spot.Engine.dll");
+        string engineDir = Path.GetDirectoryName(sourceDllPath) ?? string.Empty;
 
+        // Always bundle the engine. Also bundle Spot.DebugUI when it ships beside the engine (the editor and
+        // any host that references it), so the built game can host the in-runtime debug overlay; it is
+        // optional, so a host without it simply produces a game without the overlay.
+        CopyIfPresent(sourceDllPath, Path.Combine(engineBinDir, "Spot.Engine.dll"));
+        CopyIfPresent(Path.Combine(engineDir, "Spot.DebugUI.dll"), Path.Combine(engineBinDir, "Spot.DebugUI.dll"));
+    }
+
+    private static void CopyIfPresent(string source, string target)
+    {
         try
         {
-            if (File.Exists(sourceDllPath))
+            if (File.Exists(source))
             {
-                File.Copy(sourceDllPath, targetDllPath, overwrite: true);
+                File.Copy(source, target, overwrite: true);
             }
         }
         catch
@@ -63,6 +72,14 @@ public static class ProjectGenerator
   <ItemGroup>
     <Reference Include=""Spot.Engine"">
       <HintPath>EngineBin\Spot.Engine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Optional in-game debug overlay (hierarchy/inspector/time). Present when the editor/CLI bundled it into
+       EngineBin; the engine hosts it automatically at runtime. Skipped cleanly when it was not bundled. -->
+  <ItemGroup Condition=""Exists('EngineBin\Spot.DebugUI.dll')"">
+    <Reference Include=""Spot.DebugUI"">
+      <HintPath>EngineBin\Spot.DebugUI.dll</HintPath>
     </Reference>
   </ItemGroup>
 
