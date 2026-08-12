@@ -131,7 +131,7 @@
         "Enabled": true,
         "ModelPath": "primitive:Cube",
         "SubmeshIndex": -1,
-        "MaterialPath": null,
+        "MaterialPath": "editor:Checkerboard",
         "Color": [
           0.85,
           0.85,
@@ -268,6 +268,7 @@
             ]
           },
           "Camera": {
+            "Enabled": true,
             "Primary": true,
             "FixedAspectRatio": false,
             "BackgroundColor": [
@@ -280,8 +281,7 @@
             "ZoomLevel": 5,
             "FieldOfView": 60,
             "NearClip": 0.1,
-            "FarClip": 1000,
-            "Enabled": true
+            "FarClip": 1000
           },
           "AudioListener": {
             "Enabled": true
@@ -2591,6 +2591,7 @@
         ]
       },
       "Animator": {
+        "Enabled": true,
         "ModelPath": "Models/ybot.fbx",
         "DefaultClip": "dance",
         "PlayOnStart": true,
@@ -2599,8 +2600,7 @@
         "ExtraClipPaths": [
           "guid:859f7f7d3714439db676d83552e0213a",
           "guid:c28544976e3f47928564b6b2844bd11c"
-        ],
-        "Enabled": true
+        ]
       },
       "Children": [
         {

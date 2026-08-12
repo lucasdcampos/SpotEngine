@@ -13,6 +13,14 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Optional in-game debug overlay (hierarchy/inspector/time). Present when the editor/CLI bundled it into
+       EngineBin; the engine hosts it automatically at runtime. Skipped cleanly when it was not bundled. -->
+  <ItemGroup Condition="Exists('EngineBin\Spot.DebugUI.dll')">
+    <Reference Include="Spot.DebugUI">
+      <HintPath>EngineBin\Spot.DebugUI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
