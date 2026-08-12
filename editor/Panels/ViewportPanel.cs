@@ -157,13 +157,14 @@ public class ViewportPanel
                     var transform = _context.Selection.Value.GetComponent<TransformComponent>();
                     _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered && !isFlyingCamera);
 
-                    // Unity-style mode switch. Guarded so it does not fire while flying the 3D
-                    // camera with the right mouse button (which uses W/A/S/D for movement).
+                    // Unity-style mode switch, plus F to frame the selection. Guarded so it does not fire
+                    // while flying the 3D camera with the right mouse button (which uses W/A/S/D for movement).
                     if (isHovered && !ImGui.IsMouseDown(ImGuiMouseButton.Right))
                     {
                         if (ImGui.IsKeyPressed(ImGuiKey.W)) _gizmo.Mode = GizmoMode.Translate;
                         if (ImGui.IsKeyPressed(ImGuiKey.E)) _gizmo.Mode = GizmoMode.Rotate;
                         if (ImGui.IsKeyPressed(ImGuiKey.R)) _gizmo.Mode = GizmoMode.Scale;
+                        if (ImGui.IsKeyPressed(ImGuiKey.F)) _camera.Focus(transform.WorldPosition);
                     }
                 }
 

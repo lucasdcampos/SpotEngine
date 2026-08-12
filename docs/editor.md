@@ -15,7 +15,9 @@ looks and plays before shipping it.
 The editor is organized into dockable panels you can rearrange and save into a layout:
 
 - **Scene view** — the interactive viewport where you see and navigate your scene, with a free-fly
-  editor camera and on-screen transform gizmos for moving, rotating, and scaling entities.
+  editor camera and on-screen transform gizmos for moving, rotating, and scaling entities. With the
+  viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale and `F` frames the selected
+  entity (double-clicking an entity in the hierarchy does the same).
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
   You create, delete, and reparent entities here.
 - **Inspector** — shows the components of the selected entity (or asset) and lets you edit their
