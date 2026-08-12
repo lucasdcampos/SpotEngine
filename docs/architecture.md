@@ -63,6 +63,14 @@ gameplay reads the current state in its update. A built-in **developer console**
 for logging and commands; while it (or a text field) is focused, the engine withholds game input so
 typing doesn't leak into gameplay.
 
+The console renders through a single `DevConsole` but supports two visual skins via
+`DrawContents(ConsolePresentation)`. `Runtime` (the default, used by the floating in-game overlay)
+keeps an opaque, Source-engine inspired command line that stays legible on top of live gameplay
+regardless of the game's colors. `Editor` renders a clean, theme-driven panel: the log region and
+input frame derive from the active editor theme (inset `ChildBg`, hairline `Border`, native
+`FrameBg`) and there is no Submit button — Enter submits — so it reads as a native dockable panel.
+The editor's `ConsolePanel` requests the `Editor` skin.
+
 ## Related
 
 - [Scenes](scenes.md) — the lifecycle the loop drives

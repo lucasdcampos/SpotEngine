@@ -39,6 +39,24 @@ public readonly struct CommandInfo
 }
 
 /// <summary>
+/// Selects how <see cref="DevConsole.DrawContents"/> styles itself.
+/// </summary>
+public enum ConsolePresentation
+{
+    /// <summary>
+    /// Standalone runtime console: an opaque, Source-engine inspired command line that reads clearly
+    /// when drawn on top of a live game, regardless of the game's own colors.
+    /// </summary>
+    Runtime,
+
+    /// <summary>
+    /// Docked editor panel: inherits the active editor theme (surfaces, borders, frames) so the console
+    /// reads as a native part of the editor rather than a separate overlay.
+    /// </summary>
+    Editor,
+}
+
+/// <summary>
 /// An in-game developer console rendered with ImGui.
 /// </summary>
 public sealed class DevConsole
@@ -161,7 +179,8 @@ public sealed class DevConsole
             }
         }
 
-        _scrollToBottom = true;
+        // Note: we intentionally do not force a scroll-to-bottom here. DrawContents keeps the view pinned to
+        // the bottom while the user is already there, but leaves it alone once they scroll up to read history.
     }
 
     private static Vector4 ColorFor(string text)
@@ -238,7 +257,7 @@ public sealed class DevConsole
             return;
         }
 
-        DrawContents();
+        DrawContents(ConsolePresentation.Runtime);
 
         ImGui.End();
 
@@ -249,8 +268,14 @@ public sealed class DevConsole
     /// <summary>
     /// Renders the inner contents of the console (logs and input).
     /// </summary>
-    public void DrawContents()
+    /// <param name="presentation">
+    /// Which visual skin to use. <see cref="ConsolePresentation.Runtime"/> keeps the standalone
+    /// Source-style command line; <see cref="ConsolePresentation.Editor"/> inherits the editor theme.
+    /// </param>
+    public void DrawContents(ConsolePresentation presentation = ConsolePresentation.Runtime)
     {
+        bool editor = presentation == ConsolePresentation.Editor;
+
         // A monospaced face (when the host provides one) makes logs, timestamps and typed commands line
         // up like a terminal. Pushed around the whole body so the output and input share it.
         bool pushedFont = MonospaceFont.HasValue;
@@ -259,23 +284,29 @@ public sealed class DevConsole
             ImGui.PushFont(MonospaceFont!.Value);
         }
 
-        // A roomier command line, Source-console style. Pushed for the whole body so the footer height
-        // below (which reads the frame height) accounts for the taller input, and the Submit button and
-        // prompt inherit the same padding.
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8.0f, 7.0f));
+        // The runtime console overlays a live game, so it uses a roomier, Source-style command line
+        // (pushed for the whole body so the footer height and prompt share the padding). The editor
+        // panel instead keeps the active theme's frame metrics so it reads as a native dockable panel.
+        if (!editor)
+        {
+            ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8.0f, 7.0f));
+        }
 
         bool consoleFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
 
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing() + 4.0f;
 
-        DrawOutput(new Vector2(0.0f, -footerHeight));
+        DrawOutput(new Vector2(0.0f, -footerHeight), editor);
 
         // Subtly spaced from the output box
         ImGui.Dummy(new Vector2(0, 2.0f));
 
-        DrawInputRow(consoleFocused);
+        DrawInputRow(consoleFocused, editor);
 
-        ImGui.PopStyleVar();
+        if (!editor)
+        {
+            ImGui.PopStyleVar();
+        }
 
         if (pushedFont)
         {
@@ -285,14 +316,32 @@ public sealed class DevConsole
 
     // Draws the scrolling, colored log region. Right-clicking it offers copy/clear, the pragmatic
     // stand-in for character-level selection (which ImGui can't do while keeping per-line colors).
-    private void DrawOutput(Vector2 size)
+    private void DrawOutput(Vector2 size, bool editor)
     {
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.06f, 0.07f, 0.08f, 1.0f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 2.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
+        // Editor: derive the inset frame from the active theme (ChildBg + a hairline Border) so it
+        // matches every other panel. Runtime: the fixed dark Source-style box.
+        int pushedColors;
+        if (editor)
+        {
+            ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
+            pushedColors = 0;
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.06f, 0.07f, 0.08f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 2.0f);
+            ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
+            pushedColors = 2;
+        }
 
         ImGui.BeginChild("##output", size, ImGuiChildFlags.Border, ImGuiWindowFlags.HorizontalScrollbar);
+
+        // Was the view pinned to the bottom coming into this frame? Checked before drawing this frame's
+        // content (so GetScrollMaxY still reflects last frame's height) so a new log line keeps the console
+        // stuck to the bottom only when the user was already there — never yanking them off history they
+        // scrolled up to read.
+        bool stickToBottom = ImGui.GetScrollMaxY() <= 0f || ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 1.0f;
 
         // Snapshot the lines under the lock so a background thread appending output cannot mutate the
         // list while we enumerate it, then render from the copy without holding the lock.
@@ -335,20 +384,25 @@ public sealed class DevConsole
             ImGui.EndPopup();
         }
 
-        if (_scrollToBottom)
+        if (_scrollToBottom || stickToBottom)
         {
             ImGui.SetScrollHereY(1.0f);
-            _scrollToBottom = false;
         }
+        _scrollToBottom = false;
 
         ImGui.EndChild();
 
-        ImGui.PopStyleVar(2);
-        ImGui.PopStyleColor(2);
+        ImGui.PopStyleVar(editor ? 1 : 2);
+        if (pushedColors > 0)
+        {
+            ImGui.PopStyleColor(pushedColors);
+        }
     }
 
-    // Draws the "] input  [Submit]" command line and keeps it focused while the console is open.
-    private void DrawInputRow(bool consoleFocused)
+    // Draws the "] input" command line and keeps it focused while the console is open. The runtime skin
+    // boxes the input and adds a Submit button; the editor skin is a clean, theme-driven line where
+    // Enter submits.
+    private void DrawInputRow(bool consoleFocused, bool editor)
     {
         const ImGuiInputTextFlags inputFlags = ImGuiInputTextFlags.EnterReturnsTrue
                                              | ImGuiInputTextFlags.EscapeClearsAll
@@ -363,41 +417,55 @@ public sealed class DevConsole
             _reclaimFocus = false;
         }
 
-        // The classic Source command prompt.
+        // The command prompt marker, shared by both skins.
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(CommandColor, "]");
         ImGui.SameLine();
 
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.08f, 0.09f, 0.10f, 1.0f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
+        bool submitted;
+        bool inputDeactivated;
 
-        float submitButtonWidth = 80.0f;
-        ImGui.SetNextItemWidth(-submitButtonWidth - ImGui.GetStyle().ItemSpacing.X - 4.0f);
-
-        bool submitted = ImGui.InputText("##input", _inputBuf, (uint)_inputBuf.Length, inputFlags, _textEditCallback);
-
-        // Captured immediately after the widget: true on the frame the input stops being active.
-        bool inputDeactivated = ImGui.IsItemDeactivated();
-
-        ImGui.PopStyleVar(2);
-        ImGui.PopStyleColor(2);
-
-        ImGui.SameLine();
-
-        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.30f, 0.33f, 0.38f, 1.0f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.15f, 0.17f, 0.20f, 1.0f));
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
-
-        if (ImGui.Button("Submit", new Vector2(submitButtonWidth, 0)))
+        if (editor)
         {
-            submitted = true;
+            // Native, theme-driven input: the row's frame inherits the editor's FrameBg, and Enter is
+            // the only way to submit (no Submit button), keeping the panel uncluttered.
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+            submitted = ImGui.InputText("##input", _inputBuf, (uint)_inputBuf.Length, inputFlags, _textEditCallback);
+            inputDeactivated = ImGui.IsItemDeactivated();
         }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.08f, 0.09f, 0.10f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.0f);
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
 
-        ImGui.PopStyleVar();
-        ImGui.PopStyleColor(3);
+            float submitButtonWidth = 80.0f;
+            ImGui.SetNextItemWidth(-submitButtonWidth - ImGui.GetStyle().ItemSpacing.X - 4.0f);
+
+            submitted = ImGui.InputText("##input", _inputBuf, (uint)_inputBuf.Length, inputFlags, _textEditCallback);
+
+            // Captured immediately after the widget: true on the frame the input stops being active.
+            inputDeactivated = ImGui.IsItemDeactivated();
+
+            ImGui.PopStyleVar(2);
+            ImGui.PopStyleColor(2);
+
+            ImGui.SameLine();
+
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.20f, 0.22f, 0.25f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.30f, 0.33f, 0.38f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.15f, 0.17f, 0.20f, 1.0f));
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 2.0f);
+
+            if (ImGui.Button("Submit", new Vector2(submitButtonWidth, 0)))
+            {
+                submitted = true;
+            }
+
+            ImGui.PopStyleVar();
+            ImGui.PopStyleColor(3);
+        }
 
         if (submitted)
         {
