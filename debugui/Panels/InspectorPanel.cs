@@ -7,10 +7,13 @@ using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;
 
-public class InspectorPanel
+public class InspectorPanel : IDisposable
 {
     private readonly ISelectionContext _context;
     private Spot.Rendering.Framebuffer? _materialPreviewFb;
+    // The material path we last logged a preview-render failure for, so a broken material logs once instead
+    // of every frame the inspector is open.
+    private string? _materialPreviewErrorPath;
 
     // Prefab editing state: the inspected prefab is loaded into an isolated scene so its components can be
     // edited with the same reflection-based UI as a live entity, then re-serialized back to disk on change.
@@ -23,6 +26,14 @@ public class InspectorPanel
     public InspectorPanel(ISelectionContext context)
     {
         _context = context;
+    }
+
+    // Releases the material-preview framebuffer's GL resources. Called when the editor shuts down.
+    public void Dispose()
+    {
+        _materialPreviewFb?.Dispose();
+        _materialPreviewFb = null;
+        GC.SuppressFinalize(this);
     }
 
     public void OnImGuiRender(ref bool open)
@@ -190,8 +201,22 @@ public class InspectorPanel
             _materialPreviewFb = new Spot.Rendering.Framebuffer(previewSize, previewSize);
         }
         
-        MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
-        
+        // A faulty material/shader must not throw out of the panel every frame. Render defensively; on
+        // failure keep whatever was last in the buffer and log once for this material.
+        try
+        {
+            MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
+            if (_materialPreviewErrorPath == path) _materialPreviewErrorPath = null;
+        }
+        catch (Exception ex)
+        {
+            if (_materialPreviewErrorPath != path)
+            {
+                _materialPreviewErrorPath = path;
+                Spot.Core.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
+            }
+        }
+
         float availX = ImGui.GetContentRegionAvail().X;
         float xOffset = (availX - previewSize) * 0.5f;
         if (xOffset > 0)

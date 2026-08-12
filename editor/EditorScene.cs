@@ -1143,6 +1143,7 @@ public class EditorScene : Scene
 
         foreach (var sceneData in _openScenes) sceneData.Dispose();
         _gameFramebuffer?.Dispose();
+        _inspectorPanel.Dispose();
         _context.ActiveScene?.OnExit();
     }
 

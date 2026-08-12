@@ -89,16 +89,26 @@ public static class RenderSystem
                 fixed (float* ptr = clearColor) Renderer.Api.GetFloat(Silk.NET.OpenGL.GLEnum.ColorClearValue, ptr);
             }
 
-            if (s_hdrFramebuffer == null || s_hdrFramebuffer.Width != viewport[2] || s_hdrFramebuffer.Height != viewport[3])
+            // A minimized (or zero-sized) window reports a 0x0 viewport. Allocating an HDR framebuffer from
+            // that produces an invalid, incomplete framebuffer and a stream of GL errors, so skip the whole
+            // HDR/post path this frame — nothing is visible anyway. The resolve below is guarded on this too.
+            if (viewport[2] <= 0 || viewport[3] <= 0)
             {
-                s_hdrFramebuffer?.Dispose();
-                s_hdrFramebuffer = new Framebuffer((uint)viewport[2], (uint)viewport[3], FramebufferFormat.RGBA16F);
+                postProcess = null;
             }
+            else
+            {
+                if (s_hdrFramebuffer == null || s_hdrFramebuffer.Width != viewport[2] || s_hdrFramebuffer.Height != viewport[3])
+                {
+                    s_hdrFramebuffer?.Dispose();
+                    s_hdrFramebuffer = new Framebuffer((uint)viewport[2], (uint)viewport[3], FramebufferFormat.RGBA16F);
+                }
 
-            s_hdrFramebuffer.Bind();
-            Renderer.SetClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
-            Renderer.Clear();
-            Renderer.Api.Viewport(0, 0, (uint)viewport[2], (uint)viewport[3]);
+                s_hdrFramebuffer.Bind();
+                Renderer.SetClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+                Renderer.Clear();
+                Renderer.Api.Viewport(0, 0, (uint)viewport[2], (uint)viewport[3]);
+            }
         }
 
         bool hasDirLight = false;

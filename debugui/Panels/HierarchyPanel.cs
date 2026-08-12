@@ -487,7 +487,13 @@ public class HierarchyPanel
         {
             // Duplicate as a sibling (same parent) of the source.
             Entity? copy = Prefab.InstantiateInto(scene, Prefab.Serialize(entity), entity.Parent);
-            if (copy != null) _context.Selection = copy.Value;
+            if (copy != null)
+            {
+                // Give the copy a distinct name so duplicates don't pile up under identical labels.
+                Entity copyEntity = copy.Value;
+                copyEntity.Name = MakeUniqueSiblingName(scene, entity.Parent, entity.Name);
+                _context.Selection = copyEntity;
+            }
         }
         catch (Exception ex)
         {
@@ -527,6 +533,28 @@ public class HierarchyPanel
         catch (Exception ex)
         {
             Spot.Core.Log.Error("Failed to paste entity: {0}", ex.Message);
+        }
+    }
+
+    // Builds a name that doesn't collide with the target parent's existing children ("Enemy" -> "Enemy (1)",
+    // then "Enemy (2)"...). An existing " (N)" suffix on the source is stripped first so duplicating
+    // "Enemy (1)" yields "Enemy (2)" rather than "Enemy (1) (1)".
+    private static string MakeUniqueSiblingName(Scene scene, Entity? parent, string baseName)
+    {
+        var siblingNames = (parent != null
+                ? parent.Value.Children
+                : scene.View<LabelComponent>().Where(e => e.Parent == null))
+            .Select(e => e.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        string stem = baseName;
+        var suffix = System.Text.RegularExpressions.Regex.Match(baseName, @"^(.*?)\s\((\d+)\)$");
+        if (suffix.Success) stem = suffix.Groups[1].Value;
+
+        for (int n = 1; ; n++)
+        {
+            string candidate = $"{stem} ({n})";
+            if (!siblingNames.Contains(candidate)) return candidate;
         }
     }
 
