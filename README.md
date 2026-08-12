@@ -33,6 +33,9 @@ The command-line tool creates and builds projects:
 # Create a new project
 dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>
 
+# Cook assets and run a project from source (quick iteration)
+dotnet run --project tools/Spot.Cli -- run --project <dir>
+
 # Publish a self-contained standalone build (windows | linux)
 dotnet run --project tools/Spot.Cli -- build windows --project <dir>
 

@@ -37,6 +37,7 @@ internal static class Program
                 "new" => CmdNew(args),
                 "generate" => CmdGenerate(args),
                 "build" => CmdBuild(args),
+                "run" => CmdRun(args),
                 "cook" => CmdCook(args),
                 "migrate" => CmdMigrate(args),
                 "help" or "-h" or "--help" => PrintUsageAnd(0),
@@ -100,6 +101,18 @@ internal static class Program
         BuildPlatform platform = ParsePlatform(positionals[0]);
         var project = ResolveProject(options.GetValueOrDefault("project"));
         return RunBuild(project, platform);
+    }
+
+    // spot run [--project <path>] [--release]
+    private static int CmdRun(string[] args)
+    {
+        var (_, options) = ParseArgs(args, 1);
+        var project = ResolveProject(options.GetValueOrDefault("project"));
+        bool release = options.ContainsKey("release");
+
+        return ProjectRunner.Run(project, release,
+            onOutput: Console.WriteLine,
+            onError: Console.Error.WriteLine);
     }
 
     // spot cook [--project <path>] [--out <dir>]
@@ -251,6 +264,10 @@ Usage:
 
   spot build <windows|linux> [--project <path>]
       Publish a self-contained standalone build for the platform into Build/<platform>.
+
+  spot run [--project <path>] [--release]
+      Cook assets and run the project from source with dotnet run (quick iteration,
+      no standalone publish). Defaults to a Debug build; --release runs Release.
 
   spot cook [--project <path>] [--out <dir>]
       Cook source assets into engine-native artifacts + a manifest (defaults to Content/).

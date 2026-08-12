@@ -56,6 +56,9 @@ dotnet run --project tools/Spot.Cli -- cook --project <dir>
 # Rewrite asset references to stable guid: references (and add .meta sidecars)
 dotnet run --project tools/Spot.Cli -- migrate --project <dir>
 
+# Cook assets and run the project from source (quick iteration, no publish)
+dotnet run --project tools/Spot.Cli -- run --project <dir>
+
 # Publish a self-contained standalone build (windows | linux)
 dotnet run --project tools/Spot.Cli -- build windows --project <dir>
 
