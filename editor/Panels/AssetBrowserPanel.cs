@@ -963,7 +963,35 @@ public class {className} : EntityBehaviour
         }
 
         if (newName != entry.Name)
+        {
+            bool isNewScript = _inlineRenameIsNew && entry.Kind == AssetKind.Script;
+            string oldClassName = isNewScript ? Path.GetFileNameWithoutExtension(entry.Name).Replace(" ", "") : "";
+            
             RenameEntry(entry.FullPath, newName);
+
+            if (isNewScript)
+            {
+                string? dir = Path.GetDirectoryName(entry.FullPath);
+                if (dir != null)
+                {
+                    string dest = Path.Combine(dir, newName);
+                    if (File.Exists(dest))
+                    {
+                        try
+                        {
+                            string newClassName = Path.GetFileNameWithoutExtension(newName).Replace(" ", "");
+                            string content = File.ReadAllText(dest);
+                            content = content.Replace($"class {oldClassName}", $"class {newClassName}");
+                            File.WriteAllText(dest, content);
+                        }
+                        catch (Exception ex)
+                        {
+                            Spot.Core.Log.Error("Failed to update script class name: {0}", ex.Message);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private void RenameEntry(string fullPath, string newName)
