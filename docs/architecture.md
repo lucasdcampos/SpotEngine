@@ -71,6 +71,13 @@ input frame derive from the active editor theme (inset `ChildBg`, hairline `Bord
 `FrameBg`) and there is no Submit button — Enter submits — so it reads as a native dockable panel.
 The editor's `ConsolePanel` requests the `Editor` skin.
 
+Logging goes through `Log` (Serilog under the hood, with a core `SPOT` logger and a client `APP`
+logger). Besides the console and the in-app developer console, everything at `Information` and above is
+persisted to a **rolling log file** so a bad session or a shipped-build crash leaves something to
+diagnose after the process is gone. The file lives in a `logs/` folder next to the executable
+(`logs/spot.log`, rolled daily, capped at 50 MB with the last 7 files kept). If the folder can't be
+created, file logging is skipped and the app keeps running — logging never takes the process down.
+
 ## Related
 
 - [Scenes](scenes.md) — the lifecycle the loop drives
