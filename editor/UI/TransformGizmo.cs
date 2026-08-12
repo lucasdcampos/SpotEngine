@@ -39,6 +39,17 @@ public sealed class TransformGizmo
     private Handle _active = Handle.None;
     private float _prevAngle;
 
+    // Snap state, captured when a drag begins so a held Ctrl quantizes the total movement from the drag's
+    // start value rather than the live (already-moved) value. _accum is the raw, unsnapped delta since the
+    // drag began; quantizing per-frame instead would swallow slow drags below one step.
+    private Vector3 _dragStart;
+    private Vector3 _accum;
+
+    // Snap increments, engaged while Ctrl is held during a drag.
+    private const float TranslateSnap = 1.0f;   // world units
+    private const float RotateSnapDeg = 15.0f;  // degrees
+    private const float ScaleSnap = 0.25f;
+
     // Screen-space sizing (pixels).
     private const float AxisLengthPx = 80f;
     private const float HitThicknessPx = 8f;
@@ -114,9 +125,12 @@ public sealed class TransformGizmo
         if (!IsUsing && viewportHovered && hot != Handle.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
             _active = hot;
+            _dragStart = t.Position;
+            _accum = Vector3.Zero;
         }
 
-        // Apply the drag.
+        // Apply the drag. Deltas accumulate unsnapped since the drag began; when Ctrl is held the total is
+        // quantized to a grid step, so the object moves in whole increments from where the drag started.
         if (IsUsing && ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             Vector2 md = _io.MouseDelta;
@@ -125,17 +139,19 @@ public sealed class TransformGizmo
             {
                 Vector2 dir = ProjectAxis(AxisDir(axis), out float ppu);
                 if (ppu > 0.001f)
-                    t.Position += AxisDir(axis) * (Vector2.Dot(md, dir) / ppu);
+                    _accum += AxisDir(axis) * (Vector2.Dot(md, dir) / ppu);
             }
             else if (_active == Handle.Screen)
             {
-                Vector3 world = Vector3.Zero;
                 Vector2 rDir = ProjectAxis(_cam.Right, out float rPpu);
                 Vector2 uDir = ProjectAxis(_cam.Up, out float uPpu);
-                if (rPpu > 0.001f) world += _cam.Right * (Vector2.Dot(md, rDir) / rPpu);
-                if (uPpu > 0.001f) world += _cam.Up * (Vector2.Dot(md, uDir) / uPpu);
-                t.Position += world;
+                if (rPpu > 0.001f) _accum += _cam.Right * (Vector2.Dot(md, rDir) / rPpu);
+                if (uPpu > 0.001f) _accum += _cam.Up * (Vector2.Dot(md, uDir) / uPpu);
             }
+
+            bool snap = _io.KeyCtrl;
+            t.Position = _dragStart + (snap ? SnapVec(_accum, TranslateSnap) : _accum);
+            if (snap) DrawSnapReadout($"{t.Position.X:0.##}, {t.Position.Y:0.##}, {t.Position.Z:0.##}");
         }
 
         // Draw.
@@ -177,6 +193,8 @@ public sealed class TransformGizmo
         {
             _active = hot;
             _prevAngle = MathF.Atan2(mouse.Y - _originScreen.Y, mouse.X - _originScreen.X);
+            _dragStart = t.Rotation;
+            _accum = Vector3.Zero;
         }
 
         if (IsUsing && ImGui.IsMouseDown(ImGuiMouseButton.Left))
@@ -189,7 +207,12 @@ public sealed class TransformGizmo
                 _prevAngle = cur;
                 // Flip so dragging feels consistent whether the ring faces toward or away from us.
                 float sign = Vector3.Dot(AxisDir(axis), _cam.Forward) >= 0f ? 1f : -1f;
-                t.Rotation = AddComponent(t.Rotation, axis, delta * (180f / MathF.PI) * sign);
+                _accum = AddComponent(_accum, axis, delta * (180f / MathF.PI) * sign);
+
+                bool snap = _io.KeyCtrl;
+                float applied = snap ? SnapValue(AxisValue(_accum, axis), RotateSnapDeg) : AxisValue(_accum, axis);
+                t.Rotation = AddComponent(_dragStart, axis, applied);
+                if (snap) DrawSnapReadout($"{applied:0.#} deg");
             }
         }
 
@@ -227,22 +250,30 @@ public sealed class TransformGizmo
         if (!IsUsing && viewportHovered && hot != Handle.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
             _active = hot;
+            _dragStart = t.Scale;
+            _accum = Vector3.Zero;
         }
 
         if (IsUsing && ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             Vector2 md = _io.MouseDelta;
+            bool snap = _io.KeyCtrl;
             int axis = AxisOf(_active);
             if (axis >= 0)
             {
                 Vector2 dir = ProjectAxis(AxisDir(axis), out float ppu);
                 if (ppu > 0.001f)
-                    t.Scale = AddComponent(t.Scale, axis, Vector2.Dot(md, dir) / ppu);
+                    _accum = AddComponent(_accum, axis, Vector2.Dot(md, dir) / ppu);
+                float applied = snap ? SnapValue(AxisValue(_accum, axis), ScaleSnap) : AxisValue(_accum, axis);
+                t.Scale = AddComponent(_dragStart, axis, applied);
+                if (snap) DrawSnapReadout($"{AxisValue(t.Scale, axis):0.##}");
             }
             else if (_active == Handle.Screen)
             {
                 float uniform = (md.X - md.Y) * 0.01f;
-                t.Scale += new Vector3(uniform, uniform, _cam.Is3D ? uniform : 0f);
+                _accum += new Vector3(uniform, uniform, _cam.Is3D ? uniform : 0f);
+                t.Scale = _dragStart + (snap ? SnapVec(_accum, ScaleSnap) : _accum);
+                if (snap) DrawSnapReadout($"{t.Scale.X:0.##}");
             }
         }
 
@@ -365,6 +396,23 @@ public sealed class TransformGizmo
         while (a > MathF.PI) a -= MathF.PI * 2f;
         while (a < -MathF.PI) a += MathF.PI * 2f;
         return a;
+    }
+
+    private static float SnapValue(float v, float step) => step > 1e-6f ? MathF.Round(v / step) * step : v;
+
+    private static Vector3 SnapVec(Vector3 v, float step) =>
+        new(SnapValue(v.X, step), SnapValue(v.Y, step), SnapValue(v.Z, step));
+
+    private static float AxisValue(Vector3 v, int axis) => axis == 0 ? v.X : axis == 1 ? v.Y : v.Z;
+
+    // A small value readout next to the gizmo so the user sees the snapped result while dragging with Ctrl.
+    private void DrawSnapReadout(string text)
+    {
+        Vector2 pos = _originScreen + new Vector2(14f, -30f);
+        Vector2 ts = ImGui.CalcTextSize(text);
+        Vector2 pad = new(6f, 3f);
+        _draw.AddRectFilled(pos - pad, pos + ts + pad, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.6f)), 3f);
+        _draw.AddText(pos, ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 0.95f)), text);
     }
 }
 
