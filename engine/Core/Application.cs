@@ -485,6 +485,9 @@ public class Application
 
         _window?.Dispose();
         _window = null;
+
+        // Last, so every shutdown line above is flushed to the rolling log file before we release it.
+        Log.CloseAndFlush();
     }
 
     /// <summary>
