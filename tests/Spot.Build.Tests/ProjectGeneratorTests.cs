@@ -30,13 +30,19 @@ public class ProjectGeneratorTests
         Assert.Contains(@"Content\**\*.*", csproj);
         Assert.DoesNotContain(@"Assets\**\*.*", csproj);
 
+        // Game manifest included
+        Assert.Contains(@"<Content Include=""game.manifest""", csproj);
+
         Assert.True(File.Exists(Path.Combine(temp.Path, "Arcade.sln")));
 
         string program = File.ReadAllText(Path.Combine(temp.Path, "Program.cs"));
         Assert.Contains("class Program", program);
-        Assert.Contains("new Application(spec)", program);
-        Assert.Contains("ContentDirectory = \"Content\"", program);
-        Assert.Contains("ManifestPath = \"manifest.json\"", program);
+        Assert.Contains("new Application()", program);
+        Assert.DoesNotContain("ApplicationSpec", program);
+
+        string manifest = File.ReadAllText(Path.Combine(temp.Path, "game.manifest"));
+        Assert.Contains("\"ContentDirectory\": \"Content\"", manifest);
+        Assert.Contains("\"ManifestPath\": \"manifest.json\"", manifest);
     }
 
     [Fact]
