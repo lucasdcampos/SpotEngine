@@ -69,7 +69,9 @@ The editor has two modes:
 - **Edit mode** is where you build. Changes you make are to the scene you're authoring.
 - **Play mode** runs your game inside the editor so you can test it — scripts, physics, and audio all
   come alive. When you stop, the scene is restored exactly as it was before you pressed play, so
-  anything that happened during play is discarded and testing never disturbs your work.
+  anything that happened during play is discarded and testing never disturbs your work. The **Game**
+  view shows what the scene's primary camera sees; if there isn't one, it says so instead of showing a
+  blank panel.
 
 ## Managing projects
 

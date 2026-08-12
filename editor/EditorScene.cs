@@ -690,7 +690,24 @@ public class EditorScene : Scene
                     }
                 }
 
+                var imageTopLeft = ImGui.GetCursorScreenPos();
                 _gamePanel.OnImGuiRender(handleInput: false);
+
+                // Without an active primary camera nothing renders, leaving a blank Game view. Explain it
+                // instead of showing an unexplained black panel — a common first-time snag.
+                if (size.X > 0 && size.Y > 0 && gameScene != null && !gameScene.HasActivePrimaryCamera())
+                {
+                    const string msg = "No camera in scene";
+                    var textSize = ImGui.CalcTextSize(msg);
+                    var textPos = new Vector2(
+                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
+                        imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
+                    var pad = new Vector2(10.0f, 6.0f);
+                    var drawList = ImGui.GetWindowDrawList();
+                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
+                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), msg);
+                }
             }
             ImGui.End();
         }

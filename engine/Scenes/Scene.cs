@@ -193,6 +193,26 @@ public class Scene
     }
 
     /// <summary>
+    /// Returns true if the scene has a primary camera that would actually render this frame — active in
+    /// the hierarchy, enabled, and carrying an enabled transform (the same conditions <see cref="OnRender"/>
+    /// uses to pick a camera). The editor uses this to warn when the Game view would otherwise be blank.
+    /// </summary>
+    public bool HasActivePrimaryCamera()
+    {
+        foreach (var entity in View<CameraComponent>())
+        {
+            if (!entity.IsActiveInHierarchy()) continue;
+            var cc = entity.GetComponent<CameraComponent>();
+            if (!cc.Enabled || !cc.Primary) continue;
+            if (!HasComponent<TransformComponent>(entity)) continue;
+            if (!GetComponent<TransformComponent>(entity).Enabled) continue;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Called every frame to build the scene's ImGui user interface.
     /// </summary>
     public virtual void OnImGuiRender()
