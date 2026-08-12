@@ -6,6 +6,14 @@ using Spot.Scenes;
 namespace Spot.Assets;
 
 /// <summary>
+/// The outcome of a full asset cook: where the runtime <c>manifest.json</c> was written, how many sources
+/// cooked, and how many failed. A non-zero <see cref="Failed"/> count means the manifest is missing those
+/// entries, so callers should surface it (the <c>spot cook</c> CLI turns it into a non-zero exit code)
+/// instead of silently shipping an incomplete build.
+/// </summary>
+public readonly record struct CookResult(string ManifestPath, int Cooked, int Failed);
+
+/// <summary>
 /// The editor/build-time asset database: it scans a project's <c>Assets/</c> tree, gives every source a stable
 /// guid via its <c>.meta</c> sidecar, cooks sources into engine-native artifacts, and resolves references between
 /// them. It is the authoring-side counterpart to the runtime <see cref="AssetManifest"/> — the shipped game never
@@ -260,15 +268,20 @@ public static class AssetDatabase
     /// <summary>
     /// Cooks every source in a project's asset tree into a fresh <c>Content/</c> directory and writes the runtime
     /// <c>manifest.json</c>. Copy-through assets (scenes, fonts) are mirrored by path. This is the build step that
-    /// produces exactly what a shipped game loads — no source files. Returns the manifest path.
+    /// produces exactly what a shipped game loads — no source files. The <c>Content/</c> tree is rebuilt from
+    /// scratch each run so a deleted or renamed source can never leave a stale cooked artifact behind.
     /// </summary>
     /// <param name="assetsRoot">The project's <c>Assets/</c> directory.</param>
-    /// <param name="contentRoot">The destination <c>Content/</c> directory.</param>
-    public static string CookAll(string assetsRoot, string contentRoot)
+    /// <param name="contentRoot">The destination <c>Content/</c> directory (rebuilt on each cook).</param>
+    /// <returns>Where the manifest was written and the cooked/failed source counts.</returns>
+    public static CookResult CookAll(string assetsRoot, string contentRoot)
     {
         Refresh(assetsRoot);
+        CleanContentRoot(contentRoot);
         Directory.CreateDirectory(contentRoot);
 
+        int cooked = 0;
+        int failed = 0;
         var doc = new ManifestDocument();
         foreach ((string source, string guid) in s_sourceToGuid)
         {
@@ -290,18 +303,59 @@ public static class AssetDatabase
                 File.WriteAllBytes(outPath, artifact.Bytes);
 
                 doc.Entries[guid] = new ManifestEntry { File = relative, Type = artifact.Type };
+                cooked++;
             }
             catch (Exception ex)
             {
+                failed++;
                 Log.CoreError("Failed to cook '{0}': {1}", source, ex.Message);
             }
         }
 
-        CopyThrough(assetsRoot, contentRoot);
+        failed += CopyThrough(assetsRoot, contentRoot);
 
         string manifestPath = Path.Combine(contentRoot, "manifest.json");
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(doc, AssetManifest.JsonOptions));
-        return manifestPath;
+
+        if (failed > 0)
+        {
+            Log.CoreWarn("Cook finished with {0} failure(s) out of {1} asset(s); the shipped content is missing those entries.", failed, cooked + failed);
+        }
+
+        return new CookResult(manifestPath, cooked, failed);
+    }
+
+    // Deletes the existing Content/ tree so each cook starts clean. Guarded so a mis-pointed destination
+    // (a filesystem root, or a directory full of unrelated files) can never be wiped: only a folder that is
+    // clearly cook output — named Content, empty, or already holding a manifest from a previous cook — is
+    // rebuilt. Anything else is refused with a clear error.
+    private static void CleanContentRoot(string contentRoot)
+    {
+        if (string.IsNullOrWhiteSpace(contentRoot) || !Directory.Exists(contentRoot))
+        {
+            return;
+        }
+
+        string full = Path.GetFullPath(contentRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (string.IsNullOrEmpty(Path.GetDirectoryName(full)))
+        {
+            // full has no parent -> it's a drive/filesystem root. Refuse rather than wipe it.
+            throw new ArgumentException($"Refusing to clean content root at a filesystem root: '{contentRoot}'.", nameof(contentRoot));
+        }
+
+        bool looksLikeCookOutput =
+            string.Equals(Path.GetFileName(full), ProjectStructure.ContentFolder, StringComparison.OrdinalIgnoreCase)
+            || File.Exists(Path.Combine(full, "manifest.json"))
+            || !Directory.EnumerateFileSystemEntries(full).Any();
+
+        if (!looksLikeCookOutput)
+        {
+            throw new ArgumentException(
+                $"Refusing to rebuild content in '{contentRoot}': it isn't a cook-output folder (no manifest.json and not named '{ProjectStructure.ContentFolder}'). Point the output at a dedicated content directory.",
+                nameof(contentRoot));
+        }
+
+        Directory.Delete(full, recursive: true);
     }
 
     // Reference properties in scenes/materials whose relative source-path values migrate to guid: references.
@@ -396,8 +450,11 @@ public static class AssetDatabase
         return changed;
     }
 
-    private static void CopyThrough(string assetsRoot, string contentRoot)
+    // Mirrors copy-through assets (scenes, fonts) into Content/ by path. Returns how many failed to copy so
+    // the cook can report them alongside importer failures rather than losing them to the log.
+    private static int CopyThrough(string assetsRoot, string contentRoot)
     {
+        int failed = 0;
         foreach (string file in Directory.EnumerateFiles(assetsRoot, "*", SearchOption.AllDirectories))
         {
             if (Array.IndexOf(s_copyThroughExtensions, Path.GetExtension(file).ToLowerInvariant()) < 0)
@@ -428,9 +485,12 @@ public static class AssetDatabase
             }
             catch (Exception ex)
             {
+                failed++;
                 Log.CoreError("Failed to copy asset '{0}' into content: {1}", file, ex.Message);
             }
         }
+
+        return failed;
     }
 
     // Reads a scene file and returns its JSON with every asset reference rewritten to a guid: reference (leaving

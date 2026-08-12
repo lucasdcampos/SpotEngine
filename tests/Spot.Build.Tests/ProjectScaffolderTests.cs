@@ -37,4 +37,19 @@ public class ProjectScaffolderTests
         Assert.True(File.Exists(Path.Combine(projDir, "Program.cs")));
         Assert.True(File.Exists(Path.Combine(projDir, "EngineBin", "Spot.Engine.dll")));
     }
+
+    [Theory]
+    [InlineData("My:Game")]      // invalid path character
+    [InlineData("Test*Project")] // invalid path character
+    [InlineData("My-Game")]      // valid path segment, but not a valid C# namespace
+    [InlineData("2048")]         // starts with a digit
+    [InlineData("   ")]          // whitespace only
+    public void Create_RejectsInvalidProjectName(string name)
+    {
+        using var temp = new TempDir();
+
+        // A bad name must fail fast with a clear error instead of scaffolding a broken project.
+        Assert.Throws<ArgumentException>(() => ProjectScaffolder.Create(name, temp.Path));
+        Assert.Empty(Directory.GetDirectories(temp.Path));
+    }
 }

@@ -370,7 +370,7 @@ public class AssetPipelineTests
 
         try
         {
-            string manifestPath = AssetDatabase.CookAll(temp.Path, contentRoot);
+            string manifestPath = AssetDatabase.CookAll(temp.Path, contentRoot).ManifestPath;
             Assert.True(File.Exists(manifestPath));
 
             var doc = JsonSerializer.Deserialize<ManifestDocument>(File.ReadAllText(manifestPath), AssetManifest.JsonOptions)!;
@@ -439,6 +439,75 @@ public class AssetPipelineTests
                 .AsObject()["Entities"]!.AsArray()[0]!.AsObject()["Mesh"]!.AsObject();
             Assert.Equal(AssetRef.MakeGuidRef(modelGuid), mesh["ModelPath"]!.GetValue<string>());
             Assert.Equal(AssetRef.MakeGuidRef(matGuid), mesh["MaterialPath"]!.GetValue<string>());
+        }
+        finally
+        {
+            if (Directory.Exists(contentRoot))
+            {
+                Directory.Delete(contentRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void AssetDatabase_CookAll_RemovesStaleContentWhenSourceDeleted()
+    {
+        using var temp = new TempDir();
+        SeedProject(temp.Path);
+        string contentRoot = Path.Combine(temp.Path, "..", "content-" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            AssetDatabase.CookAll(temp.Path, contentRoot);
+            Assert.True(AssetDatabase.TryGetGuid("Textures/pixel.bmp", out string imageGuid));
+            string cookedTexture = Path.Combine(contentRoot, imageGuid[..2], imageGuid + ".sptex");
+            Assert.True(File.Exists(cookedTexture));
+
+            // Delete the source (and its .meta/dependent material) and re-cook. Because Content/ is rebuilt
+            // from scratch, the deleted source's cooked artifact must not linger in the shipped output.
+            string image = Path.Combine(temp.Path, "Textures", "pixel.bmp");
+            File.Delete(image);
+            File.Delete(AssetMeta.MetaPathFor(image));
+            File.Delete(Path.Combine(temp.Path, "Materials", "mat.sptmat"));
+
+            var result = AssetDatabase.CookAll(temp.Path, contentRoot);
+
+            Assert.False(File.Exists(cookedTexture));
+            var doc = JsonSerializer.Deserialize<ManifestDocument>(File.ReadAllText(result.ManifestPath), AssetManifest.JsonOptions)!;
+            Assert.False(doc.Entries.ContainsKey(imageGuid));
+        }
+        finally
+        {
+            if (Directory.Exists(contentRoot))
+            {
+                Directory.Delete(contentRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void AssetDatabase_CookAll_ReportsFailureCountAndOmitsBadAssetFromManifest()
+    {
+        using var temp = new TempDir();
+        SeedProject(temp.Path);
+
+        // A .png the importer can't decode: cooking must fail for this one source, keep going for the rest,
+        // and the failure must be counted (not silently swallowed) so callers can surface it.
+        string broken = Path.Combine(temp.Path, "Textures", "broken.png");
+        File.WriteAllBytes(broken, new byte[] { 0, 1, 2, 3, 4, 5, 6, 7 });
+
+        string contentRoot = Path.Combine(temp.Path, "..", "content-" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = AssetDatabase.CookAll(temp.Path, contentRoot);
+
+            Assert.True(result.Failed >= 1);
+            Assert.True(AssetDatabase.TryGetGuid("Textures/broken.png", out string brokenGuid));
+            var doc = JsonSerializer.Deserialize<ManifestDocument>(File.ReadAllText(result.ManifestPath), AssetManifest.JsonOptions)!;
+            Assert.False(doc.Entries.ContainsKey(brokenGuid));
+
+            // The healthy texture alongside it still cooks.
+            Assert.True(AssetDatabase.TryGetGuid("Textures/pixel.bmp", out string goodGuid));
+            Assert.True(doc.Entries.ContainsKey(goodGuid));
         }
         finally
         {

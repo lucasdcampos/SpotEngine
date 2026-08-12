@@ -29,6 +29,13 @@ untouched. This is why a model dragged into a scene (which leaves behind raw sou
 and its extracted `.sptmat` materials) renders in a build as well as in the editor: the cook resolves
 those paths to the GUIDs of the cooked mesh and materials.
 
+The content folder is **rebuilt from scratch** on every cook, so a source you delete or rename never
+leaves a stale cooked artifact behind in a shipped build. If a source fails to cook (say a corrupt
+image), the cook logs it, keeps going for the rest, and **reports how many failed** — `spot cook`
+prints the failure count and exits non-zero, and a build surfaces a warning, so a silently incomplete
+manifest can't slip into a release. `spot cook` also errors out early with a clear message if the
+project has no `Assets/` directory, rather than writing an empty manifest.
+
 A companion **migrate** step generates any missing `.meta` sidecars and rewrites older path-based
 references in scenes and materials to `guid:` references, so existing content moves onto the pipeline.
 

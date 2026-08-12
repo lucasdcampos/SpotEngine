@@ -61,8 +61,14 @@ public static class ProjectBuilder
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            string manifest = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
-            onOutput?.Invoke($"Cooked assets -> {manifest}");
+            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            if (cook.Failed > 0)
+            {
+                // Don't abort the build (a single bad asset shouldn't block Play), but make the gap loud:
+                // the shipped content is missing these entries and will fail to load at runtime.
+                onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; the build is missing those entries. See the log for details.");
+            }
+            onOutput?.Invoke($"Cooked {cook.Cooked} asset(s) -> {cook.ManifestPath}");
         }
         catch (Exception ex)
         {
