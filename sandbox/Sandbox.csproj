@@ -25,6 +25,7 @@
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Silk.NET.Assimp" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
     <PackageReference Include="Silk.NET.OpenAL" Version="2.23.0" />
@@ -47,5 +48,6 @@
     <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
     <None Remove="Content\**" />
     <Content Include="Content\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="game.manifest" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

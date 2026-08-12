@@ -35,6 +35,7 @@ public class ProjectScaffolderTests
         Assert.True(File.Exists(Path.Combine(projDir, "MyGame.csproj")));
         Assert.True(File.Exists(Path.Combine(projDir, "MyGame.sln")));
         Assert.True(File.Exists(Path.Combine(projDir, "Program.cs")));
+        Assert.True(File.Exists(Path.Combine(projDir, "game.manifest")));
         Assert.True(File.Exists(Path.Combine(projDir, "EngineBin", "Spot.Engine.dll")));
     }
 

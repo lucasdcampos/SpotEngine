@@ -23,6 +23,7 @@ public static class ProjectGenerator
         CopyEngineDll(project.ProjectDirectory);
         WriteCsproj(project);
         WriteSolution(project);
+        WriteManifest(project, overwriteProgram);
         WriteProgram(project, overwriteProgram);
     }
 
@@ -110,6 +111,7 @@ public static class ProjectGenerator
     <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
     <None Remove=""Content\**"" />
     <Content Include=""Content\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
+    <Content Include=""game.manifest"" CopyToOutputDirectory=""PreserveNewest"" />
   </ItemGroup>
 </Project>";
 
@@ -146,13 +148,32 @@ EndGlobal
         File.WriteAllText(Path.Combine(project.ProjectDirectory, name + ".sln"), slnContent);
     }
 
+    private static void WriteManifest(Project project, bool overwriteManifest)
+    {
+        string manifestPath = Path.Combine(project.ProjectDirectory, "game.manifest");
+        if (!overwriteManifest && File.Exists(manifestPath)) return;
+
+        var spec = new ApplicationSpec
+        {
+            Name = project.Config.Name,
+            ContentDirectory = Spot.Core.ProjectStructure.ContentFolder,
+            ManifestPath = "manifest.json",
+            StartScene = project.Config.StartScene.Replace("\\", "/")
+        };
+        spec.Window.Title = project.Config.Name;
+        spec.Window.Width = 1280;
+        spec.Window.Height = 720;
+
+        var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+        File.WriteAllText(manifestPath, System.Text.Json.JsonSerializer.Serialize(spec, options));
+    }
+
     private static void WriteProgram(Project project, bool overwriteProgram)
     {
         string programPath = Path.Combine(project.ProjectDirectory, "Program.cs");
         if (!overwriteProgram && File.Exists(programPath)) return;
 
         string name = project.Config.Name;
-        string startScene = project.Config.StartScene.Replace("\\", "/");
 
         string programContent = $@"using System;
 using Spot.Core;
@@ -163,18 +184,7 @@ class Program
 {{
     static void Main(string[] args)
     {{
-        var spec = new ApplicationSpec
-        {{
-            Name = ""{name}"",
-            ContentDirectory = ""{Spot.Core.ProjectStructure.ContentFolder}"",
-            ManifestPath = ""manifest.json"",
-            StartScene = ""{startScene}""
-        }};
-        spec.Window.Title = ""{name}"";
-        spec.Window.Width = 1280;
-        spec.Window.Height = 720;
-
-        var app = new Application(spec);
+        var app = new Application();
         app.Run();
     }}
 }}

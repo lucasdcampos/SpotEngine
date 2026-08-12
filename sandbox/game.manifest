@@ -1,0 +1,18 @@
+{
+  "Name": "Sandbox",
+  "Window": {
+    "Title": "Sandbox",
+    "Width": 1280,
+    "Height": 720
+  },
+  "FontPath": null,
+  "FontSize": 16,
+  "AdditionalFonts": [],
+  "IconFont": null,
+  "AssetDirectory": null,
+  "ContentDirectory": "Content",
+  "ManifestPath": "manifest.json",
+  "StartScene": "Scenes/PhysicsTest.sptscene",
+  "DefaultBindings": {},
+  "AssetRoot": "Content"
+}

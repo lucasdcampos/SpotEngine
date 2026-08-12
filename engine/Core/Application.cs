@@ -87,6 +87,19 @@ public class ApplicationSpec
     /// <summary>Gets the effective asset root: the cooked <see cref="ContentDirectory"/> if set, else <see cref="AssetDirectory"/>.</summary>
     public string? AssetRoot =>
         !string.IsNullOrEmpty(ContentDirectory) ? ContentDirectory : AssetDirectory;
+
+    /// <summary>
+    /// Loads an ApplicationSpec from a JSON file. If the file does not exist, returns a default spec.
+    /// </summary>
+    public static ApplicationSpec Load(string path)
+    {
+        if (!System.IO.File.Exists(path))
+            return new ApplicationSpec();
+
+        string json = System.IO.File.ReadAllText(path);
+        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        return System.Text.Json.JsonSerializer.Deserialize<ApplicationSpec>(json, options) ?? new ApplicationSpec();
+    }
 }
 
 /// <summary>
@@ -178,10 +191,10 @@ public class Application
     /// <summary>
     /// Initializes a new instance of the <see cref="Application"/> class.
     /// </summary>
-    /// <param name="spec">The application specification.</param>
-    public Application(ApplicationSpec spec)
+    /// <param name="spec">The application specification, or null to load game.manifest by default.</param>
+    public Application(ApplicationSpec? spec = null)
     {
-        _spec = spec;
+        _spec = spec ?? ApplicationSpec.Load("game.manifest");
         _running = false;
         _deltaTime = 0.0f;
         s_instance = this;
