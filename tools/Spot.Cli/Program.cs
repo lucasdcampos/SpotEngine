@@ -107,11 +107,21 @@ internal static class Program
     {
         var (_, options) = ParseArgs(args, 1);
         var project = ResolveProject(options.GetValueOrDefault("project"));
+        string assetDir = project.GetAssetDirectory();
+        if (!Directory.Exists(assetDir))
+        {
+            throw new DirectoryNotFoundException($"No assets directory to cook: '{assetDir}'. Create it (or check the project's AssetDirectory) and try again.");
+        }
         string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
 
         Console.WriteLine($"Cooking assets for '{project.Config.Name}' -> {outDir}");
-        string manifest = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), outDir);
-        Console.WriteLine($"Cooked. Manifest: {manifest}");
+        var result = Spot.Assets.AssetDatabase.CookAll(assetDir, outDir);
+        if (result.Failed > 0)
+        {
+            Console.Error.WriteLine($"Cooked {result.Cooked} asset(s) with {result.Failed} failure(s); the manifest is missing those entries. See the log above. Manifest: {result.ManifestPath}");
+            return 1;
+        }
+        Console.WriteLine($"Cooked {result.Cooked} asset(s). Manifest: {result.ManifestPath}");
         return 0;
     }
 
@@ -122,7 +132,13 @@ internal static class Program
         var project = ResolveProject(options.GetValueOrDefault("project"));
         bool dryRun = options.ContainsKey("dry-run");
 
-        int changed = Spot.Assets.AssetDatabase.MigrateReferences(project.GetAssetDirectory(), dryRun);
+        string assetDir = project.GetAssetDirectory();
+        if (!Directory.Exists(assetDir))
+        {
+            throw new DirectoryNotFoundException($"No assets directory to migrate: '{assetDir}'. Create it (or check the project's AssetDirectory) and try again.");
+        }
+
+        int changed = Spot.Assets.AssetDatabase.MigrateReferences(assetDir, dryRun);
         Console.WriteLine(dryRun
             ? $"{changed} file(s) would be migrated to guid references."
             : $"Migrated {changed} file(s) to guid references.");

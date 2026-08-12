@@ -65,6 +65,12 @@ dotnet run --project tools/Spot.Cli -- help
 
 The exact options are printed by `help`; run it to see the current set.
 
+A project name doubles as the project's folder, its `.csproj`/`.sln` filename and its generated C#
+namespace, so `new` rejects names that aren't a valid path segment and identifier (e.g. `My:Game` or a
+name starting with a digit) up front with a clear message, rather than scaffolding a project that won't
+build. `cook` and `migrate` likewise fail with a friendly error when the project has no `Assets/`
+directory, and `cook` exits non-zero if any asset failed to cook.
+
 ## Related
 
 - [The Editor](editor.md) — the visual way to build a project

@@ -46,9 +46,9 @@ public class Project
                 return Active;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Log error
+            Log.CoreError("Failed to load project '{0}': {1}", filepath, ex.Message);
         }
 
         return null;

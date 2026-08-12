@@ -26,4 +26,17 @@ public class ProjectTests
         Assert.Equal("Scenes/Level1.sptscene", reloaded.Config.StartScene);
         Assert.Equal("Content", reloaded.Config.AssetDirectory);
     }
+
+    [Fact]
+    public void Load_MalformedJson_ReturnsNullWithoutThrowing()
+    {
+        using var temp = new TempDir();
+        string sptproj = Path.Combine(temp.Path, "Broken.sptproj");
+        File.WriteAllText(sptproj, "{ this is not valid json ");
+
+        // A corrupt .sptproj must be diagnosed (logged) and reported as a null load, never crash the caller.
+        var loaded = Project.Load(sptproj);
+
+        Assert.Null(loaded);
+    }
 }
