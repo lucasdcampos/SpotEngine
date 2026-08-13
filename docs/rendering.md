@@ -47,6 +47,18 @@ Lighting supports a **directional** light (a sun, with an ambient term) and **po
 Directional lights can cast real-time **shadows**. A **skybox** and optional **dynamic clouds**
 provide the backdrop.
 
+## 2D content
+
+A **sprite** is a flat quad drawn with a color and an optional texture (the color tints the texture,
+or fills the quad when there is none). Sprites are batched by texture into few draw calls. The sprite
+shader **alpha-tests** its texture, so a cut-out texture — a white circle, triangle, or polygon on a
+transparent background — renders as that shape rather than a square; this works even though the sprite
+pass itself runs without alpha blending. Pair sprites with an **orthographic camera** for a 2D game.
+
+Particles are drawn **after** the opaque passes — both the 3D meshes and the 2D sprite batch — and
+before post-processing, so they blend and glow over your scene (and feed bloom) rather than being
+painted over by it. See the [Sandbox Hub](sandbox-hub.md) for a worked 2D example.
+
 ## Post-processing and quality
 
 Two surfaces control the final image, and they have different jobs:

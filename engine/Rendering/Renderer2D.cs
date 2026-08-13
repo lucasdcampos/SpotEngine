@@ -67,7 +67,11 @@ public static class Renderer2D
 
         void main()
         {
-            fragColor = texture(uTexture, vTexCoord) * vColor;
+            vec4 sampled = texture(uTexture, vTexCoord) * vColor;
+            // Alpha cut-out so textured sprites (circles, triangles, ...) render as their shape even
+            // when the 2D pass runs without alpha blending. Opaque quads (alpha 1) are unaffected.
+            if (sampled.a < 0.5) discard;
+            fragColor = sampled;
         }
         """;
 
