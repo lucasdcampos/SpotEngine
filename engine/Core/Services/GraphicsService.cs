@@ -7,7 +7,7 @@ namespace Spot.Core.Services;
 /// </summary>
 /// <remarks>
 /// This runs in both the editor and a shipped game, so it deliberately does not register the Assimp source
-/// importer: a shipped game loads cooked <c>.spmesh</c> meshes and must never pull in Assimp. Authoring hosts
+/// importer: a shipped game loads cooked <c>.sptmesh</c> meshes and must never pull in Assimp. Authoring hosts
 /// (the editor) register the source importer themselves.
 /// </remarks>
 public class GraphicsService : IEngineService

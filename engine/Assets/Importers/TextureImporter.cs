@@ -4,7 +4,7 @@ using StbImageSharp;
 namespace Spot.Assets;
 
 /// <summary>
-/// Cooks image files (PNG, JPG, ...) into <c>.sptex</c>: raw RGBA pixels decoded once here so the runtime needs
+/// Cooks image files (PNG, JPG, ...) into <c>.spttex</c>: raw RGBA pixels decoded once here so the runtime needs
 /// no image decoder. Decoding applies the same vertical flip the direct <see cref="Rendering.Texture2D"/> loader
 /// does, so a cooked texture uploads verbatim and looks identical to loading the source.
 /// </summary>
@@ -17,7 +17,7 @@ public sealed class TextureImporter : IAssetImporter
     public IEnumerable<string> SourceExtensions => new[] { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
 
     /// <inheritdoc />
-    public string CookedExtension => ".sptex";
+    public string CookedExtension => ".spttex";
 
     /// <inheritdoc />
     public CookedArtifact Cook(string sourcePath, AssetMeta meta, IGuidResolver resolver)

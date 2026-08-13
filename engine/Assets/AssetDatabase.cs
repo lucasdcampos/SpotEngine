@@ -216,7 +216,7 @@ public static class AssetDatabase
         string cooked = Path.Combine(shardDir, meta.Guid + importer.CookedExtension);
         string hashFile = cooked + ".src";
         // The cooked-format version is folded into the staleness key so a change in what an importer emits
-        // (e.g. skeletons/clips added to .spmesh, or file-based clip names) re-cooks the editor's Library
+        // (e.g. skeletons/clips added to .sptmesh, or file-based clip names) re-cooks the editor's Library
         // cache even when the source bytes are unchanged. Bump it whenever a cooked format changes.
         string hash = AssetMeta.ComputeSourceHash(sourcePath, meta.Settings) + CookFormatVersion;
 

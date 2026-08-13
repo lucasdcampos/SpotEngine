@@ -29,7 +29,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
 
     // The post-processing steps applied to every import. All entry points (geometry, scene graph, full
     // model) MUST use the same flags so submesh ordering and vertex counts line up between them and with the
-    // cooked .spmesh. LimitBoneWeights caps skinning influences at four (matching the shader) and normalizes
+    // cooked .sptmesh. LimitBoneWeights caps skinning influences at four (matching the shader) and normalizes
     // them.
     private const uint ImportFlags = (uint)(
         PostProcessSteps.Triangulate |
@@ -80,7 +80,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
     /// <summary>
     /// Reads a model's scene graph — its node hierarchy, the submeshes hanging off each node, and the
     /// material slot each submesh uses — without uploading anything to the GPU. The submesh ordering
-    /// matches <see cref="ImportMeshData"/> (and therefore the cooked <c>.spmesh</c>) exactly, because it
+    /// matches <see cref="ImportMeshData"/> (and therefore the cooked <c>.sptmesh</c>) exactly, because it
     /// imports with the same post-processing flags, so a node's mesh indices double as
     /// <see cref="Scenes.MeshComponent.SubmeshIndex"/> values.
     /// </summary>

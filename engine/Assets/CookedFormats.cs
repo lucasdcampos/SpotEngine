@@ -8,7 +8,7 @@ using Spot.Rendering;
 namespace Spot.Assets;
 
 /// <summary>
-/// Reads and writes <c>.spmesh</c>, the engine-native cooked mesh format: a serialization of the interleaved
+/// Reads and writes <c>.sptmesh</c>, the engine-native cooked mesh format: a serialization of the interleaved
 /// vertex/index data the importers produce (<see cref="MeshData"/>) together with any skinning bones and
 /// animation clips (<see cref="CookedModel"/>). Parsing is pure computation with no GL calls, so a cooked
 /// model can be read on a background thread and turned into a drawable <see cref="Model"/> on the render
@@ -29,12 +29,12 @@ public static class SpMesh
     /// <summary>The format version this build writes.</summary>
     public const uint Version = 2;
 
-    /// <summary>Serializes cooked submeshes (rigid only) to a <c>.spmesh</c> byte blob.</summary>
+    /// <summary>Serializes cooked submeshes (rigid only) to a <c>.sptmesh</c> byte blob.</summary>
     /// <param name="submeshes">The CPU geometry to write, one entry per submesh.</param>
     /// <returns>The encoded bytes, ready to write to disk.</returns>
     public static byte[] Write(IReadOnlyList<MeshData> submeshes) => Write(new CookedModel(submeshes, null));
 
-    /// <summary>Serializes a cooked model (geometry + skinning + clips) to a <c>.spmesh</c> byte blob.</summary>
+    /// <summary>Serializes a cooked model (geometry + skinning + clips) to a <c>.sptmesh</c> byte blob.</summary>
     /// <param name="model">The CPU model data to write.</param>
     /// <returns>The encoded bytes, ready to write to disk.</returns>
     public static byte[] Write(CookedModel model)
@@ -83,16 +83,16 @@ public static class SpMesh
         return ms.ToArray();
     }
 
-    /// <summary>Parses a <c>.spmesh</c> blob back into CPU geometry. Safe to call off the render thread.</summary>
+    /// <summary>Parses a <c>.sptmesh</c> blob back into CPU geometry. Safe to call off the render thread.</summary>
     /// <param name="bytes">The encoded bytes.</param>
     /// <returns>The decoded submeshes.</returns>
-    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spmesh</c>.</exception>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.sptmesh</c>.</exception>
     public static IReadOnlyList<MeshData> Read(ReadOnlySpan<byte> bytes) => ReadModel(bytes).Submeshes;
 
-    /// <summary>Parses a <c>.spmesh</c> blob into a full cooked model. Safe to call off the render thread.</summary>
+    /// <summary>Parses a <c>.sptmesh</c> blob into a full cooked model. Safe to call off the render thread.</summary>
     /// <param name="bytes">The encoded bytes.</param>
     /// <returns>The decoded model (geometry, skinning and clips).</returns>
-    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spmesh</c>.</exception>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.sptmesh</c>.</exception>
     public static CookedModel ReadModel(ReadOnlySpan<byte> bytes)
     {
         var cursor = new Cursor(bytes);
@@ -101,7 +101,7 @@ public static class SpMesh
         uint version = cursor.ReadUInt32();
         if (version != 1 && version != 2)
         {
-            throw new InvalidDataException($"Unsupported .spmesh version {version}; expected 1 or 2.");
+            throw new InvalidDataException($"Unsupported .sptmesh version {version}; expected 1 or 2.");
         }
 
         uint submeshCount = cursor.ReadUInt32();
@@ -169,12 +169,12 @@ public static class SpMesh
         return new CookedModel(submeshes, animations);
     }
 
-    /// <summary>Reads and parses a <c>.spmesh</c> file into CPU geometry. Safe to call off the render thread.</summary>
+    /// <summary>Reads and parses a <c>.sptmesh</c> file into CPU geometry. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked mesh file.</param>
     /// <returns>The decoded submeshes.</returns>
     public static IReadOnlyList<MeshData> ReadFile(string path) => Read(File.ReadAllBytes(path));
 
-    /// <summary>Reads and parses a <c>.spmesh</c> file into a full cooked model. Safe to call off the render thread.</summary>
+    /// <summary>Reads and parses a <c>.sptmesh</c> file into a full cooked model. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked mesh file.</param>
     /// <returns>The decoded model (geometry, skinning and clips).</returns>
     public static CookedModel ReadModelFile(string path) => ReadModel(File.ReadAllBytes(path));
@@ -248,7 +248,7 @@ public static class SpMesh
     }
 }
 
-/// <summary>The decoded contents of a <c>.sptex</c>: raw RGBA pixels plus the sampling hint.</summary>
+/// <summary>The decoded contents of a <c>.spttex</c>: raw RGBA pixels plus the sampling hint.</summary>
 public readonly struct SpTexData
 {
     /// <summary>Initializes decoded texture pixels and their dimensions.</summary>
@@ -278,7 +278,7 @@ public readonly struct SpTexData
 }
 
 /// <summary>
-/// Reads and writes <c>.sptex</c>, the engine-native cooked texture format: raw RGBA pixels decoded once at
+/// Reads and writes <c>.spttex</c>, the engine-native cooked texture format: raw RGBA pixels decoded once at
 /// import time so the runtime uploads them verbatim with no image decoder. Mipmaps are generated on GPU
 /// upload, as they already are for source textures.
 /// </summary>
@@ -297,7 +297,7 @@ public static class SpTex
     private const uint FormatRgba8 = 0;
     private const uint FlagPointFilter = 1u << 0;
 
-    /// <summary>Serializes decoded RGBA pixels to a <c>.sptex</c> byte blob.</summary>
+    /// <summary>Serializes decoded RGBA pixels to a <c>.spttex</c> byte blob.</summary>
     /// <param name="width">Texture width in pixels.</param>
     /// <param name="height">Texture height in pixels.</param>
     /// <param name="rgba">Raw RGBA8 pixels, <c>width * height * 4</c> bytes.</param>
@@ -326,10 +326,10 @@ public static class SpTex
         return ms.ToArray();
     }
 
-    /// <summary>Parses a <c>.sptex</c> blob back into RGBA pixels.</summary>
+    /// <summary>Parses a <c>.spttex</c> blob back into RGBA pixels.</summary>
     /// <param name="bytes">The encoded bytes.</param>
     /// <returns>The decoded texture.</returns>
-    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.sptex</c>.</exception>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spttex</c>.</exception>
     public static SpTexData Read(ReadOnlySpan<byte> bytes)
     {
         var cursor = new Cursor(bytes);
@@ -338,7 +338,7 @@ public static class SpTex
         uint version = cursor.ReadUInt32();
         if (version != Version)
         {
-            throw new InvalidDataException($"Unsupported .sptex version {version}; expected {Version}.");
+            throw new InvalidDataException($"Unsupported .spttex version {version}; expected {Version}.");
         }
 
         uint width = cursor.ReadUInt32();
@@ -346,7 +346,7 @@ public static class SpTex
         uint format = cursor.ReadUInt32();
         if (format != FormatRgba8)
         {
-            throw new InvalidDataException($"Unsupported .sptex pixel format {format}; expected RGBA8 ({FormatRgba8}).");
+            throw new InvalidDataException($"Unsupported .spttex pixel format {format}; expected RGBA8 ({FormatRgba8}).");
         }
 
         uint flags = cursor.ReadUInt32();
@@ -354,13 +354,13 @@ public static class SpTex
         return new SpTexData(width, height, rgba, (flags & FlagPointFilter) != 0);
     }
 
-    /// <summary>Reads and parses a <c>.sptex</c> file.</summary>
+    /// <summary>Reads and parses a <c>.spttex</c> file.</summary>
     /// <param name="path">The absolute path to the cooked texture file.</param>
     /// <returns>The decoded texture.</returns>
     public static SpTexData ReadFile(string path) => Read(File.ReadAllBytes(path));
 }
 
-/// <summary>The decoded contents of a <c>.spaudio</c>: interleaved 16-bit PCM plus its channel and rate.</summary>
+/// <summary>The decoded contents of a <c>.sptaudio</c>: interleaved 16-bit PCM plus its channel and rate.</summary>
 public readonly struct SpAudioData
 {
     /// <summary>Initializes decoded PCM audio.</summary>
@@ -385,7 +385,7 @@ public readonly struct SpAudioData
 }
 
 /// <summary>
-/// Reads and writes <c>.spaudio</c>, the engine-native cooked audio format: interleaved 16-bit PCM decoded
+/// Reads and writes <c>.sptaudio</c>, the engine-native cooked audio format: interleaved 16-bit PCM decoded
 /// once at import time so the runtime uploads it straight to an OpenAL buffer with no audio decoder present.
 /// Parsing is pure computation, so a cooked clip can be read off the render thread, mirroring the split the
 /// texture and mesh formats already use.
@@ -404,7 +404,7 @@ public static class SpAudio
 
     private const ushort BitsPerSample = 16;
 
-    /// <summary>Serializes decoded PCM to a <c>.spaudio</c> byte blob.</summary>
+    /// <summary>Serializes decoded PCM to a <c>.sptaudio</c> byte blob.</summary>
     /// <param name="channels">Channel count (1 = mono, 2 = stereo).</param>
     /// <param name="sampleRate">Sample rate in frames per second.</param>
     /// <param name="pcm">Interleaved signed 16-bit PCM samples.</param>
@@ -426,10 +426,10 @@ public static class SpAudio
         return ms.ToArray();
     }
 
-    /// <summary>Parses a <c>.spaudio</c> blob back into PCM. Safe to call off the render thread.</summary>
+    /// <summary>Parses a <c>.sptaudio</c> blob back into PCM. Safe to call off the render thread.</summary>
     /// <param name="bytes">The encoded bytes.</param>
     /// <returns>The decoded audio.</returns>
-    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.spaudio</c>.</exception>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.sptaudio</c>.</exception>
     public static SpAudioData Read(ReadOnlySpan<byte> bytes)
     {
         var cursor = new Cursor(bytes);
@@ -438,14 +438,14 @@ public static class SpAudio
         uint version = cursor.ReadUInt32();
         if (version != Version)
         {
-            throw new InvalidDataException($"Unsupported .spaudio version {version}; expected {Version}.");
+            throw new InvalidDataException($"Unsupported .sptaudio version {version}; expected {Version}.");
         }
 
         ushort channels = cursor.ReadUInt16();
         ushort bits = cursor.ReadUInt16();
         if (bits != BitsPerSample)
         {
-            throw new InvalidDataException($"Unsupported .spaudio sample depth {bits}; expected {BitsPerSample}-bit.");
+            throw new InvalidDataException($"Unsupported .sptaudio sample depth {bits}; expected {BitsPerSample}-bit.");
         }
 
         uint sampleRate = cursor.ReadUInt32();
@@ -454,7 +454,7 @@ public static class SpAudio
         return new SpAudioData(pcm, channels, (int)sampleRate);
     }
 
-    /// <summary>Reads and parses a <c>.spaudio</c> file. Safe to call off the render thread.</summary>
+    /// <summary>Reads and parses a <c>.sptaudio</c> file. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked audio file.</param>
     /// <returns>The decoded audio.</returns>
     public static SpAudioData ReadFile(string path) => Read(File.ReadAllBytes(path));

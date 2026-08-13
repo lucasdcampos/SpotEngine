@@ -13,7 +13,7 @@ public interface IAssetImporter
     /// <summary>Gets the source file extensions this importer handles, each including the leading dot.</summary>
     IEnumerable<string> SourceExtensions { get; }
 
-    /// <summary>Gets the extension of the cooked artifact this importer produces (e.g. <c>.sptex</c>).</summary>
+    /// <summary>Gets the extension of the cooked artifact this importer produces (e.g. <c>.spttex</c>).</summary>
     string CookedExtension { get; }
 
     /// <summary>Cooks a source file into an engine-native artifact.</summary>
