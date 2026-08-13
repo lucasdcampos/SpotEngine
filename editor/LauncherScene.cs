@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Silk.NET.Maths;
@@ -21,16 +23,19 @@ namespace Spot.Editor;
 public class LauncherScene : Scene
 {
     // A compact, centered window: the launcher does not need the editor's full working area.
-    private const int LauncherWidth = 1000;
-    private const int LauncherHeight = 620;
-    private const float SidebarWidth = 300.0f;
+    private const int LauncherWidth = 840;
+    private const int LauncherHeight = 520;
+    private const float SidebarWidth = 250.0f;
+
+    private const string RepoUrl = "https://github.com/lucasdcampos/spotengine";
 
     // Cover frames to present before running the heavy open/create work. Enough for the editor-sized
     // window (requested when loading begins) to finish resizing so the freeze that follows happens
     // under a full-size loading screen instead of the old, small one.
     private const int LoadingSettleFrames = 2;
 
-    private List<string> _recent = new();
+    private List<RecentProject> _recent = new();
+    private string _search = string.Empty;
 
     private bool _isCreatingProject;
     private string _newProjectName = "MyProject";
@@ -141,29 +146,32 @@ public class LauncherScene : Scene
         // default, so without it the content would sit flush against the child's edge. Pop the var
         // right after BeginChild (the child captures it there) so it does not leak into nested childs.
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Darken(palette.WindowBg, 0.35f));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(26, 28));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(24, 26));
         ImGui.BeginChild("##sidebar", new Vector2(SidebarWidth, 0), ImGuiChildFlags.AlwaysUseWindowPadding);
         ImGui.PopStyleVar();
 
         DrawLogo(palette);
 
-        ImGui.Dummy(new Vector2(0, 16));
-        ImGui.SetWindowFontScale(1.6f);
+        ImGui.Dummy(new Vector2(0, 14));
+        ImGui.SetWindowFontScale(1.5f);
         ImGui.TextUnformatted("Spot Engine");
         ImGui.SetWindowFontScale(1.0f);
-        ImGui.TextDisabled($"Game Engine  ·  v{Application.Instance.EngineVersion}");
+        ImGui.TextDisabled("2D / 3D Game Engine");
 
-        ImGui.Dummy(new Vector2(0, 28));
+        ImGui.Dummy(new Vector2(0, 6));
+        DrawVersionPill(palette);
+
+        ImGui.Dummy(new Vector2(0, 24));
         DrawSectionLabel(palette, "START");
         ImGui.Dummy(new Vector2(0, 6));
 
         float w = ImGui.GetContentRegionAvail().X;
-        if (ActionButton(palette, "##new", "New Project", new Vector2(w, 44), filled: true, Icon.Plus))
+        if (ActionButton(palette, "##new", "New Project", new Vector2(w, 42), filled: true, EditorIcons.Cube))
         {
             _isCreatingProject = true;
         }
         ImGui.Dummy(new Vector2(0, 8));
-        if (ActionButton(palette, "##open", "Open Project", new Vector2(w, 44), filled: false, Icon.Folder))
+        if (ActionButton(palette, "##open", "Open Project", new Vector2(w, 42), filled: false, EditorIcons.FolderOpen))
         {
             string? path = FileDialogs.OpenFile("Spot Project (*.sptproj)|*.sptproj");
             if (path != null)
@@ -180,13 +188,42 @@ public class LauncherScene : Scene
             ImGui.PopTextWrapPos();
         }
 
-        // Footer pinned to the bottom of the sidebar.
-        float y = ImGui.GetWindowHeight() - ImGui.GetTextLineHeight() - 22;
-        if (y > ImGui.GetCursorPosY()) ImGui.SetCursorPosY(y);
-        ImGui.TextDisabled($"© {DateTime.Now.Year} Spot Engine");
+        DrawSidebarFooter(palette);
 
         ImGui.EndChild();
         ImGui.PopStyleColor();
+    }
+
+    // Resource links + copyright, pinned to the bottom of the sidebar.
+    private void DrawSidebarFooter(EditorPalette palette)
+    {
+        // Anchor the footer to the bottom of the content region (which already excludes the child's
+        // bottom padding) rather than the raw window height — ending exactly at the content boundary
+        // keeps the sidebar from overflowing by a few pixels, which is what showed a scrollbar. When the
+        // window is genuinely too short, this Y falls above the cursor and the pin is skipped, letting
+        // the content flow (and the scrollbar appear) only then.
+        float line = ImGui.GetTextLineHeight();
+        float sp = ImGui.GetStyle().ItemSpacing.Y;
+        float footerH = 3 * line + 24 + 5 * sp; // separator + spacer + two links + spacer + copyright
+        float y = ImGui.GetWindowContentRegionMax().Y - footerH;
+        if (y > ImGui.GetCursorPosY()) ImGui.SetCursorPosY(y);
+
+        ImGui.Separator();
+        ImGui.Dummy(new Vector2(0, 8));
+        LinkLabel(palette, EditorIcons.Code, "GitHub Repository", RepoUrl);
+        LinkLabel(palette, EditorIcons.File, "Documentation", $"{RepoUrl}/tree/master/docs");
+        ImGui.Dummy(new Vector2(0, 6));
+        ImGui.TextDisabled($"© {DateTime.Now.Year} Spot Engine  ·  v{Application.Instance.EngineVersion}");
+    }
+
+    // A small rounded "v0.1.0" chip, tinted with the accent, sitting under the engine title.
+    private void DrawVersionPill(EditorPalette palette)
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        string text = $"v{Application.Instance.EngineVersion}";
+        Vector2 pos = ImGui.GetCursorScreenPos();
+        float width = DrawPill(drawList, pos, text, WithAlpha(palette.Text, 0.07f), palette.TextDisabled);
+        ImGui.Dummy(new Vector2(width, ImGui.GetTextLineHeight() + 6));
     }
 
     // The "spot" brand mark: a rounded accent tile with an offset dot punched out of it.
@@ -194,7 +231,7 @@ public class LauncherScene : Scene
     {
         var drawList = ImGui.GetWindowDrawList();
         Vector2 p0 = ImGui.GetCursorScreenPos();
-        const float s = 56.0f;
+        const float s = 52.0f;
         Vector2 p1 = p0 + new Vector2(s, s);
 
         drawList.AddRectFilled(p0, p1, ImGui.GetColorU32(palette.Accent), 14.0f);
@@ -212,20 +249,33 @@ public class LauncherScene : Scene
 
     private void DrawRecentsPanel(EditorPalette palette)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(28, 24));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(26, 22));
         ImGui.BeginChild("##recentsPanel", new Vector2(0, 0), ImGuiChildFlags.AlwaysUseWindowPadding);
         ImGui.PopStyleVar();
 
-        ImGui.SetWindowFontScale(1.25f);
+        // Header: title (+ count) on the left, a search filter on the right.
+        float headerTop = ImGui.GetCursorPosY();
+        ImGui.SetWindowFontScale(1.2f);
         ImGui.TextUnformatted("Recent Projects");
         ImGui.SetWindowFontScale(1.0f);
         if (_recent.Count > 0)
         {
             ImGui.SameLine();
+            ImGui.AlignTextToFramePadding();
             ImGui.TextDisabled($"({_recent.Count})");
         }
 
-        ImGui.Dummy(new Vector2(0, 6));
+        const float searchW = 210.0f;
+        if (_recent.Count > 0)
+        {
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - searchW);
+            ImGui.SetCursorPosY(headerTop - 2);
+            ImGui.SetNextItemWidth(searchW);
+            ImGui.InputTextWithHint("##search", $"{EditorIcons.Search}  Search projects", ref _search, 128);
+        }
+
+        ImGui.Dummy(new Vector2(0, 8));
         ImGui.Separator();
         ImGui.Dummy(new Vector2(0, 8));
 
@@ -233,15 +283,22 @@ public class LauncherScene : Scene
         // exactly under the header/separator (the panel's own padding already insets the whole column).
         ImGui.BeginChild("##recentsScroll", new Vector2(0, 0), ImGuiChildFlags.None);
 
+        var filtered = FilterRecents();
         if (_recent.Count == 0)
         {
-            DrawEmptyRecents(palette);
+            DrawEmptyRecents(palette, "No recent projects yet",
+                "Create a new project or open an existing one to get started.");
+        }
+        else if (filtered.Count == 0)
+        {
+            DrawEmptyRecents(palette, "No matches",
+                $"No recent project matches \"{_search}\".");
         }
         else
         {
-            foreach (var path in _recent)
+            foreach (var project in filtered)
             {
-                DrawRecentCard(palette, path);
+                DrawRecentCard(palette, project);
             }
         }
 
@@ -249,32 +306,47 @@ public class LauncherScene : Scene
         ImGui.EndChild();
     }
 
-    private void DrawEmptyRecents(EditorPalette palette)
+    private List<RecentProject> FilterRecents()
+    {
+        if (string.IsNullOrWhiteSpace(_search)) return _recent;
+        string q = _search.Trim();
+        return _recent.Where(p =>
+                Path.GetFileNameWithoutExtension(p.Path).Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                p.Path.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private void DrawEmptyRecents(EditorPalette palette, string line1, string line2)
     {
         Vector2 avail = ImGui.GetContentRegionAvail();
-        const string line1 = "No recent projects yet";
-        const string line2 = "Create a new project or open an existing one to get started.";
 
-        float y = ImGui.GetCursorPosY() + avail.Y * 0.4f;
+        float y = ImGui.GetCursorPosY() + avail.Y * 0.36f;
         ImGui.SetCursorPosY(y);
-        CenteredText(avail.X, line1, palette.TextDisabled);
-        ImGui.Dummy(new Vector2(0, 4));
+        ImGui.SetWindowFontScale(1.15f);
+        CenteredText(avail.X, line1, palette.Text);
+        ImGui.SetWindowFontScale(1.0f);
+        ImGui.Dummy(new Vector2(0, 6));
         CenteredText(avail.X, line2, palette.TextDisabled);
     }
 
-    private void DrawRecentCard(EditorPalette palette, string path)
+    private void DrawRecentCard(EditorPalette palette, RecentProject project)
     {
+        string path = project.Path;
         var drawList = ImGui.GetWindowDrawList();
-        const float cardH = 66.0f;
+        const float cardH = 74.0f;
+        const float actionSize = 30.0f;
 
         ImGui.PushID(path);
         Vector2 p0 = ImGui.GetCursorScreenPos();
         float width = ImGui.GetContentRegionAvail().X;
         Vector2 size = new Vector2(width, cardH);
+        Vector2 p1 = p0 + size;
 
+        // Allow the on-hover action buttons (drawn on top) to take mouse priority over the card body.
+        ImGui.SetNextItemAllowOverlap();
         ImGui.InvisibleButton("##card", size);
-        bool hovered = ImGui.IsItemHovered();
         bool active = ImGui.IsItemActive();
+        bool rowHovered = ImGui.IsMouseHoveringRect(p0, p1);
         if (ImGui.IsItemClicked()) _pendingOpen = path;
 
         if (ImGui.BeginPopupContextItem("rowctx"))
@@ -290,46 +362,75 @@ public class LauncherScene : Scene
             ImGui.EndPopup();
         }
 
-        Vector2 p1 = p0 + size;
-        Vector4 bg = active ? palette.FrameBgActive : hovered ? palette.FrameBgHovered : palette.FrameBg;
+        Vector4 bg = active ? palette.FrameBgActive : rowHovered ? palette.FrameBgHovered : palette.FrameBg;
         drawList.AddRectFilled(p0, p1, ImGui.GetColorU32(bg), 8.0f);
         drawList.AddRect(p0, p1,
-            ImGui.GetColorU32(hovered ? WithAlpha(palette.Accent, 0.7f) : palette.Border),
-            8.0f, ImDrawFlags.None, hovered ? 1.5f : 1.0f);
+            ImGui.GetColorU32(rowHovered ? WithAlpha(new Vector4(1, 1, 1, 1), 0.22f) : palette.Border),
+            8.0f, ImDrawFlags.None, rowHovered ? 1.5f : 1.0f);
 
         string name = Path.GetFileNameWithoutExtension(path);
         string dir2 = Path.GetDirectoryName(path) ?? path;
 
-        // Letter avatar.
-        const float av = 44.0f;
-        Vector2 aMin = p0 + new Vector2(12, (cardH - av) * 0.5f);
+        // Letter avatar — a neutral surface tile so the list stays calm and monochrome.
+        const float av = 46.0f;
+        Vector2 aMin = p0 + new Vector2(13, (cardH - av) * 0.5f);
         Vector2 aMax = aMin + new Vector2(av, av);
-        drawList.AddRectFilled(aMin, aMax, ImGui.GetColorU32(WithAlpha(palette.Accent, 0.85f)), 9.0f);
+        drawList.AddRectFilled(aMin, aMax, ImGui.GetColorU32(WithAlpha(palette.Text, 0.08f)), 10.0f);
+        drawList.AddRect(aMin, aMax, ImGui.GetColorU32(palette.Border), 10.0f);
         string initial = (name.Length > 0 ? char.ToUpperInvariant(name[0]) : '?').ToString();
-        float initSize = 22.0f;
-        float scale = initSize / ImGui.GetFontSize();
-        Vector2 initTs = ImGui.CalcTextSize(initial) * scale;
+        const float initSize = 22.0f;
+        Vector2 initTs = ImGui.CalcTextSize(initial) * (initSize / ImGui.GetFontSize());
         drawList.AddText(ImGui.GetFont(), initSize,
             aMin + (new Vector2(av, av) - initTs) * 0.5f,
-            ImGui.GetColorU32(new Vector4(1, 1, 1, 0.95f)), initial);
+            ImGui.GetColorU32(WithAlpha(palette.Text, 0.78f)), initial);
 
-        // Name + path.
-        float textX = aMax.X + 14;
-        float textW = p1.X - textX - 14;
-        drawList.AddText(new Vector2(textX, p0.Y + 14),
+        // Text column: name, path, then a meta row (last-opened + engine-version chip).
+        float textX = aMin.X + av + 14;
+        float actionsX = p1.X - 12 - actionSize * 2 - 6;
+        float textW = actionsX - textX - 10;
+
+        drawList.AddText(new Vector2(textX, p0.Y + 11),
             ImGui.GetColorU32(palette.Text), name);
-        drawList.AddText(new Vector2(textX, p0.Y + 14 + ImGui.GetTextLineHeight() + 4),
+        drawList.AddText(new Vector2(textX, p0.Y + 11 + ImGui.GetTextLineHeight() + 3),
             ImGui.GetColorU32(palette.TextDisabled), TruncateFront(dir2, textW));
 
+        float metaY = p0.Y + cardH - ImGui.GetTextLineHeight() - 11;
+        string relative = $"Opened {RelativeTime(project.LastOpenedUtc)}";
+        drawList.AddText(new Vector2(textX, metaY), ImGui.GetColorU32(palette.TextDisabled), relative);
+        if (!string.IsNullOrEmpty(project.EngineVersion))
+        {
+            float metaX = textX + ImGui.CalcTextSize(relative).X + 10;
+            DrawPill(drawList, new Vector2(metaX, metaY - 3), $"v{project.EngineVersion}",
+                WithAlpha(palette.Text, 0.08f), palette.TextDisabled);
+        }
+
+        // Hover-revealed quick actions on the right edge (open the containing folder, or remove).
+        if (rowHovered)
+        {
+            float ay = p0.Y + (cardH - actionSize) * 0.5f;
+            if (IconButton("##openfolder", EditorIcons.FolderOpen,
+                    new Vector2(actionsX, ay), actionSize, palette, "Open containing folder"))
+            {
+                string? dir = Path.GetDirectoryName(path);
+                if (dir != null) OpenExternally(dir);
+            }
+            if (IconButton("##remove", EditorIcons.Times,
+                    new Vector2(actionsX + actionSize + 6, ay), actionSize, palette, "Remove from recents", danger: true))
+            {
+                _pendingRemove = path;
+            }
+        }
+
+        // Restore the layout cursor below the card (the action buttons moved it) and add the gap.
+        ImGui.SetCursorScreenPos(new Vector2(p0.X, p1.Y));
         ImGui.Dummy(new Vector2(0, 8));
         ImGui.PopID();
     }
 
     // ----- Custom widgets -------------------------------------------------------------------------
 
-    private enum Icon { None, Plus, Folder }
-
-    private bool ActionButton(EditorPalette palette, string id, string label, Vector2 size, bool filled, Icon icon)
+    // A primary action button (filled = accent, else outline) with a leading Font Awesome glyph.
+    private bool ActionButton(EditorPalette palette, string id, string label, Vector2 size, bool filled, string glyph)
     {
         var drawList = ImGui.GetWindowDrawList();
         Vector2 p0 = ImGui.GetCursorScreenPos();
@@ -345,7 +446,9 @@ public class LauncherScene : Scene
         drawList.AddRectFilled(p0, p1, ImGui.GetColorU32(bg), 8.0f);
         if (!filled)
         {
-            drawList.AddRect(p0, p1, ImGui.GetColorU32(palette.Border), 8.0f, ImDrawFlags.None, 1.0f);
+            drawList.AddRect(p0, p1,
+                ImGui.GetColorU32(hovered ? WithAlpha(new Vector4(1, 1, 1, 1), 0.22f) : palette.Border),
+                8.0f, ImDrawFlags.None, 1.0f);
         }
 
         Vector4 fg = filled ? new Vector4(1, 1, 1, 1) : palette.Text;
@@ -353,29 +456,63 @@ public class LauncherScene : Scene
 
         float cy = p0.Y + size.Y * 0.5f;
         float iconX = p0.X + 20;
-        DrawButtonIcon(drawList, icon, new Vector2(iconX, cy), fgCol);
+        Vector2 gs = ImGui.CalcTextSize(glyph);
+        drawList.AddText(new Vector2(iconX, cy - gs.Y * 0.5f), fgCol, glyph);
 
         Vector2 ts = ImGui.CalcTextSize(label);
-        drawList.AddText(new Vector2(iconX + 30, cy - ts.Y * 0.5f), fgCol, label);
+        drawList.AddText(new Vector2(iconX + 28, cy - ts.Y * 0.5f), fgCol, label);
 
         return clicked;
     }
 
-    private static void DrawButtonIcon(ImDrawListPtr drawList, Icon icon, Vector2 center, uint color)
+    // A square, icon-only button drawn at an absolute position (used for on-hover card actions).
+    private bool IconButton(string id, string glyph, Vector2 topLeft, float size, EditorPalette palette, string tooltip, bool danger = false)
     {
-        switch (icon)
+        var drawList = ImGui.GetWindowDrawList();
+        ImGui.SetCursorScreenPos(topLeft);
+        ImGui.InvisibleButton(id, new Vector2(size, size));
+        bool hovered = ImGui.IsItemHovered();
+        bool active = ImGui.IsItemActive();
+        bool clicked = ImGui.IsItemClicked();
+
+        Vector2 max = topLeft + new Vector2(size, size);
+        if (hovered)
         {
-            case Icon.Plus:
-                drawList.AddLine(center - new Vector2(7, 0), center + new Vector2(7, 0), color, 2.0f);
-                drawList.AddLine(center - new Vector2(0, 7), center + new Vector2(0, 7), color, 2.0f);
-                break;
-            case Icon.Folder:
-                Vector2 bMin = center + new Vector2(-8, -3);
-                Vector2 bMax = center + new Vector2(8, 6);
-                drawList.AddRectFilled(bMin, bMax, color, 2.0f);
-                drawList.AddRectFilled(center + new Vector2(-8, -6), center + new Vector2(-1, -3), color, 1.5f);
-                break;
+            drawList.AddRectFilled(topLeft, max,
+                ImGui.GetColorU32(active ? palette.FrameBgActive : palette.FrameBgHovered), 6.0f);
         }
+
+        Vector4 fg = danger && hovered ? palette.LogError : hovered ? palette.Text : palette.TextDisabled;
+        Vector2 ts = ImGui.CalcTextSize(glyph);
+        drawList.AddText(topLeft + (new Vector2(size, size) - ts) * 0.5f, ImGui.GetColorU32(fg), glyph);
+        if (hovered) ImGui.SetTooltip(tooltip);
+        return clicked;
+    }
+
+    // A clickable text link (icon + label) that opens a URL and lights up on hover.
+    private void LinkLabel(EditorPalette palette, string glyph, string text, string url)
+    {
+        string full = $"{glyph}  {text}";
+        Vector2 ts = ImGui.CalcTextSize(full);
+        Vector2 p = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton($"##link_{text}", new Vector2(ts.X + 4, ts.Y + 4));
+        bool hovered = ImGui.IsItemHovered();
+        if (ImGui.IsItemClicked()) OpenExternally(url);
+        ImGui.GetWindowDrawList().AddText(p,
+            ImGui.GetColorU32(hovered ? palette.Text : palette.TextDisabled), full);
+        if (hovered) ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+    }
+
+    // Draws a rounded "chip" with centered text; returns the chip's total width.
+    private static float DrawPill(ImDrawListPtr drawList, Vector2 pos, string text, Vector4 bg, Vector4 fg)
+    {
+        Vector2 ts = ImGui.CalcTextSize(text);
+        const float padX = 8.0f;
+        float h = ts.Y + 5.0f;
+        Vector2 max = pos + new Vector2(ts.X + padX * 2, h);
+        drawList.AddRectFilled(pos, max, ImGui.GetColorU32(bg), h * 0.5f);
+        drawList.AddText(pos + new Vector2(padX, (h - ts.Y) * 0.5f), ImGui.GetColorU32(fg), text);
+        return max.X - pos.X;
     }
 
     private static void DrawSectionLabel(EditorPalette palette, string text)
@@ -391,6 +528,22 @@ public class LauncherScene : Scene
         float indent = MathF.Max(0, (availWidth - tw) * 0.5f);
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() + indent);
         ImGui.TextColored(color, text);
+    }
+
+    // A short, human "time ago" phrase for a project's last-opened timestamp.
+    private static string RelativeTime(DateTime? utc)
+    {
+        if (utc == null) return "recently";
+
+        TimeSpan span = DateTime.UtcNow - utc.Value;
+        if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        if (span.TotalDays < 30) return $"{(int)(span.TotalDays / 7)}w ago";
+        return utc.Value.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
     }
 
     // Ellipsizes a path from the front ("...\Projects\MyGame"), keeping the meaningful tail visible.
@@ -425,18 +578,32 @@ public class LauncherScene : Scene
         bool open = true;
         if (ImGui.BeginPopupModal("Create New Project", ref open, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.SetNextItemWidth(360);
+            ImGui.TextDisabled("Give your project a name and a home on disk.");
+            ImGui.Dummy(new Vector2(0, 6));
+
+            ImGui.SetNextItemWidth(380);
             ImGui.InputText("Project Name", ref _newProjectName, 128);
-            ImGui.SetNextItemWidth(360);
+            ImGui.SetNextItemWidth(380);
             ImGui.InputText("Location", ref _newProjectLocation, 256);
             ImGui.SameLine();
-            if (ImGui.Button("...##Location"))
+            if (ImGui.Button($"{EditorIcons.FolderOpen}##Location"))
             {
                 string? folder = FileDialogs.SelectFolder();
                 if (folder != null) _newProjectLocation = folder;
             }
 
-            ImGui.Spacing();
+            // Show where the project folder will actually land so there are no surprises.
+            string name = _newProjectName.Trim();
+            if (!string.IsNullOrEmpty(name) && !string.IsNullOrWhiteSpace(_newProjectLocation))
+            {
+                ImGui.Dummy(new Vector2(0, 2));
+                ImGui.TextDisabled($"{EditorIcons.Folder}  {Path.Combine(_newProjectLocation, name)}");
+            }
+
+            ImGui.Dummy(new Vector2(0, 4));
+            ImGui.Separator();
+            ImGui.Dummy(new Vector2(0, 4));
+
             bool canCreate = !string.IsNullOrWhiteSpace(_newProjectName) && !string.IsNullOrWhiteSpace(_newProjectLocation);
             if (!canCreate) ImGui.BeginDisabled();
             if (ImGui.Button("Create", new Vector2(120, 0)))
@@ -470,7 +637,7 @@ public class LauncherScene : Scene
         {
             if (Project.Load(sptprojPath) != null)
             {
-                RecentProjects.Add(sptprojPath);
+                RecentProjects.Add(sptprojPath, Application.Instance.EngineVersion);
                 OpenEditor();
             }
             else
@@ -490,7 +657,7 @@ public class LauncherScene : Scene
             try
             {
                 string sptproj = ProjectScaffolder.Create(name, location);
-                RecentProjects.Add(sptproj);
+                RecentProjects.Add(sptproj, Application.Instance.EngineVersion);
                 OpenEditor();
             }
             catch (System.Exception ex)

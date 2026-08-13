@@ -10,6 +10,22 @@ The editor is where day-to-day content work happens: laying out levels, wiring u
 lights, tweaking transforms and materials, importing models and audio, and previewing how a scene
 looks and plays before shipping it.
 
+## The launcher
+
+Opening the editor first shows a compact **launcher** for picking a project to work on:
+
+- **New Project** — names a project and a location on disk, previews the folder it will create, and
+  scaffolds it (folder, `Assets/`, `.sptproj`, and build files) before opening it.
+- **Open Project** — browses for an existing `.sptproj` file.
+- **Recent Projects** — a searchable list of the projects you've opened before. Each entry shows the
+  project name, its path, when it was **last opened**, and the **engine version** that opened it.
+  Click a card to open it; hover it for quick actions (open the containing folder, or remove it from
+  the list), or right-click for the same menu.
+
+The recent list is stored per-user and drops entries whose files no longer exist, so it stays
+current on its own. Choosing a project shows a loading screen while the editor grows to its working
+size and the scene is built.
+
 ## The workspace
 
 The editor is organized into dockable panels you can rearrange and save into a layout:

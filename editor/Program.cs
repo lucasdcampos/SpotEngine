@@ -15,7 +15,7 @@ public static class Program
         {
             Name = "Spot.Editor",
             // Start at the launcher's compact size; the editor restores its own size when it loads.
-            Window = new WindowSpec { Title = "Spot Launcher", Width = 1000, Height = 620 },
+            Window = new WindowSpec { Title = "Spot Launcher", Width = 840, Height = 520 },
             FontPath = System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"),
             FontSize = 16,
             // Extra atlas fonts, resolved by EditorFonts in registration order: a heavier Inter for
