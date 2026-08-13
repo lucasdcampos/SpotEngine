@@ -283,10 +283,10 @@ public class AssetPipelineTests
     [Fact]
     public void AssetPath_ResolveContent_UsesInstalledHookForGuidRefsOnly()
     {
-        AssetPath.ContentResolver = r => r == "guid:abc" ? "/cooked/abc.sptex" : null;
+        AssetPath.ContentResolver = r => r == "guid:abc" ? "/cooked/abc.spttex" : null;
         try
         {
-            Assert.Equal("/cooked/abc.sptex", AssetPath.ResolveContent("guid:abc"));
+            Assert.Equal("/cooked/abc.spttex", AssetPath.ResolveContent("guid:abc"));
             Assert.Null(AssetPath.ResolveContent("guid:unknown"));
             Assert.Null(AssetPath.ResolveContent("Textures/pixel.bmp")); // not a guid ref -> hook not consulted
         }
@@ -353,7 +353,7 @@ public class AssetPipelineTests
             string? cooked = AssetPath.ResolveContent(AssetRef.MakeGuidRef(guid));
             Assert.NotNull(cooked);
             Assert.True(File.Exists(cooked));
-            Assert.EndsWith(".sptex", cooked);
+            Assert.EndsWith(".spttex", cooked);
         }
         finally
         {
@@ -381,7 +381,7 @@ public class AssetPipelineTests
             Assert.Equal("texture", doc.Entries[imageGuid].Type);
             Assert.Equal("material", doc.Entries[matGuid].Type);
 
-            // Cooked texture is a real 2x2 .sptex.
+            // Cooked texture is a real 2x2 .spttex.
             SpTexData tex = SpTex.ReadFile(Path.Combine(contentRoot, doc.Entries[imageGuid].File));
             Assert.Equal(2u, tex.Width);
             Assert.Equal(2u, tex.Height);
@@ -459,7 +459,7 @@ public class AssetPipelineTests
         {
             AssetDatabase.CookAll(temp.Path, contentRoot);
             Assert.True(AssetDatabase.TryGetGuid("Textures/pixel.bmp", out string imageGuid));
-            string cookedTexture = Path.Combine(contentRoot, imageGuid[..2], imageGuid + ".sptex");
+            string cookedTexture = Path.Combine(contentRoot, imageGuid[..2], imageGuid + ".spttex");
             Assert.True(File.Exists(cookedTexture));
 
             // Delete the source (and its .meta/dependent material) and re-cook. Because Content/ is rebuilt

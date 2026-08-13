@@ -85,7 +85,7 @@ public static class ModelImporter
 
     /// <summary>
     /// Resolves a stored model reference to an absolute path to load from, and whether that path is a cooked
-    /// <c>.spmesh</c> (loaded without Assimp) rather than a source model. A <c>guid:</c> reference resolves
+    /// <c>.sptmesh</c> (loaded without Assimp) rather than a source model. A <c>guid:</c> reference resolves
     /// through the content host; anything else resolves as a source path. Returns <see langword="false"/> when a
     /// guid reference has no cooked artifact (unknown guid or no host installed), so callers can skip it.
     /// </summary>
@@ -108,7 +108,7 @@ public static class ModelImporter
             fullPath = Path.GetFullPath(AssetPath.Resolve(path));
         }
 
-        cooked = fullPath.EndsWith(".spmesh", StringComparison.OrdinalIgnoreCase);
+        cooked = fullPath.EndsWith(".sptmesh", StringComparison.OrdinalIgnoreCase);
         return true;
     }
 
@@ -226,7 +226,7 @@ public static class ModelImporter
         return null;
     }
 
-    // Runs a CPU-only parse (Assimp or .spmesh read) on a gated background worker, then queues the resulting
+    // Runs a CPU-only parse (Assimp or .sptmesh read) on a gated background worker, then queues the resulting
     // geometry back for GPU upload on the render thread. The queue is the only cross-thread structure.
     private static void QueueParse(string fullPath, Func<CookedModel> parse)
     {

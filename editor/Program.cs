@@ -37,7 +37,7 @@ public static class Program
         try
         {
             // Authoring host: register the Assimp source importer so the editor can load source models
-            // directly (the runtime deliberately does not — it loads cooked .spmesh).
+            // directly (the runtime deliberately does not — it loads cooked .sptmesh).
             ModelImporter.Register(new AssimpModelImporter());
 
             var app = new Spot.Core.Application(spec);

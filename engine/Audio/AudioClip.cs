@@ -6,7 +6,7 @@ namespace Spot.Audio;
 /// A fully-decoded sound: interleaved 16-bit PCM held in memory, ready to be uploaded to an OpenAL buffer
 /// the first time it plays. This is the audio counterpart to <c>Texture2D</c> — the runtime asset that
 /// components reference. Loading follows the same rule as every other asset: a <c>guid:</c> reference
-/// resolves to its cooked <c>.spaudio</c>, while any other value is decoded from a source <c>.wav</c>/<c>.ogg</c>.
+/// resolves to its cooked <c>.sptaudio</c>, while any other value is decoded from a source <c>.wav</c>/<c>.ogg</c>.
 /// </summary>
 public sealed class AudioClip : IDisposable
 {
@@ -37,8 +37,8 @@ public sealed class AudioClip : IDisposable
     public float LengthInSeconds =>
         Channels > 0 && SampleRate > 0 ? (float)Pcm.Length / Channels / SampleRate : 0.0f;
 
-    /// <summary>Loads a cooked <c>.spaudio</c> clip — PCM decoded at import time — with no audio decoder at runtime.</summary>
-    /// <param name="path">The absolute path to the cooked <c>.spaudio</c> file.</param>
+    /// <summary>Loads a cooked <c>.sptaudio</c> clip — PCM decoded at import time — with no audio decoder at runtime.</summary>
+    /// <param name="path">The absolute path to the cooked <c>.sptaudio</c> file.</param>
     public static AudioClip FromSpAudio(string path)
     {
         SpAudioData data = SpAudio.ReadFile(path);
@@ -46,7 +46,7 @@ public sealed class AudioClip : IDisposable
     }
 
     /// <summary>
-    /// Loads a clip from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.spaudio</c>
+    /// Loads a clip from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.sptaudio</c>
     /// through the content host, while any other value is decoded from a source audio path. This is the single
     /// entry point components use, so they never care whether the project has been cooked.
     /// </summary>

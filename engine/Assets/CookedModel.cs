@@ -7,7 +7,7 @@ namespace Spot.Assets;
 /// The CPU-side result of importing or reading a model: its submeshes (rigid or skinned) together with any
 /// animation clips. No GPU work is done, so this can be produced on a background thread and turned into a
 /// drawable <see cref="Model"/> on the render thread. It is the shared shape passed from the importer to the
-/// cooker (<see cref="ModelAssetImporter"/>) and read back from a cooked <c>.spmesh</c> (<see cref="SpMesh.ReadModel"/>).
+/// cooker (<see cref="ModelAssetImporter"/>) and read back from a cooked <c>.sptmesh</c> (<see cref="SpMesh.ReadModel"/>).
 /// </summary>
 public readonly struct CookedModel
 {

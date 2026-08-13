@@ -96,10 +96,10 @@ public sealed class Texture2D : IDisposable
     }
 
     /// <summary>
-    /// Loads a cooked <c>.sptex</c> texture — raw RGBA decoded at import time — and uploads it verbatim, so no
+    /// Loads a cooked <c>.spttex</c> texture — raw RGBA decoded at import time — and uploads it verbatim, so no
     /// image decoder runs at runtime. Mipmaps are generated on upload, as for a source texture.
     /// </summary>
-    /// <param name="path">The absolute path to the cooked <c>.sptex</c> file.</param>
+    /// <param name="path">The absolute path to the cooked <c>.spttex</c> file.</param>
     public static Texture2D FromSpTex(string path)
     {
         SpTexData tex = SpTex.ReadFile(path);
@@ -107,7 +107,7 @@ public sealed class Texture2D : IDisposable
     }
 
     /// <summary>
-    /// Loads a texture from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.sptex</c>
+    /// Loads a texture from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.spttex</c>
     /// through the content host, while any other value is loaded as a source image path. This is the single
     /// entry point components and materials use, so they never care whether the project has been cooked.
     /// </summary>
