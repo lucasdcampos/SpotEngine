@@ -97,6 +97,7 @@ public static class ProjectGenerator
     <PackageReference Include=""Silk.NET.OpenGL.Extensions.ImGui"" Version=""2.23.0"" />
     <PackageReference Include=""Silk.NET.Windowing"" Version=""2.23.0"" />
     <PackageReference Include=""StbImageSharp"" Version=""2.30.15"" />
+    <PackageReference Include=""StbTrueTypeSharp"" Version=""1.26.13"" />
     <PackageReference Include=""StbVorbisSharp"" Version=""1.22.4"" />
   </ItemGroup>
 

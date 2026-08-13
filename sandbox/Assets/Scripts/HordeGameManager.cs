@@ -1,16 +1,18 @@
 using System;
 using System.Collections;
 using System.Numerics;
-using ImGuiNET;
 using Spot.Core;
+using Spot.Rendering;
 using Spot.Scenes;
+using Spot.UI;
 
 namespace Spot.Game;
 
 /// <summary>
 /// Runs the Horde Survival demo: it resets the shared <see cref="HordeGameState"/>, spawns escalating
-/// waves of mixed <see cref="EnemyKind"/>s on a coroutine, announces each wave, draws the HUD and the
-/// game-over screen, and owns the flow controls (restart, back to menu, and Escape).
+/// waves of mixed <see cref="EnemyKind"/>s on a coroutine, announces each wave, drives the HUD and the
+/// game-over screen (built with the engine's runtime UI), and owns the flow controls (restart, back to
+/// menu, and Escape).
 /// </summary>
 public sealed class HordeGameManager : EntityBehaviour
 {
@@ -35,12 +37,23 @@ public sealed class HordeGameManager : EntityBehaviour
     /// <summary>The player's starting and maximum health.</summary>
     public float PlayerMaxHealth { get; set; } = 100.0f;
 
+    private const float HealthBarWidth = 248f;
+    private const float BannerDuration = 1.6f;
+
     private readonly Random _rng = new();
     private float _bannerTimer;
+
+    private Panel _healthFill = null!;
+    private Text _healthValue = null!;
+    private Text _stats = null!;
+    private Text _waveBanner = null!;
+    private Panel _gameOverPanel = null!;
+    private Text _gameOverSummary = null!;
 
     public override void OnCreate()
     {
         HordeGameState.Reset(PlayerMaxHealth, ArenaHalfWidth, ArenaHalfHeight);
+        BuildUI();
         StartCoroutine(RunWaves());
     }
 
@@ -62,6 +75,8 @@ public sealed class HordeGameManager : EntityBehaviour
         {
             SceneManager.Load("Scenes/MainMenu.sptscene");
         }
+
+        UpdateUI();
     }
 
     private void OnPlayerDied()
@@ -81,7 +96,7 @@ public sealed class HordeGameManager : EntityBehaviour
         while (!HordeGameState.GameOver)
         {
             HordeGameState.Wave++;
-            _bannerTimer = 1.6f;
+            _bannerTimer = BannerDuration;
 
             int count = BaseEnemiesPerWave + (HordeGameState.Wave - 1) * EnemiesPerWaveGrowth;
             for (int i = 0; i < count && !HordeGameState.GameOver; i++)
@@ -137,21 +152,6 @@ public sealed class HordeGameManager : EntityBehaviour
         return new Vector2(side, yy);
     }
 
-    public override void OnImGuiRender()
-    {
-        DrawHud();
-
-        if (_bannerTimer > 0.0f && !HordeGameState.GameOver)
-        {
-            DrawWaveBanner();
-        }
-
-        if (HordeGameState.GameOver)
-        {
-            DrawGameOver();
-        }
-    }
-
     private int CountEnemies()
     {
         int n = 0;
@@ -166,107 +166,141 @@ public sealed class HordeGameManager : EntityBehaviour
         return n;
     }
 
-    private void DrawHud()
+    // ---- UI -------------------------------------------------------------------------------------------
+
+    private void BuildUI()
     {
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration
-            | ImGuiWindowFlags.AlwaysAutoResize
-            | ImGuiWindowFlags.NoSavedSettings
-            | ImGuiWindowFlags.NoFocusOnAppearing
-            | ImGuiWindowFlags.NoNav
-            | ImGuiWindowFlags.NoInputs;
-
-        ImGui.SetNextWindowPos(new Vector2(24.0f, 24.0f), ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.0f, 0.0f, 0.5f));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(16.0f, 12.0f));
-
-        if (ImGui.Begin("HUD", flags))
-        {
-            float fraction = HordeGameState.PlayerMaxHealth > 0.0f
-                ? Math.Clamp(HordeGameState.PlayerHealth / HordeGameState.PlayerMaxHealth, 0.0f, 1.0f)
-                : 0.0f;
-
-            ImGui.Text("HEALTH");
-            var barColor = new Vector4(1.0f - fraction, fraction, 0.15f, 1.0f);
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, barColor);
-            ImGui.ProgressBar(fraction, new Vector2(240.0f, 22.0f), $"{(int)MathF.Ceiling(HordeGameState.PlayerHealth)}");
-            ImGui.PopStyleColor();
-
-            ImGui.Spacing();
-            ImGui.Text($"Score:   {HordeGameState.Score}");
-            ImGui.Text($"Wave:    {HordeGameState.Wave}");
-            ImGui.Text($"Enemies: {CountEnemies()}");
-            ImGui.End();
-        }
-
-        ImGui.PopStyleVar();
-        ImGui.PopStyleColor();
+        BuildHud();
+        BuildWaveBanner();
+        BuildGameOver();
     }
 
-    private void DrawWaveBanner()
+    private void BuildHud()
     {
-        Vector2 display = ImGui.GetIO().DisplaySize;
-        ImGui.SetNextWindowPos(new Vector2(display.X * 0.5f, display.Y * 0.28f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        Panel hud = UI.Panel();
+        hud.Color = new Vector4(0f, 0f, 0f, 0.5f);
+        hud.Rect = TopLeft(new Vector2(24f, 24f), new Vector2(280f, 150f));
 
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration
-            | ImGuiWindowFlags.AlwaysAutoResize
-            | ImGuiWindowFlags.NoSavedSettings
-            | ImGuiWindowFlags.NoInputs
-            | ImGuiWindowFlags.NoNav;
+        Text health = hud.Text("HEALTH");
+        health.FontSize = 18f;
+        health.Color = new Vector4(0.75f, 0.78f, 0.82f, 1f);
+        health.Rect = Local(new Vector2(16f, 12f), new Vector2(248f, 20f));
 
-        // Fade out over the banner's life.
-        float alpha = Math.Clamp(_bannerTimer / 1.6f, 0.0f, 1.0f);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 1.0f, 1.0f, alpha));
-        if (ImGui.Begin("WaveBanner", flags))
-        {
-            ImGui.PushFont(Application.Instance.GetFont("Inter", 64.0f));
-            ImGui.Text($"WAVE {HordeGameState.Wave}");
-            ImGui.PopFont();
-            ImGui.End();
-        }
+        Panel track = hud.Panel();
+        track.Color = new Vector4(0.08f, 0.08f, 0.10f, 1f);
+        track.Rect = Local(new Vector2(16f, 40f), new Vector2(HealthBarWidth, 24f));
 
-        ImGui.PopStyleColor(2);
+        _healthFill = hud.Panel();
+        _healthFill.Color = new Vector4(0.15f, 0.85f, 0.20f, 1f);
+        _healthFill.Rect = Local(new Vector2(16f, 40f), new Vector2(HealthBarWidth, 24f));
+
+        _healthValue = hud.Text("100");
+        _healthValue.FontSize = 16f;
+        _healthValue.Align = TextAlign.Center;
+        _healthValue.Rect = Local(new Vector2(16f, 43f), new Vector2(HealthBarWidth, 20f));
+
+        _stats = hud.Text(string.Empty);
+        _stats.FontSize = 18f;
+        _stats.Color = new Vector4(0.90f, 0.91f, 0.94f, 1f);
+        _stats.Rect = Local(new Vector2(16f, 78f), new Vector2(248f, 66f));
     }
 
-    private void DrawGameOver()
+    private void BuildWaveBanner()
     {
-        Vector2 display = ImGui.GetIO().DisplaySize;
-        ImGui.SetNextWindowPos(display * 0.5f, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-
-        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoCollapse
-            | ImGuiWindowFlags.NoSavedSettings
-            | ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.AlwaysAutoResize;
-
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(40.0f, 32.0f));
-        if (ImGui.Begin("GameOver", flags))
+        _waveBanner = UI.Text("WAVE 1");
+        _waveBanner.FontSize = 64f;
+        _waveBanner.Align = TextAlign.Center;
+        _waveBanner.Rect = new UIRect
         {
-            ImGui.PushFont(Application.Instance.GetFont("Inter", 48.0f));
-            ImGui.Text("GAME OVER");
-            ImGui.PopFont();
+            Anchor = new Vector2(0.5f, 0.28f),
+            Pivot = new Vector2(0.5f, 0.5f),
+            Position = Vector2.Zero,
+            Size = new Vector2(640f, 90f),
+        };
+        _waveBanner.Visible = false;
+    }
 
-            ImGui.Spacing();
-            ImGui.Text($"You survived {HordeGameState.Wave} wave(s) and scored {HordeGameState.Score}.");
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
+    private void BuildGameOver()
+    {
+        _gameOverPanel = UI.Panel();
+        _gameOverPanel.Color = new Vector4(0.08f, 0.08f, 0.11f, 0.94f);
+        _gameOverPanel.Rect = new UIRect
+        {
+            Anchor = new Vector2(0.5f, 0.5f),
+            Pivot = new Vector2(0.5f, 0.5f),
+            Position = Vector2.Zero,
+            Size = new Vector2(480f, 320f),
+        };
 
-            var buttonSize = new Vector2(240.0f, 40.0f);
-            if (ImGui.Button("Restart", buttonSize))
-            {
-                SceneManager.Load("Scenes/HordeSurvival.sptscene");
-            }
+        Text title = _gameOverPanel.Text("GAME OVER");
+        title.FontSize = 52f;
+        title.Align = TextAlign.Center;
+        title.Color = new Vector4(0.98f, 0.40f, 0.35f, 1f);
+        title.Rect = TopCenter(36f, new Vector2(480f, 60f));
 
-            if (ImGui.Button("Back to Menu", buttonSize))
-            {
-                SceneManager.Load("Scenes/MainMenu.sptscene");
-            }
+        _gameOverSummary = _gameOverPanel.Text(string.Empty);
+        _gameOverSummary.FontSize = 22f;
+        _gameOverSummary.Align = TextAlign.Center;
+        _gameOverSummary.Color = new Vector4(0.85f, 0.87f, 0.90f, 1f);
+        _gameOverSummary.Wrap = true;
+        _gameOverSummary.Rect = TopCenter(110f, new Vector2(400f, 60f));
 
-            ImGui.End();
+        Button restart = _gameOverPanel.Button("Restart");
+        restart.FontSize = 24f;
+        restart.Rect = TopCenter(190f, new Vector2(300f, 44f));
+        restart.OnClick += () => SceneManager.Load("Scenes/HordeSurvival.sptscene");
+
+        Button back = _gameOverPanel.Button("Back to Menu");
+        back.FontSize = 24f;
+        back.NormalColor = new Vector4(0.20f, 0.22f, 0.28f, 1f);
+        back.Rect = TopCenter(244f, new Vector2(300f, 44f));
+        back.OnClick += () => SceneManager.Load("Scenes/MainMenu.sptscene");
+
+        _gameOverPanel.Visible = false;
+        _gameOverPanel.Enabled = false;
+    }
+
+    private void UpdateUI()
+    {
+        float max = HordeGameState.PlayerMaxHealth;
+        float fraction = max > 0f ? Math.Clamp(HordeGameState.PlayerHealth / max, 0f, 1f) : 0f;
+        _healthFill.Rect.Size = new Vector2(HealthBarWidth * fraction, 24f);
+        _healthFill.Color = new Vector4(1f - fraction, 0.35f + fraction * 0.5f, 0.20f, 1f);
+        _healthValue.Content = ((int)MathF.Ceiling(MathF.Max(0f, HordeGameState.PlayerHealth))).ToString();
+        _stats.Content = $"Score     {HordeGameState.Score}\nWave      {HordeGameState.Wave}\nEnemies   {CountEnemies()}";
+
+        bool showBanner = _bannerTimer > 0f && !HordeGameState.GameOver;
+        _waveBanner.Visible = showBanner;
+        if (showBanner)
+        {
+            _waveBanner.Content = $"WAVE {HordeGameState.Wave}";
+            _waveBanner.Color = new Vector4(1f, 1f, 1f, Math.Clamp(_bannerTimer / BannerDuration, 0f, 1f));
         }
 
-        ImGui.PopStyleVar();
+        bool over = HordeGameState.GameOver;
+        _gameOverPanel.Visible = over;
+        _gameOverPanel.Enabled = over;
+        if (over)
+        {
+            _gameOverSummary.Content = $"You survived {HordeGameState.Wave} wave(s) and scored {HordeGameState.Score}.";
+        }
     }
+
+    private static UIRect TopLeft(Vector2 position, Vector2 size) => new()
+    {
+        Anchor = Vector2.Zero,
+        Pivot = Vector2.Zero,
+        Position = position,
+        Size = size,
+    };
+
+    private static UIRect Local(Vector2 position, Vector2 size) => TopLeft(position, size);
+
+    private static UIRect TopCenter(float y, Vector2 size) => new()
+    {
+        Anchor = new Vector2(0.5f, 0f),
+        Pivot = new Vector2(0.5f, 0f),
+        Position = new Vector2(0f, y),
+        Size = size,
+    };
 }

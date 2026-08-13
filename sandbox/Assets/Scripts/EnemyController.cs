@@ -173,6 +173,10 @@ public sealed class EnemyController : EntityBehaviour
         Vector2 pos = Position2D();
         Vfx.Burst(Scene, pos, new Vector4(1.0f, 1.0f, 1.0f, 1.0f), 5, 4.5f, 0.18f, 0.18f);
 
+        // A floating world-space damage number rising off the hit — the demo's showcase of the engine's
+        // world text.
+        DamageNumber.Spawn(Scene, pos + new Vector2(0.0f, 0.4f), amount, new Vector4(1.0f, 0.86f, 0.3f, 1.0f));
+
         if (Hp <= 0)
         {
             Die(pos);

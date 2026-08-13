@@ -7,7 +7,8 @@ class Program
 {
     static void Main(string[] args)
     {
-        var app = new Application();
+        var spec = ApplicationSpec.Load("game.manifest");
+        var app = new Application(spec);
         app.Run();
     }
 }

@@ -1,8 +1,8 @@
 # Assets
 
 An **asset** is a piece of content your game uses: a model, a texture, a material, an audio clip, a
-prefab, a scene. Spot separates the *source* asset you author from the *cooked* artifact your game
-ships, and ties the two together with stable identities.
+font, a prefab, a scene. Spot separates the *source* asset you author from the *cooked* artifact your
+game ships, and ties the two together with stable identities.
 
 ## Identity: GUIDs and `.meta` files
 
@@ -22,6 +22,10 @@ see [Projects & Building a Game](projects-and-building.md)).
 A cooked mesh carries more than geometry: if the source model is **rigged**, its cooked form also holds
 the **skeleton** (each bone's inverse-bind matrix) and any **animation clips** baked into the file, so a
 shipped game plays animation with no importer present. See [Animation](animation.md).
+
+A **font** (`.ttf`/`.otf`) is an asset too: it cooks to a compact `.sptfont` artifact and is referenced by
+`guid:` like any other, so a shipped game loads its cooked fonts from the content folder and renders text
+without the source files. See [Text & Fonts](text.md).
 
 Scenes are shipped by path rather than cooked to a GUID, but their asset references are still rewritten
 to `guid:` references as they're copied into the content folder — the source scene on disk is left
@@ -62,5 +66,5 @@ carries a reference back to its prefab, so the template stays the single source 
 ## Related
 
 - [Projects & Building a Game](projects-and-building.md) — cooking as part of producing a build
-- [Rendering](rendering.md) and [Audio](audio.md) — the systems that consume cooked assets
+- [Rendering](rendering.md), [Audio](audio.md) and [Text & Fonts](text.md) — the systems that consume cooked assets
 - [The Editor](editor.md) — importing and browsing assets

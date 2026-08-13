@@ -4,6 +4,7 @@ using Spot.Core;
 using Spot.Events;
 using Spot.Physics;
 using Spot.Rendering;
+using Spot.UI;
 
 namespace Spot.Scenes;
 
@@ -28,6 +29,18 @@ public class Scene
     /// to add your own. See <see cref="ISystem"/> and <see cref="SystemOrder"/>.
     /// </summary>
     public SystemRegistry Systems { get; } = new();
+
+    private UIRoot? _ui;
+
+    /// <summary>
+    /// This scene's screen-space UI tree. Built in code from scripts (see <c>EntityBehaviour.UI</c>): add
+    /// <see cref="Widget"/>s to it and the engine lays them out, routes pointer input each play-mode frame,
+    /// and draws them as the final pass. Created on first access, so scenes without UI cost nothing.
+    /// </summary>
+    public UIRoot UI => _ui ??= new UIRoot();
+
+    // The UI root without creating one — lets the render system and update tick skip scenes that never built UI.
+    internal UIRoot? UIRootOrNull => _ui;
 
     /// <summary>
     /// Creates a scene with the engine's built-in play-mode systems registered (character controllers, 2D
@@ -85,7 +98,24 @@ public class Scene
     {
         OnUpdate(deltaTime);
         Systems.Update(this, deltaTime);
+        TickUI();
         FlushDestroyed();
+    }
+
+    // Routes pointer input through the UI tree after scripts have (re)built it this frame. Skipped entirely
+    // until a scene actually has UI, so the common case touches neither the window nor the input statics.
+    private void TickUI()
+    {
+        if (_ui is null || _ui.Children.Count == 0) return;
+
+        var window = Application.Instance.Window;
+        _ui.Update(
+            window.Width,
+            window.Height,
+            Input.MousePosition,
+            Input.GetMouseButton(MouseButton.Left),
+            Input.GetMouseButtonDown(MouseButton.Left),
+            Input.GetMouseButtonUp(MouseButton.Left));
     }
 
     /// <summary>

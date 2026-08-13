@@ -59,6 +59,18 @@ Particles are drawn **after** the opaque passes — both the 3D meshes and the 2
 before post-processing, so they blend and glow over your scene (and feed bloom) rather than being
 painted over by it. See the [Sandbox Hub](sandbox-hub.md) for a worked 2D example.
 
+**World-space text** (a Text component on an entity) is drawn alongside particles — blended,
+camera-facing by default, before post-processing — so it is tone-mapped like the scene and occluded by
+solid geometry. See [Text & Fonts](text.md).
+
+## The UI pass
+
+The runtime UI is the **final** pass, drawn after post-processing directly to the output framebuffer in
+screen space (an orthographic projection over the window), so the interface stays crisp and is never
+tone-mapped or bloomed. It renders the scene's UI tree — HUDs, menus — with alpha blending and scissor
+clipping, which is why small text and soft widget edges look clean where the alpha-tested sprite pass
+would not. Scenes with no widgets skip the pass entirely. See [Runtime UI](ui.md).
+
 ## Post-processing and quality
 
 Two surfaces control the final image, and they have different jobs:
@@ -77,5 +89,6 @@ existing components rather than scattered ad-hoc knobs.
 ## Related
 
 - [Entities & Components](entities-and-components.md) — the visible components (sprite, mesh, camera, light)
+- [Runtime UI](ui.md) and [Text & Fonts](text.md) — the screen-space UI pass and world/screen text
 - [Assets](assets.md) — how models, textures, and materials are imported
 - [Architecture](architecture.md) — where rendering sits in the frame
