@@ -105,7 +105,6 @@ public static class ProjectGenerator
     <None Remove=""Build\**"" />
     <Content Remove=""Build\**"" />
     <EmbeddedResource Remove=""Build\**"" />
-    <Compile Remove=""Assets\**"" />
     <None Remove=""Assets\**"" />
     <Content Remove=""Assets\**"" />
     <EmbeddedResource Remove=""Assets\**"" />

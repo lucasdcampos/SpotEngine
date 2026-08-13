@@ -204,6 +204,43 @@ public class EditorScene : Scene
 
         Spot.Assets.AssetDatabase.Refresh(project.GetAssetDirectory());
         Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.LibraryFolder));
+
+        LoadProjectAssembly(project);
+    }
+
+    private static void LoadProjectAssembly(Project project)
+    {
+        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
+        if (System.IO.Directory.Exists(binDir))
+        {
+            var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
+            var latest = System.Linq.Enumerable.FirstOrDefault(System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
+            if (latest != null)
+            {
+                try
+                {
+                    byte[] assemblyBytes = System.IO.File.ReadAllBytes(latest);
+                    
+                    // Also try to load the PDB if it exists next to the DLL, so stack traces and debugging work.
+                    string pdbPath = System.IO.Path.ChangeExtension(latest, ".pdb");
+                    if (System.IO.File.Exists(pdbPath))
+                    {
+                        byte[] pdbBytes = System.IO.File.ReadAllBytes(pdbPath);
+                        System.Reflection.Assembly.Load(assemblyBytes, pdbBytes);
+                    }
+                    else
+                    {
+                        System.Reflection.Assembly.Load(assemblyBytes);
+                    }
+                    
+                    Spot.Core.Log.CoreInfo("Loaded project assembly: {0}", latest);
+                }
+                catch (System.Exception ex)
+                {
+                    Spot.Core.Log.CoreWarn("Failed to load project assembly '{0}': {1}", latest, ex.Message);
+                }
+            }
+        }
     }
 
     private void LoadStartScene()
