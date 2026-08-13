@@ -460,6 +460,90 @@ public static class SpAudio
     public static SpAudioData ReadFile(string path) => Read(File.ReadAllBytes(path));
 }
 
+/// <summary>The decoded contents of a <c>.sptfont</c>: the original font file bytes plus its name.</summary>
+public readonly struct SpFontData
+{
+    /// <summary>Initializes decoded font data.</summary>
+    /// <param name="name">The font's display name.</param>
+    /// <param name="ttf">The original <c>.ttf</c>/<c>.otf</c> file bytes.</param>
+    public SpFontData(string name, byte[] ttf)
+    {
+        Name = name;
+        Ttf = ttf;
+    }
+
+    /// <summary>Gets the font's display name.</summary>
+    public string Name { get; }
+
+    /// <summary>Gets the original TrueType/OpenType file bytes, rasterized to an atlas at load time.</summary>
+    public byte[] Ttf { get; }
+}
+
+/// <summary>
+/// Reads and writes <c>.sptfont</c>, the engine-native cooked font format. The runtime rasterizes glyphs to
+/// an atlas itself (see <see cref="Rendering.Font"/>), so cooking a font simply wraps the original file bytes
+/// with a stable header and name, giving fonts the same guid-referenced identity every other cooked asset has
+/// instead of being copied through by path.
+/// </summary>
+/// <remarks>
+/// Layout (little-endian): magic <c>'S','P','F','N'</c>, <c>u32 version</c>, a length-prefixed UTF-8 name,
+/// <c>u32 byteCount</c>, then the raw font file bytes.
+/// </remarks>
+public static class SpFont
+{
+    private static ReadOnlySpan<byte> Magic => "SPFN"u8;
+
+    /// <summary>The format version this build writes and is able to read.</summary>
+    public const uint Version = 1;
+
+    /// <summary>Serializes a font file to a <c>.sptfont</c> byte blob.</summary>
+    /// <param name="name">The font's display name.</param>
+    /// <param name="ttf">The original <c>.ttf</c>/<c>.otf</c> file bytes.</param>
+    /// <returns>The encoded bytes, ready to write to disk.</returns>
+    public static byte[] Write(string name, ReadOnlySpan<byte> ttf)
+    {
+        using var ms = new MemoryStream();
+        using var w = new BinaryWriter(ms);
+
+        w.Write(Magic);
+        w.Write(Version);
+        byte[] nameBytes = Encoding.UTF8.GetBytes(name);
+        w.Write((uint)nameBytes.Length);
+        w.Write(nameBytes);
+        w.Write((uint)ttf.Length);
+        w.Write(ttf);
+
+        w.Flush();
+        return ms.ToArray();
+    }
+
+    /// <summary>Parses a <c>.sptfont</c> blob back into font data.</summary>
+    /// <param name="bytes">The encoded bytes.</param>
+    /// <returns>The decoded font.</returns>
+    /// <exception cref="InvalidDataException">The blob is truncated or not a supported <c>.sptfont</c>.</exception>
+    public static SpFontData Read(ReadOnlySpan<byte> bytes)
+    {
+        var cursor = new Cursor(bytes);
+        cursor.ExpectMagic(Magic, "sptfont");
+
+        uint version = cursor.ReadUInt32();
+        if (version != Version)
+        {
+            throw new InvalidDataException($"Unsupported .sptfont version {version}; expected {Version}.");
+        }
+
+        string name = cursor.ReadString();
+        uint byteCount = cursor.ReadUInt32();
+        byte[] ttf = cursor.ReadBytes(byteCount);
+        return new SpFontData(name, ttf);
+    }
+
+    /// <summary>Reads and parses a <c>.sptfont</c> file.</summary>
+    /// <param name="path">The absolute path to the cooked font file.</param>
+    /// <returns>The decoded font.</returns>
+    public static SpFontData ReadFile(string path) => Read(File.ReadAllBytes(path));
+}
+
 /// <summary>A forward-only reader over a cooked-asset byte blob that validates bounds as it goes.</summary>
 internal ref struct Cursor
 {

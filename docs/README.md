@@ -24,16 +24,18 @@ Spot is a 2D/3D game engine written in C# (.NET 10) on [Silk.NET](https://github
 8. [Audio](audio.md) — playing and spatializing sound
 9. [Input](input.md) — reading keys directly and binding named actions
 10. [Animation](animation.md) — skeletal animation for rigged models
-11. [Assets](assets.md) — importing, cooking, and referencing content
+11. [Runtime UI](ui.md) — building HUDs and menus with the retained widget tree
+12. [Text & Fonts](text.md) — rendering text on screen and in the world
+13. [Assets](assets.md) — importing, cooking, and referencing content
 
 **Tools**
 
-12. [The Editor](editor.md) — the visual tool for building scenes
-13. [Projects & Building a Game](projects-and-building.md) — the project format and shipping a build
+14. [The Editor](editor.md) — the visual tool for building scenes
+15. [Projects & Building a Game](projects-and-building.md) — the project format and shipping a build
 
 **Samples**
 
-14. [The Sandbox Hub](sandbox-hub.md) — the showcase project, its menu hub, and the Horde Survival demo
+16. [The Sandbox Hub](sandbox-hub.md) — the showcase project, its menu hub, and the Horde Survival demo
 
 ## Quick start
 

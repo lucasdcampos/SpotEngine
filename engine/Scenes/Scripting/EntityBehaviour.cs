@@ -39,6 +39,13 @@ public abstract class EntityBehaviour
     protected Scene Scene => Entity.Scene;
 
     /// <summary>
+    /// Gets the scene's screen-space UI root. Build HUDs and menus from here — for example
+    /// <c>UI.Button("Play").OnClick += StartGame;</c>. The engine lays it out, routes pointer input and
+    /// draws it every frame; see <see cref="Spot.UI.UIRoot"/>.
+    /// </summary>
+    protected Spot.UI.UIRoot UI => Scene.UI;
+
+    /// <summary>
     /// Gets the attached entity's component of the given type.
     /// </summary>
     /// <typeparam name="T">The component type.</typeparam>

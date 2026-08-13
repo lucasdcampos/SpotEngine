@@ -15,7 +15,7 @@ namespace Spot.Assets;
 public sealed class PrefabImporter : IAssetImporter
 {
     // Component reference-property keys whose values are asset paths (kept in sync with the scene migrator).
-    private static readonly string[] ReferenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath" };
+    private static readonly string[] ReferenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath", "FontPath" };
 
     /// <inheritdoc />
     public string Id => "prefab";

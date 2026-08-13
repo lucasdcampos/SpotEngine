@@ -17,10 +17,14 @@ described in [Scenes](scenes.md), [Scripting](scripting.md), and [Rendering](ren
 - a primary **orthographic camera** that sets the background color, and
 - a **menu entity** carrying the `MainMenuController` script.
 
-`MainMenuController` draws the menu with Dear ImGui in `OnImGuiRender` — the same immediate-mode UI the
-editor uses, available to any script at runtime. Its buttons call `SceneManager.Load("Scenes/…")` to
-switch scenes at the next frame boundary. The list of games and test scenes is a small array in the
-script, so adding a demo is a one-line change.
+`MainMenuController` builds the menu with the engine's [runtime UI](ui.md) — a retained tree constructed
+once in its create hook. It lays out a **card grid**: a **Games** row and a **Tests** row, each entry a
+card (an icon over a label) that tints on hover and calls `SceneManager.Load("Scenes/…")` on click. Cards
+use procedurally generated, anti-aliased icons (`MenuIcons` — a target reticle for games, a gear for test
+scenes), so the menu needs no image assets. An **Options** panel exercises the slider and toggle against
+the global audio volume and mute. The games and test-scene lists are small arrays, so adding an entry is a
+one-line change and the grid re-flows itself. (`Main.sptscene` similarly carries a `PlayerUI` script that
+builds a sample HUD — a crosshair and a health readout — with the same runtime UI.)
 
 ## Horde Survival
 
@@ -39,16 +43,19 @@ script, so adding a demo is a one-line change.
 - **Enemies** (`EnemyController`) — several `EnemyKind`s, each a distinct geometric shape (generated
   cut-out sprite textures, see `Shapes`): a red **Grunt** circle, a magenta **Dasher** diamond that
   points at the player, an orange spinning **Spinner** hexagon, and a big purple **Brute** pentagon
-  with more health. They home in, drain health on contact, take hits (a white flash), and die in a
-  particle burst with a jolt.
+  with more health. They home in, drain health on contact, take hits (a white flash plus a floating
+  world-space damage number, `DamageNumber` — the demo's showcase of the engine's [world text](text.md)),
+  and die in a particle burst with a jolt.
 - **Projectiles** (`Projectile`) — travel straight, expire on a timer, stop on obstacles, and damage the
   first enemy they overlap, spawning an impact spark.
 - **Effects** (`Vfx`) — fire-and-forget particle bursts via short-lived `ParticleSystemComponent`
   emitters (flat-2D, the engine's round dot) for spawns, muzzle flashes, impacts, hits and deaths. A
   self-destruct script (`AutoDestruct`) cleans each emitter up once its particles fade.
 - **Game manager** (`HordeGameManager`) — spawns escalating, weighted waves of mixed enemy kinds on a
-  coroutine, announces each wave, draws the HUD (health, score, wave, enemies) and the game-over screen,
-  and owns the flow (restart, back to menu, and `Esc`).
+  coroutine, and drives the flow (restart, back to menu, and `Esc`). Its UI is built with the engine's
+  [runtime UI](ui.md): a HUD with a color-shifting health bar plus score/wave/enemy counts, a large
+  fading **WAVE N** banner between waves, and a centered game-over panel with Restart / Back to Menu
+  buttons.
 
 Collisions are simple distance / box checks rather than the physics system — deterministic and enough
 for a demo of this size. Shared state (score, wave, player health, arena bounds, game-over flag) lives
