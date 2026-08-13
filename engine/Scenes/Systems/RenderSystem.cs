@@ -263,8 +263,6 @@ public static class RenderSystem
             Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Fill);
         }
 
-        ParticleRenderSystem.Render(scene, viewProjection);
-
         Renderer2D.BeginScene(viewProjection);
 
         foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
@@ -326,6 +324,11 @@ public static class RenderSystem
         }
 
         Renderer2D.EndScene();
+
+        // Particles draw after the opaque 2D sprite batch so they are visible over 2D scenes (a
+        // full-screen sprite would otherwise paint over them), and before post-processing so glowing
+        // additive particles feed bloom. In 3D scenes they still blend over the meshes drawn earlier.
+        ParticleRenderSystem.Render(scene, viewProjection);
 
         if (postProcess != null && s_hdrFramebuffer != null)
         {
