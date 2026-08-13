@@ -37,8 +37,7 @@ public class ProjectGeneratorTests
 
         string program = File.ReadAllText(Path.Combine(temp.Path, "Program.cs"));
         Assert.Contains("class Program", program);
-        Assert.Contains("new Application(spec)", program);
-        Assert.Contains("ApplicationSpec.Load", program);
+        Assert.Contains("SpotEngine.CreateApplication()", program);
 
         string manifest = File.ReadAllText(Path.Combine(temp.Path, "game.manifest"));
         Assert.Contains("\"ContentDirectory\": \"Content\"", manifest);

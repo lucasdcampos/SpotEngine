@@ -22,6 +22,9 @@ will be finalized when 0.2 is tagged.
 - **Font assets** — `.ttf`/`.otf` now cook to a `.sptfont` artifact and load by guid reference
   like other cooked content.
 
+### Changed
+- **Application Startup** — generated `Program.cs` now initializes the engine using the factory method `SpotEngine.CreateApplication()`, simplifying the entry point and avoiding direct `Spot.Core` dependencies.
+
 ## [v0.1.0] - 2026-08-12
 
 ### Added

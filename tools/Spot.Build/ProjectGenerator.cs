@@ -180,6 +180,7 @@ EndGlobal
         string name = project.Config.Name;
 
         string programContent = $@"using System;
+using Spot;
 using Spot.Core;
 
 namespace {name.Replace(" ", "")};
@@ -188,8 +189,7 @@ class Program
 {{
     static void Main(string[] args)
     {{
-        var spec = ApplicationSpec.Load(""game.manifest"");
-        var app = new Application(spec);
+        var app = SpotEngine.CreateApplication();
         app.Run();
     }}
 }}
