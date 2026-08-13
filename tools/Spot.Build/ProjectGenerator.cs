@@ -105,6 +105,10 @@ public static class ProjectGenerator
     <None Remove=""Build\**"" />
     <Content Remove=""Build\**"" />
     <EmbeddedResource Remove=""Build\**"" />
+    <Compile Remove=""Assets\**"" />
+    <None Remove=""Assets\**"" />
+    <Content Remove=""Assets\**"" />
+    <EmbeddedResource Remove=""Assets\**"" />
   </ItemGroup>
 
   <ItemGroup>
@@ -184,7 +188,8 @@ class Program
 {{
     static void Main(string[] args)
     {{
-        var app = new Application();
+        var spec = ApplicationSpec.Load(""game.manifest"");
+        var app = new Application(spec);
         app.Run();
     }}
 }}
