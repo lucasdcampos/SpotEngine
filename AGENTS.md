@@ -32,3 +32,4 @@ dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/buil
 - **Warnings are errors** in `Spot.Engine`, `Spot.DebugUI`, `Sandbox`, and `Spot.Build` (`TreatWarningsAsErrors`). New code there must be warning-clean. Nullable reference types and `ImplicitUsings` are on everywhere.
 - **Before marking a task complete**, always build (`dotnet build SpotEngine.slnx`) and run the tests (`dotnet test SpotEngine.slnx`), and confirm both pass.
 - **Always update the docs** under `docs/` when you change behavior, add features, or alter architecture.
+- **Always update `CHANGELOG.md`** when you make significant changes, but keep it concise.
