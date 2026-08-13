@@ -1,0 +1,440 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Camera",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          10
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Camera": {
+        "Enabled": true,
+        "Primary": true,
+        "FixedAspectRatio": false,
+        "BackgroundColor": [
+          0.05,
+          0.06,
+          0.08,
+          1
+        ],
+        "ProjectionType": 0,
+        "ZoomLevel": 8,
+        "FieldOfView": 45,
+        "NearClip": 0.1,
+        "FarClip": 1000
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "CameraShake"
+          }
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Arena",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          -1
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          30,
+          20,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.11,
+          0.12,
+          0.15,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall Top",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          7,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          26.6,
+          0.3,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.3,
+          0.55,
+          0.8,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall Bottom",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          -7,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          26.6,
+          0.3,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.3,
+          0.55,
+          0.8,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall Left",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -13,
+          0,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.3,
+          14.6,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.3,
+          0.55,
+          0.8,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Wall Right",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          13,
+          0,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.3,
+          14.6,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.3,
+          0.55,
+          0.8,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Obstacle A",
+        "Enabled": true,
+        "Tag": "Obstacle"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6,
+          3,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2.6,
+          1.1,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.16,
+          0.17,
+          0.22,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Obstacle B",
+        "Enabled": true,
+        "Tag": "Obstacle"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          6,
+          3,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2.6,
+          1.1,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.16,
+          0.17,
+          0.22,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Obstacle C",
+        "Enabled": true,
+        "Tag": "Obstacle"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6,
+          -3,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2.6,
+          1.1,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.16,
+          0.17,
+          0.22,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Obstacle D",
+        "Enabled": true,
+        "Tag": "Obstacle"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          6,
+          -3,
+          -0.5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          2.6,
+          1.1,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.16,
+          0.17,
+          0.22,
+          1
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Player",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0.8,
+          0.55,
+          1
+        ]
+      },
+      "Sprite": {
+        "Enabled": true,
+        "Color": [
+          0.3,
+          0.8,
+          1,
+          1
+        ]
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "PlayerController",
+            "Fields": {
+              "MoveSpeed": 6.5,
+              "FireCooldown": 0.14,
+              "ProjectileSpeed": 18
+            }
+          }
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "GameManager",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "HordeGameManager",
+            "Fields": {
+              "FirstWaveDelay": 1.5,
+              "TimeBetweenWaves": 6,
+              "BaseEnemiesPerWave": 6,
+              "EnemiesPerWaveGrowth": 3,
+              "ArenaHalfWidth": 13,
+              "ArenaHalfHeight": 7,
+              "PlayerMaxHealth": 100
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

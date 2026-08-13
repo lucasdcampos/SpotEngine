@@ -12,7 +12,7 @@
   "AssetDirectory": null,
   "ContentDirectory": "Content",
   "ManifestPath": "manifest.json",
-  "StartScene": "Scenes/PhysicsTest.sptscene",
+  "StartScene": "Scenes/MainMenu.sptscene",
   "DefaultBindings": {},
   "AssetRoot": "Content"
 }

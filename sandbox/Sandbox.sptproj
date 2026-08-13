@@ -1,5 +1,5 @@
 {
   "Name": "Sandbox",
-  "StartScene": "Scenes/PhysicsTest.sptscene",
+  "StartScene": "Scenes/MainMenu.sptscene",
   "AssetDirectory": "Assets"
 }
