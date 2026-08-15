@@ -113,6 +113,24 @@ public enum TextureWrap
     ClampToEdge,
 }
 
+/// <summary>
+/// A source or destination factor in the blend equation.
+/// </summary>
+public enum BlendFactor
+{
+    /// <summary>The constant 0.</summary>
+    Zero,
+
+    /// <summary>The constant 1.</summary>
+    One,
+
+    /// <summary>The source alpha.</summary>
+    SrcAlpha,
+
+    /// <summary>One minus the source alpha.</summary>
+    OneMinusSrcAlpha,
+}
+
 /// <summary>An opaque handle to a GPU buffer object.</summary>
 /// <param name="Id">The backend-specific identifier.</param>
 public readonly record struct BufferHandle(uint Id);
@@ -170,6 +188,18 @@ public interface IGraphicsDevice
     /// <param name="width">The viewport width.</param>
     /// <param name="height">The viewport height.</param>
     void SetViewport(int x, int y, uint width, uint height);
+
+    /// <summary>Sets the blend equation factors, used when <see cref="GraphicsCapability.Blend"/> is enabled.</summary>
+    /// <param name="source">The factor applied to the incoming fragment.</param>
+    /// <param name="destination">The factor applied to the existing framebuffer value.</param>
+    void SetBlendFunc(BlendFactor source, BlendFactor destination);
+
+    /// <summary>Sets the scissor rectangle, in pixels with the origin at the lower left.</summary>
+    /// <param name="x">The lower-left x coordinate.</param>
+    /// <param name="y">The lower-left y coordinate.</param>
+    /// <param name="width">The rectangle width.</param>
+    /// <param name="height">The rectangle height.</param>
+    void SetScissor(int x, int y, uint width, uint height);
 
     /// <summary>Draws vertices from the currently bound vertex array.</summary>
     /// <param name="primitive">The primitive kind to assemble.</param>

@@ -1,5 +1,4 @@
 using System.Numerics;
-using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
 
@@ -142,9 +141,9 @@ public static class UIRenderer
         s_active = true;
         s_clipStack.Clear();
 
-        Renderer.Api.Disable(EnableCap.DepthTest);
-        Renderer.Api.Enable(EnableCap.Blend);
-        Renderer.Api.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.DepthTest, false);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
 
         StartBatch();
     }
@@ -155,9 +154,9 @@ public static class UIRenderer
         Flush();
         if (s_active)
         {
-            Renderer.Api.Disable(EnableCap.ScissorTest);
-            Renderer.Api.Disable(EnableCap.Blend);
-            Renderer.Api.Enable(EnableCap.DepthTest);
+            Renderer.Device.SetCapability(GraphicsCapability.ScissorTest, false);
+            Renderer.Device.SetCapability(GraphicsCapability.Blend, false);
+            Renderer.Device.SetCapability(GraphicsCapability.DepthTest, true);
             s_active = false;
         }
     }
@@ -187,7 +186,7 @@ public static class UIRenderer
         }
         else
         {
-            Renderer.Api.Disable(EnableCap.ScissorTest);
+            Renderer.Device.SetCapability(GraphicsCapability.ScissorTest, false);
         }
     }
 
@@ -338,7 +337,7 @@ public static class UIRenderer
         // Geometry batched under the old clip must be drawn before the scissor changes.
         Flush();
 
-        Renderer.Api.Enable(EnableCap.ScissorTest);
+        Renderer.Device.SetCapability(GraphicsCapability.ScissorTest, true);
 
         int x = (int)MathF.Round(clip.X);
         int w = (int)MathF.Round(clip.Z);
@@ -346,7 +345,7 @@ public static class UIRenderer
         // GL scissor is measured from the bottom-left; our clip is top-left.
         int y = (int)MathF.Round(s_screenHeight - (clip.Y + clip.W));
 
-        Renderer.Api.Scissor(x, y, (uint)Math.Max(0, w), (uint)Math.Max(0, h));
+        Renderer.Device.SetScissor(x, y, (uint)Math.Max(0, w), (uint)Math.Max(0, h));
     }
 
     private static Vector4 Intersect(Vector4 a, Vector4 b)
