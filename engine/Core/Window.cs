@@ -76,6 +76,7 @@ public sealed class Window : IDisposable
         }
 
         _input = _window.CreateInput();
+        global::Spot.Core.Input.CursorController = new SilkCursorController(_input);
         SetupCallbacks();
 
         Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
@@ -227,6 +228,33 @@ public sealed class Window : IDisposable
                 _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightTrigger, trigger.Position));
             }
         };
+    }
+
+    // Drives the hardware cursor through the window's Silk mouse, letting Input lock/unlock it without
+    // depending on Silk. Raw mode locks and hides the cursor (relative deltas for mouse-look).
+    private sealed class SilkCursorController : ICursorController
+    {
+        private readonly IInputContext _input;
+
+        public SilkCursorController(IInputContext input) => _input = input;
+
+        public bool Locked
+        {
+            get
+            {
+                IReadOnlyList<IMouse> mice = _input.Mice;
+                return mice.Count > 0 && mice[0].Cursor.CursorMode == CursorMode.Raw;
+            }
+
+            set
+            {
+                IReadOnlyList<IMouse> mice = _input.Mice;
+                if (mice.Count > 0)
+                {
+                    mice[0].Cursor.CursorMode = value ? CursorMode.Raw : CursorMode.Normal;
+                }
+            }
+        }
     }
 
     private static GamepadButton MapGamepadButton(ButtonName name)
