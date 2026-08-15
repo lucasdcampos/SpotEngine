@@ -1,17 +1,16 @@
 using System.Numerics;
-using Silk.NET.OpenGL;
 using Spot.Core;
 
 namespace Spot.Rendering;
 
 /// <summary>
-/// A compiled and linked OpenGL shader program.
+/// A compiled and linked shader program.
 /// </summary>
 public sealed class Shader : IDisposable
 {
-    private readonly GL _gl;
-    private readonly uint _handle;
-    private readonly Dictionary<string, int> _uniformLocations = new();
+    private readonly IGraphicsDevice _device;
+    private readonly ProgramHandle _handle;
+    private readonly Dictionary<string, UniformLocation> _uniformLocations = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Shader"/> class by compiling and linking the given sources.
@@ -20,70 +19,66 @@ public sealed class Shader : IDisposable
     /// <param name="fragmentSource">The GLSL source for the fragment stage.</param>
     public Shader(string vertexSource, string fragmentSource)
     {
-        _gl = Renderer.Gl;
+        _device = Renderer.Device;
 
-        uint vertex = CompileShader(ShaderType.VertexShader, vertexSource);
-        uint fragment = CompileShader(ShaderType.FragmentShader, fragmentSource);
+        ShaderHandle vertex = CompileShader(ShaderStage.Vertex, vertexSource);
+        ShaderHandle fragment = CompileShader(ShaderStage.Fragment, fragmentSource);
 
-        _handle = _gl.CreateProgram();
-        _gl.AttachShader(_handle, vertex);
-        _gl.AttachShader(_handle, fragment);
-        _gl.LinkProgram(_handle);
+        _handle = _device.CreateProgram();
+        _device.AttachShader(_handle, vertex);
+        _device.AttachShader(_handle, fragment);
+        _device.LinkProgram(_handle);
 
-        _gl.GetProgram(_handle, ProgramPropertyARB.LinkStatus, out int linked);
-        if (linked == 0)
+        if (!_device.GetProgramLinkStatus(_handle))
         {
-            Log.CoreError("Shader program link failed: {0}", _gl.GetProgramInfoLog(_handle));
+            Log.CoreError("Shader program link failed: {0}", _device.GetProgramInfoLog(_handle));
         }
 
-        _gl.DetachShader(_handle, vertex);
-        _gl.DetachShader(_handle, fragment);
-        _gl.DeleteShader(vertex);
-        _gl.DeleteShader(fragment);
+        _device.DetachShader(_handle, vertex);
+        _device.DetachShader(_handle, fragment);
+        _device.DeleteShader(vertex);
+        _device.DeleteShader(fragment);
     }
 
     /// <summary>
     /// Activates the shader program for subsequent draw calls.
     /// </summary>
-    public void Use() => _gl.UseProgram(_handle);
+    public void Use() => _device.UseProgram(_handle);
 
     /// <summary>
     /// Sets an <see cref="int"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>
     /// <param name="value">The value to set.</param>
-    public void SetUniform(string name, int value) => _gl.Uniform1(GetUniformLocation(name), value);
+    public void SetUniform(string name, int value) => _device.SetUniform(GetUniformLocation(name), value);
 
     /// <summary>
     /// Sets a <see cref="float"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>
     /// <param name="value">The value to set.</param>
-    public void SetUniform(string name, float value) => _gl.Uniform1(GetUniformLocation(name), value);
+    public void SetUniform(string name, float value) => _device.SetUniform(GetUniformLocation(name), value);
 
     /// <summary>
     /// Sets a <see cref="Vector2"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>
     /// <param name="value">The value to set.</param>
-    public void SetUniform(string name, Vector2 value) =>
-        _gl.Uniform2(GetUniformLocation(name), value.X, value.Y);
+    public void SetUniform(string name, Vector2 value) => _device.SetUniform(GetUniformLocation(name), value);
 
     /// <summary>
     /// Sets a <see cref="Vector3"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>
     /// <param name="value">The value to set.</param>
-    public void SetUniform(string name, Vector3 value) =>
-        _gl.Uniform3(GetUniformLocation(name), value.X, value.Y, value.Z);
+    public void SetUniform(string name, Vector3 value) => _device.SetUniform(GetUniformLocation(name), value);
 
     /// <summary>
     /// Sets a <see cref="Vector4"/> uniform.
     /// </summary>
     /// <param name="name">The uniform name.</param>
     /// <param name="value">The value to set.</param>
-    public void SetUniform(string name, Vector4 value) =>
-        _gl.Uniform4(GetUniformLocation(name), value.X, value.Y, value.Z, value.W);
+    public void SetUniform(string name, Vector4 value) => _device.SetUniform(GetUniformLocation(name), value);
 
     /// <summary>
     /// Sets a <see cref="Matrix4x4"/> uniform.
@@ -94,8 +89,12 @@ public sealed class Shader : IDisposable
     /// The matrix is uploaded untransposed: <see cref="Matrix4x4"/>'s row-major memory layout
     /// matches the column-major matrix GLSL expects for the same transform.
     /// </remarks>
-    public unsafe void SetUniform(string name, Matrix4x4 value) =>
-        _gl.UniformMatrix4(GetUniformLocation(name), 1, false, (float*)&value);
+    public void SetUniform(string name, Matrix4x4 value)
+    {
+        Span<Matrix4x4> one = stackalloc Matrix4x4[1];
+        one[0] = value;
+        _device.SetUniformMatrix4(GetUniformLocation(name), one);
+    }
 
     /// <summary>
     /// Sets a <c>mat4</c> array uniform (for example a skinning bone palette) from a span of matrices.
@@ -103,35 +102,32 @@ public sealed class Shader : IDisposable
     /// <param name="name">The uniform array name (its base, e.g. <c>uBones</c>).</param>
     /// <param name="values">The matrices to upload, one per array element.</param>
     /// <remarks>Like the single-matrix overload, matrices are uploaded untransposed (see <see cref="SetUniform(string, Matrix4x4)"/>).</remarks>
-    public unsafe void SetUniform(string name, ReadOnlySpan<Matrix4x4> values)
+    public void SetUniform(string name, ReadOnlySpan<Matrix4x4> values)
     {
         if (values.IsEmpty)
         {
             return;
         }
 
-        fixed (Matrix4x4* ptr = values)
-        {
-            _gl.UniformMatrix4(GetUniformLocation(name), (uint)values.Length, false, (float*)ptr);
-        }
+        _device.SetUniformMatrix4(GetUniformLocation(name), values);
     }
 
     /// <inheritdoc />
-    public void Dispose() => _gl.DeleteProgram(_handle);
+    public void Dispose() => _device.DeleteProgram(_handle);
 
-    private int GetUniformLocation(string name)
+    private UniformLocation GetUniformLocation(string name)
     {
         // Uniform locations are fixed for the life of a linked program, so look each one up once and
-        // cache it. This turns a per-draw glGetUniformLocation (dozens per mesh per frame) into a
+        // cache it. This turns a per-draw uniform lookup (dozens per mesh per frame) into a
         // dictionary hit, and — because the miss is cached too — warns at most once per missing name
         // instead of every frame.
-        if (_uniformLocations.TryGetValue(name, out int cached))
+        if (_uniformLocations.TryGetValue(name, out UniformLocation cached))
         {
             return cached;
         }
 
-        int location = _gl.GetUniformLocation(_handle, name);
-        if (location == -1)
+        UniformLocation location = _device.GetUniformLocation(_handle, name);
+        if (location.Location == -1)
         {
             Log.CoreWarn("Uniform '{0}' not found in shader program.", name);
         }
@@ -140,16 +136,15 @@ public sealed class Shader : IDisposable
         return location;
     }
 
-    private uint CompileShader(ShaderType type, string source)
+    private ShaderHandle CompileShader(ShaderStage stage, string source)
     {
-        uint shader = _gl.CreateShader(type);
-        _gl.ShaderSource(shader, source);
-        _gl.CompileShader(shader);
+        ShaderHandle shader = _device.CreateShader(stage);
+        _device.ShaderSource(shader, source);
+        _device.CompileShader(shader);
 
-        _gl.GetShader(shader, ShaderParameterName.CompileStatus, out int compiled);
-        if (compiled == 0)
+        if (!_device.GetShaderCompileStatus(shader))
         {
-            Log.CoreError("{0} compilation failed: {1}", type, _gl.GetShaderInfoLog(shader));
+            Log.CoreError("{0} shader compilation failed: {1}", stage, _device.GetShaderInfoLog(shader));
         }
 
         return shader;
