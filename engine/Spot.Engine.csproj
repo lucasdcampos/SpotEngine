@@ -15,6 +15,12 @@
     <EmbeddedResource Include="Resources\DefaultFont.ttf" LogicalName="Spot.DefaultFont.ttf" />
   </ItemGroup>
 
+  <!-- Browser-only source: the WebGL2/[JSImport] backends and RAF host. Excluded from the desktop target,
+       which uses Silk.NET instead and has no JavaScript interop. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="Browser\**\*.cs" />
+  </ItemGroup>
+
   <!-- Managed dependencies shared by both targets: physics, logging, and the Stb* asset decoders are all
        pure managed and link under wasm just as they do on desktop. -->
   <ItemGroup>
