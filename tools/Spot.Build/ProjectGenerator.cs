@@ -85,6 +85,7 @@ public static class ProjectGenerator
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include=""Aether.Physics2D"" Version=""2.2.0"" />
     <PackageReference Include=""BepuPhysics"" Version=""2.4.0"" />
     <PackageReference Include=""Serilog"" Version=""4.4.0"" />
     <PackageReference Include=""Serilog.Sinks.Console"" Version=""6.1.1"" />
