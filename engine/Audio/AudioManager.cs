@@ -1,5 +1,4 @@
 using System.Numerics;
-using Silk.NET.OpenAL;
 using Spot.Core;
 
 namespace Spot.Audio;
@@ -11,44 +10,47 @@ namespace Spot.Audio;
 /// </summary>
 public readonly struct Voice
 {
-    internal Voice(uint source, int generation)
+    internal Voice(AudioSourceHandle source, int generation)
     {
         Source = source;
         Generation = generation;
     }
 
-    internal uint Source { get; }
+    internal AudioSourceHandle Source { get; }
 
     internal int Generation { get; }
 
     /// <summary>Gets whether this handle refers to a real source (as opposed to a dropped/failed play).</summary>
-    public bool IsValid => Source != 0;
+    public bool IsValid => Source.IsValid;
 }
 
 /// <summary>
-/// The engine-wide audio mixer: it owns a fixed pool of OpenAL sources, uploads <see cref="AudioClip"/> PCM
-/// into OpenAL buffers on demand, and is the single chokepoint every sound flows through. Every method is
-/// a no-op when <see cref="AudioDevice"/> is unavailable, so callers never need to guard for a missing
-/// audio device.
+/// The engine-wide audio mixer: it owns a fixed pool of backend sources, uploads <see cref="AudioClip"/> PCM
+/// into backend buffers on demand, and is the single chokepoint every sound flows through. Playback is issued
+/// against an <see cref="IAudioBackend"/> (OpenAL on desktop, Web Audio in the browser). Every method is a
+/// no-op when the backend is unavailable, so callers never need to guard for a missing audio device.
 /// </summary>
 public static class AudioManager
 {
-    // OpenAL guarantees only a modest number of simultaneous sources; 32 voices is plenty for a 2D/3D
+    // The backend guarantees only a modest number of simultaneous sources; 32 voices is plenty for a 2D/3D
     // game and stays well under every implementation's limit. Excess simultaneous plays are dropped.
     private const int SourceCount = 32;
 
-    private static uint[] s_sources = Array.Empty<uint>();
+    private static IAudioBackend s_backend = new SilentAudioBackend();
+    private static AudioSourceHandle[] s_sources = Array.Empty<AudioSourceHandle>();
     private static int[] s_generations = Array.Empty<int>();
-    private static readonly float[] s_orientation = new float[6];
 
-    private static AL? Al => AudioDevice.Al;
+    private static bool Available => s_backend.Available;
 
-    private static bool Available => AudioDevice.Available;
-
-    /// <summary>Opens the audio device and allocates the source pool. Safe to call more than once.</summary>
-    public static void Init()
+    /// <summary>
+    /// Installs the platform audio backend, opens the device, and allocates the source pool. Safe to call
+    /// more than once. Mirrors <see cref="Rendering.Renderer"/>'s device injection: the desktop host passes an
+    /// OpenAL backend, the browser host a Web Audio backend.
+    /// </summary>
+    public static void Init(IAudioBackend backend)
     {
-        AudioDevice.Open();
+        s_backend = backend ?? new SilentAudioBackend();
+        s_backend.Open();
         if (!Available)
         {
             return;
@@ -56,18 +58,17 @@ public static class AudioManager
 
         try
         {
-            s_sources = new uint[SourceCount];
+            s_sources = new AudioSourceHandle[SourceCount];
             s_generations = new int[SourceCount];
-            AL al = Al!;
             for (int i = 0; i < SourceCount; i++)
             {
-                s_sources[i] = al.GenSource();
+                s_sources[i] = s_backend.GenSource();
             }
         }
         catch (Exception ex)
         {
             Log.CoreWarn("Failed to allocate audio sources ({0}); audio will run muted.", ex.Message);
-            s_sources = Array.Empty<uint>();
+            s_sources = Array.Empty<AudioSourceHandle>();
             s_generations = Array.Empty<int>();
         }
     }
@@ -79,11 +80,10 @@ public static class AudioManager
         {
             if (Available && s_sources.Length > 0)
             {
-                AL al = Al!;
-                foreach (uint source in s_sources)
+                foreach (AudioSourceHandle source in s_sources)
                 {
-                    al.SourceStop(source);
-                    al.DeleteSource(source);
+                    s_backend.StopSource(source);
+                    s_backend.DeleteSource(source);
                 }
             }
         }
@@ -92,9 +92,10 @@ public static class AudioManager
             Log.CoreWarn("Error while releasing audio sources: {0}", ex.Message);
         }
 
-        s_sources = Array.Empty<uint>();
+        s_sources = Array.Empty<AudioSourceHandle>();
         s_generations = Array.Empty<int>();
-        AudioDevice.Close();
+        s_backend.Close();
+        s_backend = new SilentAudioBackend();
     }
 
     /// <summary>Applies the global mix (master volume / mute) to the listener. Called once per frame.</summary>
@@ -109,7 +110,7 @@ public static class AudioManager
         try
         {
             float master = AudioSettings.Muted ? 0.0f : Math.Clamp(AudioSettings.MasterVolume, 0.0f, 1.0f);
-            Al!.SetListenerProperty(ListenerFloat.Gain, master);
+            s_backend.SetListenerGain(master);
         }
         catch (Exception ex)
         {
@@ -118,7 +119,7 @@ public static class AudioManager
     }
 
     /// <summary>Positions and orients the 3D listener (typically driven from the active camera transform).</summary>
-    public static unsafe void SetListener(Vector3 position, Vector3 forward, Vector3 up)
+    public static void SetListener(Vector3 position, Vector3 forward, Vector3 up)
     {
         if (!Available)
         {
@@ -127,18 +128,8 @@ public static class AudioManager
 
         try
         {
-            AL al = Al!;
-            al.SetListenerProperty(ListenerVector3.Position, position.X, position.Y, position.Z);
-            s_orientation[0] = forward.X;
-            s_orientation[1] = forward.Y;
-            s_orientation[2] = forward.Z;
-            s_orientation[3] = up.X;
-            s_orientation[4] = up.Y;
-            s_orientation[5] = up.Z;
-            fixed (float* p = s_orientation)
-            {
-                al.SetListenerProperty(ListenerFloatArray.Orientation, p);
-            }
+            s_backend.SetListenerPosition(position);
+            s_backend.SetListenerOrientation(forward, up);
         }
         catch (Exception ex)
         {
@@ -161,34 +152,33 @@ public static class AudioManager
 
         try
         {
-            uint buffer = EnsureBuffer(clip);
-            if (buffer == 0 || !TryAcquireSource(out int slot))
+            AudioBufferHandle buffer = EnsureBuffer(clip);
+            if (!buffer.IsValid || !TryAcquireSource(out int slot))
             {
                 return default;
             }
 
-            AL al = Al!;
-            uint source = s_sources[slot];
-            al.SetSourceProperty(source, SourceInteger.Buffer, (int)buffer);
-            al.SetSourceProperty(source, SourceFloat.Gain, Math.Max(0.0f, volume));
-            al.SetSourceProperty(source, SourceFloat.Pitch, Math.Max(0.01f, pitch));
-            al.SetSourceProperty(source, SourceBoolean.Looping, loop);
+            AudioSourceHandle source = s_sources[slot];
+            s_backend.SetSourceBuffer(source, buffer);
+            s_backend.SetSourceGain(source, Math.Max(0.0f, volume));
+            s_backend.SetSourcePitch(source, Math.Max(0.01f, pitch));
+            s_backend.SetSourceLooping(source, loop);
 
             if (spatial)
             {
-                al.SetSourceProperty(source, SourceBoolean.SourceRelative, false);
-                al.SetSourceProperty(source, SourceFloat.ReferenceDistance, Math.Max(0.0f, minDistance));
-                al.SetSourceProperty(source, SourceFloat.MaxDistance, Math.Max(minDistance, maxDistance));
-                al.SetSourceProperty(source, SourceVector3.Position, position.X, position.Y, position.Z);
+                s_backend.SetSourceRelative(source, false);
+                s_backend.SetSourceReferenceDistance(source, Math.Max(0.0f, minDistance));
+                s_backend.SetSourceMaxDistance(source, Math.Max(minDistance, maxDistance));
+                s_backend.SetSourcePosition(source, position);
             }
             else
             {
                 // Anchor to the listener so 2D sounds (UI, music) ignore position entirely.
-                al.SetSourceProperty(source, SourceBoolean.SourceRelative, true);
-                al.SetSourceProperty(source, SourceVector3.Position, 0.0f, 0.0f, 0.0f);
+                s_backend.SetSourceRelative(source, true);
+                s_backend.SetSourcePosition(source, Vector3.Zero);
             }
 
-            al.SourcePlay(source);
+            s_backend.PlaySource(source);
             return new Voice(source, s_generations[slot]);
         }
         catch (Exception ex)
@@ -208,8 +198,7 @@ public static class AudioManager
 
         try
         {
-            Al!.GetSourceProperty(voice.Source, GetSourceInteger.SourceState, out int state);
-            return state == (int)SourceState.Playing;
+            return s_backend.GetSourceState(voice.Source) == AudioSourceState.Playing;
         }
         catch
         {
@@ -227,7 +216,7 @@ public static class AudioManager
 
         try
         {
-            Al!.SourceStop(voice.Source);
+            s_backend.StopSource(voice.Source);
         }
         catch (Exception ex)
         {
@@ -240,7 +229,7 @@ public static class AudioManager
     {
         if (IsCurrent(voice))
         {
-            try { Al!.SourcePause(voice.Source); } catch { /* never crash on audio */ }
+            try { s_backend.PauseSource(voice.Source); } catch { /* never crash on audio */ }
         }
     }
 
@@ -249,7 +238,7 @@ public static class AudioManager
     {
         if (IsCurrent(voice))
         {
-            try { Al!.SourcePlay(voice.Source); } catch { /* never crash on audio */ }
+            try { s_backend.PlaySource(voice.Source); } catch { /* never crash on audio */ }
         }
     }
 
@@ -258,7 +247,7 @@ public static class AudioManager
     {
         if (IsCurrent(voice))
         {
-            try { Al!.SetSourceProperty(voice.Source, SourceVector3.Position, position.X, position.Y, position.Z); }
+            try { s_backend.SetSourcePosition(voice.Source, position); }
             catch { /* never crash on audio */ }
         }
     }
@@ -268,41 +257,40 @@ public static class AudioManager
     {
         if (IsCurrent(voice))
         {
-            try { Al!.SetSourceProperty(voice.Source, SourceFloat.Gain, Math.Max(0.0f, gain)); }
+            try { s_backend.SetSourceGain(voice.Source, Math.Max(0.0f, gain)); }
             catch { /* never crash on audio */ }
         }
     }
 
-    /// <summary>Uploads a clip's PCM into an OpenAL buffer the first time it is played, caching it on the clip.</summary>
-    internal static uint EnsureBuffer(AudioClip clip)
+    /// <summary>Uploads a clip's PCM into a backend buffer the first time it is played, caching it on the clip.</summary>
+    internal static AudioBufferHandle EnsureBuffer(AudioClip clip)
     {
         if (!Available)
         {
-            return 0;
+            return default;
         }
 
         if (clip.AlBuffer != 0)
         {
-            return clip.AlBuffer;
+            return new AudioBufferHandle(clip.AlBuffer);
         }
 
         try
         {
-            AL al = Al!;
-            uint buffer = al.GenBuffer();
-            BufferFormat format = clip.Channels >= 2 ? BufferFormat.Stereo16 : BufferFormat.Mono16;
-            al.BufferData<short>(buffer, format, clip.Pcm, clip.SampleRate);
-            clip.AlBuffer = buffer;
+            AudioBufferHandle buffer = s_backend.GenBuffer();
+            AudioSampleFormat format = clip.Channels >= 2 ? AudioSampleFormat.Stereo16 : AudioSampleFormat.Mono16;
+            s_backend.UploadBuffer(buffer, format, clip.Pcm, clip.SampleRate);
+            clip.AlBuffer = buffer.Id;
             return buffer;
         }
         catch (Exception ex)
         {
             Log.CoreWarn("Failed to upload audio buffer: {0}", ex.Message);
-            return 0;
+            return default;
         }
     }
 
-    /// <summary>Deletes a clip's OpenAL buffer when the clip is disposed.</summary>
+    /// <summary>Deletes a clip's backend buffer when the clip is disposed.</summary>
     internal static void ReleaseClipBuffer(AudioClip clip)
     {
         if (!Available || clip.AlBuffer == 0)
@@ -313,21 +301,20 @@ public static class AudioManager
 
         try
         {
-            AL al = Al!;
+            var clipBuffer = new AudioBufferHandle(clip.AlBuffer);
 
             // A buffer still attached to any source cannot be deleted, so detach it first (stopping the
             // source that holds it). This keeps AudioClip.Dispose safe even mid-playback.
-            foreach (uint source in s_sources)
+            foreach (AudioSourceHandle source in s_sources)
             {
-                al.GetSourceProperty(source, GetSourceInteger.Buffer, out int bound);
-                if ((uint)bound == clip.AlBuffer)
+                if (s_backend.GetSourceBuffer(source) == clipBuffer)
                 {
-                    al.SourceStop(source);
-                    al.SetSourceProperty(source, SourceInteger.Buffer, 0);
+                    s_backend.StopSource(source);
+                    s_backend.SetSourceBuffer(source, default);
                 }
             }
 
-            al.DeleteBuffer(clip.AlBuffer);
+            s_backend.DeleteBuffer(clipBuffer);
         }
         catch (Exception ex)
         {
@@ -339,11 +326,10 @@ public static class AudioManager
 
     private static bool TryAcquireSource(out int slot)
     {
-        AL al = Al!;
         for (int i = 0; i < s_sources.Length; i++)
         {
-            al.GetSourceProperty(s_sources[i], GetSourceInteger.SourceState, out int state);
-            if (state != (int)SourceState.Playing && state != (int)SourceState.Paused)
+            AudioSourceState state = s_backend.GetSourceState(s_sources[i]);
+            if (state != AudioSourceState.Playing && state != AudioSourceState.Paused)
             {
                 s_generations[i]++;
                 slot = i;
