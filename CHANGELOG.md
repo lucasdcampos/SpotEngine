@@ -11,6 +11,15 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **Browser target (WebAssembly + WebGL2, 2D MVP)** — the engine now multi-targets `net10.0` (desktop,
+  Silk.NET) and `net10.0-browser`, sharing one neutral core. A WebGL2 `IGraphicsDevice` backend drives the
+  canvas from C# over `[JSImport]`; a `BrowserHost` runs the `requestAnimationFrame` loop, translates DOM
+  input into the existing `Input`/event pipeline, and fetches cooked content into an in-memory
+  `IAssetProvider`. Platform seams were extracted so the core no longer binds to the desktop window,
+  renderer, or audio: an `IAudioBackend` (OpenAL on desktop, silent in-browser for now), a `Display`
+  render-surface-size seam, a `SceneRenderer` callback (full 3D pipeline on desktop, slim 2D in-browser),
+  and a GLSL → `#version 300 es` transpiler. `spot build browser` publishes a WebGL2 static site. The
+  3D/post/shadow pipeline, ImGui, and the Assimp importer remain desktop-only.
 - **2D physics backend** — real 2D rigid-body simulation on **Aether.Physics2D** (a managed Box2D
   descendant) behind an `IPhysics2D` seam, mirroring the 3D/Bepu design: mass, friction, restitution,
   rotation, collision/trigger callbacks, and `Scene.Raycast2D`. Adds a **Circle Collider 2D** and
