@@ -188,7 +188,7 @@ public sealed class Material
         var material = new Material { SourcePath = full };
         try
         {
-            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(File.ReadAllText(full));
+            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(AssetProvider.Current.ReadAllText(full));
             if (data != null)
             {
                 if (data.Color.Length == 4)
