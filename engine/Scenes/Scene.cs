@@ -72,7 +72,6 @@ public class Scene
     /// </summary>
     public virtual void OnEnter()
     {
-        var window = Spot.Core.Application.Instance.Window;
         foreach (var entity in View<CameraComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
@@ -80,7 +79,7 @@ public class Scene
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
-                cc.SetViewportSize(window.Width, window.Height);
+                cc.SetViewportSize(Spot.Core.Display.Width, Spot.Core.Display.Height);
             }
         }
     }
@@ -110,10 +109,9 @@ public class Scene
     {
         if (_ui is null || _ui.Children.Count == 0) return;
 
-        var window = Application.Instance.Window;
         _ui.Update(
-            window.Width,
-            window.Height,
+            Spot.Core.Display.Width,
+            Spot.Core.Display.Height,
             Input.MousePosition,
             Input.GetMouseButton(MouseButton.Left),
             Input.GetMouseButtonDown(MouseButton.Left),
