@@ -184,7 +184,10 @@ public static class ProjectBuilder
             return new BuildResult(false, -1, webDir);
         }
 
-        string outputDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "browser");
+        // Absolute so `-o` is unambiguous: the publish runs with the WebAssembly project (webDir) as its
+        // working directory, which is deeper than the project root, so a relative output path would nest.
+        string outputDir = Path.GetFullPath(
+            Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "browser"));
         string csprojFile = project.Config.Name + ".Browser.csproj";
         string publishArgs = $"publish \"{csprojFile}\" -c Release -o \"{outputDir}\"";
 

@@ -1367,6 +1367,7 @@ public class EditorScene : Scene
                 {
                     if (ImGui.MenuItem("Windows")) BuildProject(Spot.Build.BuildPlatform.Windows);
                     if (ImGui.MenuItem("Linux")) BuildProject(Spot.Build.BuildPlatform.Linux);
+                    if (ImGui.MenuItem("Browser (WebGL2)")) BuildProject(Spot.Build.BuildPlatform.Browser);
                     ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("Regenerate Project Files"))

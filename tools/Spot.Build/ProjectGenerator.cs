@@ -55,6 +55,10 @@ public static class ProjectGenerator
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>{name}.Browser</AssemblyName>
     <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
+    <!-- The engine is reached only through [JSExport] and reflection (component types, scene
+         deserialization), which the trimmer cannot see from this shell's entry point, so it would strip
+         Spot.Engine and its dependencies entirely. Disable trimming so the whole engine ships. -->
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
@@ -94,18 +98,59 @@ System.Console.WriteLine(""Spot browser runtime started."");
     }
 
     // Copies the engine's browser (net10.0-browser) build next to the generated browser project. The tooling
-    // runs against the desktop engine assembly, so its browser sibling is located by swapping the TFM folder.
-    private static void CopyBrowserEngineDll(string engineBinDir)
+    // runs against the desktop engine assembly, so its browser sibling is located by probing a few candidate
+    // layouts (see FindBrowserEngineDll). Returns the copied path, or null when no browser build was found.
+    private static string? CopyBrowserEngineDll(string engineBinDir)
     {
-        string desktopDll = typeof(Project).Assembly.Location;
-        string browserDll = desktopDll
-            .Replace($"{Path.DirectorySeparatorChar}net10.0{Path.DirectorySeparatorChar}",
-                     $"{Path.DirectorySeparatorChar}net10.0-browser{Path.DirectorySeparatorChar}");
-
-        if (browserDll != desktopDll && File.Exists(browserDll))
+        string? browserDll = FindBrowserEngineDll(typeof(Project).Assembly.Location);
+        if (browserDll is null)
         {
-            CopyIfPresent(browserDll, Path.Combine(engineBinDir, "Spot.Engine.dll"));
+            return null;
         }
+
+        string target = Path.Combine(engineBinDir, "Spot.Engine.dll");
+        CopyIfPresent(browserDll, target);
+        return File.Exists(target) ? target : null;
+    }
+
+    // Locates the engine's net10.0-browser Spot.Engine.dll relative to the loaded (desktop) engine assembly.
+    // Two layouts are tried: the browser TFM folder sitting beside the loaded one (a host that copied both
+    // targets), and the engine's own build output under the shared bin root (the repo layout, where each
+    // project publishes to bin/<Project>/<Config>/<tfm>/).
+    private static string? FindBrowserEngineDll(string desktopDll)
+    {
+        char sep = Path.DirectorySeparatorChar;
+
+        string sibling = desktopDll.Replace($"{sep}net10.0{sep}", $"{sep}net10.0-browser{sep}");
+        if (sibling != desktopDll && File.Exists(sibling))
+        {
+            return sibling;
+        }
+
+        // Walk up the loaded DLL's path: <binRoot>/<Project>/<Config>/net10.0/Spot.Engine.dll, and rebuild it
+        // as <binRoot>/Spot.Engine/<Config>/net10.0-browser/Spot.Engine.dll.
+        try
+        {
+            string? tfmDir = Path.GetDirectoryName(desktopDll);
+            string? configDir = Path.GetDirectoryName(tfmDir);
+            string? projectDir = Path.GetDirectoryName(configDir);
+            string? binRoot = Path.GetDirectoryName(projectDir);
+            if (configDir is not null && binRoot is not null)
+            {
+                string config = Path.GetFileName(configDir);
+                string candidate = Path.Combine(binRoot, "Spot.Engine", config, "net10.0-browser", "Spot.Engine.dll");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+        catch
+        {
+            // Path probing is best-effort; fall through to "not found".
+        }
+
+        return null;
     }
 
     private static void CopyEngineDll(string projectDirectory)
