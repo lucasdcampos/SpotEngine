@@ -22,6 +22,8 @@ public class Scene
     private int _nextId = 1;
     private IPhysics3D? _physics3D;
     private CollisionDispatcher? _collisions;
+    private IPhysics2D? _physics2D;
+    private CollisionDispatcher? _collisions2D;
 
     /// <summary>
     /// The ordered play-mode systems this scene runs each frame from <see cref="UpdateRuntime"/>. Every
@@ -50,7 +52,7 @@ public class Scene
     public Scene()
     {
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, Physics2DSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.Particles, ParticleSystem.Update));
@@ -156,6 +158,43 @@ public class Scene
     }
 
     /// <summary>
+    /// Runs the 2D physics step and dispatches its collision events. Mirrors <see cref="StepPhysics3D"/>; the
+    /// backend and its contacts stay encapsulated on the scene while the built-in physics <see cref="ISystem"/>
+    /// simply triggers it in order (see <see cref="SystemOrder.Physics2D"/>).
+    /// </summary>
+    private void StepPhysics2D(float deltaTime)
+    {
+        IPhysics2D physics = EnsurePhysics2D();
+        physics.Step(this, deltaTime);
+        (_collisions2D ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
+    }
+
+    /// <summary>
+    /// Lazily builds this scene's 2D physics backend from <see cref="PhysicsSettings.Backend2D"/>. If the
+    /// preferred backend fails to initialize, falls back to the legacy AABB solver so play never dies.
+    /// </summary>
+    private IPhysics2D EnsurePhysics2D()
+    {
+        if (_physics2D is not null) return _physics2D;
+
+        if (PhysicsSettings.Backend2D == Physics2DBackend.Aether)
+        {
+            try
+            {
+                _physics2D = new Physics.Aether.AetherPhysics2D();
+                return _physics2D;
+            }
+            catch (Exception ex)
+            {
+                Log.CoreError("Failed to initialize the Aether 2D physics backend ({0}); falling back to the legacy solver.", ex.Message);
+            }
+        }
+
+        _physics2D = new LegacyPhysics2D();
+        return _physics2D;
+    }
+
+    /// <summary>
     /// Casts a ray against this scene's 3D physics and returns the closest hit within
     /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
     /// </summary>
@@ -167,6 +206,20 @@ public class Scene
             return false;
         }
         return _physics3D.Raycast(this, origin, direction, maxDistance, out hit);
+    }
+
+    /// <summary>
+    /// Casts a ray against this scene's 2D physics (XY plane) and returns the closest hit within
+    /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
+    /// </summary>
+    public bool Raycast2D(Vector2 origin, Vector2 direction, float maxDistance, out RaycastHit2D hit)
+    {
+        if (_physics2D is null)
+        {
+            hit = default;
+            return false;
+        }
+        return _physics2D.Raycast(this, origin, direction, maxDistance, out hit);
     }
 
     /// <summary>
@@ -330,17 +383,33 @@ public class Scene
     /// </summary>
     internal void TeardownPhysics()
     {
-        if (_physics3D is null) return;
-        try
+        if (_physics3D is not null)
         {
-            _physics3D.Dispose();
+            try
+            {
+                _physics3D.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
+            }
+            _physics3D = null;
+            _collisions?.Reset();
         }
-        catch (Exception ex)
+
+        if (_physics2D is not null)
         {
-            Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
+            try
+            {
+                _physics2D.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.CoreError("Failed to dispose the 2D physics backend: {0}", ex.Message);
+            }
+            _physics2D = null;
+            _collisions2D?.Reset();
         }
-        _physics3D = null;
-        _collisions?.Reset();
     }
 
     /// <summary>

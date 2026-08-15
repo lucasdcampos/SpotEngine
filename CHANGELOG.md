@@ -11,6 +11,12 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **2D physics backend** — real 2D rigid-body simulation on **Aether.Physics2D** (a managed Box2D
+  descendant) behind an `IPhysics2D` seam, mirroring the 3D/Bepu design: mass, friction, restitution,
+  rotation, collision/trigger callbacks, and `Scene.Raycast2D`. Adds a **Circle Collider 2D** and
+  expands **Physics Body 2D** (mass, drag, friction, restitution, kinematic, freeze-rotation). Selected
+  via `PhysicsSettings.Backend2D`/`Gravity2D`; falls back to the legacy AABB solver if it fails to
+  initialize. The Sandbox gains a **Physics 2D** playground demo.
 - **Runtime UI system** — a code-driven, retained UI tree (`Spot.UI`) for building HUDs and
   menus in-game: `UIRoot`/`Panel`/`Image`/`Text`/`Button`/`Slider`/`Toggle`, screen anchoring,
   9-slice sprites, and pointer input (hover/press/click) with callbacks. Independent of the

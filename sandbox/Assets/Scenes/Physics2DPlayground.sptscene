@@ -1,0 +1,76 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Camera",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          10
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Camera": {
+        "Enabled": true,
+        "Primary": true,
+        "FixedAspectRatio": false,
+        "BackgroundColor": [
+          0.06,
+          0.07,
+          0.09,
+          1
+        ],
+        "ProjectionType": 0,
+        "ZoomLevel": 9,
+        "FieldOfView": 45,
+        "NearClip": 0.1,
+        "FarClip": 1000
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Playground",
+        "Enabled": true
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "Physics2DPlayground"
+          }
+        ]
+      }
+    }
+  ]
+}

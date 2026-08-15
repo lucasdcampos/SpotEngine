@@ -15,6 +15,18 @@ public enum Physics3DBackend
 }
 
 /// <summary>
+/// Selects which 2D physics backend a scene uses for its runtime simulation.
+/// </summary>
+public enum Physics2DBackend
+{
+    /// <summary>Aether.Physics2D — a full rigid-body simulation (default).</summary>
+    Aether,
+
+    /// <summary>The engine's built-in AABB solver — boxes only, kept as a fallback.</summary>
+    Legacy,
+}
+
+/// <summary>
 /// Global, engine-wide knobs for 3D physics. Following the engine's "graphics customization"
 /// convention, physics is tuned through this single static surface rather than per-scene wiring.
 /// Values are read when a scene builds its physics backend (and gravity is read every step), so
@@ -31,13 +43,20 @@ public static class PhysicsSettings
     /// <summary>The backend new scenes create for their 3D simulation. Defaults to <see cref="Physics3DBackend.Bepu"/>.</summary>
     public static Physics3DBackend Backend { get; set; } = Physics3DBackend.Bepu;
 
+    /// <summary>The backend new scenes create for their 2D simulation. Defaults to <see cref="Physics2DBackend.Aether"/>.</summary>
+    public static Physics2DBackend Backend2D { get; set; } = Physics2DBackend.Aether;
+
     /// <summary>World gravity applied to dynamic bodies, in units/second². Read every physics step.</summary>
     public static Vector3 Gravity { get; set; } = new Vector3(0f, -9.81f, 0f);
+
+    /// <summary>World gravity applied to 2D dynamic bodies, in units/second². Read every 2D physics step.</summary>
+    public static Vector2 Gravity2D { get; set; } = new Vector2(0f, -9.81f);
 
     /// <summary>
     /// Enables or disables collisions between two layers (0..<see cref="LayerCount"/>-1). Symmetric, so
     /// <c>SetLayerCollision(a, b, …)</c> also affects <c>(b, a)</c>. A collider's layer is set on its
-    /// component (<see cref="BoxCollider3DComponent.Layer"/> and friends). Bepu backend only.
+    /// component (<see cref="Collider3DComponent.Layer"/>, <see cref="Collider2DComponent.Layer"/>). Honored by
+    /// the Bepu and Aether backends (the 2D backend maps layers 0..30 onto collision categories).
     /// </summary>
     public static void SetLayerCollision(int layerA, int layerB, bool shouldCollide)
     {

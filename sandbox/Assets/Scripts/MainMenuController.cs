@@ -22,6 +22,7 @@ public sealed class MainMenuController : EntityBehaviour
     private static readonly (string Label, string Scene)[] Games =
     {
         ("Horde Survival", "Scenes/HordeSurvival.sptscene"),
+        ("Physics 2D", "Scenes/Physics2DPlayground.sptscene"),
     };
 
     private static readonly (string Label, string Scene)[] TestScenes =
