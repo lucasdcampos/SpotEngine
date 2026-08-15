@@ -27,6 +27,87 @@ public static class ProjectGenerator
         WriteProgram(project, overwriteProgram);
     }
 
+    /// <summary>
+    /// Generates the browser (WebAssembly) build project under <c>Build/web</c>: a
+    /// <c>Microsoft.NET.Sdk.WebAssembly</c> <c>.csproj</c> referencing the browser build of the engine, a
+    /// minimal entry point (JavaScript drives <see cref="Spot.Browser.BrowserHost"/>), and the
+    /// <c>wwwroot</c> host page and bridge script. Cooked content and its index are copied in by
+    /// <see cref="ProjectBuilder"/> at build time. Returns the generated project directory.
+    /// </summary>
+    public static string GenerateBrowser(Project project)
+    {
+        string webDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "web");
+        string wwwroot = Path.Combine(webDir, "wwwroot");
+        string engineBin = Path.Combine(webDir, "EngineBin");
+        Directory.CreateDirectory(wwwroot);
+        Directory.CreateDirectory(engineBin);
+
+        CopyBrowserEngineDll(engineBin);
+
+        string name = project.Config.Name;
+        string csprojName = name + ".Browser.csproj";
+
+        string csproj = $@"<Project Sdk=""Microsoft.NET.Sdk.WebAssembly"">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>{name}.Browser</AssemblyName>
+    <WasmMainJSPath>wwwroot/main.js</WasmMainJSPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include=""Spot.Engine"">
+      <HintPath>EngineBin\Spot.Engine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- The engine's managed dependencies are referenced directly by the app, since a HintPath reference does
+       not carry transitive NuGet packages. These mirror the engine's browser-target dependency set (no
+       Silk.NET, no ImGui — the browser build ships neither). -->
+  <ItemGroup>
+    <PackageReference Include=""Aether.Physics2D"" Version=""2.2.0"" />
+    <PackageReference Include=""BepuPhysics"" Version=""2.4.0"" />
+    <PackageReference Include=""Serilog"" Version=""4.4.0"" />
+    <PackageReference Include=""Serilog.Sinks.Console"" Version=""6.1.1"" />
+    <PackageReference Include=""Serilog.Sinks.File"" Version=""6.0.0"" />
+    <PackageReference Include=""StbImageSharp"" Version=""2.30.15"" />
+    <PackageReference Include=""StbTrueTypeSharp"" Version=""1.26.13"" />
+    <PackageReference Include=""StbVorbisSharp"" Version=""1.22.4"" />
+  </ItemGroup>
+</Project>";
+        File.WriteAllText(Path.Combine(webDir, csprojName), csproj);
+
+        // The runtime boots this assembly's entry point; main.js then drives the engine's browser host.
+        string program = @"// Browser build entry point. Rendering and the loop are driven from wwwroot/main.js
+// through Spot.Browser.BrowserHost; this Main just boots the WebAssembly runtime.
+System.Console.WriteLine(""Spot browser runtime started."");
+";
+        File.WriteAllText(Path.Combine(webDir, "Program.cs"), program);
+
+        File.WriteAllText(Path.Combine(wwwroot, "index.html"), BrowserTemplate.IndexHtml(name));
+        File.WriteAllText(Path.Combine(wwwroot, "main.js"),
+            BrowserTemplate.MainJs(project.Config.StartScene.Replace("\\", "/")));
+
+        return webDir;
+    }
+
+    // Copies the engine's browser (net10.0-browser) build next to the generated browser project. The tooling
+    // runs against the desktop engine assembly, so its browser sibling is located by swapping the TFM folder.
+    private static void CopyBrowserEngineDll(string engineBinDir)
+    {
+        string desktopDll = typeof(Project).Assembly.Location;
+        string browserDll = desktopDll
+            .Replace($"{Path.DirectorySeparatorChar}net10.0{Path.DirectorySeparatorChar}",
+                     $"{Path.DirectorySeparatorChar}net10.0-browser{Path.DirectorySeparatorChar}");
+
+        if (browserDll != desktopDll && File.Exists(browserDll))
+        {
+            CopyIfPresent(browserDll, Path.Combine(engineBinDir, "Spot.Engine.dll"));
+        }
+    }
+
     private static void CopyEngineDll(string projectDirectory)
     {
         string engineBinDir = Path.Combine(projectDirectory, Spot.Core.ProjectStructure.EngineBinFolder);
