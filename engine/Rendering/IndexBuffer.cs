@@ -1,5 +1,3 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
@@ -15,7 +13,7 @@ public sealed class IndexBuffer : IDisposable
     /// <param name="indices">The indices into the associated vertex buffer.</param>
     public IndexBuffer(ReadOnlySpan<uint> indices)
     {
-        _buffer = new BufferObject<uint>(indices, BufferTargetARB.ElementArrayBuffer);
+        _buffer = new BufferObject<uint>(indices, BufferKind.Index);
         Count = (uint)indices.Length;
     }
 

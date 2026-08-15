@@ -1,5 +1,3 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
@@ -83,17 +81,17 @@ internal static class ShaderDataTypeExtensions
     };
 
     /// <summary>
-    /// Gets the graphics API base type used for the attribute's components.
+    /// Gets the base component type used for the attribute.
     /// </summary>
     /// <param name="type">The attribute type.</param>
-    /// <returns>The corresponding <see cref="VertexAttribPointerType"/>.</returns>
-    public static VertexAttribPointerType ToVertexAttribPointerType(this ShaderDataType type) => type switch
+    /// <returns>The corresponding <see cref="VertexAttribType"/>.</returns>
+    public static VertexAttribType ToVertexAttribType(this ShaderDataType type) => type switch
     {
         ShaderDataType.Float or ShaderDataType.Float2 or ShaderDataType.Float3 or ShaderDataType.Float4
-            => VertexAttribPointerType.Float,
+            => VertexAttribType.Float,
         ShaderDataType.Int or ShaderDataType.Int2 or ShaderDataType.Int3 or ShaderDataType.Int4
-            => VertexAttribPointerType.Int,
-        ShaderDataType.Bool => VertexAttribPointerType.UnsignedByte,
+            => VertexAttribType.Int,
+        ShaderDataType.Bool => VertexAttribType.UnsignedByte,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown shader data type."),
     };
 }
