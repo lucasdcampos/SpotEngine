@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Spot WASM + WebGL2 spike</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preload" id="webassembly" />
+  <script type="importmap"></script>
+  <script type='module' src="main#[.{fingerprint}].js"></script>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #ddd; text-align: center; }
+    canvas { background: #000; border: 1px solid #333; display: block; margin: 1rem auto; }
+  </style>
+</head>
+
+<body>
+  <h1>Spot: .NET WASM + WebGL2 spike</h1>
+  <p>A rotating, color-cycling quad below is drawn by C# issuing WebGL2 calls. Check the console for logs.</p>
+  <canvas id="canvas" width="640" height="480"></canvas>
+</body>
+
+</html>
