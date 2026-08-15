@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
     <RootNamespace>Spot</RootNamespace>
     <AssemblyName>Spot.Engine</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -15,12 +15,23 @@
     <EmbeddedResource Include="Resources\DefaultFont.ttf" LogicalName="Spot.DefaultFont.ttf" />
   </ItemGroup>
 
+  <!-- Managed dependencies shared by both targets: physics, logging, and the Stb* asset decoders are all
+       pure managed and link under wasm just as they do on desktop. -->
   <ItemGroup>
     <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
+    <PackageReference Include="StbTrueTypeSharp" Version="1.26.13" />
+    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
+  </ItemGroup>
+
+  <!-- Desktop-only native/interop dependencies: Silk.NET windowing, OpenGL, OpenAL, Assimp, and the ImGui
+       GL extension. The browser target drives WebGL2/Web Audio/DOM through [JSImport] instead and never
+       references Silk.NET. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Silk.NET.Assimp" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
     <PackageReference Include="Silk.NET.OpenAL" Version="2.23.0" />
@@ -28,9 +39,41 @@
     <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
-    <PackageReference Include="StbImageSharp" Version="2.30.15" />
-    <PackageReference Include="StbTrueTypeSharp" Version="1.26.13" />
-    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
+  </ItemGroup>
+
+  <!-- Desktop-only source: the Silk.NET windowing/host, the OpenGL/3D/post/particle render pipeline, the
+       OpenAL audio backend, the Assimp importer, and the ImGui services. The browser target compiles only
+       the neutral engine core (ECS, scenes, scripting, 2D physics, input, audio seam, assets, the 2D/UI
+       renderers driven through IGraphicsDevice) plus its own [JSImport] backends. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
+    <Compile Remove="Core\Window.cs" />
+    <Compile Remove="Core\Application.cs" />
+    <Compile Remove="Core\IEngineService.cs" />
+    <Compile Remove="Core\IDebugOverlay.cs" />
+    <Compile Remove="Core\Services\GraphicsService.cs" />
+    <Compile Remove="Core\Services\AudioService.cs" />
+    <Compile Remove="Core\Services\ImGuiService.cs" />
+    <Compile Remove="Rendering\OpenGLGraphicsDevice.cs" />
+    <Compile Remove="Rendering\Renderer.Silk.cs" />
+    <Compile Remove="Rendering\Renderer3D.cs" />
+    <Compile Remove="Rendering\ParticleRenderer.cs" />
+    <Compile Remove="Rendering\PostProcessingRenderer.cs" />
+    <Compile Remove="Rendering\BloomRenderer.cs" />
+    <Compile Remove="Rendering\Framebuffer.cs" />
+    <Compile Remove="Rendering\DepthFramebuffer.cs" />
+    <Compile Remove="Audio\AudioDevice.cs" />
+    <Compile Remove="Audio\OpenAlAudioBackend.cs" />
+    <Compile Remove="Assets\AssimpModelImporter.cs" />
+    <Compile Remove="Scenes\Systems\RenderSystem.cs" />
+    <Compile Remove="Scenes\Systems\ParticleRenderSystem.cs" />
+    <Compile Remove="Scenes\ModelInstantiator.cs" />
+    <!-- Dear ImGui developer console (authoring/debug overlay). -->
+    <Compile Remove="Console\DevConsole.cs" />
+    <Compile Remove="Console\DevConsoleSink.cs" />
+    <!-- Cook-time source asset importers and the authoring asset database (editor/CLI only; the runtime
+         loads cooked content through AssetManifest). -->
+    <Compile Remove="Assets\Importers\**\*.cs" />
+    <Compile Remove="Assets\AssetDatabase.cs" />
   </ItemGroup>
 
 </Project>

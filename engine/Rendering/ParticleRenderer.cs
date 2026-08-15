@@ -3,16 +3,6 @@ using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
 
-/// <summary>How particle pixels combine with what's already on screen.</summary>
-public enum ParticleBlend
-{
-    /// <summary>Standard transparency: <c>src.a</c> over the background. Good for smoke, dust, soft sprites.</summary>
-    Alpha,
-
-    /// <summary>Additive: pixels only ever brighten the background. Good for fire, sparks, magic, glow.</summary>
-    Additive,
-}
-
 /// <summary>
 /// A batched renderer for particle quads. Like <see cref="Renderer2D"/> it accumulates quads into one
 /// dynamic buffer and draws them together, flushing whenever the texture or blend mode changes. Unlike
