@@ -272,6 +272,19 @@ public interface IGraphicsDevice
     /// <param name="handle">The vertex array to delete.</param>
     void DeleteVertexArray(VertexArrayHandle handle);
 
+    /// <summary>
+    /// Adapts engine-authored GLSL to the dialect this backend consumes, returning source ready to compile.
+    /// </summary>
+    /// <remarks>
+    /// Engine shaders are authored once in desktop GLSL; each backend rewrites them to the dialect its
+    /// driver accepts (a no-op on desktop OpenGL, a <c>#version 300 es</c> rewrite on WebGL2). Callers
+    /// pass the result to <see cref="ShaderSource"/>.
+    /// </remarks>
+    /// <param name="stage">The pipeline stage the source belongs to.</param>
+    /// <param name="source">The engine-authored GLSL source.</param>
+    /// <returns>The source in this backend's shading-language dialect.</returns>
+    string PreprocessShaderSource(ShaderStage stage, string source);
+
     /// <summary>Creates a shader object for the given pipeline stage.</summary>
     /// <param name="stage">The pipeline stage.</param>
     /// <returns>A handle to the new shader.</returns>

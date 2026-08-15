@@ -119,6 +119,9 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     public void DeleteVertexArray(VertexArrayHandle handle) => _gl.DeleteVertexArray(handle.Id);
 
     /// <inheritdoc />
+    public string PreprocessShaderSource(ShaderStage stage, string source) => source;
+
+    /// <inheritdoc />
     public ShaderHandle CreateShader(ShaderStage stage) => new(_gl.CreateShader(Map(stage)));
 
     /// <inheritdoc />
