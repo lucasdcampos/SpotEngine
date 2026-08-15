@@ -49,6 +49,7 @@ public sealed class Window : IDisposable
         _spec = spec;
         _width = spec.Width;
         _height = spec.Height;
+        Display.SetSize(_width, _height);
 
         WindowOptions options = WindowOptions.Default;
         options.Title = spec.Title;
@@ -156,6 +157,7 @@ public sealed class Window : IDisposable
         {
             _width = size.X;
             _height = size.Y;
+            Display.SetSize(_width, _height);
             _callback?.Invoke(new WindowResizeEvent(size.X, size.Y));
         };
 
