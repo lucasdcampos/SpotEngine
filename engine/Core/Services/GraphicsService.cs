@@ -1,4 +1,5 @@
 using Spot.Rendering;
+using Spot.Scenes;
 
 namespace Spot.Core.Services;
 
@@ -23,6 +24,11 @@ public class GraphicsService : IEngineService
         ParticleRenderer.Init();
         UIRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+
+        // Route Scene.OnRender through the full 3D-first pipeline. The browser host installs its own slim
+        // 2D scene renderer instead.
+        SceneRenderer.Callback = static (scene, viewProjection, cameraPosition) =>
+            RenderSystem.Render(scene, viewProjection, cameraPosition);
     }
 
     public void Shutdown()

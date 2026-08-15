@@ -263,7 +263,7 @@ public class Scene
                 Renderer.SetFaceCulling(true);
             }
 
-            RenderSystem.Render(this, viewProjection.Value, cameraPosition);
+            SceneRenderer.Render(this, viewProjection.Value, cameraPosition);
             
             if (is3D)
             {
