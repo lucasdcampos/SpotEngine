@@ -1,22 +1,18 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
 /// The high-level rendering facade. Wraps the underlying graphics API so callers never
 /// touch the raw OpenGL context directly.
 /// </summary>
-public static class Renderer
+/// <remarks>
+/// The facade itself is backend-neutral: it issues every command through <see cref="IGraphicsDevice"/>, so
+/// the same code drives the desktop OpenGL backend and the browser WebGL2 backend. The raw Silk.NET escape
+/// hatch (<c>Api</c>) and the desktop <c>Init(GL)</c> entry point live in a desktop-only partial so the
+/// browser build never sees them.
+/// </remarks>
+public static partial class Renderer
 {
-    private static GL? s_gl;
     private static IGraphicsDevice? s_device;
-
-    /// <summary>
-    /// Gets the underlying OpenGL API. Used internally by rendering resources not yet migrated to
-    /// <see cref="Device"/>.
-    /// </summary>
-    internal static GL Gl =>
-        s_gl ?? throw new InvalidOperationException("The renderer has not been initialized.");
 
     /// <summary>
     /// Gets the active graphics device. Rendering resources issue all GPU commands through this so the
@@ -26,21 +22,11 @@ public static class Renderer
         s_device ?? throw new InvalidOperationException("The renderer has not been initialized.");
 
     /// <summary>
-    /// Gets the raw OpenGL API as a low-level escape hatch, for rendering the engine's abstractions
-    /// do not cover. Using it couples your code to Silk.NET, so prefer the higher-level APIs
-    /// (<see cref="Renderer"/>, <see cref="Renderer2D"/>) when they suffice.
+    /// Initializes the renderer with a graphics device. Called once by the host (the desktop application
+    /// wraps a Silk.NET OpenGL context; the browser host wraps a WebGL2 context).
     /// </summary>
-    public static GL Api => Gl;
-
-    /// <summary>
-    /// Initializes the renderer with the active OpenGL context. Called once by the application.
-    /// </summary>
-    /// <param name="gl">The OpenGL API for the current context.</param>
-    internal static void Init(GL gl)
-    {
-        s_gl = gl;
-        s_device = new OpenGLGraphicsDevice(gl);
-    }
+    /// <param name="device">The graphics device backing every draw call.</param>
+    internal static void Init(IGraphicsDevice device) => s_device = device;
 
     /// <summary>
     /// Sets the color used to clear the screen.
