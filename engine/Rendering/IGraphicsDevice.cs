@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Spot.Rendering;
 
 /// <summary>
@@ -72,6 +74,45 @@ public enum VertexAttribType
     UnsignedByte,
 }
 
+/// <summary>
+/// A programmable stage of the graphics pipeline.
+/// </summary>
+public enum ShaderStage
+{
+    /// <summary>The per-vertex stage.</summary>
+    Vertex,
+
+    /// <summary>The per-fragment stage.</summary>
+    Fragment,
+}
+
+/// <summary>
+/// How a texture is sampled between texels.
+/// </summary>
+public enum TextureFilter
+{
+    /// <summary>Nearest-neighbor sampling.</summary>
+    Nearest,
+
+    /// <summary>Linear interpolation within the base level.</summary>
+    Linear,
+
+    /// <summary>Trilinear: linear within and between mipmap levels.</summary>
+    LinearMipmapLinear,
+}
+
+/// <summary>
+/// How texture coordinates outside [0, 1] are resolved.
+/// </summary>
+public enum TextureWrap
+{
+    /// <summary>Tile the texture.</summary>
+    Repeat,
+
+    /// <summary>Clamp to the edge texel.</summary>
+    ClampToEdge,
+}
+
 /// <summary>An opaque handle to a GPU buffer object.</summary>
 /// <param name="Id">The backend-specific identifier.</param>
 public readonly record struct BufferHandle(uint Id);
@@ -79,6 +120,22 @@ public readonly record struct BufferHandle(uint Id);
 /// <summary>An opaque handle to a GPU vertex array object.</summary>
 /// <param name="Id">The backend-specific identifier.</param>
 public readonly record struct VertexArrayHandle(uint Id);
+
+/// <summary>An opaque handle to a compiled shader stage.</summary>
+/// <param name="Id">The backend-specific identifier.</param>
+public readonly record struct ShaderHandle(uint Id);
+
+/// <summary>An opaque handle to a linked shader program.</summary>
+/// <param name="Id">The backend-specific identifier.</param>
+public readonly record struct ProgramHandle(uint Id);
+
+/// <summary>An opaque handle to a GPU texture.</summary>
+/// <param name="Id">The backend-specific identifier.</param>
+public readonly record struct TextureHandle(uint Id);
+
+/// <summary>The location of a uniform within a linked program, or -1 if absent.</summary>
+/// <param name="Location">The backend-specific location.</param>
+public readonly record struct UniformLocation(int Location);
 
 /// <summary>
 /// A minimal graphics API abstraction. The engine issues all GPU commands through this interface so
@@ -184,4 +241,143 @@ public interface IGraphicsDevice
     /// <summary>Deletes a vertex array object.</summary>
     /// <param name="handle">The vertex array to delete.</param>
     void DeleteVertexArray(VertexArrayHandle handle);
+
+    /// <summary>Creates a shader object for the given pipeline stage.</summary>
+    /// <param name="stage">The pipeline stage.</param>
+    /// <returns>A handle to the new shader.</returns>
+    ShaderHandle CreateShader(ShaderStage stage);
+
+    /// <summary>Sets a shader's GLSL source.</summary>
+    /// <param name="shader">The shader.</param>
+    /// <param name="source">The GLSL source text.</param>
+    void ShaderSource(ShaderHandle shader, string source);
+
+    /// <summary>Compiles a shader.</summary>
+    /// <param name="shader">The shader to compile.</param>
+    void CompileShader(ShaderHandle shader);
+
+    /// <summary>Gets whether a shader compiled successfully.</summary>
+    /// <param name="shader">The shader.</param>
+    /// <returns><see langword="true"/> if compilation succeeded.</returns>
+    bool GetShaderCompileStatus(ShaderHandle shader);
+
+    /// <summary>Gets a shader's compile log.</summary>
+    /// <param name="shader">The shader.</param>
+    /// <returns>The info log, possibly empty.</returns>
+    string GetShaderInfoLog(ShaderHandle shader);
+
+    /// <summary>Creates an empty shader program.</summary>
+    /// <returns>A handle to the new program.</returns>
+    ProgramHandle CreateProgram();
+
+    /// <summary>Attaches a shader stage to a program.</summary>
+    /// <param name="program">The program.</param>
+    /// <param name="shader">The shader to attach.</param>
+    void AttachShader(ProgramHandle program, ShaderHandle shader);
+
+    /// <summary>Links a program from its attached shaders.</summary>
+    /// <param name="program">The program to link.</param>
+    void LinkProgram(ProgramHandle program);
+
+    /// <summary>Gets whether a program linked successfully.</summary>
+    /// <param name="program">The program.</param>
+    /// <returns><see langword="true"/> if linking succeeded.</returns>
+    bool GetProgramLinkStatus(ProgramHandle program);
+
+    /// <summary>Gets a program's link log.</summary>
+    /// <param name="program">The program.</param>
+    /// <returns>The info log, possibly empty.</returns>
+    string GetProgramInfoLog(ProgramHandle program);
+
+    /// <summary>Detaches a shader stage from a program.</summary>
+    /// <param name="program">The program.</param>
+    /// <param name="shader">The shader to detach.</param>
+    void DetachShader(ProgramHandle program, ShaderHandle shader);
+
+    /// <summary>Deletes a shader object.</summary>
+    /// <param name="shader">The shader to delete.</param>
+    void DeleteShader(ShaderHandle shader);
+
+    /// <summary>Deletes a shader program.</summary>
+    /// <param name="program">The program to delete.</param>
+    void DeleteProgram(ProgramHandle program);
+
+    /// <summary>Makes a program current for subsequent draw calls.</summary>
+    /// <param name="program">The program to use.</param>
+    void UseProgram(ProgramHandle program);
+
+    /// <summary>Looks up a uniform's location within a program.</summary>
+    /// <param name="program">The program.</param>
+    /// <param name="name">The uniform name.</param>
+    /// <returns>The location, whose value is -1 when the uniform is absent.</returns>
+    UniformLocation GetUniformLocation(ProgramHandle program, string name);
+
+    /// <summary>Sets an <see cref="int"/> uniform on the current program.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="value">The value.</param>
+    void SetUniform(UniformLocation location, int value);
+
+    /// <summary>Sets a <see cref="float"/> uniform on the current program.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="value">The value.</param>
+    void SetUniform(UniformLocation location, float value);
+
+    /// <summary>Sets a <c>vec2</c> uniform on the current program.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="value">The value.</param>
+    void SetUniform(UniformLocation location, Vector2 value);
+
+    /// <summary>Sets a <c>vec3</c> uniform on the current program.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="value">The value.</param>
+    void SetUniform(UniformLocation location, Vector3 value);
+
+    /// <summary>Sets a <c>vec4</c> uniform on the current program.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="value">The value.</param>
+    void SetUniform(UniformLocation location, Vector4 value);
+
+    /// <summary>Sets a <c>mat4</c> (or <c>mat4</c> array) uniform, uploaded untransposed.</summary>
+    /// <param name="location">The uniform location.</param>
+    /// <param name="values">One matrix per array element.</param>
+    void SetUniformMatrix4(UniformLocation location, ReadOnlySpan<Matrix4x4> values);
+
+    /// <summary>Creates a new, uninitialized 2D texture.</summary>
+    /// <returns>A handle to the new texture.</returns>
+    TextureHandle CreateTexture();
+
+    /// <summary>Binds a 2D texture to a texture unit.</summary>
+    /// <param name="unit">The texture unit index.</param>
+    /// <param name="handle">The texture to bind.</param>
+    void BindTexture(uint unit, TextureHandle handle);
+
+    /// <summary>Sets the wrap mode for both axes of the bound 2D texture.</summary>
+    /// <param name="wrap">The wrap mode.</param>
+    void SetTextureWrap(TextureWrap wrap);
+
+    /// <summary>Sets the minification and magnification filters of the bound 2D texture.</summary>
+    /// <param name="minFilter">The minification filter.</param>
+    /// <param name="magFilter">The magnification filter.</param>
+    void SetTextureFilter(TextureFilter minFilter, TextureFilter magFilter);
+
+    /// <summary>Gets the maximum supported anisotropy, or 1 if anisotropic filtering is unavailable.</summary>
+    /// <returns>The maximum anisotropy.</returns>
+    float GetMaxAnisotropy();
+
+    /// <summary>Sets the anisotropy level of the bound 2D texture. A no-op where unsupported.</summary>
+    /// <param name="anisotropy">The desired anisotropy.</param>
+    void SetTextureMaxAnisotropy(float anisotropy);
+
+    /// <summary>Uploads RGBA8 pixels to the bound 2D texture, sizing its base level.</summary>
+    /// <param name="width">The width in pixels.</param>
+    /// <param name="height">The height in pixels.</param>
+    /// <param name="rgba">The pixel data, four bytes (R, G, B, A) per pixel.</param>
+    void TextureImage2DRgba8(uint width, uint height, ReadOnlySpan<byte> rgba);
+
+    /// <summary>Generates the mipmap chain for the bound 2D texture.</summary>
+    void GenerateMipmap2D();
+
+    /// <summary>Deletes a texture.</summary>
+    /// <param name="handle">The texture to delete.</param>
+    void DeleteTexture(TextureHandle handle);
 }
