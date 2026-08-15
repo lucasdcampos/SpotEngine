@@ -88,13 +88,13 @@ internal static class Program
         return 0;
     }
 
-    // spot build <windows|linux> [--project <path>]
+    // spot build <windows|linux|browser> [--project <path>]
     private static int CmdBuild(string[] args)
     {
         var (positionals, options) = ParseArgs(args, 1);
         if (positionals.Count == 0)
         {
-            Console.Error.WriteLine("error: 'build' requires a platform. Usage: spot build <windows|linux> [--project <path>]");
+            Console.Error.WriteLine("error: 'build' requires a platform. Usage: spot build <windows|linux|browser> [--project <path>]");
             return 1;
         }
 
@@ -203,7 +203,8 @@ internal static class Program
     {
         "windows" or "win" => BuildPlatform.Windows,
         "linux" => BuildPlatform.Linux,
-        _ => throw new ArgumentException($"Unknown platform '{value}'. Use 'windows' or 'linux'."),
+        "browser" or "web" or "wasm" => BuildPlatform.Browser,
+        _ => throw new ArgumentException($"Unknown platform '{value}'. Use 'windows', 'linux', or 'browser'."),
     };
 
     // Splits args (from <start>) into positionals and options. An option is "--key"; it consumes the
@@ -253,7 +254,7 @@ internal static class Program
         Console.WriteLine(@"spot - Spot engine project tool
 
 Usage:
-  spot new <name> [--path <dir>] [--build <windows|linux>]
+  spot new <name> [--path <dir>] [--build <windows|linux|browser>]
       Create a project (folder, Assets/, .sptproj) and generate its build files.
       With --build, also publish a standalone build for the given platform.
 
@@ -262,8 +263,9 @@ Usage:
       --full also overwrites Program.cs. <path> may be a .sptproj or a directory
       (defaults to the current directory).
 
-  spot build <windows|linux> [--project <path>]
-      Publish a self-contained standalone build for the platform into Build/<platform>.
+  spot build <windows|linux|browser> [--project <path>]
+      Publish a standalone build for the platform into Build/<platform>. The browser
+      target publishes a WebAssembly/WebGL2 static site into Build/browser (2D MVP).
 
   spot run [--project <path>] [--release]
       Cook assets and run the project from source with dotnet run (quick iteration,
