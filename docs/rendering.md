@@ -86,6 +86,22 @@ Two surfaces control the final image, and they have different jobs:
 This split follows the engine's convention that graphics are tuned through global settings and a few
 existing components rather than scattered ad-hoc knobs.
 
+## Graphics backends
+
+The renderer never talks to a graphics library directly. Every GPU command flows through a small
+`IGraphicsDevice` seam — buffers, vertex arrays, shaders, textures, draws — expressed in engine-neutral
+types. Two backends implement it:
+
+- **Desktop** uses an OpenGL device backed by **Silk.NET**.
+- **The browser** uses a **WebGL2** device that issues each call from C# to JavaScript over `[JSImport]`,
+  against the canvas' WebGL2 context. Because WebGL2 is OpenGL ES 3.0, engine shaders (authored once in
+  desktop GLSL) are rewritten to `#version 300 es` by the device before compiling.
+
+This seam is what lets the **2D renderer, UI pass, and their shaders run unchanged in the browser**. The
+heavier 3D pipeline — lighting, shadows, HDR/post, particles, the model importer — is desktop-only for
+now; a browser build installs a slim 2D scene renderer in its place. See
+[Projects & Building](projects-and-building.md#the-browser-target) for the browser target.
+
 ## Related
 
 - [Entities & Components](entities-and-components.md) — the visible components (sprite, mesh, camera, light)
