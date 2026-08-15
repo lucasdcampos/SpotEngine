@@ -54,6 +54,13 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     public void SetViewport(int x, int y, uint width, uint height) => _gl.Viewport(x, y, width, height);
 
     /// <inheritdoc />
+    public void SetBlendFunc(BlendFactor source, BlendFactor destination) =>
+        _gl.BlendFunc(Map(source), Map(destination));
+
+    /// <inheritdoc />
+    public void SetScissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
+
+    /// <inheritdoc />
     public void DrawArrays(PrimitiveKind primitive, uint first, uint count) =>
         _gl.DrawArrays(Map(primitive), (int)first, count);
 
@@ -320,5 +327,14 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
         TextureWrap.Repeat => GLEnum.Repeat,
         TextureWrap.ClampToEdge => GLEnum.ClampToEdge,
         _ => throw new ArgumentOutOfRangeException(nameof(wrap), wrap, "Unknown texture wrap."),
+    };
+
+    private static BlendingFactor Map(BlendFactor factor) => factor switch
+    {
+        BlendFactor.Zero => BlendingFactor.Zero,
+        BlendFactor.One => BlendingFactor.One,
+        BlendFactor.SrcAlpha => BlendingFactor.SrcAlpha,
+        BlendFactor.OneMinusSrcAlpha => BlendingFactor.OneMinusSrcAlpha,
+        _ => throw new ArgumentOutOfRangeException(nameof(factor), factor, "Unknown blend factor."),
     };
 }

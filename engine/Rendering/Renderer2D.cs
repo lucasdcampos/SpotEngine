@@ -228,8 +228,8 @@ public static class Renderer2D
         s_gridShader.SetUniform("uInverseViewProjection", invViewProj);
         s_gridShader.SetUniform("uZoom", zoom);
 
-        Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);
-        Renderer.Api.BlendFunc(Silk.NET.OpenGL.BlendingFactor.SrcAlpha, Silk.NET.OpenGL.BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
 
         Renderer.DrawArrays(s_emptyVao, 3);
     }
