@@ -139,7 +139,7 @@ public sealed class Shader : IDisposable
     private ShaderHandle CompileShader(ShaderStage stage, string source)
     {
         ShaderHandle shader = _device.CreateShader(stage);
-        _device.ShaderSource(shader, source);
+        _device.ShaderSource(shader, _device.PreprocessShaderSource(stage, source));
         _device.CompileShader(shader);
 
         if (!_device.GetShaderCompileStatus(shader))
