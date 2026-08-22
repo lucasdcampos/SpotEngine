@@ -20,10 +20,26 @@ internal static class BrowserTemplate
     <style>
         html, body { margin: 0; height: 100%; background: #0b0b12; overflow: hidden; }
         #canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+        #loading {
+            position: fixed; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; background: #0b0b12;
+            color: #8888aa; font-family: system-ui, sans-serif; font-size: 14px; gap: 16px;
+            pointer-events: none;
+        }
+        #loading-bar-bg {
+            width: 220px; height: 3px; background: #1e1e2e; border-radius: 2px; overflow: hidden;
+        }
+        #loading-bar { height: 100%; width: 0%; background: #6464aa; border-radius: 2px;
+            transition: width 0.2s ease;
+        }
     </style>
 </head>
 <body>
     <canvas id="canvas" tabindex="0"></canvas>
+    <div id="loading">
+        <span id="loading-text">Loading…</span>
+        <div id="loading-bar-bg"><div id="loading-bar"></div></div>
+    </div>
     <script type="module" src="./main.js"></script>
 </body>
 </html>
@@ -142,6 +158,15 @@ const hostImports = {
     },
 };
 
+const loading = document.getElementById('loading');
+const loadingText = document.getElementById('loading-text');
+const loadingBar = document.getElementById('loading-bar');
+function setProgress(text, pct) {
+    if (loadingText) loadingText.textContent = text;
+    if (loadingBar) loadingBar.style.width = `${Math.round(pct * 100)}%`;
+}
+
+setProgress('Initializing runtime…', 0.1);
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet.create();
 setModuleImports('spot-gl', { gl: glImports });
 setModuleImports('spot-host', { host: hostImports });
@@ -150,10 +175,13 @@ getConfig();
 const exports = await getAssemblyExports(ENGINE_ASSEMBLY);
 const host = exports.Spot.Browser.BrowserHost;
 
+setProgress('Loading runtime…', 0.3);
 await runMain();
 
-// Forward DOM input to the engine host.
-canvas.focus();
+setProgress('Loading content…', 0.5);
+await host.StartAsync(initW, initH, CONTENT_BASE, MANIFEST_PATH, START_SCENE);
+
+// Wire input before StartAsync so events that fire during load are captured.
 window.addEventListener('keydown', (e) => { host.KeyDown(e.code); if (e.key.length === 1) host.TextInput(e.key); e.preventDefault(); });
 window.addEventListener('keyup', (e) => { host.KeyUp(e.code); e.preventDefault(); });
 canvas.addEventListener('pointermove', (e) => host.PointerMove(e.offsetX * (window.devicePixelRatio || 1), e.offsetY * (window.devicePixelRatio || 1)));
@@ -161,10 +189,10 @@ canvas.addEventListener('pointerdown', (e) => { canvas.focus(); host.PointerDown
 window.addEventListener('pointerup', (e) => host.PointerUp(e.button));
 canvas.addEventListener('wheel', (e) => { host.Wheel(e.deltaX, e.deltaY); e.preventDefault(); }, { passive: false });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
 window.addEventListener('resize', () => { const [w, h] = sizeCanvas(); host.Resize(w, h); });
 
-await host.StartAsync(initW, initH, CONTENT_BASE, MANIFEST_PATH, START_SCENE);
+if (loading) loading.style.display = 'none';
+canvas.focus();
 
 let last = performance.now();
 function frame(now) {

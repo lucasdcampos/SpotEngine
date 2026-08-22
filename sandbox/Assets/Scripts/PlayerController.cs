@@ -168,18 +168,19 @@ public sealed class PlayerController : EntityBehaviour
             return false;
         }
 
-        Window window = Application.Instance.Window;
-        if (window.Width == 0 || window.Height == 0)
+        int viewW = Display.Width;
+        int viewH = Display.Height;
+        if (viewW == 0 || viewH == 0)
         {
             return false;
         }
 
         Vector2 mouse = Input.MousePosition;
-        float aspect = (float)window.Width / window.Height;
+        float aspect = (float)viewW / viewH;
         float zoom = camera.ZoomLevel;
 
-        float ndcX = (mouse.X / window.Width) * 2.0f - 1.0f;
-        float ndcY = 1.0f - (mouse.Y / window.Height) * 2.0f;
+        float ndcX = (mouse.X / viewW) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (mouse.Y / viewH) * 2.0f;
 
         Vector3 camPos = cameraEntity.Value.GetComponent<TransformComponent>().WorldPosition;
         world = new Vector2(camPos.X + ndcX * aspect * zoom, camPos.Y + ndcY * zoom);

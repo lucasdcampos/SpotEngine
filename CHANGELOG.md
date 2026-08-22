@@ -11,6 +11,8 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **`spot run browser`** — cooks assets, generates the WebAssembly project, stages content, and
+  starts the SDK Kestrel dev server (`dotnet run`) for fast browser iteration without a full publish.
 - **Browser target (WebAssembly + WebGL2, 2D MVP)** — the engine now multi-targets `net10.0` (desktop,
   Silk.NET) and `net10.0-browser`, sharing one neutral core. A WebGL2 `IGraphicsDevice` backend drives the
   canvas from C# over `[JSImport]`; a `BrowserHost` runs the `requestAnimationFrame` loop, translates DOM

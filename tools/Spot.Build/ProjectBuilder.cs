@@ -229,7 +229,7 @@ public static class ProjectBuilder
 
     // Recursively copies cooked content to the browser output and writes content-index.txt: one line per file
     // (a forward-slash path relative to the content root) that the host fetches into its in-memory store.
-    private static void StageContent(string contentRoot, string contentOut)
+    internal static void StageContent(string contentRoot, string contentOut)
     {
         Directory.CreateDirectory(contentOut);
         if (!Directory.Exists(contentRoot))

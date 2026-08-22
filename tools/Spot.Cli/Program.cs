@@ -103,13 +103,22 @@ internal static class Program
         return RunBuild(project, platform);
     }
 
-    // spot run [--project <path>] [--release]
+    // spot run [browser] [--project <path>] [--release]
     private static int CmdRun(string[] args)
     {
-        var (_, options) = ParseArgs(args, 1);
+        var (positionals, options) = ParseArgs(args, 1);
         var project = ResolveProject(options.GetValueOrDefault("project"));
-        bool release = options.ContainsKey("release");
 
+        bool browser = positionals.Count > 0 &&
+                       positionals[0].Equals("browser", StringComparison.OrdinalIgnoreCase);
+        if (browser)
+        {
+            return ProjectRunner.RunBrowser(project,
+                onOutput: Console.WriteLine,
+                onError: Console.Error.WriteLine);
+        }
+
+        bool release = options.ContainsKey("release");
         return ProjectRunner.Run(project, release,
             onOutput: Console.WriteLine,
             onError: Console.Error.WriteLine);
@@ -270,6 +279,10 @@ Usage:
   spot run [--project <path>] [--release]
       Cook assets and run the project from source with dotnet run (quick iteration,
       no standalone publish). Defaults to a Debug build; --release runs Release.
+
+  spot run browser [--project <path>]
+      Cook assets and start the browser (WebAssembly/WebGL2) dev server with dotnet run.
+      Opens a Kestrel dev server; navigate to the printed URL. Press Ctrl+C to stop.
 
   spot cook [--project <path>] [--out <dir>]
       Cook source assets into engine-native artifacts + a manifest (defaults to Content/).

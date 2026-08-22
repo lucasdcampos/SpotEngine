@@ -30,6 +30,12 @@ public static partial class BrowserHost
 
     private static readonly BrowserAssetStore s_assets = new();
 
+    // DOM events arrive between RAF calls, AFTER the previous frame's Input.NewFrame() already ran.
+    // If we called Input.OnEvent immediately, NewFrame() at the start of the next frame would clear
+    // pressed/released states before TickUI reads them — buttons would never fire. Queue instead and
+    // flush after NewFrame() so each frame sees the events that arrived since the last tick.
+    private static readonly List<Event> s_pendingEvents = new();
+
     /// <summary>
     /// Boots the game: brings up the WebGL2 renderer, installs the browser backends, fetches all cooked
     /// content listed in the content index into the in-memory store, loads the manifest, and switches to the
@@ -89,6 +95,7 @@ public static partial class BrowserHost
         try
         {
             Input.NewFrame();
+            FlushPendingEvents();
 
             // Clamp the delta so a background tab or GC hitch can't feed a huge dt into physics/scripts.
             float dt = Math.Min((float)deltaTime, 0.1f);
@@ -125,7 +132,7 @@ public static partial class BrowserHost
         Key key = MapKey(code);
         if (key != Key.Unknown)
         {
-            Dispatch(new KeyPressedEvent(key));
+            s_pendingEvents.Add(new KeyPressedEvent(key));
         }
     }
 
@@ -137,7 +144,7 @@ public static partial class BrowserHost
         Key key = MapKey(code);
         if (key != Key.Unknown)
         {
-            Dispatch(new KeyReleasedEvent(key));
+            s_pendingEvents.Add(new KeyReleasedEvent(key));
         }
     }
 
@@ -153,7 +160,7 @@ public static partial class BrowserHost
 
         foreach (char c in text)
         {
-            Dispatch(new KeyTypedEvent(c));
+            s_pendingEvents.Add(new KeyTypedEvent(c));
         }
     }
 
@@ -161,28 +168,39 @@ public static partial class BrowserHost
     /// <param name="x">The pointer x position.</param>
     /// <param name="y">The pointer y position.</param>
     [JSExport]
-    internal static void PointerMove(double x, double y) => Dispatch(new MouseMovedEvent((float)x, (float)y));
+    // Mouse position is a polled value, not a one-frame flag — dispatch immediately so hover is pixel-accurate.
+    internal static void PointerMove(double x, double y) => DispatchNow(new MouseMovedEvent((float)x, (float)y));
 
     /// <summary>Dispatches a pointer button press. <paramref name="button"/> is the DOM <c>MouseEvent.button</c>.</summary>
     /// <param name="button">The DOM button index (0 left, 1 middle, 2 right).</param>
     [JSExport]
-    internal static void PointerDown(int button) => Dispatch(new MouseButtonPressedEvent(MapButton(button)));
+    internal static void PointerDown(int button) => s_pendingEvents.Add(new MouseButtonPressedEvent(MapButton(button)));
 
     /// <summary>Dispatches a pointer button release. <paramref name="button"/> is the DOM <c>MouseEvent.button</c>.</summary>
     /// <param name="button">The DOM button index (0 left, 1 middle, 2 right).</param>
     [JSExport]
-    internal static void PointerUp(int button) => Dispatch(new MouseButtonReleasedEvent(MapButton(button)));
+    internal static void PointerUp(int button) => s_pendingEvents.Add(new MouseButtonReleasedEvent(MapButton(button)));
 
     /// <summary>Dispatches a mouse wheel scroll.</summary>
     /// <param name="deltaX">The horizontal scroll amount.</param>
     /// <param name="deltaY">The vertical scroll amount.</param>
     [JSExport]
     internal static void Wheel(double deltaX, double deltaY) =>
-        Dispatch(new MouseScrolledEvent((float)deltaX, (float)deltaY));
+        s_pendingEvents.Add(new MouseScrolledEvent((float)deltaX, (float)deltaY));
 
-    // Routes an event through Input (updating the polled state) and then to the active scene, mirroring the
-    // desktop Application.OnEvent. There is no engine-input capture in the browser (no dev console overlay).
-    private static void Dispatch(Event e)
+    // Flushes all events queued since the last frame into Input and the active scene. Called after
+    // Input.NewFrame() so pressed/released flags survive to be read by TickUI and scripts this frame.
+    private static void FlushPendingEvents()
+    {
+        foreach (Event e in s_pendingEvents)
+        {
+            DispatchNow(e);
+        }
+        s_pendingEvents.Clear();
+    }
+
+    // Immediately routes an event through Input then the active scene (no queueing).
+    private static void DispatchNow(Event e)
     {
         try
         {
