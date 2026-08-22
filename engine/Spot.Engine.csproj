@@ -62,7 +62,6 @@
     <Compile Remove="Rendering\OpenGLGraphicsDevice.cs" />
     <Compile Remove="Rendering\Renderer.Silk.cs" />
     <Compile Remove="Rendering\Renderer3D.cs" />
-    <Compile Remove="Rendering\ParticleRenderer.cs" />
     <Compile Remove="Rendering\PostProcessingRenderer.cs" />
     <Compile Remove="Rendering\BloomRenderer.cs" />
     <Compile Remove="Rendering\Framebuffer.cs" />
@@ -71,7 +70,6 @@
     <Compile Remove="Audio\OpenAlAudioBackend.cs" />
     <Compile Remove="Assets\AssimpModelImporter.cs" />
     <Compile Remove="Scenes\Systems\RenderSystem.cs" />
-    <Compile Remove="Scenes\Systems\ParticleRenderSystem.cs" />
     <Compile Remove="Scenes\ModelInstantiator.cs" />
     <!-- Dear ImGui developer console (authoring/debug overlay). -->
     <Compile Remove="Console\DevConsole.cs" />

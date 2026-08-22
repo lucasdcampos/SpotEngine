@@ -88,6 +88,7 @@ const glImports = {
     clear: (mask) => gl.clear(mask),
     enable: (cap) => gl.enable(cap),
     disable: (cap) => gl.disable(cap),
+    depthMask: (flag) => gl.depthMask(flag),
     blendFunc: (s, d) => gl.blendFunc(s, d),
     drawArrays: (mode, first, count) => gl.drawArrays(mode, first, count),
     drawElements: (mode, count, type, offset) => gl.drawElements(mode, count, type, offset),

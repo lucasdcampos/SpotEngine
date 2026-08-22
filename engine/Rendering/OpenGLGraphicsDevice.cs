@@ -51,6 +51,9 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     }
 
     /// <inheritdoc />
+    public void SetDepthWrite(bool write) => _gl.DepthMask(write);
+
+    /// <inheritdoc />
     public void SetViewport(int x, int y, uint width, uint height) => _gl.Viewport(x, y, width, height);
 
     /// <inheritdoc />

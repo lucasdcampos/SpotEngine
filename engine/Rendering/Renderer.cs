@@ -54,6 +54,12 @@ public static partial class Renderer
     public static void SetDepthTest(bool enable) => Device.SetCapability(GraphicsCapability.DepthTest, enable);
 
     /// <summary>
+    /// Enables or disables writing to the depth buffer.
+    /// </summary>
+    /// <param name="write">Whether depth writes should be enabled.</param>
+    public static void SetDepthWrite(bool write) => Device.SetDepthWrite(write);
+
+    /// <summary>
     /// Enables or disables face culling.
     /// </summary>
     /// <param name="enable">Whether face culling should be enabled.</param>

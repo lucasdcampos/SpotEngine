@@ -60,6 +60,9 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     }
 
     /// <inheritdoc />
+    public void SetDepthWrite(bool write) => JsDepthMask(write);
+
+    /// <inheritdoc />
     public void SetViewport(int x, int y, uint width, uint height) => JsViewport(x, y, (int)width, (int)height);
 
     /// <inheritdoc />
@@ -379,6 +382,9 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
 
     [JSImport("gl.disable", Module)]
     private static partial void JsDisable(int cap);
+
+    [JSImport("gl.depthMask", Module)]
+    private static partial void JsDepthMask(bool flag);
 
     [JSImport("gl.blendFunc", Module)]
     private static partial void JsBlendFunc(int source, int destination);

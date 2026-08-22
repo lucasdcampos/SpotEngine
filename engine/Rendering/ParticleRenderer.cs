@@ -1,5 +1,4 @@
 using System.Numerics;
-using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
 
@@ -263,8 +262,8 @@ public static class ParticleRenderer
         // blending off. The depth test is left exactly as the caller had it.
         if (s_active)
         {
-            Renderer.Api.DepthMask(true);
-            Renderer.Api.Disable(EnableCap.Blend);
+            Renderer.SetDepthWrite(true);
+            Renderer.Device.SetCapability(GraphicsCapability.Blend, false);
             s_active = false;
         }
     }
@@ -283,14 +282,14 @@ public static class ParticleRenderer
             return;
         }
 
-        Renderer.Api.Enable(EnableCap.Blend);
-        Renderer.Api.BlendFunc(
-            BlendingFactor.SrcAlpha,
-            s_currentBlend == ParticleBlend.Additive ? BlendingFactor.One : BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(
+            BlendFactor.SrcAlpha,
+            s_currentBlend == ParticleBlend.Additive ? BlendFactor.One : BlendFactor.OneMinusSrcAlpha);
 
         // Transparent particles must not write depth, or nearer particles would cull farther ones that
         // should blend through. The depth *test* stays as-is so solid geometry still occludes them.
-        Renderer.Api.DepthMask(false);
+        Renderer.SetDepthWrite(false);
 
         s_vbo.SetData(s_vertices.AsSpan(0, s_vertexCursor));
 
