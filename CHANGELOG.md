@@ -11,6 +11,9 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **World-space text in the browser** — `TextComponent` (floating damage numbers, labels) now renders in
+  the browser. The rendering logic was extracted from `RenderSystem` into a new `TextRenderSystem` class
+  (same pattern as `ParticleRenderSystem`) and called from `BrowserHost.RenderScene2D`.
 - **Particle rendering in the browser** — `ParticleRenderer` and `ParticleRenderSystem` now work in the
   browser build. `IGraphicsDevice` gained `SetDepthWrite(bool)` (`gl.depthMask` on WebGL2), removing the
   last direct Silk.NET dependency from `ParticleRenderer`. `BrowserHost` initializes the particle renderer

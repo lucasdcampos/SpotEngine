@@ -251,6 +251,7 @@ public static partial class BrowserHost
         Renderer2D.EndScene();
 
         ParticleRenderSystem.Render(scene, viewProjection);
+        TextRenderSystem.Render(scene, viewProjection);
 
         Spot.UI.UIRoot? ui = scene.UIRootOrNull;
         if (ui is not null && ui.Children.Count > 0 && Display.Width > 0 && Display.Height > 0)
