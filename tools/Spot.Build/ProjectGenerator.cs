@@ -47,6 +47,22 @@ public static class ProjectGenerator
         string name = project.Config.Name;
         string csprojName = name + ".Browser.csproj";
 
+        // Include the project's game scripts so ScriptResolver can find them in the WASM assembly.
+        // Paths are relative to the generated project (Build/web/) so dotnet can resolve them at build time.
+        string scriptsDir = Path.Combine(project.GetAssetDirectory(), "Scripts");
+        string scriptInclude = string.Empty;
+        if (Directory.Exists(scriptsDir))
+        {
+            string rel = Path.GetRelativePath(webDir, scriptsDir).Replace('\\', '/');
+            scriptInclude = $"""
+
+  <!-- Game scripts compiled into the WASM assembly so ScriptResolver finds them via reflection. -->
+  <ItemGroup>
+    <Compile Include="{rel}/**/*.cs" />
+  </ItemGroup>
+""";
+        }
+
         string csproj = $@"<Project Sdk=""Microsoft.NET.Sdk.WebAssembly"">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -59,6 +75,12 @@ public static class ProjectGenerator
          deserialization), which the trimmer cannot see from this shell's entry point, so it would strip
          Spot.Engine and its dependencies entirely. Disable trimming so the whole engine ships. -->
     <PublishTrimmed>false</PublishTrimmed>
+    <!-- SPOT_BROWSER lets game scripts #if out desktop-only code (e.g. Application.Quit). -->
+    <DefineConstants>$(DefineConstants);SPOT_BROWSER</DefineConstants>
+    <!-- Spot.Engine.dll for net10.0-browser carries [assembly:SupportedOSPlatform(""browser"")]
+         injected by the SDK; CA1416 fires on every engine API call in user scripts.
+         This project is browser-only by construction, so the warning is a false positive. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -79,7 +101,7 @@ public static class ProjectGenerator
     <PackageReference Include=""StbImageSharp"" Version=""2.30.15"" />
     <PackageReference Include=""StbTrueTypeSharp"" Version=""1.26.13"" />
     <PackageReference Include=""StbVorbisSharp"" Version=""1.22.4"" />
-  </ItemGroup>
+  </ItemGroup>{scriptInclude}
 </Project>";
         File.WriteAllText(Path.Combine(webDir, csprojName), csproj);
 

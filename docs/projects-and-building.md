@@ -60,6 +60,9 @@ dotnet run --project tools/Spot.Cli -- migrate --project <dir>
 # Cook assets and run the project from source (quick iteration, no publish)
 dotnet run --project tools/Spot.Cli -- run --project <dir>
 
+# Cook assets and start the browser dev server (quick iteration, no publish)
+dotnet run --project tools/Spot.Cli -- run browser --project <dir>
+
 # Publish a self-contained standalone build (windows | linux)
 dotnet run --project tools/Spot.Cli -- build windows --project <dir>
 
@@ -90,6 +93,11 @@ How it differs from a desktop build:
 - **Scope** is the **2D MVP**: the 3D/lighting/shadow/post pipeline, the ImGui editor overlay, and the
   Assimp model importer are desktop-only and are not part of a browser build. Audio currently runs
   silent in the browser (a Web Audio backend is a follow-up).
+
+**For development iteration**, use `spot run browser` instead of `spot build browser`. It cooks
+assets, (re)generates the browser project, stages content, and starts the SDK's built-in Kestrel
+dev server with `dotnet run` — much faster than a full publish. The URL is printed to the console;
+press Ctrl+C to stop.
 
 The published `Build/browser` folder is a static site; serve it with any host that returns
 `application/wasm` for `.wasm` files (the `dotnet serve`/`dotnet run` dev server does this).
