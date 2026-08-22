@@ -11,6 +11,10 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **Particle rendering in the browser** — `ParticleRenderer` and `ParticleRenderSystem` now work in the
+  browser build. `IGraphicsDevice` gained `SetDepthWrite(bool)` (`gl.depthMask` on WebGL2), removing the
+  last direct Silk.NET dependency from `ParticleRenderer`. `BrowserHost` initializes the particle renderer
+  and calls `ParticleRenderSystem.Render` each frame alongside the 2D sprite pass.
 - **`spot run browser`** — cooks assets, generates the WebAssembly project, stages content, and
   starts the SDK Kestrel dev server (`dotnet run`) for fast browser iteration without a full publish.
 - **Browser target (WebAssembly + WebGL2, 2D MVP)** — the engine now multi-targets `net10.0` (desktop,

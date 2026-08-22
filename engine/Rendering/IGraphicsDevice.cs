@@ -189,6 +189,10 @@ public interface IGraphicsDevice
     /// <param name="height">The viewport height.</param>
     void SetViewport(int x, int y, uint width, uint height);
 
+    /// <summary>Enables or disables writing to the depth buffer (OpenGL <c>glDepthMask</c>).</summary>
+    /// <param name="write">When false, fragments are depth-tested but do not update the depth buffer.</param>
+    void SetDepthWrite(bool write);
+
     /// <summary>Sets the blend equation factors, used when <see cref="GraphicsCapability.Blend"/> is enabled.</summary>
     /// <param name="source">The factor applied to the incoming fragment.</param>
     /// <param name="destination">The factor applied to the existing framebuffer value.</param>

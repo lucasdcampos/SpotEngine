@@ -58,6 +58,7 @@ public static partial class BrowserHost
 
             Renderer.Init(new WebGL2GraphicsDevice());
             Renderer2D.Init();
+            ParticleRenderer.Init();
             UIRenderer.Init();
             Renderer.SetViewport(0, 0, (uint)Math.Max(1, width), (uint)Math.Max(1, height));
             Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
@@ -248,6 +249,8 @@ public static partial class BrowserHost
         }
 
         Renderer2D.EndScene();
+
+        ParticleRenderSystem.Render(scene, viewProjection);
 
         Spot.UI.UIRoot? ui = scene.UIRootOrNull;
         if (ui is not null && ui.Children.Count > 0 && Display.Width > 0 && Display.Height > 0)

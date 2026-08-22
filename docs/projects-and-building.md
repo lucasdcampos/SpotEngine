@@ -90,9 +90,11 @@ How it differs from a desktop build:
   the same `Input` API your scripts already use.
 - **Content** is cooked exactly as for desktop, staged under `wwwroot/content`, and fetched into memory
   before the first scene loads (listed in a generated `content-index.txt`).
-- **Scope** is the **2D MVP**: the 3D/lighting/shadow/post pipeline, the ImGui editor overlay, and the
-  Assimp model importer are desktop-only and are not part of a browser build. Audio currently runs
-  silent in the browser (a Web Audio backend is a follow-up).
+- **Particles** work in the browser. `ParticleSystem` components and all their blend modes (alpha /
+  additive) render correctly; the `GlslTranspiler` already handles the shader.
+- **Scope**: the 3D/lighting/shadow/post pipeline, the ImGui editor overlay, and the Assimp model
+  importer are desktop-only and are not part of a browser build. Audio currently runs silent in the
+  browser (a Web Audio backend is a follow-up).
 
 **For development iteration**, use `spot run browser` instead of `spot build browser`. It cooks
 assets, (re)generates the browser project, stages content, and starts the SDK's built-in Kestrel
