@@ -45,6 +45,13 @@ internal static class GlslTranspiler
         sb.Append("precision highp float;\n");
         sb.Append("precision highp int;\n");
 
+        // GLSL ES 3.00 gives the fragment stage a default precision for `sampler2D`/`samplerCube` but NOT for
+        // other sampler types, so a shader declaring `sampler2DShadow` (the 3D lit/water shaders' shadow map)
+        // fails to compile without an explicit default. Declaring these is harmless in shaders that don't use
+        // them, and setting sampler2D to highp keeps sampling precise (the fragment default is only lowp).
+        sb.Append("precision highp sampler2D;\n");
+        sb.Append("precision highp sampler2DShadow;\n");
+
         for (int i = 0; i < lines.Length; i++)
         {
             if (i == versionLine)
