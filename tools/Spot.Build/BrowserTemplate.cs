@@ -76,6 +76,9 @@ if (!gl) {
     throw new Error('WebGL2 not supported');
 }
 
+// Makes RGBA16F color attachments renderable (HDR render targets). Depth textures are core in WebGL2.
+gl.getExtension('EXT_color_buffer_float');
+
 // JS-side handle table: C# refers to GL objects (buffers, shaders, programs, textures, uniform locations)
 // by integer index. Index 0 is reserved as the null handle.
 const objs = [null];
@@ -136,8 +139,41 @@ const glImports = {
     texParameteri: (name, value) => gl.texParameteri(gl.TEXTURE_2D, name, value),
     texImage2DRgba8: (w, h, data) =>
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.slice()),
+    // Render-target / typed texture allocation. `format` is a small code (not a GL enum): 0 RGBA8, 1 RGBA16F,
+    // 2 depth32f, 3 depth24-stencil8. A zero-length view means "allocate uninitialized" (an FBO attachment).
+    texImage2D: (format, w, h, data) => {
+        const spec = [
+            [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE],
+            [gl.RGBA16F, gl.RGBA, gl.FLOAT],
+            [gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT],
+            [gl.DEPTH24_STENCIL8, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8],
+        ][format];
+        const pixels = (data && data.length) ? data.slice() : null;
+        gl.texImage2D(gl.TEXTURE_2D, 0, spec[0], w, h, 0, spec[1], spec[2], pixels);
+    },
+    texCompareMode: (enabled) => {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, enabled ? gl.COMPARE_REF_TO_TEXTURE : gl.NONE);
+        if (enabled) gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+    },
     generateMipmap2D: () => gl.generateMipmap(gl.TEXTURE_2D),
     deleteTexture: (t) => gl.deleteTexture(objs[t]),
+
+    createFramebuffer: () => reg(gl.createFramebuffer()),
+    // Handle 0 is the default framebuffer (the canvas): bind null.
+    bindFramebuffer: (fb) => gl.bindFramebuffer(gl.FRAMEBUFFER, fb === 0 ? null : objs[fb]),
+    framebufferTexture2D: (attachment, tex) => {
+        const point = [gl.COLOR_ATTACHMENT0, gl.DEPTH_ATTACHMENT, gl.DEPTH_STENCIL_ATTACHMENT][attachment];
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, point, gl.TEXTURE_2D, objs[tex], 0);
+    },
+    checkFramebufferComplete: () => gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE,
+    setColorBuffersNone: () => { gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE); },
+    blitDepth: (src, dst, w, h, dx, dy, dw, dh) => {
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src === 0 ? null : objs[src]);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst === 0 ? null : objs[dst]);
+        gl.blitFramebuffer(0, 0, w, h, dx, dy, dx + dw, dy + dh, gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, dst === 0 ? null : objs[dst]);
+    },
+    deleteFramebuffer: (fb) => gl.deleteFramebuffer(objs[fb]),
 };
 
 const hostImports = {

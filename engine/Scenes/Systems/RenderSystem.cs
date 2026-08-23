@@ -19,11 +19,12 @@ namespace Spot.Scenes;
 /// </remarks>
 public static class RenderSystem
 {
-    private static Framebuffer? s_hdrFramebuffer;
-
-    // Number of horizontal+vertical blur pairs used for bloom. Higher widens the glow at a small fill
-    // cost; five reads as a soft, wide bloom at half resolution without visible box stepping.
-    private const int BloomIterations = 5;
+    /// <summary>
+    /// The installed scene post-processor (HDR capture + bloom + tone mapping + FXAA), or <see langword="null"/>
+    /// to render straight to the screen. The desktop host installs one; the browser currently runs without
+    /// post-processing. Keeping it behind this seam lets the shared render path stay backend-neutral.
+    /// </summary>
+    public static IScenePostProcessor? PostProcessor { get; set; }
 
     // Synthesized when HDR is on but the scene has no PostProcessingComponent, so tone mapping and FXAA
     // still apply. Reused across frames rather than reallocated each render.
@@ -76,39 +77,13 @@ public static class RenderSystem
             postProcess = s_defaultPostProcess ??= new PostProcessingComponent();
         }
 
-        int[] currentFbo = new int[1];
-        int[] viewport = new int[4];
-        float[] clearColor = new float[4];
-
-        if (postProcess != null)
+        // Post-processing (HDR capture + bloom + tone mapping + FXAA) runs behind a seam so this render path
+        // stays backend-neutral. When no processor is installed (browser) or capture is declined (e.g. a
+        // zero-sized viewport), the scene renders straight to the screen with no post.
+        bool capturing = postProcess != null && PostProcessor != null && PostProcessor.Begin(postProcess);
+        if (!capturing)
         {
-            unsafe
-            {
-                fixed (int* ptr = currentFbo) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.FramebufferBinding, ptr);
-                fixed (int* ptr = viewport) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, ptr);
-                fixed (float* ptr = clearColor) Renderer.Api.GetFloat(Silk.NET.OpenGL.GLEnum.ColorClearValue, ptr);
-            }
-
-            // A minimized (or zero-sized) window reports a 0x0 viewport. Allocating an HDR framebuffer from
-            // that produces an invalid, incomplete framebuffer and a stream of GL errors, so skip the whole
-            // HDR/post path this frame — nothing is visible anyway. The resolve below is guarded on this too.
-            if (viewport[2] <= 0 || viewport[3] <= 0)
-            {
-                postProcess = null;
-            }
-            else
-            {
-                if (s_hdrFramebuffer == null || s_hdrFramebuffer.Width != viewport[2] || s_hdrFramebuffer.Height != viewport[3])
-                {
-                    s_hdrFramebuffer?.Dispose();
-                    s_hdrFramebuffer = new Framebuffer((uint)viewport[2], (uint)viewport[3], FramebufferFormat.RGBA16F);
-                }
-
-                s_hdrFramebuffer.Bind();
-                Renderer.SetClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
-                Renderer.Clear();
-                Renderer.Api.Viewport(0, 0, (uint)viewport[2], (uint)viewport[3]);
-            }
+            postProcess = null;
         }
 
         bool hasDirLight = false;
@@ -198,7 +173,7 @@ public static class RenderSystem
 
         if (Spot.Rendering.RendererDebug.Wireframe)
         {
-            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Line);
+            Renderer.Device.SetWireframe(true);
         }
 
         Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount), cameraPos);
@@ -223,7 +198,7 @@ public static class RenderSystem
                 clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z,
                 clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z,
                 clouds.Speed, clouds.Density, clouds.Height, 
-                clouds.Opacity, clouds.Volume, Spot.Core.Application.Instance.Time);
+                clouds.Opacity, clouds.Volume, Spot.Core.Time.UnscaledTime);
             break; // only draw the first one
         }
 
@@ -260,7 +235,7 @@ public static class RenderSystem
 
         if (Spot.Rendering.RendererDebug.Wireframe)
         {
-            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Fill);
+            Renderer.Device.SetWireframe(false);
         }
 
         Renderer2D.BeginScene(viewProjection);
@@ -335,29 +310,9 @@ public static class RenderSystem
         // via the shared depth test.
         TextRenderSystem.Render(scene, viewProjection);
 
-        if (postProcess != null && s_hdrFramebuffer != null)
+        if (capturing)
         {
-            // Extract and blur the scene's bright regions while the HDR buffer is still bound as the
-            // source. Bloom manages its own (half-res) targets and leaves nothing bound, so do it before
-            // rebinding the final target below.
-            uint bloomTexture = 0;
-            if (postProcess.EnableBloom)
-            {
-                bloomTexture = BloomRenderer.Generate(
-                    s_hdrFramebuffer.ColorAttachment, viewport[2], viewport[3], postProcess.BloomThreshold, BloomIterations);
-            }
-
-            Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)currentFbo[0]);
-            Renderer.Api.Viewport(viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
-
-            // Carry the scene's depth from the HDR pass into the target buffer so anything drawn on top
-            // afterwards (e.g. the editor grid and world axes) is occluded by the geometry instead of
-            // showing through it. Skipped for the default framebuffer (game runtime), where nothing is
-            // drawn over the composite and its depth format may not match for a blit.
-            if (currentFbo[0] != 0)
-                s_hdrFramebuffer.BlitDepthTo((uint)currentFbo[0], viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
-
-            PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess, bloomTexture);
+            PostProcessor!.Resolve(postProcess!);
         }
 
         // Screen-space UI is the final pass: it draws to whatever framebuffer is now bound (the default one
@@ -372,14 +327,10 @@ public static class RenderSystem
         Spot.UI.UIRoot? ui = scene.UIRootOrNull;
         if (ui is null || ui.Children.Count == 0) return;
 
-        int[] viewport = new int[4];
-        unsafe
-        {
-            fixed (int* ptr = viewport) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, ptr);
-        }
-
-        if (viewport[2] <= 0 || viewport[3] <= 0) return;
-        ui.Render(viewport[2], viewport[3]);
+        int width = (int)Renderer.ViewportWidth;
+        int height = (int)Renderer.ViewportHeight;
+        if (width <= 0 || height <= 0) return;
+        ui.Render(width, height);
     }
 
     /// <summary>

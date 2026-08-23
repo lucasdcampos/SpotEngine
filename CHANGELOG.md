@@ -11,6 +11,14 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **3D in the browser (shared render pipeline)** — the browser now runs the **same `RenderSystem`** as the
+  desktop instead of a slim 2D-only path: meshes, materials, lighting (directional/point/ambient), shadows,
+  and the procedural skybox render through the WebGL2 device. Rather than fork a browser renderer, the
+  `IGraphicsDevice` seam grew a **render-target layer** (framebuffers, `RGBA16F`/depth texture formats,
+  depth-compare sampling, wireframe as a no-op) implemented on both OpenGL and WebGL2; `Renderer3D`,
+  `DepthFramebuffer`, and `RenderSystem` were made backend-neutral. HDR/bloom/post now sit behind an
+  `IScenePostProcessor` seam (desktop installs `DesktopScenePostProcessor`; the browser renders straight to
+  the screen for now). Cooked `.sptmesh` models load synchronously in the single-threaded WASM runtime.
 - **Audio in the browser (Web Audio)** — a `WebAudioBackend` implements the `IAudioBackend` seam over a
   single `AudioContext` via `[JSImport]` (module `spot-audio`), mirroring the desktop OpenAL backend.
   Buffers and voices use integer handle tables like the WebGL2 device; the one-shot `AudioBufferSourceNode`
@@ -34,8 +42,9 @@ will be finalized when 0.2 is tagged.
   `IAssetProvider`. Platform seams were extracted so the core no longer binds to the desktop window,
   renderer, or audio: an `IAudioBackend` (OpenAL on desktop, Web Audio in-browser), a `Display`
   render-surface-size seam, a `SceneRenderer` callback (full 3D pipeline on desktop, slim 2D in-browser),
-  and a GLSL → `#version 300 es` transpiler. `spot build browser` publishes a WebGL2 static site. The
-  3D/post/shadow pipeline, ImGui, and the Assimp importer remain desktop-only.
+  and a GLSL → `#version 300 es` transpiler. `spot build browser` publishes a WebGL2 static site. (The 3D
+  pipeline was later made backend-neutral and now runs in the browser too; HDR/bloom/post, ImGui, and the
+  Assimp importer remain desktop-only.)
 - **2D physics backend** — real 2D rigid-body simulation on **Aether.Physics2D** (a managed Box2D
   descendant) behind an `IPhysics2D` seam, mirroring the 3D/Bepu design: mass, friction, restitution,
   rotation, collision/trigger callbacks, and `Scene.Raycast2D`. Adds a **Circle Collider 2D** and

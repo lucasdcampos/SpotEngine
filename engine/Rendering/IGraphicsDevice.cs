@@ -151,6 +151,43 @@ public readonly record struct ProgramHandle(uint Id);
 /// <param name="Id">The backend-specific identifier.</param>
 public readonly record struct TextureHandle(uint Id);
 
+/// <summary>An opaque handle to a GPU framebuffer (render target). The zero handle is the default framebuffer (the screen).</summary>
+/// <param name="Id">The backend-specific identifier.</param>
+public readonly record struct FramebufferHandle(uint Id)
+{
+    /// <summary>Gets the default framebuffer handle (the screen / window backbuffer).</summary>
+    public static FramebufferHandle Default => new(0);
+}
+
+/// <summary>The pixel storage format of a texture's image data.</summary>
+public enum TextureInternalFormat
+{
+    /// <summary>Four 8-bit unsigned components (the default color format).</summary>
+    Rgba8,
+
+    /// <summary>Four 16-bit float components, for HDR color render targets.</summary>
+    Rgba16F,
+
+    /// <summary>A single 32-bit float depth component, for shadow maps.</summary>
+    DepthComponent32F,
+
+    /// <summary>Packed 24-bit depth + 8-bit stencil, for a render target's depth-stencil attachment.</summary>
+    Depth24Stencil8,
+}
+
+/// <summary>The attachment point a texture occupies on a framebuffer.</summary>
+public enum RenderTargetAttachment
+{
+    /// <summary>The first color attachment.</summary>
+    Color0,
+
+    /// <summary>The depth attachment.</summary>
+    Depth,
+
+    /// <summary>The combined depth-stencil attachment.</summary>
+    DepthStencil,
+}
+
 /// <summary>The location of a uniform within a linked program, or -1 if absent.</summary>
 /// <param name="Location">The backend-specific location.</param>
 public readonly record struct UniformLocation(int Location);
@@ -421,10 +458,71 @@ public interface IGraphicsDevice
     /// <param name="rgba">The pixel data, four bytes (R, G, B, A) per pixel.</param>
     void TextureImage2DRgba8(uint width, uint height, ReadOnlySpan<byte> rgba);
 
+    /// <summary>
+    /// Allocates the bound 2D texture's base level in the given internal format. Pass an empty span to leave the
+    /// storage uninitialized — the usual case for render-target attachments (color, depth) that the GPU fills.
+    /// </summary>
+    /// <param name="format">The pixel storage format.</param>
+    /// <param name="width">The width in pixels.</param>
+    /// <param name="height">The height in pixels.</param>
+    /// <param name="data">The initial pixel data, or an empty span to allocate uninitialized storage.</param>
+    void TextureImage2D(TextureInternalFormat format, uint width, uint height, ReadOnlySpan<byte> data);
+
+    /// <summary>
+    /// Enables or disables hardware depth comparison (<c>LEQUAL</c>) on the bound 2D depth texture, so a shader
+    /// can sample it as a <c>sampler2DShadow</c> and get filtered percentage-closer results. A no-op meaning is
+    /// left to the backend where comparison sampling is unavailable.
+    /// </summary>
+    /// <param name="enabled">Whether comparison (shadow) sampling is enabled.</param>
+    void SetTextureCompareMode(bool enabled);
+
     /// <summary>Generates the mipmap chain for the bound 2D texture.</summary>
     void GenerateMipmap2D();
 
     /// <summary>Deletes a texture.</summary>
     /// <param name="handle">The texture to delete.</param>
     void DeleteTexture(TextureHandle handle);
+
+    /// <summary>Creates a new framebuffer (render target) with no attachments.</summary>
+    /// <returns>A handle to the new framebuffer.</returns>
+    FramebufferHandle CreateFramebuffer();
+
+    /// <summary>Binds a framebuffer as the current draw target. Pass <see cref="FramebufferHandle.Default"/> for the screen.</summary>
+    /// <param name="handle">The framebuffer to bind.</param>
+    void BindFramebuffer(FramebufferHandle handle);
+
+    /// <summary>Attaches a 2D texture to the currently bound framebuffer at the given attachment point.</summary>
+    /// <param name="attachment">The attachment point.</param>
+    /// <param name="texture">The texture to attach.</param>
+    void FramebufferTexture2D(RenderTargetAttachment attachment, TextureHandle texture);
+
+    /// <summary>Gets whether the currently bound framebuffer is complete (ready to render to).</summary>
+    /// <returns><see langword="true"/> if the framebuffer is complete.</returns>
+    bool CheckFramebufferComplete();
+
+    /// <summary>Sets the currently bound framebuffer to draw and read no color buffers (a depth-only target).</summary>
+    void SetColorBuffersNone();
+
+    /// <summary>Copies the depth buffer of one framebuffer into another, matching the given destination region.</summary>
+    /// <param name="source">The framebuffer to read depth from.</param>
+    /// <param name="destination">The framebuffer to write depth to.</param>
+    /// <param name="width">The source (and destination) width in pixels.</param>
+    /// <param name="height">The source (and destination) height in pixels.</param>
+    /// <param name="destX">The destination region's lower-left x.</param>
+    /// <param name="destY">The destination region's lower-left y.</param>
+    /// <param name="destWidth">The destination region width.</param>
+    /// <param name="destHeight">The destination region height.</param>
+    void BlitDepth(FramebufferHandle source, FramebufferHandle destination, uint width, uint height,
+        int destX, int destY, uint destWidth, uint destHeight);
+
+    /// <summary>Deletes a framebuffer. Its attached textures are not deleted.</summary>
+    /// <param name="handle">The framebuffer to delete.</param>
+    void DeleteFramebuffer(FramebufferHandle handle);
+
+    /// <summary>
+    /// Enables or disables wireframe (line) polygon rendering. A no-op where the backend has no polygon-mode
+    /// control (WebGL2 has no <c>glPolygonMode</c>), so callers get filled polygons there.
+    /// </summary>
+    /// <param name="enabled">Whether polygons render as wireframe.</param>
+    void SetWireframe(bool enabled);
 }

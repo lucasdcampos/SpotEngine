@@ -58,6 +58,7 @@ public static partial class BrowserHost
 
             Renderer.Init(new WebGL2GraphicsDevice());
             Renderer2D.Init();
+            Renderer3D.Init();
             ParticleRenderer.Init();
             UIRenderer.Init();
             Renderer.SetViewport(0, 0, (uint)Math.Max(1, width), (uint)Math.Max(1, height));
@@ -68,7 +69,11 @@ public static partial class BrowserHost
             AudioManager.Init(new WebAudioBackend());
 
             AssetProvider.Current = s_assets;
-            SceneRenderer.Callback = RenderScene2D;
+
+            // Run the same shared 3D-first RenderSystem the desktop uses. No IScenePostProcessor is installed,
+            // so the scene renders straight to the screen (no HDR/bloom/post) — the browser's current limit.
+            SceneRenderer.Callback = static (scene, viewProjection, cameraPosition) =>
+                RenderSystem.Render(scene, viewProjection, cameraPosition);
 
             await PreloadContentAsync(contentUrlBase);
             InitializeContent(manifestPath);
@@ -214,49 +219,6 @@ public static partial class BrowserHost
         catch (Exception ex)
         {
             Log.CoreError("Browser event handling error: {0}", ex);
-        }
-    }
-
-    // The slim browser render pipeline: batched 2D sprites plus the screen-space UI tree. It stands in for the
-    // desktop RenderSystem (which drives the full 3D/lighting/shadow/HDR/post path) for the MVP-2D browser port.
-    private static void RenderScene2D(Scene scene, Matrix4x4 viewProjection, Vector3 cameraPosition)
-    {
-        _ = cameraPosition;
-
-        Renderer2D.BeginScene(viewProjection);
-        foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
-        {
-            if (!entity.IsActiveInHierarchy())
-            {
-                continue;
-            }
-
-            TransformComponent transform = entity.GetComponent<TransformComponent>();
-            Sprite2DComponent sprite = entity.GetComponent<Sprite2DComponent>();
-            if (!transform.Enabled || !sprite.Enabled)
-            {
-                continue;
-            }
-
-            if (sprite.Texture is not null)
-            {
-                Renderer2D.DrawQuad(transform.Matrix, sprite.Texture, sprite.Color);
-            }
-            else
-            {
-                Renderer2D.DrawQuad(transform.Matrix, sprite.Color);
-            }
-        }
-
-        Renderer2D.EndScene();
-
-        ParticleRenderSystem.Render(scene, viewProjection);
-        TextRenderSystem.Render(scene, viewProjection);
-
-        Spot.UI.UIRoot? ui = scene.UIRootOrNull;
-        if (ui is not null && ui.Children.Count > 0 && Display.Width > 0 && Display.Height > 0)
-        {
-            ui.Render(Display.Width, Display.Height);
         }
     }
 

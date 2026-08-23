@@ -241,10 +241,49 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
         JsTexImage2DRgba8((int)width, (int)height, AsWritableBytes(rgba));
 
     /// <inheritdoc />
+    public void TextureImage2D(TextureInternalFormat format, uint width, uint height, ReadOnlySpan<byte> data) =>
+        JsTexImage2D(MapInternalFormat(format), (int)width, (int)height, AsWritableBytes(data));
+
+    /// <inheritdoc />
+    public void SetTextureCompareMode(bool enabled) => JsTexCompareMode(enabled);
+
+    /// <inheritdoc />
     public void GenerateMipmap2D() => JsGenerateMipmap2D();
 
     /// <inheritdoc />
     public void DeleteTexture(TextureHandle handle) => JsDeleteTexture((int)handle.Id);
+
+    /// <inheritdoc />
+    public FramebufferHandle CreateFramebuffer() => new((uint)JsCreateFramebuffer());
+
+    /// <inheritdoc />
+    public void BindFramebuffer(FramebufferHandle handle) => JsBindFramebuffer((int)handle.Id);
+
+    /// <inheritdoc />
+    public void FramebufferTexture2D(RenderTargetAttachment attachment, TextureHandle texture) =>
+        JsFramebufferTexture2D(MapAttachment(attachment), (int)texture.Id);
+
+    /// <inheritdoc />
+    public bool CheckFramebufferComplete() => JsCheckFramebufferComplete();
+
+    /// <inheritdoc />
+    public void SetColorBuffersNone() => JsSetColorBuffersNone();
+
+    /// <inheritdoc />
+    public void BlitDepth(FramebufferHandle source, FramebufferHandle destination, uint width, uint height,
+        int destX, int destY, uint destWidth, uint destHeight) =>
+        JsBlitDepth((int)source.Id, (int)destination.Id, (int)width, (int)height,
+            destX, destY, (int)destWidth, (int)destHeight);
+
+    /// <inheritdoc />
+    public void DeleteFramebuffer(FramebufferHandle handle) => JsDeleteFramebuffer((int)handle.Id);
+
+    /// <inheritdoc />
+    // WebGL2 has no glPolygonMode; wireframe is unavailable, so this is a no-op (polygons render filled).
+    public void SetWireframe(bool enabled)
+    {
+        _ = enabled;
+    }
 
     // Reinterprets a read-only span as a writable byte span for MemoryView marshaling. The JS side only reads
     // the view within the synchronous call (GL copies immediately), so exposing it as writable is safe.
@@ -314,6 +353,25 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
         TextureWrap.Repeat => GLc.Repeat,
         TextureWrap.ClampToEdge => GLc.ClampToEdge,
         _ => throw new ArgumentOutOfRangeException(nameof(wrap), wrap, "Unknown texture wrap."),
+    };
+
+    // Small integer codes (not raw GL enums): the JS side maps each to the right (internalFormat, format, type)
+    // triple, since WebGL2's float/depth formats need specific combinations.
+    private static int MapInternalFormat(TextureInternalFormat format) => format switch
+    {
+        TextureInternalFormat.Rgba8 => 0,
+        TextureInternalFormat.Rgba16F => 1,
+        TextureInternalFormat.DepthComponent32F => 2,
+        TextureInternalFormat.Depth24Stencil8 => 3,
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown texture internal format."),
+    };
+
+    private static int MapAttachment(RenderTargetAttachment attachment) => attachment switch
+    {
+        RenderTargetAttachment.Color0 => 0,
+        RenderTargetAttachment.Depth => 1,
+        RenderTargetAttachment.DepthStencil => 2,
+        _ => throw new ArgumentOutOfRangeException(nameof(attachment), attachment, "Unknown attachment."),
     };
 
     private static int MapBlend(BlendFactor factor) => factor switch
@@ -503,9 +561,37 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     [JSImport("gl.texImage2DRgba8", Module)]
     private static partial void JsTexImage2DRgba8(int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> rgba);
 
+    [JSImport("gl.texImage2D", Module)]
+    private static partial void JsTexImage2D(int format, int width, int height, [JSMarshalAs<JSType.MemoryView>] Span<byte> data);
+
+    [JSImport("gl.texCompareMode", Module)]
+    private static partial void JsTexCompareMode(bool enabled);
+
     [JSImport("gl.generateMipmap2D", Module)]
     private static partial void JsGenerateMipmap2D();
 
     [JSImport("gl.deleteTexture", Module)]
     private static partial void JsDeleteTexture(int texture);
+
+    [JSImport("gl.createFramebuffer", Module)]
+    private static partial int JsCreateFramebuffer();
+
+    [JSImport("gl.bindFramebuffer", Module)]
+    private static partial void JsBindFramebuffer(int framebuffer);
+
+    [JSImport("gl.framebufferTexture2D", Module)]
+    private static partial void JsFramebufferTexture2D(int attachment, int texture);
+
+    [JSImport("gl.checkFramebufferComplete", Module)]
+    private static partial bool JsCheckFramebufferComplete();
+
+    [JSImport("gl.setColorBuffersNone", Module)]
+    private static partial void JsSetColorBuffersNone();
+
+    [JSImport("gl.blitDepth", Module)]
+    private static partial void JsBlitDepth(
+        int source, int destination, int width, int height, int destX, int destY, int destWidth, int destHeight);
+
+    [JSImport("gl.deleteFramebuffer", Module)]
+    private static partial void JsDeleteFramebuffer(int framebuffer);
 }

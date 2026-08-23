@@ -29,6 +29,41 @@ public static partial class Renderer
     internal static void Init(IGraphicsDevice device) => s_device = device;
 
     /// <summary>
+    /// Gets the framebuffer currently bound as the draw target (tracked here rather than queried from the GPU,
+    /// so passes can save and restore it without a backend-specific state query). Defaults to the screen.
+    /// </summary>
+    public static FramebufferHandle CurrentRenderTarget { get; private set; } = FramebufferHandle.Default;
+
+    /// <summary>Gets the current viewport width in pixels (tracked as it is set).</summary>
+    public static uint ViewportWidth { get; private set; }
+
+    /// <summary>Gets the current viewport height in pixels (tracked as it is set).</summary>
+    public static uint ViewportHeight { get; private set; }
+
+    /// <summary>Gets the current viewport lower-left x, in pixels (tracked as it is set).</summary>
+    public static int ViewportX { get; private set; }
+
+    /// <summary>Gets the current viewport lower-left y, in pixels (tracked as it is set).</summary>
+    public static int ViewportY { get; private set; }
+
+    /// <summary>
+    /// Binds a framebuffer as the draw target and sets its viewport in one step, tracking both so a later
+    /// pass can restore them via <see cref="CurrentRenderTarget"/> and the viewport properties. Pass
+    /// <see cref="FramebufferHandle.Default"/> to render to the screen.
+    /// </summary>
+    /// <param name="target">The framebuffer to bind.</param>
+    /// <param name="x">The viewport lower-left x, in pixels.</param>
+    /// <param name="y">The viewport lower-left y, in pixels.</param>
+    /// <param name="width">The viewport width, in pixels.</param>
+    /// <param name="height">The viewport height, in pixels.</param>
+    public static void BindRenderTarget(FramebufferHandle target, int x, int y, uint width, uint height)
+    {
+        Device.BindFramebuffer(target);
+        CurrentRenderTarget = target;
+        SetViewport(x, y, width, height);
+    }
+
+    /// <summary>
     /// Sets the color used to clear the screen.
     /// </summary>
     /// <param name="r">The red component, in the range [0, 1].</param>
@@ -72,7 +107,14 @@ public static partial class Renderer
     /// <param name="y">The lower-left y coordinate, in pixels.</param>
     /// <param name="width">The viewport width, in pixels.</param>
     /// <param name="height">The viewport height, in pixels.</param>
-    public static void SetViewport(int x, int y, uint width, uint height) => Device.SetViewport(x, y, width, height);
+    public static void SetViewport(int x, int y, uint width, uint height)
+    {
+        Device.SetViewport(x, y, width, height);
+        ViewportX = x;
+        ViewportY = y;
+        ViewportWidth = width;
+        ViewportHeight = height;
+    }
 
     /// <summary>
     /// Draws the given vertex array as a list of triangles using its vertex data.

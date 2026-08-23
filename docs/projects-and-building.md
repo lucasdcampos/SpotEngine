@@ -95,8 +95,12 @@ How it differs from a desktop build:
 - **Audio** works in the browser through a Web Audio backend, including spatial sources. Sound stays
   silent until the first click or key press (the browser autoplay policy unlocks it automatically).
   See [Audio](audio.md).
-- **Scope**: the 3D/lighting/shadow/post pipeline, the ImGui editor overlay, and the Assimp model
-  importer are desktop-only and are not part of a browser build.
+- **3D** works in the browser: the same `RenderSystem` as the desktop renders meshes, materials, lighting
+  (directional + point + ambient), shadows, and the procedural skybox through the WebGL2 device. Cooked
+  `.sptmesh` models load synchronously (the WASM runtime is single-threaded).
+- **Scope**: HDR/bloom/post-processing is still desktop-only (a follow-up will bring it to the browser);
+  wireframe is unavailable in WebGL2. The ImGui editor overlay and the Assimp model importer are
+  desktop-only and are not part of a browser build.
 
 **For development iteration**, use `spot run browser` instead of `spot build browser`. It cooks
 assets, (re)generates the browser project, stages content, and starts the SDK's built-in Kestrel
