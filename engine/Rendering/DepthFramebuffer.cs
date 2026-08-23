@@ -1,20 +1,19 @@
 using System;
-using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
 
 /// <summary>
-/// A framebuffer that only attaches a depth texture, optimized for shadow map generation.
+/// A framebuffer that only attaches a depth texture, optimized for shadow map generation. Backend-neutral:
+/// it issues every command through <see cref="Renderer.Device"/>, so it drives desktop OpenGL and browser
+/// WebGL2 alike.
 /// </summary>
 public sealed class DepthFramebuffer : IDisposable
 {
-    private readonly GL _gl;
-    private uint _rendererId;
-    private uint _depthAttachment;
+    private FramebufferHandle _framebuffer;
+    private TextureHandle _depthAttachment;
 
     public DepthFramebuffer(uint width, uint height)
     {
-        _gl = Renderer.Gl;
         Width = width;
         Height = height;
         Invalidate();
@@ -22,76 +21,60 @@ public sealed class DepthFramebuffer : IDisposable
 
     public uint Width { get; private set; }
     public uint Height { get; private set; }
-    public uint DepthAttachment => _depthAttachment;
 
-    public void Bind()
-    {
-        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _rendererId);
-        _gl.Viewport(0, 0, Width, Height);
-    }
+    /// <summary>Gets the depth texture handle sampled as the shadow map.</summary>
+    public TextureHandle DepthAttachment => _depthAttachment;
 
-    public void Unbind()
-    {
-        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-    }
-    
-    public void BindDepthTexture(uint slot = 1)
-    {
-        _gl.ActiveTexture(TextureUnit.Texture0 + (int)slot);
-        _gl.BindTexture(TextureTarget.Texture2D, _depthAttachment);
-    }
+    public void Bind() => Renderer.BindRenderTarget(_framebuffer, 0, 0, Width, Height);
+
+    public void Unbind() => Renderer.Device.BindFramebuffer(FramebufferHandle.Default);
+
+    public void BindDepthTexture(uint slot = 1) => Renderer.Device.BindTexture(slot, _depthAttachment);
 
     public void Dispose()
     {
-        if (_rendererId != 0)
+        if (_framebuffer.Id != 0)
         {
-            _gl.DeleteFramebuffer(_rendererId);
-            _gl.DeleteTexture(_depthAttachment);
+            Renderer.Device.DeleteFramebuffer(_framebuffer);
+            Renderer.Device.DeleteTexture(_depthAttachment);
+            _framebuffer = default;
+            _depthAttachment = default;
         }
     }
 
-    private unsafe void Invalidate()
+    private void Invalidate()
     {
-        if (_rendererId != 0)
+        if (_framebuffer.Id != 0)
         {
             Dispose();
         }
 
-        _rendererId = _gl.GenFramebuffer();
-        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _rendererId);
+        IGraphicsDevice device = Renderer.Device;
 
-        _depthAttachment = _gl.GenTexture();
-        _gl.BindTexture(TextureTarget.Texture2D, _depthAttachment);
-        
-        // DepthComponent and Float for better precision
-        _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.DepthComponent, Width, Height, 0, PixelFormat.DepthComponent, PixelType.Float, null);
-        
+        _depthAttachment = device.CreateTexture();
+        device.BindTexture(0, _depthAttachment);
+        device.TextureImage2D(TextureInternalFormat.DepthComponent32F, Width, Height, ReadOnlySpan<byte>.Empty);
+
         // Linear filtering + hardware depth comparison turns every tap through a sampler2DShadow into a
-        // 2x2 bilinear percentage-closer sample, which is what smooths the blocky shadow edges. The
-        // shaders sample this as a sampler2DShadow with a LEQUAL compare.
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareMode, (int)GLEnum.CompareRefToTexture);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareFunc, (int)GLEnum.Lequal);
+        // bilinear percentage-closer sample, which smooths the blocky shadow edges (LEQUAL compare).
+        device.SetTextureFilter(TextureFilter.Linear, TextureFilter.Linear);
+        device.SetTextureCompareMode(true);
 
-        // Clamp-to-border with a "far" (1.0) border so anything sampled outside the shadowed region reads
-        // as fully lit instead of smearing the edge texels — the region just stops casting, no artifact.
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToBorder);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToBorder);
+        // Clamp to edge (WebGL2 has no clamp-to-border): the shaders test the projected coords against [0,1]
+        // and treat anything outside the shadow region as fully lit, so edge-smearing is avoided without a
+        // border color.
+        device.SetTextureWrap(TextureWrap.ClampToEdge);
 
-        float[] borderColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor, borderColor);
+        _framebuffer = device.CreateFramebuffer();
+        device.BindFramebuffer(_framebuffer);
+        device.FramebufferTexture2D(RenderTargetAttachment.Depth, _depthAttachment);
+        device.SetColorBuffersNone();
 
-        _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, _depthAttachment, 0);
-        
-        _gl.DrawBuffer(DrawBufferMode.None);
-        _gl.ReadBuffer(ReadBufferMode.None);
-
-        if (_gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer) != GLEnum.FramebufferComplete)
+        if (!device.CheckFramebufferComplete())
         {
             throw new InvalidOperationException("Depth Framebuffer is incomplete.");
         }
 
-        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        Renderer.BindRenderTarget(FramebufferHandle.Default, Renderer.ViewportX, Renderer.ViewportY, Renderer.ViewportWidth, Renderer.ViewportHeight);
     }
 }

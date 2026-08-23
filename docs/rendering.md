@@ -97,10 +97,18 @@ types. Two backends implement it:
   against the canvas' WebGL2 context. Because WebGL2 is OpenGL ES 3.0, engine shaders (authored once in
   desktop GLSL) are rewritten to `#version 300 es` by the device before compiling.
 
-This seam is what lets the **2D renderer, UI pass, and their shaders run unchanged in the browser**. The
-heavier 3D pipeline — lighting, shadows, HDR/post, particles, the model importer — is desktop-only for
-now; a browser build installs a slim 2D scene renderer in its place. See
-[Projects & Building](projects-and-building.md#the-browser-target) for the browser target.
+This seam is what lets the engine's rendering code run **unchanged** across desktop and browser: the same
+`RenderSystem` drives both — 2D, UI, particles, and the **3D forward pipeline (meshes, materials, lighting,
+shadows, skybox)** all flow through `IGraphicsDevice`, so a feature is written once and runs everywhere.
+The seam grew a render-target layer (framebuffers, float/depth texture formats, depth-compare sampling) so
+shadow maps work on both backends; genuine platform gaps are absorbed here (WebGL2 has no `glPolygonMode`,
+so wireframe is a no-op there, and no clamp-to-border, so the shadow shaders test bounds instead).
+
+Post-processing — HDR capture, bloom, ACES tone mapping, FXAA — is the one part still desktop-only. It
+lives behind an `IScenePostProcessor` seam that the desktop host installs; the browser leaves it unset and
+renders straight to the screen. "Limiting" a platform is therefore a **runtime choice** (which processor,
+which `RenderSettings`), not a forked renderer. Neutralizing the post pipeline for the browser is a
+follow-up. See [Projects & Building](projects-and-building.md#the-browser-target) for the browser target.
 
 ## Related
 

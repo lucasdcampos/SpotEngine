@@ -175,6 +175,28 @@ public static class ModelImporter
     /// <returns>The model if ready; otherwise <see langword="null"/>.</returns>
     public static Model? RequestAsync(string path)
     {
+        // The browser's WASM runtime is single-threaded, so the background parse worker never runs. Load
+        // synchronously instead — cooked meshes are cheap and their bytes are already in the in-memory asset
+        // store. Failures are cached (keyed by the reference) so a bad model isn't retried or re-logged.
+        if (OperatingSystem.IsBrowser())
+        {
+            if (s_failed.Contains(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                return Load(path);
+            }
+            catch (Exception ex)
+            {
+                s_failed.Add(path);
+                Log.CoreError("Failed to load model '{0}': {1}", path, ex.Message);
+                return null;
+            }
+        }
+
         // Primitives are trivial to build; there's nothing to gain from deferring them.
         if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
         {

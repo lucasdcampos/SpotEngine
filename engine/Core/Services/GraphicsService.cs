@@ -25,8 +25,11 @@ public class GraphicsService : IEngineService
         UIRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-        // Route Scene.OnRender through the full 3D-first pipeline. The browser host installs its own slim
-        // 2D scene renderer instead.
+        // The desktop scene renderer applies the full HDR/bloom/tone-mapping post pipeline; the browser leaves
+        // this null and renders straight to the screen.
+        RenderSystem.PostProcessor = new DesktopScenePostProcessor();
+
+        // Route Scene.OnRender through the full 3D-first pipeline (the same RenderSystem the browser now runs).
         SceneRenderer.Callback = static (scene, viewProjection, cameraPosition) =>
             RenderSystem.Render(scene, viewProjection, cameraPosition);
     }

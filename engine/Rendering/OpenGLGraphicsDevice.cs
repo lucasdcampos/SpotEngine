@@ -269,10 +269,76 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     }
 
     /// <inheritdoc />
+    public unsafe void TextureImage2D(TextureInternalFormat format, uint width, uint height, ReadOnlySpan<byte> data)
+    {
+        (InternalFormat internalFmt, PixelFormat pixelFmt, PixelType pixelType) = Map(format);
+        fixed (byte* pixels = data)
+        {
+            _gl.TexImage2D(
+                TextureTarget.Texture2D, 0, internalFmt, width, height, 0, pixelFmt, pixelType,
+                data.IsEmpty ? null : pixels);
+        }
+    }
+
+    /// <inheritdoc />
+    public void SetTextureCompareMode(bool enabled)
+    {
+        // Hardware depth comparison turns every sampler2DShadow tap into a bilinear percentage-closer sample.
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareMode,
+            (int)(enabled ? GLEnum.CompareRefToTexture : GLEnum.None));
+        if (enabled)
+        {
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureCompareFunc, (int)GLEnum.Lequal);
+        }
+    }
+
+    /// <inheritdoc />
     public void GenerateMipmap2D() => _gl.GenerateMipmap(TextureTarget.Texture2D);
 
     /// <inheritdoc />
     public void DeleteTexture(TextureHandle handle) => _gl.DeleteTexture(handle.Id);
+
+    /// <inheritdoc />
+    public FramebufferHandle CreateFramebuffer() => new(_gl.GenFramebuffer());
+
+    /// <inheritdoc />
+    public void BindFramebuffer(FramebufferHandle handle) =>
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, handle.Id);
+
+    /// <inheritdoc />
+    public void FramebufferTexture2D(RenderTargetAttachment attachment, TextureHandle texture) =>
+        _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, Map(attachment), TextureTarget.Texture2D, texture.Id, 0);
+
+    /// <inheritdoc />
+    public bool CheckFramebufferComplete() =>
+        _gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer) == GLEnum.FramebufferComplete;
+
+    /// <inheritdoc />
+    public void SetColorBuffersNone()
+    {
+        _gl.DrawBuffer(DrawBufferMode.None);
+        _gl.ReadBuffer(ReadBufferMode.None);
+    }
+
+    /// <inheritdoc />
+    public void BlitDepth(FramebufferHandle source, FramebufferHandle destination, uint width, uint height,
+        int destX, int destY, uint destWidth, uint destHeight)
+    {
+        _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, source.Id);
+        _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, destination.Id);
+        _gl.BlitFramebuffer(
+            0, 0, (int)width, (int)height,
+            destX, destY, destX + (int)destWidth, destY + (int)destHeight,
+            (uint)ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, destination.Id);
+    }
+
+    /// <inheritdoc />
+    public void DeleteFramebuffer(FramebufferHandle handle) => _gl.DeleteFramebuffer(handle.Id);
+
+    /// <inheritdoc />
+    public void SetWireframe(bool enabled) =>
+        _gl.PolygonMode(TriangleFace.FrontAndBack, enabled ? PolygonMode.Line : PolygonMode.Fill);
 
     private static PrimitiveType Map(PrimitiveKind primitive) => primitive switch
     {
@@ -333,6 +399,25 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
         TextureWrap.Repeat => GLEnum.Repeat,
         TextureWrap.ClampToEdge => GLEnum.ClampToEdge,
         _ => throw new ArgumentOutOfRangeException(nameof(wrap), wrap, "Unknown texture wrap."),
+    };
+
+    private static (InternalFormat, PixelFormat, PixelType) Map(TextureInternalFormat format) => format switch
+    {
+        TextureInternalFormat.Rgba8 => (InternalFormat.Rgba8, PixelFormat.Rgba, PixelType.UnsignedByte),
+        TextureInternalFormat.Rgba16F => (InternalFormat.Rgba16f, PixelFormat.Rgba, PixelType.Float),
+        TextureInternalFormat.DepthComponent32F =>
+            (InternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float),
+        TextureInternalFormat.Depth24Stencil8 =>
+            (InternalFormat.Depth24Stencil8, PixelFormat.DepthStencil, PixelType.UnsignedInt248),
+        _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown texture internal format."),
+    };
+
+    private static FramebufferAttachment Map(RenderTargetAttachment attachment) => attachment switch
+    {
+        RenderTargetAttachment.Color0 => FramebufferAttachment.ColorAttachment0,
+        RenderTargetAttachment.Depth => FramebufferAttachment.DepthAttachment,
+        RenderTargetAttachment.DepthStencil => FramebufferAttachment.DepthStencilAttachment,
+        _ => throw new ArgumentOutOfRangeException(nameof(attachment), attachment, "Unknown attachment."),
     };
 
     private static BlendingFactor Map(BlendFactor factor) => factor switch
