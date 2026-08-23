@@ -92,9 +92,11 @@ How it differs from a desktop build:
   before the first scene loads (listed in a generated `content-index.txt`).
 - **Particles** work in the browser. `ParticleSystem` components and all their blend modes (alpha /
   additive) render correctly; the `GlslTranspiler` already handles the shader.
+- **Audio** works in the browser through a Web Audio backend, including spatial sources. Sound stays
+  silent until the first click or key press (the browser autoplay policy unlocks it automatically).
+  See [Audio](audio.md).
 - **Scope**: the 3D/lighting/shadow/post pipeline, the ImGui editor overlay, and the Assimp model
-  importer are desktop-only and are not part of a browser build. Audio currently runs silent in the
-  browser (a Web Audio backend is a follow-up).
+  importer are desktop-only and are not part of a browser build.
 
 **For development iteration**, use `spot run browser` instead of `spot build browser`. It cooks
 assets, (re)generates the browser project, stages content, and starts the SDK's built-in Kestrel

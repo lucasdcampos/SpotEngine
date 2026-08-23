@@ -63,9 +63,9 @@ public static partial class BrowserHost
             Renderer.SetViewport(0, 0, (uint)Math.Max(1, width), (uint)Math.Max(1, height));
             Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-            // No native audio in the browser yet; the mixer degrades to silence until a Web Audio backend
-            // is installed. Rendering and gameplay run regardless.
-            AudioManager.Init(new SilentAudioBackend());
+            // Web Audio drives the browser mixer. If the AudioContext can't be created, the backend reports
+            // unavailable and AudioManager degrades to silence on its own; rendering and gameplay run regardless.
+            AudioManager.Init(new WebAudioBackend());
 
             AssetProvider.Current = s_assets;
             SceneRenderer.Callback = RenderScene2D;

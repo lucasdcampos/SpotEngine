@@ -159,6 +159,139 @@ const hostImports = {
     },
 };
 
+// ---- Web Audio (spot-audio module) ----
+// One AudioContext drives the mixer. C# refers to buffers and voices by integer handle (index 0 = null),
+// mirroring the GL handle table. OpenAL sources are persistent; a Web Audio AudioBufferSourceNode is one-shot,
+// so each voice keeps a persistent GainNode/PannerNode and recreates the source node on every play, tracking
+// its own state (0 initial / 1 playing / 2 paused / 3 stopped) for the mixer's free-source polling.
+let audioCtx = null;
+let masterGain = null;
+const audioBuffers = [null];
+const audioSources = [null];
+
+// (Re)connects a voice's gain to the graph: spatial routes through its panner, non-spatial straight to master.
+function audioRoute(v) {
+    try { v.gain.disconnect(); } catch (e) {}
+    try { v.panner.disconnect(); } catch (e) {}
+    if (v.spatial) { v.gain.connect(v.panner); v.panner.connect(masterGain); }
+    else { v.gain.connect(masterGain); }
+}
+
+function audioStopNode(v) {
+    if (v.node) { try { v.node.onended = null; v.node.stop(); } catch (e) {} v.node = null; }
+}
+
+const audioImports = {
+    open: () => {
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return false;
+            audioCtx = new AC();
+            masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
+            // Autoplay policy: the context starts suspended until a user gesture. Resume on the first
+            // pointer/key press, then drop the one-shot unlock listeners.
+            const unlock = () => {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                window.removeEventListener('pointerdown', unlock);
+                window.removeEventListener('keydown', unlock);
+            };
+            window.addEventListener('pointerdown', unlock);
+            window.addEventListener('keydown', unlock);
+            return true;
+        } catch (e) {
+            console.error('Web Audio init failed', e);
+            return false;
+        }
+    },
+    close: () => { if (audioCtx) { audioCtx.close(); audioCtx = null; masterGain = null; } },
+
+    genSource: () => {
+        const panner = audioCtx.createPanner();
+        panner.distanceModel = 'linear';
+        const v = { gain: audioCtx.createGain(), panner, node: null, buffer: 0, pitch: 1, loop: false,
+                    spatial: false, state: 0, startTime: 0, offset: 0 };
+        audioSources.push(v);
+        audioRoute(v);
+        return audioSources.length - 1;
+    },
+    deleteSource: (s) => {
+        const v = audioSources[s]; if (!v) return;
+        audioStopNode(v);
+        try { v.gain.disconnect(); } catch (e) {}
+        try { v.panner.disconnect(); } catch (e) {}
+        audioSources[s] = null;
+    },
+    playSource: (s) => {
+        const v = audioSources[s]; if (!v || !v.buffer) return;
+        const buf = audioBuffers[v.buffer]; if (!buf) return;
+        audioStopNode(v);
+        const node = audioCtx.createBufferSource();
+        node.buffer = buf;
+        node.playbackRate.value = v.pitch;
+        node.loop = v.loop;
+        node.connect(v.gain);
+        const startOffset = (v.state === 2) ? v.offset : 0; // resume from the paused offset, else from the start
+        node.onended = () => { if (v.node === node) { v.node = null; v.state = 3; v.offset = 0; } };
+        try { node.start(0, startOffset); } catch (e) { return; }
+        v.node = node;
+        v.startTime = audioCtx.currentTime - startOffset / Math.max(0.01, v.pitch);
+        v.state = 1;
+    },
+    stopSource: (s) => { const v = audioSources[s]; if (!v) return; audioStopNode(v); v.offset = 0; v.state = 3; },
+    pauseSource: (s) => {
+        const v = audioSources[s]; if (!v || v.state !== 1) return;
+        const dur = (v.node && v.node.buffer) ? v.node.buffer.duration : 0;
+        const elapsed = (audioCtx.currentTime - v.startTime) * v.pitch;
+        v.offset = (v.loop && dur > 0) ? (elapsed % dur) : Math.min(elapsed, dur);
+        audioStopNode(v);
+        v.state = 2;
+    },
+    getSourceState: (s) => { const v = audioSources[s]; return v ? v.state : 0; },
+    setSourceBuffer: (s, b) => { const v = audioSources[s]; if (v) v.buffer = b; },
+    getSourceBuffer: (s) => { const v = audioSources[s]; return v ? v.buffer : 0; },
+    setSourceGain: (s, g) => { const v = audioSources[s]; if (v) v.gain.gain.value = g; },
+    setSourcePitch: (s, p) => { const v = audioSources[s]; if (v) { v.pitch = p; if (v.node) v.node.playbackRate.value = p; } },
+    setSourceLooping: (s, l) => { const v = audioSources[s]; if (v) { v.loop = l; if (v.node) v.node.loop = l; } },
+    setSourceRelative: (s, rel) => { const v = audioSources[s]; if (!v) return; v.spatial = !rel; audioRoute(v); },
+    setSourcePosition: (s, x, y, z) => {
+        const v = audioSources[s]; if (!v) return;
+        const p = v.panner;
+        if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; }
+        else p.setPosition(x, y, z);
+    },
+    setSourceReferenceDistance: (s, d) => { const v = audioSources[s]; if (v) v.panner.refDistance = d; },
+    setSourceMaxDistance: (s, d) => { const v = audioSources[s]; if (v) v.panner.maxDistance = Math.max(d, v.panner.refDistance + 0.01); },
+
+    genBuffer: () => { audioBuffers.push(null); return audioBuffers.length - 1; },
+    deleteBuffer: (b) => { audioBuffers[b] = null; },
+    uploadBuffer: (b, channels, sampleRate, data) => {
+        const pcm = new Int16Array(data.slice().buffer);
+        const frames = Math.floor(pcm.length / channels);
+        const buf = audioCtx.createBuffer(channels, Math.max(1, frames), sampleRate);
+        for (let ch = 0; ch < channels; ch++) {
+            const out = buf.getChannelData(ch);
+            for (let i = 0; i < frames; i++) out[i] = pcm[i * channels + ch] / 32768;
+        }
+        audioBuffers[b] = buf;
+    },
+    setListenerGain: (g) => { if (masterGain) masterGain.gain.value = g; },
+    setListenerPosition: (x, y, z) => {
+        const l = audioCtx.listener;
+        if (l.positionX) { l.positionX.value = x; l.positionY.value = y; l.positionZ.value = z; }
+        else l.setPosition(x, y, z);
+    },
+    setListenerOrientation: (fx, fy, fz, ux, uy, uz) => {
+        const l = audioCtx.listener;
+        if (l.forwardX) {
+            l.forwardX.value = fx; l.forwardY.value = fy; l.forwardZ.value = fz;
+            l.upX.value = ux; l.upY.value = uy; l.upZ.value = uz;
+        } else {
+            l.setOrientation(fx, fy, fz, ux, uy, uz);
+        }
+    },
+};
+
 const loading = document.getElementById('loading');
 const loadingText = document.getElementById('loading-text');
 const loadingBar = document.getElementById('loading-bar');
@@ -171,6 +304,7 @@ setProgress('Initializing runtime…', 0.1);
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet.create();
 setModuleImports('spot-gl', { gl: glImports });
 setModuleImports('spot-host', { host: hostImports });
+setModuleImports('spot-audio', { audio: audioImports });
 
 getConfig();
 const exports = await getAssemblyExports(ENGINE_ASSEMBLY);
