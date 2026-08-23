@@ -10,6 +10,18 @@ ImGui-based editor, a sample game, and a `spot` command-line tool for creating a
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 
+## Quick setup
+
+Compile the whole engine and install the `spot` CLI on your PATH in one step:
+
+```bash
+scripts\setup.bat      # Windows
+bash scripts/setup.sh  # Linux
+```
+
+Open a new terminal afterwards, then run `spot help`. `scripts/build.bat`/`build.sh`
+compile only; `scripts/uninstall.bat`/`uninstall.sh` remove `spot` from PATH.
+
 ## Building
 
 Build everything from the repo root:

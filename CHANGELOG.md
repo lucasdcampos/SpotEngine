@@ -61,6 +61,9 @@ will be finalized when 0.2 is tagged.
   scene, with optional camera billboarding.
 - **Font assets** — `.ttf`/`.otf` now cook to a `.sptfont` artifact and load by guid reference
   like other cooked content.
+- **Setup scripts** — a `scripts/` folder with cross-platform `build`, `setup`, and `uninstall`
+  scripts (`.bat` for Windows, `.sh` for Linux). `setup` compiles the whole solution in Release
+  and puts the `spot` CLI on PATH (user PATH on Windows; a `~/.local/bin` symlink on Linux).
 
 ### Changed
 - **Application Startup** — generated `Program.cs` now initializes the engine using the factory method `SpotEngine.CreateApplication()`, simplifying the entry point and avoiding direct `Spot.Core` dependencies.
