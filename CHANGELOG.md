@@ -11,6 +11,13 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **Audio in the browser (Web Audio)** — a `WebAudioBackend` implements the `IAudioBackend` seam over a
+  single `AudioContext` via `[JSImport]` (module `spot-audio`), mirroring the desktop OpenAL backend.
+  Buffers and voices use integer handle tables like the WebGL2 device; the one-shot `AudioBufferSourceNode`
+  is recreated per play, with state tracking and offset-based pause/resume. Full spatial audio (`PannerNode`
+  + `AudioContext` listener, distance attenuation) is supported. The `AudioContext` is unlocked on the first
+  user gesture (autoplay policy); browsers without Web Audio degrade to silence. `BrowserHost` now installs
+  `WebAudioBackend` instead of `SilentAudioBackend`.
 - **World-space text in the browser** — `TextComponent` (floating damage numbers, labels) now renders in
   the browser. The rendering logic was extracted from `RenderSystem` into a new `TextRenderSystem` class
   (same pattern as `ParticleRenderSystem`) and called from `BrowserHost.RenderScene2D`.
@@ -25,7 +32,7 @@ will be finalized when 0.2 is tagged.
   canvas from C# over `[JSImport]`; a `BrowserHost` runs the `requestAnimationFrame` loop, translates DOM
   input into the existing `Input`/event pipeline, and fetches cooked content into an in-memory
   `IAssetProvider`. Platform seams were extracted so the core no longer binds to the desktop window,
-  renderer, or audio: an `IAudioBackend` (OpenAL on desktop, silent in-browser for now), a `Display`
+  renderer, or audio: an `IAudioBackend` (OpenAL on desktop, Web Audio in-browser), a `Display`
   render-surface-size seam, a `SceneRenderer` callback (full 3D pipeline on desktop, slim 2D in-browser),
   and a GLSL → `#version 300 es` transpiler. `spot build browser` publishes a WebGL2 static site. The
   3D/post/shadow pipeline, ImGui, and the Assimp importer remain desktop-only.
