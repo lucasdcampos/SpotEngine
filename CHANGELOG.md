@@ -19,6 +19,9 @@ will be finalized when 0.2 is tagged.
   `DepthFramebuffer`, and `RenderSystem` were made backend-neutral. HDR/bloom/post now sit behind an
   `IScenePostProcessor` seam (desktop installs `DesktopScenePostProcessor`; the browser renders straight to
   the screen for now). Cooked `.sptmesh` models load synchronously in the single-threaded WASM runtime.
+  Mouse-look works too: a browser `ICursorController` maps `Input.CursorLocked` to the Pointer Lock API
+  (engaged on the first canvas click), feeding relative pointer movement so first-person cameras rotate and
+  the cursor hides as on desktop.
 - **Audio in the browser (Web Audio)** — a `WebAudioBackend` implements the `IAudioBackend` seam over a
   single `AudioContext` via `[JSImport]` (module `spot-audio`), mirroring the desktop OpenAL backend.
   Buffers and voices use integer handle tables like the WebGL2 device; the one-shot `AudioBufferSourceNode`
