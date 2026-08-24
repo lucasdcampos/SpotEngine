@@ -1,0 +1,181 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+
+namespace Spot.ScriptGen;
+
+/// <summary>
+/// Emits a reflection-free <c>Spot.Scenes.IScriptProvider</c> for the game assembly it compiles into: it
+/// discovers every concrete <c>Spot.Scenes.EntityBehaviour</c> subclass and generates a provider that hands
+/// the runtime a stable guid, class name, type and construction factory for each. A module initializer
+/// registers the provider with <c>Spot.Scenes.ScriptRegistry</c> the moment the assembly loads, so script
+/// resolution never needs <c>Activator</c> or an assembly scan — the AOT/trimming-safe path the browser
+/// build depends on. The stable guid comes from each script's <c>.cs.meta</c> sidecar, supplied to the
+/// compiler as an <c>AdditionalFiles</c> entry; scripts without a sidecar get an empty guid and remain
+/// resolvable by name.
+/// </summary>
+[Generator]
+public sealed class ScriptRegistryGenerator : IIncrementalGenerator
+{
+    private const string BaseTypeFullName = "Spot.Scenes.EntityBehaviour";
+
+    private readonly record struct ScriptInfo(string FullName, string SimpleName, string FilePath);
+
+    /// <inheritdoc />
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        IncrementalValuesProvider<ScriptInfo?> scripts = context.SyntaxProvider.CreateSyntaxProvider(
+                predicate: static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
+                transform: static (ctx, _) => GetScriptInfo(ctx))
+            .Where(static s => s is not null);
+
+        IncrementalValueProvider<ImmutableArray<(string Path, string? Guid)>> metas =
+            context.AdditionalTextsProvider
+                .Where(static t => t.Path.EndsWith(".cs.meta", StringComparison.OrdinalIgnoreCase))
+                .Select(static (t, ct) => (Path: NormalizeMetaSourcePath(t.Path), Guid: ExtractGuid(t.GetText(ct)?.ToString())))
+                .Collect();
+
+        IncrementalValueProvider<(ImmutableArray<ScriptInfo?> Scripts, ImmutableArray<(string Path, string? Guid)> Metas)> combined =
+            scripts.Collect().Combine(metas);
+
+        context.RegisterSourceOutput(combined, static (spc, data) => Emit(spc, data.Scripts, data.Metas));
+    }
+
+    private static ScriptInfo? GetScriptInfo(GeneratorSyntaxContext ctx)
+    {
+        var decl = (ClassDeclarationSyntax)ctx.Node;
+        if (ctx.SemanticModel.GetDeclaredSymbol(decl) is not INamedTypeSymbol symbol)
+        {
+            return null;
+        }
+
+        if (symbol.IsAbstract || symbol.IsGenericType)
+        {
+            return null;
+        }
+
+        if (!DerivesFromEntityBehaviour(symbol))
+        {
+            return null;
+        }
+
+        // Needs an accessible parameterless constructor so the factory can `new` it. A class with no explicit
+        // constructor exposes the implicit public parameterless one.
+        bool hasParameterlessCtor = symbol.InstanceConstructors.Any(
+            c => c.Parameters.Length == 0 && c.DeclaredAccessibility == Accessibility.Public);
+        if (!hasParameterlessCtor)
+        {
+            return null;
+        }
+
+        string fullName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return new ScriptInfo(fullName, symbol.Name, decl.SyntaxTree.FilePath);
+    }
+
+    private static bool DerivesFromEntityBehaviour(INamedTypeSymbol symbol)
+    {
+        for (INamedTypeSymbol? t = symbol.BaseType; t is not null; t = t.BaseType)
+        {
+            if (t.ToDisplayString() == BaseTypeFullName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void Emit(
+        SourceProductionContext spc,
+        ImmutableArray<ScriptInfo?> scripts,
+        ImmutableArray<(string Path, string? Guid)> metas)
+    {
+        if (scripts.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        var guidByPath = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach ((string path, string? guid) in metas)
+        {
+            if (!string.IsNullOrEmpty(guid))
+            {
+                guidByPath[path] = guid!;
+            }
+        }
+
+        // Dedupe by full type name (a class can appear across incremental passes) and order for stable output.
+        List<ScriptInfo> distinct = scripts
+            .Where(static s => s is not null)
+            .Select(static s => s!.Value)
+            .GroupBy(static s => s.FullName)
+            .Select(static g => g.First())
+            .OrderBy(static s => s.FullName, StringComparer.Ordinal)
+            .ToList();
+
+        if (distinct.Count == 0)
+        {
+            return;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("// <auto-generated/>");
+        sb.AppendLine("#nullable enable");
+        sb.AppendLine("namespace Spot.Generated");
+        sb.AppendLine("{");
+        sb.AppendLine("    internal sealed class __SpotScriptProvider : global::Spot.Scenes.IScriptProvider");
+        sb.AppendLine("    {");
+        sb.AppendLine("        public global::System.Collections.Generic.IEnumerable<global::Spot.Scenes.ScriptDescriptor> GetScripts()");
+        sb.AppendLine("        {");
+        foreach (ScriptInfo s in distinct)
+        {
+            string guid = guidByPath.TryGetValue(Normalize(s.FilePath), out string? g) ? g : string.Empty;
+            sb.Append("            yield return new global::Spot.Scenes.ScriptDescriptor(\"")
+              .Append(guid).Append("\", \"").Append(s.SimpleName).Append("\", typeof(").Append(s.FullName)
+              .Append("), static () => new ").Append(s.FullName).AppendLine("());");
+        }
+
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
+        sb.AppendLine("        internal static void __Register()");
+        sb.AppendLine("        {");
+        sb.AppendLine("            global::Spot.Scenes.ScriptRegistry.Register(new __SpotScriptProvider());");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine("}");
+
+        spc.AddSource("SpotScriptRegistry.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+    }
+
+    // "path/to/Foo.cs.meta" -> normalized "path/to/foo.cs" so it matches a script's SyntaxTree.FilePath.
+    private static string NormalizeMetaSourcePath(string metaPath)
+    {
+        string source = metaPath.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+            ? metaPath.Substring(0, metaPath.Length - ".meta".Length)
+            : metaPath;
+        return Normalize(source);
+    }
+
+    private static string Normalize(string path) => path.Replace('\\', '/').ToLowerInvariant();
+
+    private static readonly Regex s_guidRegex =
+        new("\"guid\"\\s*:\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static string? ExtractGuid(string? metaText)
+    {
+        if (string.IsNullOrEmpty(metaText))
+        {
+            return null;
+        }
+
+        Match match = s_guidRegex.Match(metaText!);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+}

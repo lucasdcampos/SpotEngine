@@ -539,6 +539,75 @@ public static class EditorGui
     }
 
     /// <summary>
+    /// A slot for an <see cref="Entity"/> reference (an entity-typed script field). Shows the referenced
+    /// entity's name (or a dim "None"), accepts an entity dragged from the hierarchy, and offers a trailing ✕
+    /// to clear it. Returns true (with <paramref name="value"/> updated) on any change, including clearing.
+    /// </summary>
+    /// <param name="label">The field label shown in the left column.</param>
+    /// <param name="scene">The scene the dragged entity id is resolved against.</param>
+    /// <param name="value">The current reference; updated in place when the user sets or clears it.</param>
+    public static bool EntityField(string label, Scene scene, ref Entity value)
+    {
+        bool changed = false;
+
+        ImGui.PushID(label);
+        BeginLabel(label);
+
+        bool hasValue = value.IsValid;
+        float clearWidth = hasValue ? ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.X : 0.0f;
+        float buttonWidth = ImGui.GetContentRegionAvail().X - clearWidth;
+
+        var p = Palette;
+        float h = ImGui.GetFrameHeight();
+        Vector2 btnMin = ImGui.GetCursorScreenPos();
+        string name = hasValue ? value.Name : "None";
+
+        ImGui.PushStyleVar(ImGuiStyleVar.ButtonTextAlign, new Vector2(0.0f, 0.5f));
+        if (!hasValue)
+            ImGui.PushStyleColor(ImGuiCol.Text, p.TextDisabled);
+        ImGui.Button("  " + IconPadding(h) + name, new Vector2(buttonWidth, 0.0f));
+        if (!hasValue)
+            ImGui.PopStyleColor();
+        ImGui.PopStyleVar();
+
+        // Accept an entity dragged from the hierarchy (the "ENTITY" payload carries the entity's int id).
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                ImGuiPayloadPtr payload = ImGui.AcceptDragDropPayload("ENTITY");
+                if (payload.NativePtr != null)
+                {
+                    int id = *(int*)payload.Data;
+                    value = new Entity(id, scene);
+                    changed = true;
+                }
+            }
+
+            ImGui.EndDragDropTarget();
+        }
+
+        if (hasValue)
+        {
+            var dl = ImGui.GetWindowDrawList();
+            Vector2 iconCenter = btnMin + new Vector2(4.0f + h * 0.5f, h * 0.5f);
+            DrawGlyphCentered(dl, EditorFonts.Icons, h * 0.62f, iconCenter, EditorIcons.Cube, p.Text);
+
+            ImGui.SameLine();
+            if (ImGui.Button(EditorIcons.Times, new Vector2(h, h)))
+            {
+                value = default;
+                changed = true;
+            }
+
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Clear");
+        }
+
+        EndLabel();
+        return changed;
+    }
+
+    /// <summary>
     /// The value button for a slot: a full-width, left-aligned button showing the asset's kind glyph
     /// (or a live thumbnail for images) and name, or a dim "None" when empty. Returns true when clicked.
     /// </summary>
@@ -873,6 +942,43 @@ public static class EditorGui
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Returns the stable guid for a script class, creating its <c>.cs.meta</c> sidecar on first use (the same
+    /// guid+.meta identity the asset pipeline uses) so the reference survives a class rename. Returns an empty
+    /// string when the backing <c>.cs</c> file can't be located, in which case the script resolves by name.
+    /// </summary>
+    public static string GetOrCreateScriptGuid(string className)
+    {
+        string name = className.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ? className[..^3] : className;
+
+        foreach (string path in EnumerateProjectAssets(new[] { "*.cs" }))
+        {
+            if (!string.Equals(System.IO.Path.GetFileNameWithoutExtension(path), name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                string metaPath = Spot.Assets.AssetMeta.MetaPathFor(path);
+                Spot.Assets.AssetMeta meta = Spot.Assets.AssetMeta.ReadOrCreate(path, "script");
+                if (!System.IO.File.Exists(metaPath))
+                {
+                    meta.Save(path);
+                }
+
+                return meta.Guid;
+            }
+            catch
+            {
+                // Never let a sidecar read/write take the editor down; fall back to name-based resolution.
+                return string.Empty;
+            }
+        }
+
+        return string.Empty;
     }
 
     // ----- Asset helpers ---------------------------------------------------------------------------

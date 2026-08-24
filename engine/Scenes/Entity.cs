@@ -77,6 +77,33 @@ public readonly struct Entity : IEquatable<Entity>
     }
 
     /// <summary>
+    /// Gets or sets the entity's stable, serialization-time identifier (stored in its
+    /// <see cref="LabelComponent"/>). Used to reference the entity from serialized data such as an
+    /// <see cref="Entity"/>-typed script field. Empty until the entity is first serialized; use
+    /// <see cref="EnsurePersistentId"/> to allocate one.
+    /// </summary>
+    internal string PersistentId
+    {
+        get => GetComponent<LabelComponent>().EntityGuid;
+        set => GetComponent<LabelComponent>().EntityGuid = value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns the entity's stable <see cref="PersistentId"/>, allocating a fresh one the first time it is
+    /// needed so entity references have a target to point at.
+    /// </summary>
+    internal string EnsurePersistentId()
+    {
+        LabelComponent label = GetComponent<LabelComponent>();
+        if (string.IsNullOrEmpty(label.EntityGuid))
+        {
+            label.EntityGuid = System.Guid.NewGuid().ToString("N");
+        }
+
+        return label.EntityGuid;
+    }
+
+    /// <summary>
     /// Gets the scene this entity belongs to.
     /// </summary>
     public Scene Scene => OwningScene;

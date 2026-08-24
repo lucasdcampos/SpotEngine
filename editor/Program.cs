@@ -40,6 +40,11 @@ public static class Program
             // directly (the runtime deliberately does not — it loads cooked .sptmesh).
             ModelImporter.Register(new AssimpModelImporter());
 
+            // Gameplay scripts compile into the game's assembly, not the editor, so a scene opened for
+            // authoring routinely references script types this process hasn't loaded. Keep those references
+            // (the inspector shows them) but don't log them as warnings — they resolve at play time.
+            Spot.Scenes.ScriptResolver.QuietMissingScripts = true;
+
             var app = new Spot.Core.Application(spec);
             // Host the in-game debug overlay (hierarchy/inspector/time panels), now that it lives in
             // Spot.DebugUI rather than being auto-wired by the engine.

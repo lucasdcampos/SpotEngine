@@ -83,9 +83,10 @@ public class SystemRegistryTests
     {
         var scene = new Scene();
 
-        // Character controller, 2D physics, 3D physics, animation, particles, audio, scripts.
-        Assert.Equal(7, scene.Systems.Ordered.Count);
+        // Character controller, script fixed-update, 2D physics, 3D physics, animation, particles, audio, scripts.
+        Assert.Equal(8, scene.Systems.Ordered.Count);
         Assert.Equal(SystemOrder.CharacterController, scene.Systems.Ordered[0].Order);
+        Assert.Equal(SystemOrder.FixedUpdate, scene.Systems.Ordered[1].Order);
         Assert.Equal(SystemOrder.Scripts, scene.Systems.Ordered[^1].Order);
     }
 }

@@ -34,6 +34,13 @@ public abstract class EntityBehaviour
     internal bool Faulted { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the script was active-and-enabled the last time the
+    /// script system observed it. Drives the <see cref="OnEnable"/>/<see cref="OnDisable"/> edge
+    /// detection so each transition fires exactly once.
+    /// </summary>
+    internal bool ActiveLastFrame { get; set; }
+
+    /// <summary>
     /// Gets the scene the script's entity belongs to.
     /// </summary>
     protected Scene Scene => Entity.Scene;
@@ -285,6 +292,48 @@ public abstract class EntityBehaviour
     /// </summary>
     /// <param name="deltaTime">The elapsed time in seconds since the previous frame.</param>
     public virtual void OnUpdate(float deltaTime)
+    {
+    }
+
+    /// <summary>
+    /// Called after every script's <see cref="OnUpdate"/> has run this frame, so it observes changes made
+    /// by other scripts (for example a camera that follows a target moved during <see cref="OnUpdate"/>).
+    /// </summary>
+    /// <param name="deltaTime">The elapsed time in seconds since the previous frame.</param>
+    public virtual void OnLateUpdate(float deltaTime)
+    {
+    }
+
+    /// <summary>
+    /// Called once per physics step, before the simulation integrates, so physics-affecting logic (applying
+    /// forces, moving bodies) runs in step with the solver rather than at a frame-rate-dependent moment.
+    /// </summary>
+    /// <param name="deltaTime">The physics step's elapsed time in seconds.</param>
+    public virtual void OnFixedUpdate(float deltaTime)
+    {
+    }
+
+    /// <summary>
+    /// Called when the script becomes active and enabled: after <see cref="OnCreate"/> on the first activation,
+    /// and again whenever the entity or its script component is re-enabled. Pairs with <see cref="OnDisable"/>.
+    /// </summary>
+    public virtual void OnEnable()
+    {
+    }
+
+    /// <summary>
+    /// Called when the script stops being active and enabled — the entity or its script component was disabled,
+    /// or the entity is being destroyed. Pairs with <see cref="OnEnable"/>.
+    /// </summary>
+    public virtual void OnDisable()
+    {
+    }
+
+    /// <summary>
+    /// Called in the editor when one of the script's serialized fields is changed in the inspector, so the
+    /// script can clamp or react to authored values. Never called at runtime.
+    /// </summary>
+    public virtual void OnValidate()
     {
     }
 

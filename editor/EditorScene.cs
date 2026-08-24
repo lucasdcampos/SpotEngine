@@ -108,6 +108,11 @@ public class EditorScene : Scene
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
 
+    // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
+    // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
+    private bool _autoReloadScripts = true;
+    private long _scriptsChangedAtTick;
+
     // When set, the default docked layout is rebuilt on the next frame (first launch / Reset Layout).
     private bool _rebuildDefaultLayout = !System.IO.File.Exists("imgui.ini");
 
@@ -194,7 +199,7 @@ public class EditorScene : Scene
 
     // Scans the active project's assets and installs the Library-backed content resolver, so guid: references
     // in scenes/materials resolve to cooked artifacts — the editor renders exactly what a build would ship.
-    private static void ActivateProjectPipeline()
+    private void ActivateProjectPipeline()
     {
         var project = Project.Active;
         if (project == null)
@@ -206,42 +211,172 @@ public class EditorScene : Scene
         Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.LibraryFolder));
 
         LoadProjectAssembly(project);
+        StartScriptWatcher(project);
     }
+
+    // The collectible host for the active project's script assembly. Loading through it (instead of a plain
+    // Assembly.Load into the default context) lets the editor reload scripts without restarting.
+    private static readonly ScriptHost s_scriptHost = new();
 
     private static void LoadProjectAssembly(Project project)
     {
-        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
-        if (System.IO.Directory.Exists(binDir))
+        string? dll = FindProjectAssembly(project);
+        if (dll != null)
         {
-            var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
-            var latest = System.Linq.Enumerable.FirstOrDefault(System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
-            if (latest != null)
+            s_scriptHost.Load(dll);
+        }
+    }
+
+    // The newest built <Name>.dll under the project's bin tree, or null when the project hasn't been built.
+    private static string? FindProjectAssembly(Project project)
+    {
+        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
+        if (!System.IO.Directory.Exists(binDir))
+        {
+            return null;
+        }
+
+        var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
+        return System.Linq.Enumerable.FirstOrDefault(
+            System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
+    }
+
+    // Set by the script file watcher when a .cs under Assets changes, so the editor can offer (or perform) a
+    // reload without restarting. Read on the UI thread; the reload itself runs there too.
+    private volatile bool _scriptsOutOfDate;
+    private System.IO.FileSystemWatcher? _scriptWatcher;
+
+    // Watches the project's Assets tree for script edits. Flags the editor to reload rather than reloading from
+    // the watcher's own thread, so the actual swap always happens on the UI thread mid-frame.
+    private void StartScriptWatcher(Project project)
+    {
+        StopScriptWatcher();
+
+        string assets = project.GetAssetDirectory();
+        if (!System.IO.Directory.Exists(assets))
+        {
+            return;
+        }
+
+        try
+        {
+            var watcher = new System.IO.FileSystemWatcher(assets, "*.cs")
             {
-                try
+                IncludeSubdirectories = true,
+                NotifyFilter = System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.Size,
+            };
+            void OnChange()
+            {
+                _scriptsOutOfDate = true;
+                _scriptsChangedAtTick = System.Environment.TickCount64;
+            }
+
+            watcher.Changed += (_, _) => OnChange();
+            watcher.Created += (_, _) => OnChange();
+            watcher.Deleted += (_, _) => OnChange();
+            watcher.Renamed += (_, _) => OnChange();
+            watcher.EnableRaisingEvents = true;
+            _scriptWatcher = watcher;
+        }
+        catch (System.Exception ex)
+        {
+            // A missing directory or a platform quirk must never take the editor down; scripts can still be
+            // reloaded manually from the menu.
+            Spot.Core.Log.CoreWarn("Could not watch project scripts for changes: {0}", ex.Message);
+        }
+    }
+
+    private void StopScriptWatcher()
+    {
+        _scriptWatcher?.Dispose();
+        _scriptWatcher = null;
+    }
+
+    /// <summary>
+    /// Rebuilds the active project and swaps in the freshly compiled script assembly without restarting the
+    /// editor, preserving each live script's authored field values and entity references across the reload.
+    /// Only runs in edit mode; a failed build or load logs and leaves the current scripts in place.
+    /// </summary>
+    private void ReloadScripts()
+    {
+        Project? project = Spot.Core.Project.Active;
+        if (project == null || _state != EditorState.Edit)
+        {
+            return;
+        }
+
+        _scriptsOutOfDate = false;
+        Spot.Core.Log.Info("Reloading scripts...");
+
+        // 1. Recompile. A failed build leaves the running scripts untouched.
+        var result = Spot.Build.ProjectBuilder.Build(
+            project,
+            Spot.Build.BuildPlatform.Windows,
+            onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
+            onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
+            fastDebug: true);
+
+        if (!result.Success)
+        {
+            Spot.Core.Log.Error("Script reload aborted: build failed.");
+            return;
+        }
+
+        // 2. Snapshot every live script's fields and drop the instance references, so the old load context has
+        //    nothing keeping it alive and can be collected.
+        var snapshots = new List<ScriptReloadSnapshot>();
+        foreach (OpenSceneData sceneData in _openScenes)
+        {
+            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
+            {
+                var comp = entity.GetComponent<ScriptComponent>();
+                foreach (ScriptInstance item in comp.Items)
                 {
-                    byte[] assemblyBytes = System.IO.File.ReadAllBytes(latest);
-                    
-                    // Also try to load the PDB if it exists next to the DLL, so stack traces and debugging work.
-                    string pdbPath = System.IO.Path.ChangeExtension(latest, ".pdb");
-                    if (System.IO.File.Exists(pdbPath))
-                    {
-                        byte[] pdbBytes = System.IO.File.ReadAllBytes(pdbPath);
-                        System.Reflection.Assembly.Load(assemblyBytes, pdbBytes);
-                    }
-                    else
-                    {
-                        System.Reflection.Assembly.Load(assemblyBytes);
-                    }
-                    
-                    Spot.Core.Log.CoreInfo("Loaded project assembly: {0}", latest);
-                }
-                catch (System.Exception ex)
-                {
-                    Spot.Core.Log.CoreWarn("Failed to load project assembly '{0}': {1}", latest, ex.Message);
+                    System.Text.Json.Nodes.JsonObject? fields =
+                        item.Instance != null ? ComponentSerialization.SerializeMembers(item.Instance) : null;
+                    snapshots.Add(new ScriptReloadSnapshot(sceneData.Scene, entity, item, fields));
+                    item.Instance = null;
                 }
             }
         }
+
+        // 3. Swap the assembly.
+        s_scriptHost.Unload();
+        string? dll = FindProjectAssembly(project);
+        if (dll == null || !s_scriptHost.Load(dll))
+        {
+            Spot.Core.Log.Error("Script reload failed to load the rebuilt assembly; scripts are now unresolved.");
+            return;
+        }
+
+        // 4. Re-resolve each script from the new assembly and restore its fields. Entity references are rebound
+        //    per scene through a SceneReferences map keyed on the entities' stable ids.
+        foreach (var group in System.Linq.Enumerable.GroupBy(snapshots, s => s.Scene))
+        {
+            var refs = new SceneReferences();
+            foreach (Entity entity in group.Key.View<LabelComponent>())
+            {
+                refs.Register(entity.EnsurePersistentId(), entity);
+            }
+
+            foreach (ScriptReloadSnapshot snap in group)
+            {
+                EntityBehaviour? instance = ScriptResolver.Create(snap.Item.Guid, snap.Item.ClassName, snap.Entity);
+                snap.Item.Instance = instance;
+                if (instance != null && snap.Fields != null)
+                {
+                    ComponentSerialization.ApplyMembers(instance, snap.Fields, refs);
+                }
+            }
+
+            refs.ResolveDeferred();
+        }
+
+        Spot.Core.Log.Info("Scripts reloaded.");
     }
+
+    private readonly record struct ScriptReloadSnapshot(
+        Scene Scene, Entity Entity, ScriptInstance Item, System.Text.Json.Nodes.JsonObject? Fields);
 
     private void LoadStartScene()
     {
@@ -1195,6 +1330,7 @@ public class EditorScene : Scene
         Spot.Core.Application.Instance.CanClose = null;
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
 
+        StopScriptWatcher();
         foreach (var sceneData in _openScenes) sceneData.Dispose();
         _gameFramebuffer?.Dispose();
         _inspectorPanel.Dispose();
@@ -1377,6 +1513,10 @@ public class EditorScene : Scene
                     ImGui.EndMenu();
                 }
                 ImGui.Separator();
+                string reloadLabel = _scriptsOutOfDate ? "Reload Scripts *" : "Reload Scripts";
+                if (ImGui.MenuItem(reloadLabel, "Ctrl+R", false, _state == EditorState.Edit)) ReloadScripts();
+                ImGui.MenuItem("Auto-Reload Scripts", "", ref _autoReloadScripts);
+                ImGui.Separator();
             }
             
             if (ImGui.MenuItem("Exit")) RequestExit();
@@ -1509,7 +1649,24 @@ public class EditorScene : Scene
         {
             Redo();
         }
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
+        {
+            ReloadScripts();
+        }
+
+        // Auto-reload: once script edits have settled (a short debounce past the last file event) and the user
+        // isn't mid-interaction, rebuild and swap the assembly. Manual reload stays available regardless.
+        if (_state == EditorState.Edit && _autoReloadScripts && _scriptsOutOfDate
+            && System.Environment.TickCount64 - _scriptsChangedAtTick > ScriptReloadDebounceMs
+            && !EditorIsInteracting())
+        {
+            ReloadScripts();
+        }
     }
+
+    // How long to wait after the last detected script file change before auto-reloading, so a burst of saves
+    // (or an editor writing a temp file then renaming) collapses into a single rebuild.
+    private const long ScriptReloadDebounceMs = 600;
 
     // The most entries kept per scene's undo history.
     private const int MaxUndo = 100;

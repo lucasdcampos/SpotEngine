@@ -28,6 +28,15 @@ public sealed class LabelComponent : Component
     public string Tag { get; set; } = string.Empty;
 
     /// <summary>
+    /// A stable, per-entity identifier used to reference this entity from serialized data (for example an
+    /// <see cref="Entity"/>-typed script field). Assigned on save and preserved on load so a reference
+    /// survives renames and reordering; empty until the entity is first serialized. Not a
+    /// <see cref="SceneComponentAttribute"/> field — the scene serializer writes it in the structural
+    /// <c>Tag</c> block, and prefab instances are given fresh ids to avoid collisions.
+    /// </summary>
+    internal string EntityGuid { get; set; } = string.Empty;
+
+    /// <summary>
     /// Whether this entity survives a scene switch instead of being destroyed with its scene (the
     /// engine's equivalent of Unity's <c>DontDestroyOnLoad</c>). Set through
     /// <see cref="Entity.DontDestroyOnLoad"/>; a runtime concept, not serialized. Only meaningful on a
