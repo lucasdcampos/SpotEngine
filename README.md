@@ -43,16 +43,16 @@ The command-line tool creates and builds projects:
 
 ```bash
 # Create a new project
-dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>
+spot new MyGame --path <dir>
 
 # Cook assets and run a project from source (quick iteration)
-dotnet run --project tools/Spot.Cli -- run --project <dir>
+spot run --project <dir>
 
 # Publish a self-contained standalone build (windows | linux)
-dotnet run --project tools/Spot.Cli -- build windows --project <dir>
+spot build windows --project <dir>
 
 # Show all commands
-dotnet run --project tools/Spot.Cli -- help
+spot help
 ```
 
 ## Layout
