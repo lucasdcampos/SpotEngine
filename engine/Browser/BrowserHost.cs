@@ -36,6 +36,10 @@ public static partial class BrowserHost
     // flush after NewFrame() so each frame sees the events that arrived since the last tick.
     private static readonly List<Event> s_pendingEvents = new();
 
+    // The virtual cursor position, advanced by relative motion while the pointer is locked so mouse-look
+    // deltas keep flowing (the browser freezes absolute coordinates under pointer lock).
+    private static Vector2 s_mousePosition;
+
     /// <summary>
     /// Boots the game: brings up the WebGL2 renderer, installs the browser backends, fetches all cooked
     /// content listed in the content index into the in-memory store, loads the manifest, and switches to the
@@ -67,6 +71,10 @@ public static partial class BrowserHost
             // Web Audio drives the browser mixer. If the AudioContext can't be created, the backend reports
             // unavailable and AudioManager degrades to silence on its own; rendering and gameplay run regardless.
             AudioManager.Init(new WebAudioBackend());
+
+            // Mouse-look and cursor hiding go through the Pointer Lock API. Installing this lets scripts drive
+            // Input.CursorLocked (e.g. the 3D character controller) in the browser just like on desktop.
+            Input.CursorController = new BrowserCursorController();
 
             AssetProvider.Current = s_assets;
 
@@ -170,12 +178,30 @@ public static partial class BrowserHost
         }
     }
 
-    /// <summary>Dispatches a pointer move in CSS pixels relative to the canvas' top-left.</summary>
+    /// <summary>Dispatches an absolute pointer move in device pixels relative to the canvas' top-left.</summary>
     /// <param name="x">The pointer x position.</param>
     /// <param name="y">The pointer y position.</param>
     [JSExport]
     // Mouse position is a polled value, not a one-frame flag — dispatch immediately so hover is pixel-accurate.
-    internal static void PointerMove(double x, double y) => DispatchNow(new MouseMovedEvent((float)x, (float)y));
+    internal static void PointerMove(double x, double y)
+    {
+        s_mousePosition = new Vector2((float)x, (float)y);
+        DispatchNow(new MouseMovedEvent(s_mousePosition.X, s_mousePosition.Y));
+    }
+
+    /// <summary>
+    /// Dispatches a relative pointer move (device pixels) while the pointer is locked. Accumulated into a
+    /// virtual cursor position so <see cref="Input.MousePosition"/>'s frame-to-frame delta drives mouse-look,
+    /// mirroring the desktop's locked-cursor behavior (where the virtual position keeps moving).
+    /// </summary>
+    /// <param name="dx">The horizontal movement.</param>
+    /// <param name="dy">The vertical movement.</param>
+    [JSExport]
+    internal static void PointerMoveRelative(double dx, double dy)
+    {
+        s_mousePosition += new Vector2((float)dx, (float)dy);
+        DispatchNow(new MouseMovedEvent(s_mousePosition.X, s_mousePosition.Y));
+    }
 
     /// <summary>Dispatches a pointer button press. <paramref name="button"/> is the DOM <c>MouseEvent.button</c>.</summary>
     /// <param name="button">The DOM button index (0 left, 1 middle, 2 right).</param>

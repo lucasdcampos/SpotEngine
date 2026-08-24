@@ -338,9 +338,30 @@ function setProgress(text, pct) {
 
 setProgress('Initializing runtime…', 0.1);
 const { setModuleImports, getAssemblyExports, getConfig, runMain } = await dotnet.create();
+// ---- Pointer lock / cursor (spot-input module) ----
+// The engine drives Input.CursorLocked through this. Locking uses the Pointer Lock API (hides the cursor and
+// switches pointermove to relative movementX/Y). Browsers only grant the lock from a user gesture, so a
+// request made outside one is retried on the next canvas click (pointerdown wiring below).
+let cursorLockDesired = false;
+function requestLock() {
+    if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+        const p = canvas.requestPointerLock();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
+}
+const inputImports = {
+    setCursorLocked: (locked) => {
+        cursorLockDesired = locked;
+        if (locked) requestLock();
+        else if (document.pointerLockElement === canvas && document.exitPointerLock) document.exitPointerLock();
+    },
+    isCursorLocked: () => document.pointerLockElement === canvas,
+};
+
 setModuleImports('spot-gl', { gl: glImports });
 setModuleImports('spot-host', { host: hostImports });
 setModuleImports('spot-audio', { audio: audioImports });
+setModuleImports('spot-input', { input: inputImports });
 
 getConfig();
 const exports = await getAssemblyExports(ENGINE_ASSEMBLY);
@@ -355,8 +376,18 @@ await host.StartAsync(initW, initH, CONTENT_BASE, MANIFEST_PATH, START_SCENE);
 // Wire input before StartAsync so events that fire during load are captured.
 window.addEventListener('keydown', (e) => { host.KeyDown(e.code); if (e.key.length === 1) host.TextInput(e.key); e.preventDefault(); });
 window.addEventListener('keyup', (e) => { host.KeyUp(e.code); e.preventDefault(); });
-canvas.addEventListener('pointermove', (e) => host.PointerMove(e.offsetX * (window.devicePixelRatio || 1), e.offsetY * (window.devicePixelRatio || 1)));
-canvas.addEventListener('pointerdown', (e) => { canvas.focus(); host.PointerDown(e.button); });
+canvas.addEventListener('pointermove', (e) => {
+    const dpr = window.devicePixelRatio || 1;
+    // While locked the browser freezes offsetX/Y and reports motion via movementX/Y; feed that as relative.
+    if (document.pointerLockElement === canvas) host.PointerMoveRelative(e.movementX * dpr, e.movementY * dpr);
+    else host.PointerMove(e.offsetX * dpr, e.offsetY * dpr);
+});
+canvas.addEventListener('pointerdown', (e) => {
+    canvas.focus();
+    // Engage a deferred lock request now that we're in a user gesture (the engine asked for it earlier).
+    if (cursorLockDesired && document.pointerLockElement !== canvas) requestLock();
+    host.PointerDown(e.button);
+});
 window.addEventListener('pointerup', (e) => host.PointerUp(e.button));
 canvas.addEventListener('wheel', (e) => { host.Wheel(e.deltaX, e.deltaY); e.preventDefault(); }, { passive: false });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
