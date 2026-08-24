@@ -3,7 +3,8 @@
     {
       "Tag": {
         "Name": "Camera",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "9b6e8f334a4140be9a8a9d40621d71e2"
       },
       "Transform": {
         "Enabled": true,
@@ -43,7 +44,8 @@
     {
       "Tag": {
         "Name": "Menu",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "7e5e18cbb62c4814bf2a68fdd8f96a2e"
       },
       "Transform": {
         "Enabled": true,

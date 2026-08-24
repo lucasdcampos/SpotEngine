@@ -33,6 +33,10 @@ public class ProjectGeneratorTests
         // Game manifest included
         Assert.Contains(@"<Content Include=""game.manifest""", csproj);
 
+        // Wires the script source generator (Exists-guarded) and feeds it the .cs.meta sidecars.
+        Assert.Contains(@"<Analyzer Include=""EngineBin\Spot.ScriptGen.dll"" />", csproj);
+        Assert.Contains(@"<AdditionalFiles Include=""Assets\**\*.cs.meta"" />", csproj);
+
         Assert.True(File.Exists(Path.Combine(temp.Path, "Arcade.sln")));
 
         string program = File.ReadAllText(Path.Combine(temp.Path, "Program.cs"));

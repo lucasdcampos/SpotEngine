@@ -49,6 +49,14 @@
     <EmbeddedResource Remove="Assets\**" />
   </ItemGroup>
 
+  <!-- Reflection-free script registry: the source generator emits an IScriptProvider for the game's scripts
+       (keyed by the stable guid in each script's .cs.meta), so resolution needs no Activator/assembly scan.
+       Exists-guarded: if the generator wasn't bundled, scripts still compile and resolve by reflection. -->
+  <ItemGroup Condition="Exists('EngineBin\Spot.ScriptGen.dll')">
+    <Analyzer Include="EngineBin\Spot.ScriptGen.dll" />
+    <AdditionalFiles Include="Assets\**\*.cs.meta" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
     <None Remove="Content\**" />

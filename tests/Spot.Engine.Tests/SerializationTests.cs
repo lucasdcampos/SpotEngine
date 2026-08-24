@@ -24,8 +24,59 @@ public sealed class SerializationFieldProbe : EntityBehaviour
     public Vector3 Offset;
 }
 
+// A probe script referenced through the registry by a stable guid, to verify guid-based (rename-safe)
+// resolution survives a class-name change in the scene.
+public sealed class GuidProbeBehaviour : EntityBehaviour
+{
+    public int Value;
+}
+
+// A probe with an Entity-typed field, to verify entity references round-trip through the scene by stable id.
+public sealed class EntityRefProbe : EntityBehaviour
+{
+    public Entity Target;
+}
+
 public class SerializationTests
 {
+    private sealed class GuidProbeProvider : IScriptProvider
+    {
+        public const string ProbeGuid = "gp-stable-123";
+
+        public IEnumerable<ScriptDescriptor> GetScripts() =>
+            new[] { new ScriptDescriptor(ProbeGuid, nameof(GuidProbeBehaviour), typeof(GuidProbeBehaviour), () => new GuidProbeBehaviour()) };
+    }
+
+    [Fact]
+    public void Scene_PersistsGuid_AndResolvesAfterClassRename()
+    {
+        var provider = new GuidProbeProvider();
+        ScriptRegistry.Register(provider);
+        try
+        {
+            var scene = new Scene();
+            scene.Instantiate("G").AddScript(new GuidProbeBehaviour { Value = 42 });
+
+            // The guid is captured from the registry on save even though the instance was added by name.
+            string json = new SceneSerializer(scene).SerializeToString();
+            Assert.Contains(GuidProbeProvider.ProbeGuid, json);
+
+            // Simulate a class rename: the stored class name no longer matches any type, only the guid does.
+            string renamed = json.Replace($"\"{nameof(GuidProbeBehaviour)}\"", "\"RenamedAwayClass\"");
+
+            var loaded = new Scene();
+            Assert.True(new SceneSerializer(loaded).DeserializeFromString(renamed));
+
+            var comp = FindByName(loaded, "G").GetComponent<ScriptComponent>();
+            var restored = Assert.IsType<GuidProbeBehaviour>(comp.Scripts.Single());
+            Assert.Equal(42, restored.Value);
+        }
+        finally
+        {
+            ScriptRegistry.Unregister(provider);
+        }
+    }
+
     [Fact]
     public void Scene_RoundTripsEntityData()
     {
@@ -119,6 +170,42 @@ public class SerializationTests
         Assert.Equal(7, restored.Count);
         Assert.True(restored.Flag);
         Assert.Equal(new Vector3(1, 2, 3), restored.Offset);
+    }
+
+    [Fact]
+    public void Scene_RoundTripsEntityReference_ByStableId()
+    {
+        var scene = new Scene();
+        var a = scene.Instantiate("A");
+        var b = scene.Instantiate("B");
+        EntityRefProbe probe = a.AddScript(new EntityRefProbe());
+        probe.Target = b;
+
+        string json = new SceneSerializer(scene).SerializeToString();
+
+        var loaded = new Scene();
+        Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
+
+        var comp = FindByName(loaded, "A").GetComponent<ScriptComponent>();
+        var restored = Assert.IsType<EntityRefProbe>(comp.Scripts.Single());
+        Assert.True(restored.Target.IsValid);
+        Assert.Equal("B", restored.Target.Name);
+    }
+
+    [Fact]
+    public void Scene_UnsetEntityReference_StaysUnset()
+    {
+        var scene = new Scene();
+        scene.Instantiate("A").AddScript(new EntityRefProbe());
+
+        string json = new SceneSerializer(scene).SerializeToString();
+
+        var loaded = new Scene();
+        Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
+
+        var comp = FindByName(loaded, "A").GetComponent<ScriptComponent>();
+        var restored = Assert.IsType<EntityRefProbe>(comp.Scripts.Single());
+        Assert.False(restored.Target.IsValid);
     }
 
     [Fact]

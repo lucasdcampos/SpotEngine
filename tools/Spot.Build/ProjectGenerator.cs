@@ -21,6 +21,7 @@ public static class ProjectGenerator
         if (string.IsNullOrEmpty(project.ProjectDirectory)) return;
 
         CopyEngineDll(project.ProjectDirectory);
+        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.EngineBinFolder));
         WriteCsproj(project);
         WriteSolution(project);
         WriteManifest(project, overwriteProgram);
@@ -43,6 +44,7 @@ public static class ProjectGenerator
         Directory.CreateDirectory(engineBin);
 
         CopyBrowserEngineDll(engineBin);
+        CopyScriptGenDll(engineBin);
 
         string name = project.Config.Name;
         string csprojName = name + ".Browser.csproj";
@@ -56,9 +58,15 @@ public static class ProjectGenerator
             string rel = Path.GetRelativePath(webDir, scriptsDir).Replace('\\', '/');
             scriptInclude = $"""
 
-  <!-- Game scripts compiled into the WASM assembly so ScriptResolver finds them via reflection. -->
+  <!-- Game scripts compiled into the WASM assembly. The source generator (Exists-guarded) emits a
+       reflection-free script registry from them, keyed by each script's .cs.meta guid — the AOT/trimming-safe
+       resolution path the browser build relies on; without it scripts still resolve by reflection. -->
   <ItemGroup>
     <Compile Include="{rel}/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('EngineBin/Spot.ScriptGen.dll')">
+    <Analyzer Include="EngineBin/Spot.ScriptGen.dll" />
+    <AdditionalFiles Include="{rel}/**/*.cs.meta" />
   </ItemGroup>
 """;
         }
@@ -175,6 +183,63 @@ System.Console.WriteLine(""Spot browser runtime started."");
         return null;
     }
 
+    // Copies the script source generator (netstandard2.0 Spot.ScriptGen.dll) into the given EngineBin so the
+    // generated project can reference it as an <Analyzer>. Best-effort and consistent with the engine copy:
+    // when the generator can't be located (e.g. the solution wasn't fully built), it is simply skipped and the
+    // generated csproj's Exists-guarded analyzer item drops out, leaving scripts to resolve by reflection.
+    private static void CopyScriptGenDll(string engineBinDir)
+    {
+        string? generatorDll = FindScriptGenDll();
+        if (generatorDll is null)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(engineBinDir);
+        CopyIfPresent(generatorDll, Path.Combine(engineBinDir, "Spot.ScriptGen.dll"));
+    }
+
+    // Locates Spot.ScriptGen.dll. All projects publish under a shared bin root, so it sits at
+    // <binRoot>/Spot.ScriptGen/<Config>/netstandard2.0/Spot.ScriptGen.dll relative to the loaded Spot.Build
+    // assembly; also probes beside the loaded assembly for hosts that copied it there.
+    private static string? FindScriptGenDll()
+    {
+        string buildDll = typeof(Project).Assembly.Location;
+
+        string? dir = Path.GetDirectoryName(buildDll);
+        if (dir is not null)
+        {
+            string sibling = Path.Combine(dir, "Spot.ScriptGen.dll");
+            if (File.Exists(sibling))
+            {
+                return sibling;
+            }
+        }
+
+        try
+        {
+            string? tfmDir = Path.GetDirectoryName(buildDll);
+            string? configDir = Path.GetDirectoryName(tfmDir);
+            string? projectDir = Path.GetDirectoryName(configDir);
+            string? binRoot = Path.GetDirectoryName(projectDir);
+            if (configDir is not null && binRoot is not null)
+            {
+                string config = Path.GetFileName(configDir);
+                string candidate = Path.Combine(binRoot, "Spot.ScriptGen", config, "netstandard2.0", "Spot.ScriptGen.dll");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+        catch
+        {
+            // Path probing is best-effort; fall through to "not found".
+        }
+
+        return null;
+    }
+
     private static void CopyEngineDll(string projectDirectory)
     {
         string engineBinDir = Path.Combine(projectDirectory, Spot.Core.ProjectStructure.EngineBinFolder);
@@ -258,6 +323,14 @@ System.Console.WriteLine(""Spot browser runtime started."");
     <None Remove=""Assets\**"" />
     <Content Remove=""Assets\**"" />
     <EmbeddedResource Remove=""Assets\**"" />
+  </ItemGroup>
+
+  <!-- Reflection-free script registry: the source generator emits an IScriptProvider for the game's scripts
+       (keyed by the stable guid in each script's .cs.meta), so resolution needs no Activator/assembly scan.
+       Exists-guarded: if the generator wasn't bundled, scripts still compile and resolve by reflection. -->
+  <ItemGroup Condition=""Exists('EngineBin\Spot.ScriptGen.dll')"">
+    <Analyzer Include=""EngineBin\Spot.ScriptGen.dll"" />
+    <AdditionalFiles Include=""Assets\**\*.cs.meta"" />
   </ItemGroup>
 
   <ItemGroup>

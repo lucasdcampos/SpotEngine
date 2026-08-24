@@ -694,10 +694,14 @@ internal static class ComponentInspector
         if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames.ToList(), out string? chosen)
             && chosen != null && !scriptComp.ClassNames.Contains(chosen))
         {
-            EntityBehaviour? instance = ScriptResolver.Resolve(chosen) != null
-                ? ScriptResolver.Create(chosen, entity)
+            // Capture (or mint) the script's stable guid so the attachment survives a class rename. The type
+            // usually isn't loaded in the editor, so attach by name+guid and only instantiate when it happens
+            // to be resolvable here, without logging the expected "not found".
+            string guid = EditorGui.GetOrCreateScriptGuid(chosen);
+            EntityBehaviour? instance = ScriptResolver.Resolve(guid, chosen) != null
+                ? ScriptResolver.Create(guid, chosen, entity)
                 : null;
-            scriptComp.Items.Add(new ScriptInstance(chosen, instance));
+            scriptComp.Items.Add(new ScriptInstance(chosen, instance, guid));
         }
     }
 
@@ -734,7 +738,12 @@ internal static class ComponentInspector
             ImGui.PushID(meta.Label);
             try
             {
-                DrawScriptField(script, meta);
+                // Editing a serialized field mirrors Unity's OnValidate: notify the script so it can clamp or
+                // react. Guarded in the engine so a throwing handler is quarantined, never crashing the editor.
+                if (DrawScriptField(script, meta))
+                {
+                    ScriptSystem.InvokeValidate(script);
+                }
             }
             catch (Exception ex)
             {
@@ -747,7 +756,8 @@ internal static class ComponentInspector
         }
     }
 
-    private static void DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
+    // Draws one script field; returns true when the user changed it (so the caller can fire OnValidate).
+    private static bool DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
     {
         Type t = meta.Type;
         string label = meta.Label;
@@ -756,20 +766,29 @@ internal static class ComponentInspector
         {
             float v = (float)meta.Get(script)!;
             if (EditorGui.DragFloat(label, ref v, meta.HasRange ? meta.Speed : 0.1f, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(int))
         {
             float v = (int)meta.Get(script)!;
             float speed = meta.HasRange ? meta.Speed : 1f;
             if (EditorGui.DragFloat(label, ref v, speed, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f, "%.0f"))
+            {
                 meta.Set(script, (int)MathF.Round(v));
+                return true;
+            }
         }
         else if (t == typeof(bool))
         {
             bool v = (bool)meta.Get(script)!;
             if (EditorGui.Checkbox(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t.IsEnum)
         {
@@ -777,13 +796,19 @@ internal static class ComponentInspector
             int idx = Array.IndexOf(meta.EnumValues!, cur);
             if (idx < 0) idx = 0;
             if (EditorGui.Combo(label, ref idx, meta.EnumNames!))
+            {
                 meta.Set(script, meta.EnumValues![idx]);
+                return true;
+            }
         }
         else if (t == typeof(Vector2))
         {
             var v = (Vector2)meta.Get(script)!;
             if (EditorGui.Vector2Control(label, ref v, meta.HasReset ? meta.Reset : 0f))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(Vector3))
         {
@@ -792,20 +817,40 @@ internal static class ComponentInspector
                 ? EditorGui.Color3(label, ref v)
                 : EditorGui.Vector3Control(label, ref v, meta.HasReset ? meta.Reset : 0f);
             if (changed)
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(Vector4))
         {
             var v = (Vector4)meta.Get(script)!;
             if (EditorGui.Color4(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(string))
         {
             string v = (string?)meta.Get(script) ?? string.Empty;
             if (EditorGui.InputText(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
+        else if (t == typeof(Entity))
+        {
+            var v = (Entity)meta.Get(script)!;
+            if (EditorGui.EntityField(label, script.Entity.Scene, ref v))
+            {
+                meta.Set(script, v);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static ScriptFieldMeta[] ScriptFieldsFor(Type type)
@@ -875,5 +920,6 @@ internal static class ComponentInspector
 
     private static bool IsScriptFieldType(Type t) =>
         t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
-        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4);
+        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4) ||
+        t == typeof(Entity);
 }

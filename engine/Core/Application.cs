@@ -356,6 +356,11 @@ public class Application
             SceneManager.Load(_spec.StartScene);
         }
 
+        // Now that the graphics context and the ImGui controller exist, make sure the drawable size has
+        // propagated to both — otherwise the first frames render into a 0-sized viewport (only the clear color
+        // shows) until the user manually resizes the window.
+        ForceInitialResize();
+
         _stopwatch = Stopwatch.StartNew();
         _lastTime = _stopwatch.Elapsed;
     }
@@ -452,6 +457,13 @@ public class Application
     {
         try
         {
+            // Safety net: if the drawable size still hasn't reached the renderer (the startup resize was
+            // deferred by the platform), re-sync it before drawing so no frame renders into a 0-sized viewport.
+            if (Renderer.ViewportWidth == 0 || Renderer.ViewportHeight == 0)
+            {
+                SyncViewportToFramebuffer();
+            }
+
             Renderer.Clear();
             SceneManager.Render();
         }
@@ -583,7 +595,58 @@ public class Application
 
     private bool OnWindowResize(WindowResizeEvent e)
     {
-        Renderer.Api.Viewport(0, 0, (uint)e.Width, (uint)e.Height);
+        SyncViewportToFramebuffer();
         return false;
+    }
+
+    // Points the GL viewport at the window's real drawable. Prefers the framebuffer size (physical pixels,
+    // correct under DPI scaling) and falls back to the window size when the framebuffer size isn't reported
+    // yet. Uses Renderer.SetViewport so the renderer's tracked viewport stays in sync too.
+    private void SyncViewportToFramebuffer()
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
+        var win = _window.NativeWindow;
+        int w = win.FramebufferSize.X > 0 ? win.FramebufferSize.X : win.Size.X;
+        int h = win.FramebufferSize.Y > 0 ? win.FramebufferSize.Y : win.Size.Y;
+        if (w > 0 && h > 0)
+        {
+            Renderer.SetViewport(0, 0, (uint)w, (uint)h);
+        }
+    }
+
+    // Works around a startup quirk: with the engine's manual render loop (Initialize + DoEvents rather than
+    // IWindow.Run), some platforms leave IWindow.FramebufferSize reporting 0 until the first real resize. That
+    // zero collapses both the GL viewport and ImGui's DisplayFramebufferScale to 0, so nothing draws and the
+    // window shows only the clear color until the user resizes it. Nudging the window size by a pixel and back
+    // drives Silk's resize pipeline once — populating the framebuffer size and notifying both the renderer and
+    // the ImGui controller — which is exactly what a manual resize does.
+    private void ForceInitialResize()
+    {
+        try
+        {
+            var win = _window!.NativeWindow;
+            var size = win.Size;
+            Log.CoreInfo(
+                "Startup drawable: window {0}x{1}, framebuffer {2}x{3}",
+                size.X, size.Y, win.FramebufferSize.X, win.FramebufferSize.Y);
+
+            if (size.X > 0 && size.Y > 0 && (win.FramebufferSize.X == 0 || win.FramebufferSize.Y == 0))
+            {
+                win.Size = new Silk.NET.Maths.Vector2D<int>(size.X, size.Y + 1);
+                _window!.PollEvents();
+                win.Size = size;
+                _window!.PollEvents();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Initial window resize sync failed: {0}", ex.Message);
+        }
+
+        SyncViewportToFramebuffer();
     }
 }

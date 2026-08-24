@@ -11,6 +11,28 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **Rename-safe script identity + reflection-free resolution** — scripts are now referenced by a stable
+  guid (the same guid+`.meta` sidecar identity the asset pipeline uses) instead of only a class name, so
+  renaming a script class no longer breaks the scenes that use it and same-named classes in different
+  namespaces no longer collide. A new source generator (`Spot.ScriptGen`, wired into the generated
+  project/browser build as an analyzer) emits a reflection-free `IScriptProvider` — guid/name → type +
+  construction factory — that `ScriptResolver` consults before falling back to an assembly scan, making
+  script resolution trimming/AOT-safe for the browser. Older scenes (class-name only) still load and are
+  upgraded to a guid on their next save.
+- **More script lifecycle hooks** — `EntityBehaviour` gained `OnEnable`/`OnDisable` (fired on enabled-state
+  transitions, with `OnDisable` also preceding `OnDestroy`), `OnFixedUpdate` (run once per physics step,
+  before the simulation, via a new `SystemOrder.FixedUpdate` slot), `OnLateUpdate` (after every script's
+  `OnUpdate` this frame), and `OnValidate` (fired by the inspector when a serialized field changes). All run
+  inside the existing per-script quarantine, so a throwing hook is disabled rather than crashing the engine.
+- **Entity reference fields on scripts** — a `public Entity` script field is now inspector-editable
+  (drag an entity from the hierarchy) and serialized. Every entity carries a stable id (written in its scene
+  `Tag` block); references store that id and are re-resolved in a fixup pass after the scene loads, so they
+  survive renames/reordering and a reference to a deleted entity is left unset instead of throwing. Prefab
+  instances get fresh ids with internal references remapped per-instance.
+- **Script hot reload in the editor** — the editor loads project scripts into a collectible load context and
+  can rebuild and swap them without restarting: edit/add a script or field, and auto-reload (or **Project ▸
+  Reload Scripts**, `Ctrl+R`) recompiles and hot-swaps the assembly, preserving each live script's authored
+  field values and entity references. A build error aborts the swap and leaves the running scripts in place.
 - **3D in the browser (shared render pipeline)** — the browser now runs the **same `RenderSystem`** as the
   desktop instead of a slim 2D-only path: meshes, materials, lighting (directional/point/ambient), shadows,
   and the procedural skybox render through the WebGL2 device. Rather than fork a browser renderer, the
@@ -70,6 +92,13 @@ will be finalized when 0.2 is tagged.
 
 ### Changed
 - **Application Startup** — generated `Program.cs` now initializes the engine using the factory method `SpotEngine.CreateApplication()`, simplifying the entry point and avoiding direct `Spot.Core` dependencies.
+
+### Fixed
+- **Blank window until resize** — on startup some setups reported a 0-sized framebuffer with the engine's
+  manual render loop, which collapsed both the GL viewport and ImGui's `DisplayFramebufferScale` to 0 — so the
+  window (launcher, editor, and running games alike) showed only the clear color until it was manually
+  resized. The engine now drives the drawable size to the renderer and the ImGui controller at startup (with a
+  first-frame safety net and a scale fallback), so the first frame renders correctly.
 
 ## [v0.1.0] - 2026-08-12
 

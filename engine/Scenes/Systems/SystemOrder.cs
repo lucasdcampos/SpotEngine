@@ -12,6 +12,9 @@ public static class SystemOrder
     /// <summary>Kinematic character controllers, resolved before the physics step.</summary>
     public const int CharacterController = 100;
 
+    /// <summary>Script <c>OnFixedUpdate</c>, run just before physics so it applies forces in step with the solver.</summary>
+    public const int FixedUpdate = 150;
+
     /// <summary>2D physics integration and collision resolution.</summary>
     public const int Physics2D = 200;
 

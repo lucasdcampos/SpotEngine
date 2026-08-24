@@ -52,6 +52,7 @@ public class Scene
     public Scene()
     {
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
         Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
@@ -454,9 +455,33 @@ public class Scene
         {
             foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
             {
-                if (script.Started)
+                if (!script.Started)
+                {
+                    continue;
+                }
+
+                // A still-enabled script gets OnDisable before OnDestroy, mirroring OnEnable/OnCreate. Both
+                // are guarded so a throwing teardown hook cannot abort destruction of the rest of the tree.
+                if (script.ActiveLastFrame)
+                {
+                    script.ActiveLastFrame = false;
+                    try
+                    {
+                        script.OnDisable();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.CoreError("Script '{0}' threw from OnDisable; ignoring. {1}", script.GetType().Name, ex);
+                    }
+                }
+
+                try
                 {
                     script.OnDestroy();
+                }
+                catch (Exception ex)
+                {
+                    Log.CoreError("Script '{0}' threw from OnDestroy; ignoring. {1}", script.GetType().Name, ex);
                 }
             }
         }

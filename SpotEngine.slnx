@@ -10,6 +10,7 @@
   <Folder Name="/tools/">
     <Project Path="tools/Spot.Build/Spot.Build.csproj" />
     <Project Path="tools/Spot.Cli/Spot.Cli.csproj" />
+    <Project Path="tools/Spot.ScriptGen/Spot.ScriptGen.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Spot.Engine.Tests/Spot.Engine.Tests.csproj" />
