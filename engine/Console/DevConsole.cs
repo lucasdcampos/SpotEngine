@@ -490,7 +490,8 @@ public sealed class DevConsole
         // out of the field) or has a context popup open, so those interactions still work.
         bool escape = ImGui.IsKeyPressed(ImGuiKey.Escape, false);
         bool popupOpen = ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup);
-        if ((submitted || inputDeactivated) && consoleFocused && !escape && !popupOpen)
+        bool interactingWithItem = ImGui.IsAnyItemActive();
+        if ((submitted || (inputDeactivated && !interactingWithItem)) && consoleFocused && !escape && !popupOpen)
         {
             _reclaimFocus = true;
         }
