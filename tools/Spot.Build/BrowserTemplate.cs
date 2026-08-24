@@ -370,10 +370,9 @@ const host = exports.Spot.Browser.BrowserHost;
 setProgress('Loading runtime…', 0.3);
 await runMain();
 
-setProgress('Loading content…', 0.5);
-await host.StartAsync(initW, initH, CONTENT_BASE, MANIFEST_PATH, START_SCENE);
-
-// Wire input before StartAsync so events that fire during load are captured.
+// Wire input before StartAsync so presses during the content load are captured. StartAsync's synchronous
+// prefix installs the renderer before its first await, so a Resize firing mid-load is safe; key/pointer
+// events just queue and are drained once the frame loop begins.
 window.addEventListener('keydown', (e) => { host.KeyDown(e.code); if (e.key.length === 1) host.TextInput(e.key); e.preventDefault(); });
 window.addEventListener('keyup', (e) => { host.KeyUp(e.code); e.preventDefault(); });
 canvas.addEventListener('pointermove', (e) => {
@@ -392,6 +391,9 @@ window.addEventListener('pointerup', (e) => host.PointerUp(e.button));
 canvas.addEventListener('wheel', (e) => { host.Wheel(e.deltaX, e.deltaY); e.preventDefault(); }, { passive: false });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('resize', () => { const [w, h] = sizeCanvas(); host.Resize(w, h); });
+
+setProgress('Loading content…', 0.5);
+await host.StartAsync(initW, initH, CONTENT_BASE, MANIFEST_PATH, START_SCENE);
 
 if (loading) loading.style.display = 'none';
 canvas.focus();

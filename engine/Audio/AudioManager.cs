@@ -270,9 +270,9 @@ public static class AudioManager
             return default;
         }
 
-        if (clip.AlBuffer != 0)
+        if (clip.BackendBuffer != 0)
         {
-            return new AudioBufferHandle(clip.AlBuffer);
+            return new AudioBufferHandle(clip.BackendBuffer);
         }
 
         try
@@ -280,7 +280,7 @@ public static class AudioManager
             AudioBufferHandle buffer = s_backend.GenBuffer();
             AudioSampleFormat format = clip.Channels >= 2 ? AudioSampleFormat.Stereo16 : AudioSampleFormat.Mono16;
             s_backend.UploadBuffer(buffer, format, clip.Pcm, clip.SampleRate);
-            clip.AlBuffer = buffer.Id;
+            clip.BackendBuffer = buffer.Id;
             return buffer;
         }
         catch (Exception ex)
@@ -293,15 +293,15 @@ public static class AudioManager
     /// <summary>Deletes a clip's backend buffer when the clip is disposed.</summary>
     internal static void ReleaseClipBuffer(AudioClip clip)
     {
-        if (!Available || clip.AlBuffer == 0)
+        if (!Available || clip.BackendBuffer == 0)
         {
-            clip.AlBuffer = 0;
+            clip.BackendBuffer = 0;
             return;
         }
 
         try
         {
-            var clipBuffer = new AudioBufferHandle(clip.AlBuffer);
+            var clipBuffer = new AudioBufferHandle(clip.BackendBuffer);
 
             // A buffer still attached to any source cannot be deleted, so detach it first (stopping the
             // source that holds it). This keeps AudioClip.Dispose safe even mid-playback.
@@ -321,7 +321,7 @@ public static class AudioManager
             Log.CoreWarn("Failed to release audio buffer: {0}", ex.Message);
         }
 
-        clip.AlBuffer = 0;
+        clip.BackendBuffer = 0;
     }
 
     private static bool TryAcquireSource(out int slot)

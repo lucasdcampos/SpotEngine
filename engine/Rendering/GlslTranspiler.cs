@@ -7,12 +7,13 @@ namespace Spot.Rendering;
 /// dialect (<c>#version 300 es</c>) that the browser backend consumes.
 /// </summary>
 /// <remarks>
-/// The engine's 2D and UI shaders are deliberately written in the subset shared by GLSL 3.30 core and
-/// GLSL ES 3.00 — <c>in</c>/<c>out</c> stage variables, <c>layout(location = …)</c> attributes,
-/// <c>texture()</c> sampling and a single <c>out</c> color — so the only differences are the version
-/// directive and the precision qualifiers ES requires. This performs exactly that swap; it is not a
-/// general-purpose GLSL translator, and shaders using desktop-only features (the 3D, post-processing
-/// and shadow pipeline) are never routed through it.
+/// The engine's shaders are deliberately written in the subset shared by GLSL 3.30 core and GLSL ES 3.00 —
+/// <c>in</c>/<c>out</c> stage variables, <c>layout(location = …)</c> attributes, <c>texture()</c> sampling
+/// and a single <c>out</c> color — so the only differences are the version directive and the precision
+/// qualifiers ES requires. This performs exactly that swap; it is not a general-purpose GLSL translator.
+/// Every shader the browser compiles is routed through here, including the 3D mesh and shadow shaders (whose
+/// <c>sampler2DShadow</c> needs the explicit ES precision default injected below); only the desktop-only
+/// post-processing pipeline, which the browser never runs, stays outside it.
 /// </remarks>
 internal static class GlslTranspiler
 {
