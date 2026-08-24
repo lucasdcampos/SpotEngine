@@ -4,12 +4,27 @@ using Spot.Events;
 namespace Spot.Core;
 
 /// <summary>
+/// Locks or unlocks the hardware cursor on behalf of <see cref="Input"/>, without coupling it to a
+/// particular windowing backend. The active host installs an implementation — a Silk mouse on desktop,
+/// the Pointer Lock API in the browser — so the same input code drives both.
+/// </summary>
+internal interface ICursorController
+{
+    /// <summary>Gets or sets whether the hardware cursor is locked and hidden.</summary>
+    bool Locked { get; set; }
+}
+
+/// <summary>
 /// Polled input state, queryable at any time (typically from a scene's update). This is the
 /// convenient, Unity-style path: ask "is this key down?" instead of handling events. For discrete,
 /// event-driven input, override <see cref="Spot.Scenes.Scene.OnEvent"/> instead.
 /// </summary>
 public static class Input
 {
+    // The active platform's hardware-cursor controller, installed by the host once its window exists.
+    // Null (and cursor operations no-op) in headless tests and before the window is created.
+    internal static ICursorController? CursorController { get; set; }
+
     private static readonly HashSet<Key> DownKeys = new();
     private static readonly HashSet<Key> PressedThisFrame = new();
     private static readonly HashSet<Key> ReleasedThisFrame = new();
@@ -73,11 +88,7 @@ public static class Input
     /// </remarks>
     public static bool CursorLocked
     {
-        get
-        {
-            var mice = Application.Instance.Window.Input.Mice;
-            return mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw;
-        }
+        get => CursorController?.Locked ?? false;
         set
         {
             _desiredCursorLocked = value;
@@ -110,13 +121,12 @@ public static class Input
         ApplyCursorMode(captured ? false : _desiredCursorLocked);
     }
 
-    // Writes the cursor mode to the hardware, guarding against having no mouse device.
+    // Writes the cursor mode through the active platform controller, a no-op when none is installed.
     private static void ApplyCursorMode(bool locked)
     {
-        var mice = Application.Instance.Window.Input.Mice;
-        if (mice.Count > 0)
+        if (CursorController is { } controller)
         {
-            mice[0].Cursor.CursorMode = locked ? Silk.NET.Input.CursorMode.Raw : Silk.NET.Input.CursorMode.Normal;
+            controller.Locked = locked;
         }
     }
 

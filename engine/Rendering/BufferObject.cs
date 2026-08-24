@@ -1,39 +1,30 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
-/// A typed OpenGL buffer object (for example a vertex or index buffer). This is a low-level
+/// A typed GPU buffer object (for example a vertex or index buffer). This is a low-level
 /// primitive; callers use <see cref="VertexBuffer"/> and <see cref="IndexBuffer"/> instead.
 /// </summary>
 /// <typeparam name="TData">The unmanaged element type stored in the buffer.</typeparam>
 internal sealed class BufferObject<TData> : IDisposable
     where TData : unmanaged
 {
-    private readonly GL _gl;
-    private readonly BufferTargetARB _target;
-    private readonly uint _handle;
+    private readonly IGraphicsDevice _device;
+    private readonly BufferKind _kind;
+    private readonly BufferHandle _handle;
 
     /// <summary>
     /// Initializes a new immutable buffer and uploads the given data once.
     /// </summary>
     /// <param name="data">The data to upload to the buffer.</param>
-    /// <param name="target">The buffer target (for example <see cref="BufferTargetARB.ArrayBuffer"/>).</param>
-    public unsafe BufferObject(ReadOnlySpan<TData> data, BufferTargetARB target)
+    /// <param name="kind">The buffer's role (vertex or index data).</param>
+    public BufferObject(ReadOnlySpan<TData> data, BufferKind kind)
     {
-        _gl = Renderer.Gl;
-        _target = target;
-        _handle = _gl.GenBuffer();
+        _device = Renderer.Device;
+        _kind = kind;
+        _handle = _device.CreateBuffer();
 
         Bind();
-        fixed (TData* pData = data)
-        {
-            _gl.BufferData(
-                _target,
-                (nuint)(data.Length * sizeof(TData)),
-                pData,
-                BufferUsageARB.StaticDraw);
-        }
+        _device.BufferData(_kind, data, BufferUsageKind.StaticDraw);
     }
 
     /// <summary>
@@ -41,35 +32,32 @@ internal sealed class BufferObject<TData> : IDisposable
     /// to be filled later with <see cref="SetData"/>.
     /// </summary>
     /// <param name="capacity">The number of elements the buffer can hold.</param>
-    /// <param name="target">The buffer target (for example <see cref="BufferTargetARB.ArrayBuffer"/>).</param>
-    public unsafe BufferObject(uint capacity, BufferTargetARB target)
+    /// <param name="kind">The buffer's role (vertex or index data).</param>
+    public unsafe BufferObject(uint capacity, BufferKind kind)
     {
-        _gl = Renderer.Gl;
-        _target = target;
-        _handle = _gl.GenBuffer();
+        _device = Renderer.Device;
+        _kind = kind;
+        _handle = _device.CreateBuffer();
 
         Bind();
-        _gl.BufferData(_target, (nuint)(capacity * sizeof(TData)), null, BufferUsageARB.DynamicDraw);
+        _device.BufferData(_kind, (nuint)(capacity * sizeof(TData)), BufferUsageKind.DynamicDraw);
     }
 
     /// <summary>
-    /// Binds the buffer to its target.
+    /// Binds the buffer to the slot for its kind.
     /// </summary>
-    public void Bind() => _gl.BindBuffer(_target, _handle);
+    public void Bind() => _device.BindBuffer(_kind, _handle);
 
     /// <summary>
     /// Replaces the start of the buffer's contents with the given data.
     /// </summary>
     /// <param name="data">The data to upload.</param>
-    public unsafe void SetData(ReadOnlySpan<TData> data)
+    public void SetData(ReadOnlySpan<TData> data)
     {
         Bind();
-        fixed (TData* pData = data)
-        {
-            _gl.BufferSubData(_target, 0, (nuint)(data.Length * sizeof(TData)), pData);
-        }
+        _device.BufferSubData(_kind, 0, data);
     }
 
     /// <inheritdoc />
-    public void Dispose() => _gl.DeleteBuffer(_handle);
+    public void Dispose() => _device.DeleteBuffer(_handle);
 }

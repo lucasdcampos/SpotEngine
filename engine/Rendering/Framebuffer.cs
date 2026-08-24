@@ -37,6 +37,12 @@ public sealed class Framebuffer : IDisposable
     /// </summary>
     public uint ColorAttachment => _colorAttachment;
 
+    /// <summary>
+    /// Gets this framebuffer as a backend-neutral handle, so callers can bind it through
+    /// <see cref="Renderer.BindRenderTarget"/> and keep the renderer's tracked render-target state consistent.
+    /// </summary>
+    public FramebufferHandle Handle => new(_rendererId);
+
     public void Bind()
     {
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _rendererId);

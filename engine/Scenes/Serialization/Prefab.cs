@@ -74,7 +74,7 @@ public static class Prefab
     {
         try
         {
-            return InstantiateInto(scene, File.ReadAllText(path), parent);
+            return InstantiateInto(scene, AssetProvider.Current.ReadAllText(path), parent);
         }
         catch (Exception ex)
         {

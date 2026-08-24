@@ -57,7 +57,7 @@ public static class SceneManager
         }
 
         string path = AssetPath.ResolveContent(sceneReference) ?? AssetPath.Resolve(sceneReference);
-        if (!File.Exists(path))
+        if (!AssetProvider.Current.Exists(path))
         {
             Log.CoreError("Scene not found: {0}", sceneReference);
             return null;

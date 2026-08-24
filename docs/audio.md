@@ -1,7 +1,9 @@
 # Audio
 
-Spot plays sound through an OpenAL backend, with positional (3D) audio driven by the same
-entity/component model as everything else.
+Spot plays sound through a pluggable audio backend — **OpenAL** on desktop and the **Web Audio API**
+in the browser — with positional (3D) audio driven by the same entity/component model as everything
+else. The backend is a thin platform seam (`IAudioBackend`) behind the mixer; everything above it
+(sources, listener, clips, the audio system) is backend-agnostic and identical across targets.
 
 ## Sources and the listener
 
@@ -26,6 +28,18 @@ slow-motion gameplay doesn't distort or starve playback.
 
 Global audio behavior (such as master volume) is exposed through a settings surface, matching the
 engine's convention of a single global knob-set per system.
+
+## In the browser
+
+The browser build maps the same source/buffer/listener operations onto the Web Audio API over one
+`AudioContext` (a `WebAudioBackend` mirroring the desktop OpenAL one). Positional audio is fully
+supported: spatial sources route through a `PannerNode` and attenuate with distance, non-spatial
+sources (music, UI) play flat, and the listener drives the `AudioContext` listener.
+
+Browsers block audio until the player interacts with the page (the autoplay policy), so sound stays
+silent until the first click or key press, which unlocks the context automatically. If a browser has
+no Web Audio support the mixer degrades to silence, exactly as it does when no audio device is
+present on desktop — the game keeps running either way.
 
 ## Related
 

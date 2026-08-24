@@ -99,6 +99,10 @@ public static class Renderer3D
             vec3 projCoords = lp.xyz / lp.w;
             projCoords = projCoords * 0.5 + 0.5;
             if (projCoords.z > 1.0) return 0.0;
+            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
+            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
+            // on desktop too).
+            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
 
             float depthRef = projCoords.z - 0.0015; // tiny residual constant bias
 
@@ -355,6 +359,10 @@ public static class Renderer3D
             vec3 projCoords = lp.xyz / lp.w;
             projCoords = projCoords * 0.5 + 0.5;
             if (projCoords.z > 1.0) return 0.0;
+            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
+            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
+            // on desktop too).
+            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
 
             float depthRef = projCoords.z - 0.0015;
 
@@ -1026,8 +1034,11 @@ public static class Renderer3D
         }
     }
 
-    private static int s_prevFramebuffer;
-    private static int[] s_prevViewport = new int[4];
+    private static FramebufferHandle s_prevRenderTarget;
+    private static int s_prevViewportX;
+    private static int s_prevViewportY;
+    private static uint s_prevViewportW;
+    private static uint s_prevViewportH;
 
     /// <summary>
     /// Ensures the directional shadow map exists at the requested resolution, rebuilding it if the
@@ -1047,25 +1058,25 @@ public static class Renderer3D
     /// <summary>
     /// Begins a shadow map pass. Meshes drawn with <see cref="DrawShadowMesh"/> will be rendered to the shadow map.
     /// </summary>
-    public static unsafe void BeginShadowPass(Matrix4x4 lightSpaceMatrix)
+    public static void BeginShadowPass(Matrix4x4 lightSpaceMatrix)
     {
         s_lightSpaceMatrix = lightSpaceMatrix;
-        
-        Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.FramebufferBinding, out s_prevFramebuffer);
-        fixed (int* vp = s_prevViewport)
-        {
-            Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, vp);
-        }
-        
+
+        // Save the current render target and viewport (tracked by Renderer, not queried from the GPU) so
+        // EndShadowPass can restore them across backends.
+        s_prevRenderTarget = Renderer.CurrentRenderTarget;
+        s_prevViewportX = Renderer.ViewportX;
+        s_prevViewportY = Renderer.ViewportY;
+        s_prevViewportW = Renderer.ViewportWidth;
+        s_prevViewportH = Renderer.ViewportHeight;
+
         s_shadowMap!.Bind();
         Renderer.ClearDepth();
         s_shadowShader!.Use();
         s_shadowShader.SetUniform("uLightSpaceMatrix", s_lightSpaceMatrix);
-        // Render front faces (default culling) rather than front-culling. Front-culling pushes the
-        // occluder depth to the far side of solid meshes, which — combined with normal-offset receiver
-        // bias in the lit shaders — reads as a gap between an object and its shadow. Normal offset alone
-        // handles the acne that front-culling used to hide.
-        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Back);
+        // Render front faces (default back-face culling), not front-culling: front-culling pushes the occluder
+        // depth to the far side of solid meshes, which — combined with normal-offset receiver bias in the lit
+        // shaders — reads as a gap between an object and its shadow. Normal offset alone handles the acne.
     }
 
     /// <summary>
@@ -1080,12 +1091,8 @@ public static class Renderer3D
     /// <summary>
     /// Ends the current shadow map pass.
     /// </summary>
-    public static unsafe void EndShadowPass()
-    {
-        Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)s_prevFramebuffer);
-        Renderer.Api.Viewport(s_prevViewport[0], s_prevViewport[1], (uint)s_prevViewport[2], (uint)s_prevViewport[3]);
-        Renderer.Api.CullFace(Silk.NET.OpenGL.TriangleFace.Back);
-    }
+    public static void EndShadowPass() =>
+        Renderer.BindRenderTarget(s_prevRenderTarget, s_prevViewportX, s_prevViewportY, s_prevViewportW, s_prevViewportH);
 
     /// <summary>
     /// Draws a mesh with the given world transform, color, and optional texture.
@@ -1145,7 +1152,7 @@ public static class Renderer3D
         }
         else if (shaderType == 1) // Water
         {
-            activeShader.SetUniform("uTime", Spot.Core.Application.Instance.Time);
+            activeShader.SetUniform("uTime", Spot.Core.Time.UnscaledTime);
             
             float speed = material?.WaveSpeed ?? 1.0f;
             float scale = material?.WaveScale ?? 1.0f;
@@ -1342,8 +1349,8 @@ public static class Renderer3D
         s_cloudsShader.SetUniform("uVolume", volume);
         s_cloudsShader.SetUniform("uTime", time);
 
-        Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);
-        Renderer.Api.BlendFunc(Silk.NET.OpenGL.BlendingFactor.SrcAlpha, Silk.NET.OpenGL.BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
 
         Renderer.SetDepthTest(false);
         Renderer.DrawArrays(s_emptyVao, 3);
@@ -1362,8 +1369,8 @@ public static class Renderer3D
         s_gridShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
         s_gridShader.SetUniform("uCameraPos", cameraPos);
 
-        Renderer.Api.Enable(Silk.NET.OpenGL.EnableCap.Blend);
-        Renderer.Api.BlendFunc(Silk.NET.OpenGL.BlendingFactor.SrcAlpha, Silk.NET.OpenGL.BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
 
         Renderer.DrawArrays(s_emptyVao, 3);
         
