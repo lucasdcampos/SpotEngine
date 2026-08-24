@@ -226,8 +226,8 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     }
 
     /// <inheritdoc />
-    // Anisotropic filtering is an optional WebGL2 extension; the MVP renders without it (a level of 1 is a
-    // no-op), so report 1 and skip the extension plumbing entirely.
+    // Anisotropic filtering is an optional WebGL2 extension; the browser backend renders without it (a level
+    // of 1 is a no-op), so report 1 and skip the extension plumbing entirely.
     public float GetMaxAnisotropy() => 1.0f;
 
     /// <inheritdoc />
@@ -286,7 +286,9 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     }
 
     // Reinterprets a read-only span as a writable byte span for MemoryView marshaling. The JS side only reads
-    // the view within the synchronous call (GL copies immediately), so exposing it as writable is safe.
+    // the view within the synchronous call (GL copies immediately), so exposing it as writable is safe. This
+    // invariant is load-bearing: every `spot-gl` import that receives one of these views must consume it
+    // synchronously (and copy via `.slice()` before any await) — never retain it past the call.
     private static Span<byte> AsWritableBytes<T>(ReadOnlySpan<T> data)
         where T : unmanaged
     {

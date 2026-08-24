@@ -15,9 +15,9 @@ namespace Spot.Browser;
 /// The browser runtime host: the WebAssembly counterpart to the desktop <see cref="Application"/>. Where the
 /// desktop app owns a Silk.NET window and a pull loop, the browser host is driven by JavaScript —
 /// <c>requestAnimationFrame</c> calls <see cref="Frame"/>, DOM events call the input entry points, and the
-/// page bootstraps the game through <see cref="StartAsync"/>. It wires the WebGL2 device, a slim 2D scene
-/// renderer, DOM input, and the fetched-content asset store into the same neutral engine core the desktop
-/// runs, minus the 3D/post pipeline and any ImGui overlay.
+/// page bootstraps the game through <see cref="StartAsync"/>. It wires the WebGL2 device, the shared 3D-first
+/// scene renderer, DOM input, and the fetched-content asset store into the same neutral engine core the
+/// desktop runs, minus the HDR/bloom/post pipeline and any ImGui overlay.
 /// </summary>
 /// <remarks>
 /// The host exposes its members to JavaScript via <c>[JSExport]</c> and calls into the page via
@@ -250,6 +250,9 @@ public static partial class BrowserHost
 
     // Fetches the newline-separated content index, then each listed file, into the in-memory store. Files are
     // keyed by their content-relative path (what the engine resolves against an empty asset root below).
+    // TODO(scale): this preloads the entire cooked payload up front, over a base64 text channel (~33% inflation)
+    // and fully into memory. Fine for the current small projects; larger games will want streaming / on-demand
+    // fetch keyed off the manifest instead of a single blocking preload.
     private static async Task PreloadContentAsync(string contentUrlBase)
     {
         string baseUrl = string.IsNullOrEmpty(contentUrlBase) ? string.Empty : contentUrlBase.TrimEnd('/') + "/";

@@ -11,7 +11,7 @@ public enum BuildPlatform
     Windows,
     Linux,
 
-    /// <summary>A WebAssembly build that runs in the browser on WebGL2 (2D MVP).</summary>
+    /// <summary>A WebAssembly build that runs the shared 3D pipeline in the browser on WebGL2 (no post-processing).</summary>
     Browser,
 }
 

@@ -13,8 +13,9 @@ public delegate void SceneRenderCallback(Scene scene, Matrix4x4 viewProjection, 
 
 /// <summary>
 /// The installed scene-render pipeline. <see cref="Scene.OnRender"/> issues its draw through here instead of
-/// binding to a concrete renderer, so the host chooses the pipeline: the desktop installs the full 3D-first
-/// <see cref="RenderSystem"/> (meshes, lighting, shadows, HDR/post); the browser MVP installs a slim 2D path.
+/// binding to a concrete renderer, so the host chooses the pipeline: both the desktop and the browser install
+/// the shared 3D-first <see cref="RenderSystem"/> (meshes, lighting, shadows); the desktop additionally wires
+/// an <see cref="IScenePostProcessor"/> for HDR/bloom/tone-mapping, which the browser leaves unset.
 /// When no pipeline is installed, rendering is a no-op (the scene still simulates).
 /// </summary>
 public static class SceneRenderer

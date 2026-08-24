@@ -274,7 +274,8 @@ Usage:
 
   spot build <windows|linux|browser> [--project <path>]
       Publish a standalone build for the platform into Build/<platform>. The browser
-      target publishes a WebAssembly/WebGL2 static site into Build/browser (2D MVP).
+      target publishes a WebAssembly/WebGL2 static site into Build/browser (shared 3D
+      pipeline, no post-processing).
 
   spot run [--project <path>] [--release]
       Cook assets and run the project from source with dotnet run (quick iteration,
