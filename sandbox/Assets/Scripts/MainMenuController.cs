@@ -22,6 +22,7 @@ public sealed class MainMenuController : EntityBehaviour
     private static readonly (string Label, string Scene)[] Games =
     {
         ("Horde Survival", "Scenes/HordeSurvival.sptscene"),
+        ("Physics 2D", "Scenes/Physics2DPlayground.sptscene"),
     };
 
     private static readonly (string Label, string Scene)[] TestScenes =
@@ -96,9 +97,11 @@ public sealed class MainMenuController : EntityBehaviour
         Button options = AddButton(panel, "Options", startX, y, buttonWidth, ShowOptions);
         options.NormalColor = new Vector4(0.20f, 0.22f, 0.28f, 1f);
 
+#if !SPOT_BROWSER
         Button quit = AddButton(panel, "Quit", startX + buttonWidth + gap, y, buttonWidth, () => Application.Instance.Quit());
         quit.NormalColor = new Vector4(0.34f, 0.18f, 0.19f, 1f);
         quit.HoverColor = new Vector4(0.46f, 0.22f, 0.23f, 1f);
+#endif
     }
 
     private void BuildOptionsPanel()

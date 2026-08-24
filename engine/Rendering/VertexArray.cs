@@ -1,15 +1,13 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
-/// An OpenGL vertex array object that binds vertex buffers together with their attribute layout
+/// A vertex array object that binds vertex buffers together with their attribute layout
 /// and an optional index buffer.
 /// </summary>
 public sealed class VertexArray : IDisposable
 {
-    private readonly GL _gl;
-    private readonly uint _handle;
+    private readonly IGraphicsDevice _device;
+    private readonly VertexArrayHandle _handle;
     private uint _attributeIndex;
     private IndexBuffer? _indexBuffer;
 
@@ -18,8 +16,8 @@ public sealed class VertexArray : IDisposable
     /// </summary>
     public VertexArray()
     {
-        _gl = Renderer.Gl;
-        _handle = _gl.GenVertexArray();
+        _device = Renderer.Device;
+        _handle = _device.CreateVertexArray();
         Bind();
     }
 
@@ -31,13 +29,13 @@ public sealed class VertexArray : IDisposable
     /// <summary>
     /// Binds the vertex array.
     /// </summary>
-    public void Bind() => _gl.BindVertexArray(_handle);
+    public void Bind() => _device.BindVertexArray(_handle);
 
     /// <summary>
     /// Adds a vertex buffer, configuring a vertex attribute for each element of its layout.
     /// </summary>
     /// <param name="vertexBuffer">The vertex buffer to add.</param>
-    public unsafe void AddVertexBuffer(VertexBuffer vertexBuffer)
+    public void AddVertexBuffer(VertexBuffer vertexBuffer)
     {
         Bind();
         vertexBuffer.Bind();
@@ -51,14 +49,14 @@ public sealed class VertexArray : IDisposable
         int offset = 0;
         foreach (ShaderDataType type in vertexBuffer.Layout)
         {
-            _gl.EnableVertexAttribArray(_attributeIndex);
-            _gl.VertexAttribPointer(
+            _device.EnableVertexAttribArray(_attributeIndex);
+            _device.VertexAttribPointer(
                 _attributeIndex,
                 type.ComponentCount(),
-                type.ToVertexAttribPointerType(),
+                type.ToVertexAttribType(),
                 false,
                 stride,
-                (void*)offset);
+                offset);
 
             offset += (int)type.Size();
             _attributeIndex++;
@@ -77,5 +75,5 @@ public sealed class VertexArray : IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose() => _gl.DeleteVertexArray(_handle);
+    public void Dispose() => _device.DeleteVertexArray(_handle);
 }
