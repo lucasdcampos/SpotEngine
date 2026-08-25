@@ -66,14 +66,7 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public bool IsActiveInHierarchy()
     {
-        if (!Enabled) return false;
-        var current = Parent;
-        while (current != null)
-        {
-            if (!current.Value.Enabled) return false;
-            current = current.Value.Parent;
-        }
-        return true;
+        return OwningScene.IsActiveInHierarchy(Id);
     }
 
     /// <summary>

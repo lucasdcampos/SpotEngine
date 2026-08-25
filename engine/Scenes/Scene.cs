@@ -19,6 +19,8 @@ public class Scene
     private readonly HashSet<int> _entities = new();
     private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
     private readonly HashSet<int> _pendingDestroy = new();
+    private readonly Dictionary<Type, IReadOnlyList<Entity>> _viewCache = new();
+    private readonly Dictionary<(Type, Type), IReadOnlyList<Entity>> _viewCache2 = new();
     private int _nextId = 1;
     private IPhysics3D? _physics3D;
     private CollisionDispatcher? _collisions;
@@ -371,6 +373,8 @@ public class Scene
         _entities.Clear();
         _pools.Clear();
         _pendingDestroy.Clear();
+        _viewCache.Clear();
+        _viewCache2.Clear();
         _nextId = 1;
         TeardownPhysics();
     }
@@ -491,6 +495,8 @@ public class Scene
         {
             pool.Remove(id);
         }
+        _viewCache.Clear();
+        _viewCache2.Clear();
     }
 
     /// <summary>
@@ -501,6 +507,11 @@ public class Scene
     public IReadOnlyList<Entity> View<T>()
         where T : class
     {
+        if (_viewCache.TryGetValue(typeof(T), out IReadOnlyList<Entity>? cached))
+        {
+            return cached;
+        }
+
         var result = new List<Entity>();
         if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
         {
@@ -510,6 +521,7 @@ public class Scene
             }
         }
 
+        _viewCache[typeof(T)] = result;
         return result;
     }
 
@@ -523,10 +535,17 @@ public class Scene
         where T1 : class
         where T2 : class
     {
+        var key = (typeof(T1), typeof(T2));
+        if (_viewCache2.TryGetValue(key, out IReadOnlyList<Entity>? cached))
+        {
+            return cached;
+        }
+
         var result = new List<Entity>();
         if (!_pools.TryGetValue(typeof(T1), out Dictionary<int, object>? pool1) ||
             !_pools.TryGetValue(typeof(T2), out Dictionary<int, object>? pool2))
         {
+            _viewCache2[key] = result;
             return result;
         }
 
@@ -542,6 +561,7 @@ public class Scene
             }
         }
 
+        _viewCache2[key] = result;
         return result;
     }
 
@@ -633,6 +653,10 @@ public class Scene
 
             source._entities.Remove(oldId);
         }
+        source._viewCache.Clear();
+        source._viewCache2.Clear();
+        this._viewCache.Clear();
+        this._viewCache2.Clear();
 
         // Pass 2: rebind every stored entity handle now that all new ids exist.
         foreach (int newId in remap.Values)
@@ -744,6 +768,34 @@ public class Scene
 
     internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
 
+    internal bool IsActiveInHierarchy(int entityId)
+    {
+        if (!_pools.TryGetValue(typeof(LabelComponent), out Dictionary<int, object>? labelPool)) return false;
+        _pools.TryGetValue(typeof(RelationshipComponent), out Dictionary<int, object>? relPool);
+
+        int currentId = entityId;
+        while (true)
+        {
+            if (labelPool.TryGetValue(currentId, out object? labelObj))
+            {
+                if (!((LabelComponent)labelObj).Enabled) return false;
+            }
+            else return false;
+
+            if (relPool != null && relPool.TryGetValue(currentId, out object? relObj))
+            {
+                RelationshipComponent rel = (RelationshipComponent)relObj;
+                if (rel.Parent != null)
+                {
+                    currentId = rel.Parent.Value.Id;
+                    continue;
+                }
+            }
+            break;
+        }
+        return true;
+    }
+
     internal T AddComponent<T>(Entity entity, T component)
         where T : class
     {
@@ -753,6 +805,8 @@ public class Scene
         }
 
         PoolFor(typeof(T))[entity.Id] = component;
+        _viewCache.Clear();
+        _viewCache2.Clear();
         return component;
     }
 
@@ -791,6 +845,8 @@ public class Scene
         if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
         {
             pool.Remove(entity.Id);
+            _viewCache.Clear();
+            _viewCache2.Clear();
         }
     }
 
@@ -826,6 +882,8 @@ public class Scene
         }
 
         PoolFor(component.GetType())[entity.Id] = component;
+        _viewCache.Clear();
+        _viewCache2.Clear();
         return component;
     }
 
@@ -834,6 +892,8 @@ public class Scene
         if (_pools.TryGetValue(type, out Dictionary<int, object>? pool))
         {
             pool.Remove(entity.Id);
+            _viewCache.Clear();
+            _viewCache2.Clear();
         }
     }
 

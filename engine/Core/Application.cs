@@ -464,7 +464,6 @@ public class Application
                 SyncViewportToFramebuffer();
             }
 
-            Renderer.Clear();
             SceneManager.Render();
         }
         catch (Exception ex)
