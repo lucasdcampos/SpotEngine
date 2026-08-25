@@ -9,5 +9,5 @@ public abstract class Component
     /// Gets or sets a value indicating whether this component is active.
     /// Inactive components are ignored by systems (e.g. not rendered or updated).
     /// </summary>
-    public bool Enabled { get; set; } = true;
+    public virtual bool Enabled { get; set; } = true;
 }
