@@ -93,6 +93,9 @@ public class EditorScene : Scene
     private OpenSceneData? _activeSceneData = null;
     private OpenSceneData? _lastEditedSceneData = null;
 
+    // One dockable node-graph editor window per open .sptcontroller asset.
+    private readonly List<AnimatorControllerPanel> _animatorEditors = new();
+
     // Unsaved-changes confirmation state: a scene panel pending close, and the app-quit prompt.
     private OpenSceneData? _pendingCloseScene;
     private bool _showQuitConfirm;
@@ -130,7 +133,7 @@ public class EditorScene : Scene
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
-        _assetBrowserPanel.OnAssetOpened += OpenSceneAsset;
+        _assetBrowserPanel.OnAssetOpened += OpenAsset;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
         {
@@ -155,6 +158,30 @@ public class EditorScene : Scene
         _gamePanel.SetFramebuffer(_gameFramebuffer);
 
         LoadStartScene();
+    }
+
+    // Routes a double-clicked asset to the right editor: scenes open as tabs, animator controllers open as
+    // node-graph windows. Anything else is handled by the asset browser's own fallback.
+    private void OpenAsset(string filepath)
+    {
+        if (filepath.EndsWith(".sptcontroller", System.StringComparison.OrdinalIgnoreCase))
+        {
+            OpenAnimatorController(filepath);
+        }
+        else
+        {
+            OpenSceneAsset(filepath);
+        }
+    }
+
+    private void OpenAnimatorController(string filepath)
+    {
+        var existing = _animatorEditors.FirstOrDefault(
+            e => string.Equals(e.Path, filepath, System.StringComparison.OrdinalIgnoreCase));
+        if (existing == null)
+        {
+            _animatorEditors.Add(new AnimatorControllerPanel(filepath));
+        }
     }
 
     // Loads the active project's start scene (falling back to an empty standalone scene when there
@@ -909,6 +936,17 @@ public class EditorScene : Scene
                 _assetBrowserPanel.OnImGuiRender(asWindow: false);
             }
             ImGui.End();
+        }
+
+        // Animator-controller node-graph editors: each is its own window, removed when its close button is hit.
+        for (int i = _animatorEditors.Count - 1; i >= 0; i--)
+        {
+            bool editorOpen = true;
+            _animatorEditors[i].OnImGuiRender(ref editorOpen);
+            if (!editorOpen)
+            {
+                _animatorEditors.RemoveAt(i);
+            }
         }
 
         if (_isCreatingProject)

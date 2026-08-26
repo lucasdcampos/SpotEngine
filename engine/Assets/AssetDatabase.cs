@@ -50,6 +50,7 @@ public static class AssetDatabase
         RegisterImporter(new PrefabImporter());
         RegisterImporter(new AudioImporter());
         RegisterImporter(new FontImporter());
+        RegisterImporter(new AnimatorControllerImporter());
     }
 
     /// <summary>Registers an importer for each of its source extensions. Later registrations win for an extension.</summary>

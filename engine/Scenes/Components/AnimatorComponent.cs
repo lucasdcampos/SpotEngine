@@ -8,115 +8,191 @@ using Spot.Core;
 namespace Spot.Scenes;
 
 /// <summary>
-/// Plays skeletal animations on an imported model. It lives on the model's root entity and, each frame in
-/// play mode, samples the current clip and writes the pose onto the bone entities (matched by name) — the
-/// same tree the model was instantiated as. Clips come from the model's own file and from any
-/// <see cref="ExtraClipPaths"/> (separate animation files, matched to the skeleton by bone name). Play from
-/// code with <see cref="Play(string, bool?)"/> or set a <see cref="DefaultClip"/> with
-/// <see cref="PlayOnStart"/>.
+/// Plays skeletal animation on an imported model by posing its bone entities (the tree the model was
+/// instantiated as, matched by name). The component itself is deliberately small: it either references an
+/// <see cref="AnimatorController"/> that drives which clip plays from parameters and transitions, or it is
+/// driven entirely from a script that owns the clips and calls <see cref="Play(string, bool)"/> /
+/// <see cref="Play(AnimationClip, bool)"/>. With neither, the model simply rests in its bind pose.
 /// </summary>
+/// <remarks>
+/// Clip data comes from the rigged model this animator was instantiated from (its baked clips) plus the file
+/// each controller state names as the source of its clip (<see cref="AnimatorState.ClipSource"/>). Clips are
+/// resolved by name, so a script plays one with <c>animator.Play("Run")</c> or by handing over an
+/// <see cref="AnimationClip"/> it loaded itself.
+/// </remarks>
 [ComponentMenu("Animator", Order = 22)]
 [SceneComponent("Animator")]
 public sealed class AnimatorComponent : Component
 {
-    /// <summary>Gets or sets the model whose baked clips (and skeleton) drive this animator.</summary>
-    [AssetReference(nameof(ModelPath))]
-    public Model? Model { get; set; }
+    /// <summary>
+    /// Gets or sets an optional controller that drives which clip plays from parameters and transitions. When
+    /// set, the state machine has authority (drive it with <see cref="SetFloat"/> and friends); when null, the
+    /// animator is driven from code with <see cref="Play(string, bool)"/>.
+    /// </summary>
+    [AssetReference(nameof(ControllerPath))]
+    public AnimatorController? Controller { get; set; }
 
-    /// <summary>Gets or sets the path to the model file, used for serialization.</summary>
+    /// <summary>Gets or sets the path to the controller asset, used for serialization.</summary>
     [HideInInspector]
-    public string? ModelPath { get; set; }
-
-    /// <summary>Gets or sets the clip played automatically when <see cref="PlayOnStart"/> is set.</summary>
-    public string? DefaultClip { get; set; }
-
-    /// <summary>Gets or sets whether the <see cref="DefaultClip"/> plays as soon as the scene runs.</summary>
-    public bool PlayOnStart { get; set; } = true;
-
-    /// <summary>Gets or sets the playback speed multiplier (1 = normal, 2 = twice as fast).</summary>
-    public float Speed { get; set; } = 1.0f;
-
-    /// <summary>Gets or sets whether playback loops (the default) or holds the final pose once.</summary>
-    public bool Loop { get; set; } = true;
+    public string? ControllerPath { get; set; }
 
     /// <summary>
-    /// Gets or sets extra animation files whose clips are added to this animator, keyed by clip name. Each
-    /// path points at a model/animation file (for example a Mixamo FBX); its clips drive this model's
-    /// skeleton as long as the bone names match. Paths are project-relative.
+    /// Gets or sets the rigged model this animator was instantiated from — the source of its baked clips and
+    /// skeleton. Set automatically on import; hidden from the inspector but serialized so scenes reload
+    /// correctly. Clips are still played by name, so this is not authoring surface.
     /// </summary>
-    public string[] ExtraClipPaths { get; set; } = Array.Empty<string>();
+    [HideInInspector]
+    [SerializeHidden]
+    public string? ModelPath { get; set; }
 
-    // ----- Runtime state (not serialized: dictionaries/arrays and private fields are skipped) -----
+    // ----- Runtime state (not serialized: dictionaries and private fields are skipped) -----
     private readonly Dictionary<string, AnimationClip> _clips = new(StringComparer.Ordinal);
+    private Model? _model;
     private Dictionary<string, Entity>? _nodesByName;
+    private AnimatorControllerRuntime? _runtime;
     private bool _clipsResolved;
-    private bool _started;
+    private bool _controllerResolved;
+
+    // Manual (code-driven) playback state, used when no controller is assigned.
+    private AnimationClip? _current;
+    private bool _loop = true;
     private float _time;
 
-    /// <summary>Gets whether a clip is currently playing.</summary>
+    /// <summary>Gets whether a clip is currently playing (either code-driven or via a controller state).</summary>
     public bool IsPlaying { get; private set; }
 
-    /// <summary>Gets the name of the clip currently playing (or paused), if any.</summary>
-    public string? CurrentClip { get; private set; }
+    /// <summary>Gets the name of the clip currently playing — the controller's active clip, or the code-driven one.</summary>
+    public string? CurrentClip => _runtime?.CurrentClip ?? _current?.Name;
 
-    /// <summary>Gets the names of every clip available to this animator (model clips plus extra files).</summary>
-    public IEnumerable<string> ClipNames => _clips.Keys;
+    /// <summary>Gets the name of the state the controller is in, or null when no controller drives this animator.</summary>
+    public string? CurrentState => _runtime?.CurrentState;
 
-    /// <summary>Starts playing a clip by name from its beginning.</summary>
-    /// <param name="clip">The clip name (see <see cref="ClipNames"/>).</param>
-    /// <param name="loop">Optional override for <see cref="Loop"/>; keeps the current value when omitted.</param>
-    public void Play(string clip, bool? loop = null)
+    /// <summary>Gets the names of every clip available to this animator (its model's clips plus controller sources).</summary>
+    public IEnumerable<string> ClipNames
     {
-        CurrentClip = clip;
-        _time = 0.0f;
-        IsPlaying = true;
-        if (loop.HasValue)
+        get
         {
-            Loop = loop.Value;
+            EnsureClips();
+            return _clips.Keys;
         }
     }
 
-    /// <summary>Stops playback and rewinds to the start of the current clip.</summary>
+    /// <summary>
+    /// Plays a clip by name, resolved from the animator's available clips (<see cref="ClipNames"/>). Logs and
+    /// does nothing when no clip of that name exists. Ignored while a controller drives this animator.
+    /// </summary>
+    /// <param name="clipName">The clip name to play.</param>
+    /// <param name="loop">Whether the clip loops (the default) or holds its final pose once.</param>
+    public void Play(string clipName, bool loop = true)
+    {
+        EnsureClips();
+        if (_clips.TryGetValue(clipName, out AnimationClip? clip))
+        {
+            Play(clip, loop);
+        }
+        else
+        {
+            Log.CoreWarn("Animator has no clip named '{0}'.", clipName);
+        }
+    }
+
+    /// <summary>
+    /// Plays a clip the caller supplies directly — the code path where a script owns its clips (for example one
+    /// obtained from a loaded model). Ignored while a controller drives this animator.
+    /// </summary>
+    /// <param name="clip">The clip to play.</param>
+    /// <param name="loop">Whether the clip loops (the default) or holds its final pose once.</param>
+    public void Play(AnimationClip clip, bool loop = true)
+    {
+        _current = clip;
+        _loop = loop;
+        _time = 0.0f;
+        IsPlaying = true;
+    }
+
+    /// <summary>Stops code-driven playback and rewinds to the start of the current clip.</summary>
     public void Stop()
     {
         IsPlaying = false;
         _time = 0.0f;
     }
 
-    /// <summary>Pauses playback, holding the current pose.</summary>
+    /// <summary>Pauses code-driven playback, holding the current pose.</summary>
     public void Pause() => IsPlaying = false;
 
-    /// <summary>Resumes playback of the current clip after a <see cref="Pause"/>.</summary>
+    /// <summary>Resumes code-driven playback of the current clip after a <see cref="Pause"/>.</summary>
     public void Resume()
     {
-        if (CurrentClip != null)
+        if (_current != null)
         {
             IsPlaying = true;
         }
     }
+
+    /// <summary>Sets a controller float parameter. No-op when this animator has no controller.</summary>
+    public void SetFloat(string name, float value) { EnsureController(); _runtime?.SetFloat(name, value); }
+
+    /// <summary>Gets a controller float parameter, or <c>0</c> when there is no controller or parameter.</summary>
+    public float GetFloat(string name) { EnsureController(); return _runtime?.GetFloat(name) ?? 0.0f; }
+
+    /// <summary>Sets a controller int parameter. No-op when this animator has no controller.</summary>
+    public void SetInt(string name, int value) { EnsureController(); _runtime?.SetInt(name, value); }
+
+    /// <summary>Gets a controller int parameter, or <c>0</c> when there is no controller or parameter.</summary>
+    public int GetInt(string name) { EnsureController(); return _runtime?.GetInt(name) ?? 0; }
+
+    /// <summary>Sets a controller bool parameter. No-op when this animator has no controller.</summary>
+    public void SetBool(string name, bool value) { EnsureController(); _runtime?.SetBool(name, value); }
+
+    /// <summary>Gets a controller bool parameter, or <see langword="false"/> when there is no controller or parameter.</summary>
+    public bool GetBool(string name) { EnsureController(); return _runtime?.GetBool(name) ?? false; }
+
+    /// <summary>Raises a controller trigger, consumed by the next transition that tests it. No-op without a controller.</summary>
+    public void SetTrigger(string name) { EnsureController(); _runtime?.SetTrigger(name); }
+
+    /// <summary>Clears a controller trigger without taking a transition. No-op without a controller.</summary>
+    public void ResetTrigger(string name) { EnsureController(); _runtime?.ResetTrigger(name); }
 
     // Advances and applies the current clip, resolving clips and bone entities lazily. Called each frame by
     // AnimationSystem inside its per-animator try/catch, so this may throw without taking the engine down.
     internal void Tick(Entity self, float deltaTime)
     {
         EnsureClips();
+        EnsureController();
 
-        if (!_started)
+        // Controller path: the state machine decides which clip plays; we just apply its pose.
+        if (_runtime is not null)
         {
-            _started = true;
-            if (PlayOnStart && !string.IsNullOrEmpty(DefaultClip))
+            _runtime.Tick(deltaTime, _clips);
+            if (_runtime.CurrentClip is string stateClip && _clips.TryGetValue(stateClip, out AnimationClip? active))
             {
-                Play(DefaultClip);
+                ApplyClip(self, active, _runtime.LocalTime, _runtime.Loop);
             }
+
+            return;
         }
 
-        if (!IsPlaying || CurrentClip is null || !_clips.TryGetValue(CurrentClip, out AnimationClip? clip))
+        // Code path: a single clip started via Play.
+        if (!IsPlaying || _current is null)
         {
             return;
         }
 
-        _time += deltaTime * Speed;
-        float local = clip.WrapTime(_time, Loop);
+        _time += deltaTime;
+        ApplyClip(self, _current, _time, _loop);
+
+        // A finished one-shot clip holds its last pose.
+        if (!_loop && _time >= _current.Duration)
+        {
+            IsPlaying = false;
+        }
+    }
+
+    // Samples a clip at an elapsed time and writes the sampled local transform onto each matching bone entity.
+    // Shared by the controller and code playback paths; wrapping (loop vs hold) happens here.
+    private void ApplyClip(Entity self, AnimationClip clip, float elapsed, bool loop)
+    {
+        float local = clip.WrapTime(elapsed, loop);
 
         _nodesByName ??= AnimationSystem.MapDescendantsByName(self);
         foreach (AnimationChannel channel in clip.Channels)
@@ -142,16 +218,32 @@ public sealed class AnimatorComponent : Component
                 transform.Scale = scale;
             }
         }
-
-        // A finished one-shot clip holds its last pose.
-        if (!Loop && _time >= clip.Duration)
-        {
-            IsPlaying = false;
-        }
     }
 
-    // Builds the clip set from the base model and any extra clip files, once the base model is ready. Retries
-    // on later frames until the (async) base model resolves.
+    // Resolves the controller asset (lazily) and builds its runtime once. Cheap after the first resolve; safe
+    // to call from the parameter setters so scripts can drive parameters before the first tick.
+    private void EnsureController()
+    {
+        if (_controllerResolved)
+        {
+            return;
+        }
+
+        if (Controller is null && !string.IsNullOrEmpty(ControllerPath))
+        {
+            Controller = AnimatorController.Load(ControllerPath);
+        }
+
+        if (Controller is not null)
+        {
+            _runtime = new AnimatorControllerRuntime(Controller);
+        }
+
+        _controllerResolved = true;
+    }
+
+    // Builds the clip set from the animator's model plus any clip sources declared on the controller, once the
+    // (async) base model resolves. Retries on later frames until then.
     private void EnsureClips()
     {
         if (_clipsResolved)
@@ -159,43 +251,52 @@ public sealed class AnimatorComponent : Component
             return;
         }
 
-        if (Model is null && !string.IsNullOrEmpty(ModelPath))
+        if (_model is null && !string.IsNullOrEmpty(ModelPath))
         {
-            Model = ModelImporter.RequestAsync(ModelPath);
+            _model = ModelImporter.RequestAsync(ModelPath);
+
+            // Wait for the base model to load before building the clip set (so its clips are included).
+            if (_model is null)
+            {
+                return;
+            }
         }
 
-        // Wait for the base model to load before building the clip set (so its clips are included).
-        if (Model is null && !string.IsNullOrEmpty(ModelPath))
+        if (_model is not null)
         {
-            return;
-        }
-
-        if (Model is not null)
-        {
-            foreach (AnimationClip clip in Model.Animations)
+            foreach (AnimationClip clip in _model.Animations)
             {
                 _clips[clip.Name] = clip;
             }
         }
 
-        foreach (string path in ExtraClipPaths)
+        // Each controller state references the file that provides its clip, so the data behind the state's
+        // clip name loads directly — no separate source list. Files are loaded once (Model.Load is cached).
+        if (Controller is null && !string.IsNullOrEmpty(ControllerPath))
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                continue;
-            }
+            Controller = AnimatorController.Load(ControllerPath);
+        }
 
-            try
+        if (Controller is not null)
+        {
+            foreach (AnimatorState state in Controller.States)
             {
-                Assets.Model extra = Assets.Model.Load(path);
-                foreach (AnimationClip clip in extra.Animations)
+                if (string.IsNullOrEmpty(state.ClipSource))
                 {
-                    _clips[clip.Name] = clip;
+                    continue;
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Animator failed to load clip file '{0}': {1}", path, ex.Message);
+
+                try
+                {
+                    foreach (AnimationClip clip in Model.Load(state.ClipSource).Animations)
+                    {
+                        _clips[clip.Name] = clip;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.CoreError("Animator state '{0}' failed to load clip source '{1}': {2}", state.Name, state.ClipSource, ex.Message);
+                }
             }
         }
 

@@ -14,7 +14,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Controller, Other }
 
     private readonly struct AssetEntry
     {
@@ -298,7 +298,7 @@ public class AssetBrowserPanel
                 _context.Selection = null;
                 _context.SelectedAssetPath = entry.FullPath;
             }
-            else if (entry.Kind == AssetKind.Scene)
+            else if (entry.Kind == AssetKind.Scene || entry.Kind == AssetKind.Controller)
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
@@ -412,6 +412,7 @@ public class AssetBrowserPanel
     private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
     private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
     private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
+    private static readonly Vector4 ControllerColor = new(0.98f, 0.78f, 0.30f, 1.0f);
 
     private static AudioClip? _previewClip;
     private static Voice _previewVoice;
@@ -534,6 +535,7 @@ public class AssetBrowserPanel
         AssetKind.Material => (EditorIcons.Palette, MaterialColor),
         AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
         AssetKind.Audio => (EditorIcons.Music, AudioColor),
+        AssetKind.Controller => (EditorIcons.Rotate, ControllerColor),
         _ => (EditorIcons.File, palette.TextDisabled),
     };
 
@@ -589,6 +591,14 @@ public class AssetBrowserPanel
         else if (entry.Kind == AssetKind.Scene)
         {
             if (ImGui.MenuItem("Open Scene"))
+            {
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
+            }
+        }
+        else if (entry.Kind == AssetKind.Controller)
+        {
+            if (ImGui.MenuItem("Edit Animator Controller"))
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
@@ -656,6 +666,12 @@ public class AssetBrowserPanel
         {
             string path = UniqueAssetPath(_currentDirectory, "NewMaterial", ".sptmat");
             CreateMaterial(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
+        }
+        if (ImGui.MenuItem("New Animator Controller"))
+        {
+            string path = UniqueAssetPath(_currentDirectory, "NewController", ".sptcontroller");
+            CreateAnimatorController(Path.GetFileName(path));
             StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
         ImGui.Separator();
@@ -779,6 +795,7 @@ public class AssetBrowserPanel
         if (AudioExtensions.Contains(ext)) return AssetKind.Audio;
         if (ext == ".sptmat") return AssetKind.Material;
         if (ext == ".sptprefab") return AssetKind.Prefab;
+        if (ext == ".sptcontroller") return AssetKind.Controller;
         return AssetKind.Other;
     }
 
@@ -891,6 +908,20 @@ public class {className} : EntityBehaviour
         if (File.Exists(filepath)) return;
 
         new Spot.Assets.Material().Save(filepath);
+    }
+
+    private void CreateAnimatorController(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptcontroller")) name += ".sptcontroller";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+
+        var controller = new Spot.Animation.AnimatorController();
+        controller.States.Add(new Spot.Animation.AnimatorState { Name = "New State", EditorX = 220.0f, EditorY = 40.0f });
+        controller.DefaultState = "New State";
+        controller.Save(filepath);
     }
 
     // Accepts an entity dragged from the hierarchy onto the asset grid, writing it out as a .sptprefab in the
@@ -1022,7 +1053,7 @@ public class {className} : EntityBehaviour
     private static readonly string[] MovablePayloads =
     {
         "FOLDER_FILE", "IMAGE_FILE", "MODEL_FILE", "MATERIAL_FILE",
-        "SCENE_FILE", "PREFAB_FILE", "AUDIO_FILE", "SCRIPT_FILE",
+        "SCENE_FILE", "PREFAB_FILE", "AUDIO_FILE", "SCRIPT_FILE", "CONTROLLER_FILE",
     };
 
     // The drag payload (type + data) for an entry. Data is the full path for everything the Inspector
@@ -1037,6 +1068,7 @@ public class {className} : EntityBehaviour
             AssetKind.Scene => ("SCENE_FILE", entry.FullPath),
             AssetKind.Prefab => ("PREFAB_FILE", entry.FullPath),
             AssetKind.Audio => ("AUDIO_FILE", entry.FullPath),
+            AssetKind.Controller => ("CONTROLLER_FILE", entry.FullPath),
             _ => ("SCRIPT_FILE", entry.Name),
         };
 
