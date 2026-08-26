@@ -153,18 +153,9 @@ public static class ModelInstantiator
             return;
         }
 
-        var animator = new AnimatorComponent { ModelPath = modelPath };
-        if (info.ClipNames.Count > 0)
-        {
-            animator.DefaultClip = info.ClipNames[0];
-            animator.PlayOnStart = true;
-        }
-        else
-        {
-            animator.PlayOnStart = false;
-        }
-
-        root.AddComponent(animator);
+        // The animator carries only its model (the clip + skeleton source); which clip plays is decided by an
+        // assigned controller or by a script that owns the clips — not configured on the component itself.
+        root.AddComponent(new AnimatorComponent { ModelPath = modelPath });
     }
 
     private static void ApplyTransform(TransformComponent transform, Matrix4x4 local)

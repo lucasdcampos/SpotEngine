@@ -11,6 +11,19 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **Animator Controllers (animation state machines)** — a new reusable `.sptcontroller` asset wires clips
+  into a Unity-style state machine: states (each carrying its clip name and the file it comes from, so
+  clips retarget by name across matching models), Float/Int/Bool/Trigger parameters, and transitions gated
+  by conditions (with optional exit time and Any-State edges). Authored in a new node-graph editor window
+  (create/open from the Asset Browser) with a parameter list and state/transition inspector; a state's clip
+  is chosen from a project-wide picker or by drag-drop. Transitions switch clips instantly for now
+  (crossfade blending is future work). See [Animation](docs/animation.md).
+- **Simplified `AnimatorComponent`** — the animator now carries only an optional *Controller* reference
+  (its model is a hidden, auto-set clip/skeleton source). The `DefaultClip`, `PlayOnStart`, `Speed`,
+  `Loop`, and `ExtraClipPaths` fields were removed: playback is driven either by a controller or entirely
+  from a script that owns its clips via `Play(clipName)` / `Play(clip)` (plus `Stop`/`Pause`/`Resume`,
+  `IsPlaying`, `CurrentClip`, `ClipNames`), and the controller's parameter API (`SetFloat`/`SetBool`/… and
+  `CurrentState`).
 - **Rename-safe script identity + reflection-free resolution** — scripts are now referenced by a stable
   guid (the same guid+`.meta` sidecar identity the asset pipeline uses) instead of only a class name, so
   renaming a script class no longer breaks the scenes that use it and same-named classes in different

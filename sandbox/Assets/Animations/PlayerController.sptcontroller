@@ -1,0 +1,16 @@
+{
+  "Parameters": [],
+  "States": [
+    {
+      "Name": "Idle",
+      "Clip": "idle",
+      "ClipSource": "guid:859f7f7d3714439db676d83552e0213a",
+      "Speed": 1,
+      "Loop": true,
+      "EditorX": 245.79684,
+      "EditorY": 74.22379
+    }
+  ],
+  "Transitions": [],
+  "DefaultState": "Idle"
+}
