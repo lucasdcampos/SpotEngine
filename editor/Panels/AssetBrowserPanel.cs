@@ -80,6 +80,17 @@ public class AssetBrowserPanel
     private const int MaxModelPreviewsPerFrame = 2;
     private int _modelPreviewsThisFrame;
 
+    // Directory-listing cache. GatherEntries does filesystem I/O (enumerate + sort + a per-subfolder
+    // "has contents" probe), which previously ran every frame on the same folder. We reuse the last scan
+    // until the folder or search text changes (cache key), an in-panel mutation invalidates it, or a short
+    // refresh window elapses — so a file created by an external tool or the cook pipeline still shows up
+    // promptly without a per-frame scan.
+    private List<AssetEntry>? _entriesCache;
+    private string? _entriesCacheDir;
+    private string? _entriesCacheQuery;
+    private double _entriesCacheTime;
+    private const double EntriesRefreshSeconds = 0.5;
+
     public Action<string>? OnAssetOpened;
 
     public AssetBrowserPanel(EditorContext context)
@@ -214,7 +225,7 @@ public class AssetBrowserPanel
         List<AssetEntry> entries;
         try
         {
-            entries = GatherEntries();
+            entries = GetEntries();
         }
         catch (Exception ex)
         {
@@ -705,6 +716,12 @@ public class AssetBrowserPanel
 
     private void StartInlineRename(string fullPath, string bufferInitial, bool isNew = false)
     {
+        // Creating a new asset routes here right after the file is written, so re-scan to include it.
+        if (isNew)
+        {
+            InvalidateEntries();
+        }
+
         _selectedPath = fullPath;
         _inlineRenamePath = fullPath;
         _inlineRenameBuffer = bufferInitial;
@@ -757,6 +774,31 @@ public class AssetBrowserPanel
             _isDeleting = false;
         }
     }
+
+    // Returns the current directory's entries, reusing the last scan when nothing that affects it has
+    // changed. Navigation and search changes miss the cache key; in-panel create/delete/rename/paste call
+    // InvalidateEntries; and the refresh window bounds how long an external change can go unseen.
+    private List<AssetEntry> GetEntries()
+    {
+        double now = Spot.Core.Application.Instance.Time;
+        if (_entriesCache != null
+            && _entriesCacheDir == _currentDirectory
+            && _entriesCacheQuery == _searchQuery
+            && now - _entriesCacheTime < EntriesRefreshSeconds)
+        {
+            return _entriesCache;
+        }
+
+        _entriesCache = GatherEntries();
+        _entriesCacheDir = _currentDirectory;
+        _entriesCacheQuery = _searchQuery;
+        _entriesCacheTime = now;
+        return _entriesCache;
+    }
+
+    // Forces the next GetEntries to re-scan, so an in-panel change shows immediately instead of waiting out
+    // the refresh window.
+    private void InvalidateEntries() => _entriesCache = null;
 
     private List<AssetEntry> GatherEntries()
     {
@@ -1093,6 +1135,7 @@ public class {className} : EntityBehaviour
             else if (File.Exists(fullPath)) File.Move(fullPath, dest);
             if (_selectedPath == fullPath) _selectedPath = dest;
             if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = dest;
+            InvalidateEntries();
         }
         catch (Exception ex)
         {
@@ -1354,6 +1397,9 @@ public class {className} : EntityBehaviour
 
     private void ClearThumbnails()
     {
+        // Directory contents changed (navigation, delete, and paste all route through here), so the cached
+        // listing is stale too.
+        InvalidateEntries();
         foreach (var tex in _thumbnails.Values)
         {
             tex.Dispose();

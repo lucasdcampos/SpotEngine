@@ -36,6 +36,13 @@ captured with VSync off.
   the chain with two dictionary lookups per level each time. Results are now cached per entity and
   invalidated only when something that affects them changes: an `Enabled` toggle, a reparent, or a
   component add/remove/destroy. Behavior is unchanged, covered by expanded active-state tests.
+- **Editor per-frame overhead cut** — the Asset Browser rescanned the current folder from disk (enumerate +
+  sort + a per-subfolder "has contents" probe) *every frame*; it now caches the listing and re-scans only on
+  navigation, a search change, an in-panel file operation, or a short refresh window (so external/cook
+  changes still appear promptly). The Inspector's material preview was a full offscreen render every frame a
+  material was selected; it now renders only when the material or a preview-relevant property changes. The
+  Hierarchy panel no longer allocates a set (plus a LINQ chain) every frame syncing root order, nor a list
+  per expanded node during the tree draw — both reuse pooled scratch buffers.
 
 ### Added
 - **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,

@@ -437,10 +437,21 @@ public class HierarchyPanel
         {
             if (hasChildren)
             {
-                foreach (var child in entity.Children.ToList()) // ToList to avoid modification during iteration
+                // Snapshot into a pooled list (reused across frames and recursion levels) so a reparent or
+                // delete triggered while drawing can't mutate the collection mid-iteration — without the
+                // fresh per-node allocation a ToList would cost every frame.
+                List<Entity> children = RentEntityList();
+                foreach (Entity child in entity.Children)
+                {
+                    children.Add(child);
+                }
+
+                foreach (Entity child in children)
                 {
                     DrawEntityNode(child);
                 }
+
+                ReturnEntityList(children);
             }
             ImGui.TreePop();
         }
@@ -569,15 +580,43 @@ public class HierarchyPanel
         return false;
     }
 
+    // Reused across frames so SyncRootOrder doesn't allocate a set (and a LINQ chain) every frame.
+    private readonly HashSet<int> _rootScratch = new();
+
+    // Pool of scratch child lists, reused across frames and recursion depth so the tree draw doesn't
+    // allocate a list per expanded parent node every frame. Depth-bounded by its LIFO rent/return.
+    private readonly Stack<List<Entity>> _entityListPool = new();
+
+    private List<Entity> RentEntityList()
+    {
+        List<Entity> list = _entityListPool.Count > 0 ? _entityListPool.Pop() : new List<Entity>();
+        list.Clear();
+        return list;
+    }
+
+    private void ReturnEntityList(List<Entity> list) => _entityListPool.Push(list);
+
     // Keeps _rootOrder in sync with the scene: adds new root entities at the end, removes stale ones.
     private void SyncRootOrder()
     {
-        var allRoot = _context.ActiveScene!.View<LabelComponent>()
-            .Where(e => e.Parent == null)
-            .Select(e => e.Id)
-            .ToHashSet();
-        _rootOrder.RemoveAll(id => !allRoot.Contains(id));
-        foreach (int id in allRoot)
+        _rootScratch.Clear();
+        foreach (Entity e in _context.ActiveScene!.View<LabelComponent>())
+        {
+            if (e.Parent == null)
+            {
+                _rootScratch.Add(e.Id);
+            }
+        }
+
+        for (int i = _rootOrder.Count - 1; i >= 0; i--)
+        {
+            if (!_rootScratch.Contains(_rootOrder[i]))
+            {
+                _rootOrder.RemoveAt(i);
+            }
+        }
+
+        foreach (int id in _rootScratch)
             if (!_rootOrder.Contains(id))
                 _rootOrder.Add(id);
     }
