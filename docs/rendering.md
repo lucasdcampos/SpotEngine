@@ -110,6 +110,16 @@ renders straight to the screen. "Limiting" a platform is therefore a **runtime c
 which `RenderSettings`), not a forked renderer. Neutralizing the post pipeline for the browser is a
 follow-up. See [Projects & Building](projects-and-building.md#the-browser-target) for the browser target.
 
+## Measuring performance
+
+`RenderSettings.VSync` (on by default) gates whether the buffer swap waits for the monitor's vertical
+blank. With it on, the frame rate is capped at the refresh rate, so an on-screen FPS reading tells you
+nothing above that cap — an "empty scene at 70 FPS" is usually just the cap, not the cost. Turn VSync off
+to profile: the `vsync` console command toggles it live (`vsync off`), the `stats` command prints the
+current frame time / FPS / VSync state, and the editor's viewport HUD shows `ms` next to FPS. Frame times
+come from `FrameStats`, which averages the real (unclamped) frame delta so a stall shows up instead of
+hiding behind the simulation's delta clamp.
+
 ## Related
 
 - [Entities & Components](entities-and-components.md) — the visible components (sprite, mesh, camera, light)

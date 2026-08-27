@@ -271,8 +271,9 @@ public class ViewportPanel
         float rightEdge = cursorPos.X + viewportSize.X - 12.0f;
         float y = center.Y + axisLen + 12.0f;
 
-        float fps = ImGui.GetIO().Framerate;
-        DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS", palette.Text);
+        float fps = Spot.Core.FrameStats.Fps;
+        float ms = Spot.Core.FrameStats.FrameTimeMs;
+        DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS  ({ms:0.0} ms)", palette.Text);
 
         DrawRightText(drawList, rightEdge, ref y, _camera.Is3D ? "Perspective" : "Orthographic", palette.TextDisabled);
 

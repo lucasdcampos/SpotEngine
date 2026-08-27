@@ -60,7 +60,7 @@ public sealed class Window : IDisposable
             ContextFlags.Default,
             new APIVersion(4, 6));
         options.WindowBorder = WindowBorder.Resizable;
-        options.VSync = true;
+        options.VSync = Spot.Rendering.RenderSettings.VSync;
 
         _window = SilkWindow.Create(options);
         _window.Initialize();
@@ -79,6 +79,11 @@ public sealed class Window : IDisposable
         _input = _window.CreateInput();
         global::Spot.Core.Input.CursorController = new SilkCursorController(_input);
         SetupCallbacks();
+
+        // Apply engine-wide VSync changes to this window at runtime (the `vsync` console command, an editor
+        // toggle, or a game turning it off to profile). Unsubscribed on Dispose so the static event never
+        // pins a disposed window.
+        Spot.Rendering.RenderSettings.VSyncChanged += OnVSyncChanged;
 
         Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
     }
@@ -100,6 +105,17 @@ public sealed class Window : IDisposable
     {
         get => _window.Title;
         set => _window.Title = value;
+    }
+
+    /// <summary>
+    /// Gets or sets whether presentation waits for vertical sync on this window. Setting it updates the
+    /// swap interval immediately. Prefer <see cref="Spot.Rendering.RenderSettings.VSync"/> as the
+    /// engine-wide source of truth; it flows here automatically.
+    /// </summary>
+    public bool VSync
+    {
+        get => _window.VSync;
+        set => _window.VSync = value;
     }
 
     /// <summary>
@@ -143,10 +159,25 @@ public sealed class Window : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        Spot.Rendering.RenderSettings.VSyncChanged -= OnVSyncChanged;
         _input.Dispose();
         _window.DoEvents();
         _window.Reset();
         _window.Dispose();
+    }
+
+    // Pushes an engine-wide VSync change onto the Silk window. Guarded so a backend that rejects a late
+    // swap-interval change logs and continues rather than taking the process down (never crash the engine).
+    private void OnVSyncChanged(bool enabled)
+    {
+        try
+        {
+            _window.VSync = enabled;
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Failed to apply VSync change to the window: {0}", ex.Message);
+        }
     }
 
     private void SetupCallbacks()

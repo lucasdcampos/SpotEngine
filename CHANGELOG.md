@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is provisional and
 will be finalized when 0.2 is tagged.
 
+### Performance
+
+Ongoing pass to cut per-frame cost across the engine and editor. Each step is measured against a baseline
+captured with VSync off.
+
+- **VSync is now a runtime setting, plus frame-time instrumentation** — `RenderSettings.VSync` (default
+  on) can be toggled live with the new `vsync` console command; turning it off uncaps the frame rate so the
+  engine's true frame time becomes measurable instead of pinned to the monitor's refresh. A lightweight
+  `FrameStats` records the real (unclamped) frame delta each frame; the editor viewport HUD now shows `ms`
+  next to FPS, and a new `stats` command prints frame time / FPS / VSync state. See
+  [Rendering](docs/rendering.md#measuring-performance).
+
 ### Added
 - **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,
   `.ply`, `.stl`) now render a live neutral-shaded preview auto-framed on the model's bounds, instead of a
