@@ -23,6 +23,11 @@ captured with VSync off.
   cached by size in a small bounded MRU list, so each view reuses a stable buffer. Rendered output is
   unchanged. The gating paths keyed on camera *existence* (not enabled state), which is why disabling the
   camera didn't help but deleting it did.
+- **Editor secondary views render only when visible** — in edit mode the Game panel re-rendered the whole
+  scene (shadow pass + meshes + post) through the primary camera *every frame* even when tabbed behind
+  another panel, and the selected-camera preview rendered every frame even when the scene viewport was
+  hidden. Both now render only when their panel was actually visible the previous frame, so switching away
+  from a panel stops paying for its render.
 
 - **VSync is now a runtime setting, plus frame-time instrumentation** — `RenderSettings.VSync` (default
   on) can be toggled live with the new `vsync` console command; turning it off uncaps the frame rate so the
