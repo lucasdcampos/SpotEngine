@@ -581,6 +581,26 @@ public sealed class DevConsole
             }
         }, "Toggles wireframe rendering for 3D meshes");
 
+        Register("vsync", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RenderSettings.VSync = val;
+            }
+            else
+            {
+                Spot.Rendering.RenderSettings.VSync = !Spot.Rendering.RenderSettings.VSync;
+            }
+
+            Print($"VSync {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")} (use 'vsync off' to uncap and profile true frame time)");
+        }, "Toggles vertical sync (e.g., 'vsync', 'vsync off'); off uncaps the frame rate for profiling");
+
+        Register("stats", _ =>
+        {
+            Print($"Frame: {Spot.Core.FrameStats.FrameTimeMs:0.00} ms ({Spot.Core.FrameStats.Fps:0} FPS); last {Spot.Core.FrameStats.LastFrameMs:0.00} ms");
+            Print($"VSync: {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")}");
+        }, "Prints the current smoothed frame time / FPS and VSync state");
+
         Register("bind", args =>
         {
             if (args.Count < 2)

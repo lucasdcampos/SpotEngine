@@ -420,13 +420,17 @@ public class Application
     private void Update()
     {
         TimeSpan now = _stopwatch!.Elapsed;
-        _deltaTime = (float)(now - _lastTime).TotalSeconds;
+        float realDelta = (float)(now - _lastTime).TotalSeconds;
         _lastTime = now;
+
+        // Record the real (unclamped) frame time for profiling before the simulation clamp below, so a
+        // stall surfaces in the stats instead of being hidden as a steady MaxDeltaTime.
+        FrameStats.Record(realDelta);
 
         // Clamp the frame delta so a hitch (window drag, GC pause, a heavy asset load) can't feed a
         // huge dt into physics/scripts and explode springs or tunnel bodies through colliders. A
         // stalled frame simply runs in slow motion instead of blowing up the simulation.
-        _deltaTime = Math.Min(_deltaTime, MaxDeltaTime);
+        _deltaTime = Math.Min(realDelta, MaxDeltaTime);
 
         // Publish the frame clock from the clamped real delta. Gameplay advances on the scaled delta
         // (Time.DeltaTime, respecting Time.TimeScale); engine services stay on the real delta so
