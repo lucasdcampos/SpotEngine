@@ -15,7 +15,17 @@ public sealed class DesktopScenePostProcessor : IScenePostProcessor
     // five reads as a soft, wide bloom at half resolution without visible box stepping.
     private const int BloomIterations = 5;
 
+    // The HDR target selected for the current Begin/Resolve pair (drawn from the size-keyed pool below).
     private Framebuffer? _hdrFramebuffer;
+
+    // HDR capture targets, one per distinct render size, in a tiny most-recently-used list. The editor
+    // renders several times per frame at different sizes (scene viewport, the game-view panel, and a
+    // selected camera's preview). A single shared target was disposed and reallocated on every size switch —
+    // several large RGBA16F allocations per frame, which by itself dropped the editor to ~100 FPS whenever a
+    // camera was in the scene. Reusing a target per size removes that churn; the cap bounds VRAM and evicts
+    // sizes that stop being drawn (e.g. intermediate sizes seen while dragging a panel splitter).
+    private readonly List<Framebuffer> _hdrTargets = new();
+    private const int MaxHdrTargets = 4;
 
     // The render target and viewport that were bound before capture, restored on resolve. The previous target
     // is queried from GL state (robust to the editor binding its own framebuffer outside the renderer).
@@ -51,11 +61,7 @@ public sealed class DesktopScenePostProcessor : IScenePostProcessor
         _prevW = (uint)viewport[2];
         _prevH = (uint)viewport[3];
 
-        if (_hdrFramebuffer == null || _hdrFramebuffer.Width != _prevW || _hdrFramebuffer.Height != _prevH)
-        {
-            _hdrFramebuffer?.Dispose();
-            _hdrFramebuffer = new Framebuffer(_prevW, _prevH, FramebufferFormat.RGBA16F);
-        }
+        _hdrFramebuffer = AcquireHdrTarget(_prevW, _prevH);
 
         // Bind through the renderer so its tracked render-target/viewport state stays correct — the shadow
         // pass saves and restores that state, and would otherwise restore the screen mid-capture.
@@ -93,5 +99,36 @@ public sealed class DesktopScenePostProcessor : IScenePostProcessor
         }
 
         PostProcessingRenderer.Draw(_hdrFramebuffer.ColorAttachment, settings, bloomTexture);
+    }
+
+    // Returns an HDR capture target of the requested size, reusing a cached one when possible and creating
+    // (and, past the cap, evicting the least-recently-used) only on a genuinely new size. Reused targets are
+    // moved to the front so the sizes drawn every frame stay resident and transient ones fall off.
+    private Framebuffer AcquireHdrTarget(uint width, uint height)
+    {
+        for (int i = 0; i < _hdrTargets.Count; i++)
+        {
+            Framebuffer fb = _hdrTargets[i];
+            if (fb.Width == width && fb.Height == height)
+            {
+                if (i != 0)
+                {
+                    _hdrTargets.RemoveAt(i);
+                    _hdrTargets.Insert(0, fb);
+                }
+
+                return fb;
+            }
+        }
+
+        var created = new Framebuffer(width, height, FramebufferFormat.RGBA16F);
+        _hdrTargets.Insert(0, created);
+        while (_hdrTargets.Count > MaxHdrTargets)
+        {
+            _hdrTargets[^1].Dispose();
+            _hdrTargets.RemoveAt(_hdrTargets.Count - 1);
+        }
+
+        return created;
     }
 }
