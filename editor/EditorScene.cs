@@ -36,6 +36,10 @@ public class OpenSceneData
     public bool FocusNextFrame = false;
     public bool FirstFrame = true;
 
+    // Whether this scene's viewport was actually visible last ImGui frame (not tabbed behind another panel).
+    // The render pass reads it to skip re-rendering a hidden viewport (and its camera preview overlay).
+    public bool ViewportVisible = true;
+
     public OpenSceneData(EditorContext context)
     {
         ViewportPanel = new ViewportPanel(context);
@@ -104,6 +108,9 @@ public class EditorScene : Scene
 
     // Per-panel visibility, toggled from View > Panels and by each window's close button.
     private bool _showGame = true;
+    // Whether the Game panel was actually visible last ImGui frame. The render pass reads it to skip the
+    // full extra scene render into the game framebuffer when the panel is tabbed behind another or closed.
+    private bool _gameViewVisible;
     private bool _showHierarchy = true;
     private bool _showInspector = true;
     private uint _lastGameDockId;
@@ -674,7 +681,7 @@ public class EditorScene : Scene
             sceneData.Framebuffer.Unbind();
             
             // Render Camera Preview
-            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData)
+            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData && sceneData.ViewportVisible)
             {
                 sceneData.CameraPreviewFramebuffer.Bind();
                 var entity = _context.Selection.Value;
@@ -711,8 +718,14 @@ public class EditorScene : Scene
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         Renderer.Clear();
         
-        var gameScene = _state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene;
-        
+        // Only render the game view when its panel is actually visible. When it is tabbed behind another
+        // panel (or closed) this would otherwise be a full extra scene render — shadow pass, meshes, and
+        // post-processing — every frame; skipping it is a large editor win and the panel keeps its last
+        // image until shown again.
+        var gameScene = _gameViewVisible
+            ? (_state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene)
+            : null;
+
         if (gameScene != null)
         {
             System.Numerics.Matrix4x4? viewProjection = null;
@@ -819,6 +832,7 @@ public class EditorScene : Scene
             bool wasOpen = sceneData.IsOpen;
             bool open = ImGui.Begin(title, ref sceneData.IsOpen, ImGuiWindowFlags.NoCollapse);
             ImGui.PopStyleVar();
+            sceneData.ViewportVisible = open;
 
             // Closing a scene with unsaved changes: keep it open and confirm first.
             if (wasOpen && !sceneData.IsOpen && sceneData.IsDirty)
@@ -866,10 +880,12 @@ public class EditorScene : Scene
             if (_activeSceneData != null) _lastEditedSceneData = _activeSceneData;
         }
 
+        _gameViewVisible = false;
         if (_showGame)
         {
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
             bool open = ImGui.Begin("Game", ref _showGame, ImGuiWindowFlags.NoCollapse);
+            _gameViewVisible = open;
             _lastGameDockId = ImGui.GetWindowDockID();
             ImGui.PopStyleVar();
             if (open)
