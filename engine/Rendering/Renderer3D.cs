@@ -985,6 +985,25 @@ public static class Renderer3D
     private static Vector3 s_groundColor = new Vector3(0.35f, 0.37f, 0.4f);
     private static int s_hasSkybox = 0;
 
+    // Pre-built uniform-name strings for the point-light array (max 4 slots), so ApplyLighting never
+    // interpolates a string — and so never allocates — on the render path.
+    private static readonly string[] s_pointLightPosNames = { "uPointLights[0].position", "uPointLights[1].position", "uPointLights[2].position", "uPointLights[3].position" };
+    private static readonly string[] s_pointLightColorNames = { "uPointLights[0].color", "uPointLights[1].color", "uPointLights[2].color", "uPointLights[3].color" };
+    private static readonly string[] s_pointLightIntensityNames = { "uPointLights[0].intensity", "uPointLights[1].intensity", "uPointLights[2].intensity", "uPointLights[3].intensity" };
+    private static readonly string[] s_pointLightRangeNames = { "uPointLights[0].range", "uPointLights[1].range", "uPointLights[2].range", "uPointLights[3].range" };
+
+    // Per-scene stamp: BeginScene bumps it, and each lit shader records the stamp at which it last had the
+    // scene-constant uniforms (camera + all lights) uploaded. That turns ~15 redundant uniform uploads per
+    // draw into a single upload per shader per scene. -1 means "not yet applied".
+    private static int s_sceneStamp;
+    private static int s_stdConstantsStamp = -1;
+    private static int s_waterConstantsStamp = -1;
+    private static int s_skinnedConstantsStamp = -1;
+
+    // The shader currently bound during the mesh pass, so consecutive draws that share a shader skip a
+    // redundant program bind. Reset each BeginScene; maintained only by the mesh-pass draw calls.
+    private static Shader? s_lastMeshShader;
+
     /// <summary>
     /// Creates the shared shader and fallback texture. Called once by the application after the renderer is ready.
     /// </summary>
@@ -1012,6 +1031,11 @@ public static class Renderer3D
     /// </summary>
     public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default, Vector3 cameraPosition = default)
     {
+        // New scene pass: bump the stamp so each lit shader re-uploads camera + lights once (on its first
+        // draw this scene), and clear the mesh-pass bind tracker.
+        s_sceneStamp++;
+        s_lastMeshShader = null;
+
         s_viewProjection = viewProjection;
         // Invert once per scene: the skybox, clouds and grid all need the inverse view-projection, and
         // recomputing it per draw was pure waste. The camera position is supplied by the caller (the
@@ -1112,13 +1136,26 @@ public static class Renderer3D
 
         (texture ?? s_whiteTexture).Bind(0);
 
-        activeShader.Use();
-        activeShader.SetUniform("uViewProjection", s_viewProjection);
+        if (!ReferenceEquals(activeShader, s_lastMeshShader))
+        {
+            activeShader.Use();
+            s_lastMeshShader = activeShader;
+        }
+
+        // Camera + lights are identical for every mesh this scene, so upload them once per shader here
+        // rather than on every draw call.
+        if (shaderType == 1)
+        {
+            EnsureFrameConstants(activeShader, ref s_waterConstantsStamp);
+        }
+        else
+        {
+            EnsureFrameConstants(activeShader, ref s_stdConstantsStamp);
+        }
+
         activeShader.SetUniform("uModel", model);
         activeShader.SetUniform("uColor", color);
         activeShader.SetUniform("uTexture", 0);
-
-        activeShader.SetUniform("uCameraPos", s_cameraPosition);
 
         Vector2 tiling = material?.Tiling ?? Vector2.One;
         int autoTile = (material?.AutoTile ?? false) ? 1 : 0;
@@ -1169,8 +1206,6 @@ public static class Renderer3D
             activeShader.SetUniform("uHasSkybox", s_hasSkybox);
         }
 
-        ApplyLighting(activeShader);
-
         Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
     }
 
@@ -1194,11 +1229,16 @@ public static class Renderer3D
 
         (texture ?? s_whiteTexture).Bind(0);
 
-        activeShader.Use();
-        activeShader.SetUniform("uViewProjection", s_viewProjection);
+        if (!ReferenceEquals(activeShader, s_lastMeshShader))
+        {
+            activeShader.Use();
+            s_lastMeshShader = activeShader;
+        }
+
+        EnsureFrameConstants(activeShader, ref s_skinnedConstantsStamp);
+
         activeShader.SetUniform("uColor", color);
         activeShader.SetUniform("uTexture", 0);
-        activeShader.SetUniform("uCameraPos", s_cameraPosition);
         activeShader.SetUniform("uBones", ClampBones(bones));
 
         // Skinning replaces the model matrix, so auto-tiling (which scales UVs by the model matrix) is off.
@@ -1219,8 +1259,6 @@ public static class Renderer3D
         {
             activeShader.SetUniform("uHasNormalMap", 0);
         }
-
-        ApplyLighting(activeShader);
 
         Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
     }
@@ -1256,6 +1294,23 @@ public static class Renderer3D
         return bones[..MaxBones];
     }
 
+    // Uploads the scene-constant uniforms (camera + all lights) to a lit shader once per scene. The
+    // per-shader stamp is compared against the current scene stamp, so the first draw that uses each shader
+    // pays the upload and the rest skip it — GL keeps a program's uniform values across bind switches, so
+    // re-selecting a shader later in the pass doesn't need them re-sent.
+    private static void EnsureFrameConstants(Shader shader, ref int shaderStamp)
+    {
+        if (shaderStamp == s_sceneStamp)
+        {
+            return;
+        }
+
+        shaderStamp = s_sceneStamp;
+        shader.SetUniform("uViewProjection", s_viewProjection);
+        shader.SetUniform("uCameraPos", s_cameraPosition);
+        ApplyLighting(shader);
+    }
+
     // Uploads the directional light, shadow map and point lights shared by the standard and skinned shaders.
     private static void ApplyLighting(Shader shader)
     {
@@ -1288,10 +1343,10 @@ public static class Renderer3D
         shader.SetUniform("uPointLightCount", s_pointLightCount);
         for (int i = 0; i < s_pointLightCount; i++)
         {
-            shader.SetUniform($"uPointLights[{i}].position", s_pointLights[i].Position);
-            shader.SetUniform($"uPointLights[{i}].color", s_pointLights[i].Color);
-            shader.SetUniform($"uPointLights[{i}].intensity", s_pointLights[i].Intensity);
-            shader.SetUniform($"uPointLights[{i}].range", s_pointLights[i].Range);
+            shader.SetUniform(s_pointLightPosNames[i], s_pointLights[i].Position);
+            shader.SetUniform(s_pointLightColorNames[i], s_pointLights[i].Color);
+            shader.SetUniform(s_pointLightIntensityNames[i], s_pointLights[i].Intensity);
+            shader.SetUniform(s_pointLightRangeNames[i], s_pointLights[i].Range);
         }
     }
 
