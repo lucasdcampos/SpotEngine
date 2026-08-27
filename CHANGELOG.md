@@ -31,6 +31,11 @@ captured with VSync off.
   texture or normal map now skip re-binding it (trackers reset each scene; texture binds cost more than
   uniform sets). Output is unchanged; reordering draws by material to make these hits more frequent is
   folded into the upcoming instancing work rather than risking transparent-draw order now.
+- **Hierarchy active-state is memoized** — `IsActiveInHierarchy` (an entity's `Enabled` flag walked up the
+  parent chain) is queried many times per frame — by every `ViewActive` and each render pass — and re-walked
+  the chain with two dictionary lookups per level each time. Results are now cached per entity and
+  invalidated only when something that affects them changes: an `Enabled` toggle, a reparent, or a
+  component add/remove/destroy. Behavior is unchanged, covered by expanded active-state tests.
 
 ### Added
 - **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,
