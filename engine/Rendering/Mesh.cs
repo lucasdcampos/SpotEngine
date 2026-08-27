@@ -1,4 +1,6 @@
+using System.Numerics;
 using Spot.Animation;
+using Spot.Physics;
 
 namespace Spot.Rendering;
 
@@ -117,6 +119,7 @@ public sealed class Mesh : IDisposable
         _vao.SetIndexBuffer(_ibo);
 
         IndexCount = _ibo.Count;
+        Bounds = ComputeBounds(vertices, skinned ? SkinnedFloatsPerVertex : FloatsPerVertex);
     }
 
     /// <summary>Gets the number of indices to draw.</summary>
@@ -124,6 +127,32 @@ public sealed class Mesh : IDisposable
 
     /// <summary>Gets whether this mesh uses the skinned vertex layout (bone indices + weights).</summary>
     public bool IsSkinned { get; }
+
+    /// <summary>
+    /// Gets the mesh's axis-aligned bounding box in local (model) space, computed from its vertex positions.
+    /// A mesh with no vertices reports a zero-sized box at the origin.
+    /// </summary>
+    public Aabb3d Bounds { get; }
+
+    // Sweeps the interleaved vertex positions (the first three floats of every vertex) for their min/max.
+    private static Aabb3d ComputeBounds(ReadOnlySpan<float> vertices, int stride)
+    {
+        if (vertices.Length < stride)
+        {
+            return new Aabb3d(Vector3.Zero, Vector3.Zero);
+        }
+
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        for (int i = 0; i + 2 < vertices.Length; i += stride)
+        {
+            var p = new Vector3(vertices[i], vertices[i + 1], vertices[i + 2]);
+            min = Vector3.Min(min, p);
+            max = Vector3.Max(max, p);
+        }
+
+        return new Aabb3d((min + max) * 0.5f, max - min);
+    }
 
     /// <summary>Gets the vertex array backing this mesh, for issuing draw calls.</summary>
     internal VertexArray VertexArray => _vao;

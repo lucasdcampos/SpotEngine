@@ -72,6 +72,13 @@ public class AssetBrowserPanel
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
     private readonly Dictionary<string, Spot.Rendering.Framebuffer> _materialPreviews = new();
+    private readonly Dictionary<string, Spot.Rendering.Framebuffer> _modelPreviews = new();
+    private readonly HashSet<string> _modelFailed = new();
+
+    // Rendering a model preview costs a load + offscreen draw; cap how many first-time renders happen per
+    // frame so opening a folder full of models spreads the work over a few frames instead of hitching.
+    private const int MaxModelPreviewsPerFrame = 2;
+    private int _modelPreviewsThisFrame;
 
     public Action<string>? OnAssetOpened;
 
@@ -102,6 +109,7 @@ public class AssetBrowserPanel
         }
 
         _pendingNavigate = null;
+        _modelPreviewsThisFrame = 0;
 
         DrawToolbar();
         ImGui.Separator();
@@ -462,6 +470,15 @@ public class AssetBrowserPanel
             return;
         }
 
+        // Models render a live 3D thumbnail; while the model is still loading (or if it fails) we fall
+        // through to the cube glyph below.
+        if (entry.Kind == AssetKind.Model && TryGetModelPreview(entry.FullPath, out var mdlFb))
+        {
+            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
+            drawList.AddImage((IntPtr)mdlFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
+            return;
+        }
+
         // Folders are drawn as a vector shape (rather than a font glyph) so they can read as a modern folder
         // and visibly distinguish an empty folder from one that holds assets.
         if (entry.Kind == AssetKind.Folder)
@@ -476,49 +493,48 @@ public class AssetBrowserPanel
         DrawGlyph(drawList, iconMin, size, glyph, color);
     }
 
-    // Folders are always the same neutral gray; whether they hold assets is conveyed solely by the papers.
-    private static readonly Vector4 FolderColor = new(0.56f, 0.60f, 0.66f, 1.0f);
-    private static readonly Vector4 FolderPaperColor = new(0.94f, 0.95f, 0.97f, 1.0f);
-    private static readonly Vector4 FolderPaperColorBack = new(0.80f, 0.83f, 0.88f, 1.0f);
+    // Folders use a muted, professional warm yellow/orange to fit a modern dark editor.
+    private static readonly Vector4 FolderColor = new(0.80f, 0.65f, 0.35f, 1.0f);
+    private static readonly Vector4 FolderPaperColor = new(0.88f, 0.88f, 0.88f, 1.0f);
 
-    // Draws a modern flat folder scaled into the square icon box. The folder is always gray; a folder with
-    // contents shows a couple of sheets peeking out of the pocket, an empty one is just a closed folder.
+    // Draws a clean, minimal folder scaled into the square icon box.
+    // The design is flatter and smaller to reduce visual weight.
     private static void DrawFolderIcon(ImDrawListPtr dl, Vector2 iconMin, float size, bool hasContents)
     {
-        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.74f));
+        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.70f)); // Subtle tonal variation
         uint front = ImGui.GetColorU32(FolderColor);
 
-        float x0 = iconMin.X + size * 0.13f;
-        float x1 = iconMin.X + size * 0.87f;
-        float backTop = iconMin.Y + size * 0.31f;
-        float bottom = iconMin.Y + size * 0.76f;
-        float r = size * 0.055f;
+        // Tighter bounds to reduce bulkiness and improve proportions (approx 4:3)
+        float x0 = iconMin.X + size * 0.20f;
+        float x1 = iconMin.X + size * 0.80f;
+        float backTop = iconMin.Y + size * 0.38f;
+        float bottom = iconMin.Y + size * 0.75f;
+        float r = size * 0.04f; // Minimal corner rounding
 
-        // Tab on the back panel (top-left), rounded across the top only.
-        float tabW = (x1 - x0) * 0.42f;
-        float tabH = size * 0.10f;
+        // Tab on the back panel (top-left)
+        float tabW = (x1 - x0) * 0.38f;
+        float tabH = size * 0.08f;
         dl.AddRectFilled(new Vector2(x0, backTop - tabH), new Vector2(x0 + tabW, backTop + r), back, r,
             ImDrawFlags.RoundCornersTop);
 
-        // Back panel of the folder.
+        // Back panel of the folder
         dl.AddRectFilled(new Vector2(x0, backTop), new Vector2(x1, bottom), back, r);
 
-        float pocketTop = backTop + size * 0.14f;
+        float pocketTop = backTop + size * 0.10f;
 
-        // Sheets peeking above the front pocket signal that the folder is non-empty.
+        // A single clean sheet peeking out signals that the folder is non-empty
         if (hasContents)
         {
-            float sw = (x1 - x0) * 0.58f;
+            float sw = (x1 - x0) * 0.60f;
             float sx = x0 + (x1 - x0 - sw) * 0.5f;
-            float sr = size * 0.035f;
-            uint paperBack = ImGui.GetColorU32(FolderPaperColorBack);
+            float sr = size * 0.02f; // Sharper paper edges
             uint paper = ImGui.GetColorU32(FolderPaperColor);
-            // Back sheet, nudged aside; front sheet, higher and centered. Both hidden below by the pocket.
-            dl.AddRectFilled(new Vector2(sx + size * 0.05f, backTop + size * 0.055f), new Vector2(sx + sw + size * 0.05f, bottom), paperBack, sr, ImDrawFlags.RoundCornersTop);
-            dl.AddRectFilled(new Vector2(sx, backTop + size * 0.02f), new Vector2(sx + sw, bottom), paper, sr, ImDrawFlags.RoundCornersTop);
+            
+            // Draw the paper sheet tucked behind the front pocket
+            dl.AddRectFilled(new Vector2(sx, backTop - size * 0.02f), new Vector2(sx + sw, pocketTop + r), paper, sr, ImDrawFlags.RoundCornersTop);
         }
 
-        // Front pocket, lighter than the back so the rim + tab stay visible above it.
+        // Front pocket
         dl.AddRectFilled(new Vector2(x0, pocketTop), new Vector2(x1, bottom), front, r, ImDrawFlags.RoundCornersBottom);
     }
 
@@ -844,6 +860,42 @@ public class AssetBrowserPanel
         }
         catch
         {
+            return false;
+        }
+    }
+
+    private bool TryGetModelPreview(string path, out Spot.Rendering.Framebuffer fb)
+    {
+        if (_modelPreviews.TryGetValue(path, out fb!))
+        {
+            return true;
+        }
+        if (_modelFailed.Contains(path) || _modelPreviews.Count >= MaxThumbnails
+            || _modelPreviewsThisFrame >= MaxModelPreviewsPerFrame)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Non-blocking: returns null until the geometry is parsed and uploaded (pumped elsewhere each
+            // frame). Show the glyph until then, and retry next frame.
+            var model = Spot.Assets.ModelImporter.RequestAsync(path);
+            if (model is null)
+            {
+                return false;
+            }
+
+            _modelPreviewsThisFrame++;
+            fb = new Spot.Rendering.Framebuffer(128, 128);
+            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb);
+            _modelPreviews[path] = fb;
+            return true;
+        }
+        catch (Exception e)
+        {
+            _modelFailed.Add(path);
+            Spot.Core.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
             return false;
         }
     }
@@ -1314,6 +1366,13 @@ public class {className} : EntityBehaviour
             fb.Dispose();
         }
         _materialPreviews.Clear();
+
+        foreach (var fb in _modelPreviews.Values)
+        {
+            fb.Dispose();
+        }
+        _modelPreviews.Clear();
+        _modelFailed.Clear();
     }
 
     private static void EnsureDirectory(string path)
