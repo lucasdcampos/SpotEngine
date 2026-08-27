@@ -15,6 +15,15 @@ will be finalized when 0.2 is tagged.
 Ongoing pass to cut per-frame cost across the engine and editor. Each step is measured against a baseline
 captured with VSync off.
 
+- **Fixed a severe editor stall from per-frame framebuffer reallocation** — with a camera in the scene the
+  editor renders it two-to-three times per frame at *different sizes* (the scene viewport, the game-view
+  panel, and a selected camera's preview). The shared HDR capture and bloom buffers (large `RGBA16F`) were
+  disposed and reallocated on every size switch — several GPU allocations per frame — which pinned an
+  otherwise-empty editor scene to ~100 FPS (deleting the camera jumped it past 1800). These targets are now
+  cached by size in a small bounded MRU list, so each view reuses a stable buffer. Rendered output is
+  unchanged. The gating paths keyed on camera *existence* (not enabled state), which is why disabling the
+  camera didn't help but deleting it did.
+
 - **VSync is now a runtime setting, plus frame-time instrumentation** — `RenderSettings.VSync` (default
   on) can be toggled live with the new `vsync` console command; turning it off uncaps the frame rate so the
   engine's true frame time becomes measurable instead of pinned to the monitor's refresh. A lightweight
