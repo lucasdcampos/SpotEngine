@@ -164,9 +164,12 @@ public readonly struct Entity : IEquatable<Entity>
         {
             if (!parent.Value.TryGetComponent(out RelationshipComponent? parentRel))
                 parentRel = parent.Value.AddComponent(new RelationshipComponent());
-            
+
             parentRel.Children.Add(this);
         }
+
+        // Reparenting changes this subtree's active-in-hierarchy chain; drop the scene's memoized results.
+        OwningScene.InvalidateHierarchyActive();
     }
 
     /// <summary>

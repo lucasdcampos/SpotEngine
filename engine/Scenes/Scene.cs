@@ -375,6 +375,7 @@ public class Scene
         _pendingDestroy.Clear();
         _viewCache.Clear();
         _viewCache2.Clear();
+        _activeInHierarchyMemo.Clear();
         _nextId = 1;
         TeardownPhysics();
     }
@@ -497,6 +498,7 @@ public class Scene
         }
         _viewCache.Clear();
         _viewCache2.Clear();
+        _activeInHierarchyMemo.Clear();
     }
 
     /// <summary>
@@ -668,6 +670,11 @@ public class Scene
                 transform.Entity = entity;
             }
 
+            if (TryGetComponent(entity, out LabelComponent? label))
+            {
+                label.OwnerScene = this;
+            }
+
             if (TryGetComponent(entity, out RelationshipComponent? rel))
             {
                 rel.Parent = Remap(rel.Parent, remap);
@@ -768,7 +775,32 @@ public class Scene
 
     internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
 
+    // Memoized IsActiveInHierarchy results, keyed by entity id. An entity's active state (its
+    // LabelComponent.Enabled walked up the parent chain) is queried many times per frame — by every
+    // ViewActive and each RenderSystem pass — so it is cached and recomputed only when something that
+    // affects it changes: a component add/remove, a reparent, or an Enabled toggle, each of which calls
+    // InvalidateHierarchyActive.
+    private readonly Dictionary<int, bool> _activeInHierarchyMemo = new();
+
+    /// <summary>
+    /// Drops the cached hierarchy-active results so the next query recomputes. Called whenever something
+    /// that affects active state changes: an entity's Enabled flag, a reparent, or a component add/remove.
+    /// </summary>
+    internal void InvalidateHierarchyActive() => _activeInHierarchyMemo.Clear();
+
     internal bool IsActiveInHierarchy(int entityId)
+    {
+        if (_activeInHierarchyMemo.TryGetValue(entityId, out bool cached))
+        {
+            return cached;
+        }
+
+        bool active = ComputeActiveInHierarchy(entityId);
+        _activeInHierarchyMemo[entityId] = active;
+        return active;
+    }
+
+    private bool ComputeActiveInHierarchy(int entityId)
     {
         if (!_pools.TryGetValue(typeof(LabelComponent), out Dictionary<int, object>? labelPool)) return false;
         _pools.TryGetValue(typeof(RelationshipComponent), out Dictionary<int, object>? relPool);
@@ -803,10 +835,15 @@ public class Scene
         {
             transform.Entity = entity;
         }
+        else if (component is LabelComponent label)
+        {
+            label.OwnerScene = this;
+        }
 
         PoolFor(typeof(T))[entity.Id] = component;
         _viewCache.Clear();
         _viewCache2.Clear();
+        InvalidateHierarchyActive();
         return component;
     }
 
@@ -847,6 +884,7 @@ public class Scene
             pool.Remove(entity.Id);
             _viewCache.Clear();
             _viewCache2.Clear();
+            InvalidateHierarchyActive();
         }
     }
 
@@ -880,10 +918,15 @@ public class Scene
         {
             transform.Entity = entity;
         }
+        else if (component is LabelComponent label)
+        {
+            label.OwnerScene = this;
+        }
 
         PoolFor(component.GetType())[entity.Id] = component;
         _viewCache.Clear();
         _viewCache2.Clear();
+        InvalidateHierarchyActive();
         return component;
     }
 
@@ -894,6 +937,7 @@ public class Scene
             pool.Remove(entity.Id);
             _viewCache.Clear();
             _viewCache2.Clear();
+            InvalidateHierarchyActive();
         }
     }
 
