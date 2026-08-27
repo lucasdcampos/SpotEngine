@@ -1004,6 +1004,12 @@ public static class Renderer3D
     // redundant program bind. Reset each BeginScene; maintained only by the mesh-pass draw calls.
     private static Shader? s_lastMeshShader;
 
+    // Textures currently bound to the albedo (unit 0) and normal-map (unit 2) slots during the mesh pass,
+    // so consecutive draws that share a texture skip a redundant bind (texture binds are pricier than
+    // uniform sets). Reset each BeginScene; maintained only by the mesh-pass draw calls.
+    private static Texture2D? s_lastAlbedoTexture;
+    private static Texture2D? s_lastNormalTexture;
+
     /// <summary>
     /// Creates the shared shader and fallback texture. Called once by the application after the renderer is ready.
     /// </summary>
@@ -1035,6 +1041,8 @@ public static class Renderer3D
         // draw this scene), and clear the mesh-pass bind tracker.
         s_sceneStamp++;
         s_lastMeshShader = null;
+        s_lastAlbedoTexture = null;
+        s_lastNormalTexture = null;
 
         s_viewProjection = viewProjection;
         // Invert once per scene: the skybox, clouds and grid all need the inverse view-projection, and
@@ -1134,7 +1142,7 @@ public static class Renderer3D
             return;
         }
 
-        (texture ?? s_whiteTexture).Bind(0);
+        BindAlbedo(texture ?? s_whiteTexture);
 
         if (!ReferenceEquals(activeShader, s_lastMeshShader))
         {
@@ -1178,7 +1186,11 @@ public static class Renderer3D
 
             if (material?.NormalMap != null)
             {
-                material.NormalMap.Bind(2);
+                if (!ReferenceEquals(material.NormalMap, s_lastNormalTexture))
+                {
+                    material.NormalMap.Bind(2);
+                    s_lastNormalTexture = material.NormalMap;
+                }
                 activeShader.SetUniform("uNormalMap", 2);
                 activeShader.SetUniform("uHasNormalMap", 1);
             }
@@ -1227,7 +1239,7 @@ public static class Renderer3D
             return;
         }
 
-        (texture ?? s_whiteTexture).Bind(0);
+        BindAlbedo(texture ?? s_whiteTexture);
 
         if (!ReferenceEquals(activeShader, s_lastMeshShader))
         {
@@ -1251,7 +1263,11 @@ public static class Renderer3D
 
         if (material?.NormalMap != null)
         {
-            material.NormalMap.Bind(2);
+            if (!ReferenceEquals(material.NormalMap, s_lastNormalTexture))
+            {
+                material.NormalMap.Bind(2);
+                s_lastNormalTexture = material.NormalMap;
+            }
             activeShader.SetUniform("uNormalMap", 2);
             activeShader.SetUniform("uHasNormalMap", 1);
         }
@@ -1292,6 +1308,17 @@ public static class Renderer3D
 
         Spot.Core.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
         return bones[..MaxBones];
+    }
+
+    // Binds a texture to the albedo slot (unit 0) only when it differs from the one already bound this mesh
+    // pass, so consecutive draws that share a texture skip a redundant bind. Reset each BeginScene.
+    private static void BindAlbedo(Texture2D texture)
+    {
+        if (!ReferenceEquals(texture, s_lastAlbedoTexture))
+        {
+            texture.Bind(0);
+            s_lastAlbedoTexture = texture;
+        }
     }
 
     // Uploads the scene-constant uniforms (camera + all lights) to a lit shader once per scene. The

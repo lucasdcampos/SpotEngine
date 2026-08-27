@@ -27,6 +27,10 @@ captured with VSync off.
   switches), consecutive same-shader draws skip a redundant program bind, and the point-light uniform
   names are pre-built so lighting no longer allocates strings on the render path. Rendered output is
   unchanged.
+- **Redundant texture binds skipped in the 3D mesh pass** — consecutive draws that reuse the same albedo
+  texture or normal map now skip re-binding it (trackers reset each scene; texture binds cost more than
+  uniform sets). Output is unchanged; reordering draws by material to make these hits more frequent is
+  folded into the upcoming instancing work rather than risking transparent-draw order now.
 
 ### Added
 - **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,
