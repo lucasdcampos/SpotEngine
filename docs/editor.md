@@ -43,7 +43,10 @@ The editor is organized into dockable panels you can rearrange and save into a l
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
-  you import and organize assets.
+  you import and organize assets. Textures show their image, materials render a live sphere preview, and
+  3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
+  models apart at a glance without dropping them into a scene. Model thumbnails load in the background and
+  are cached per folder.
 - **Project settings** — project-wide configuration such as the start scene.
 
 ## The menu bar

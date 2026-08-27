@@ -11,6 +11,11 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Added
+- **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,
+  `.ply`, `.stl`) now render a live neutral-shaded preview auto-framed on the model's bounds, instead of a
+  generic cube glyph, so models are distinguishable at a glance without adding them to a scene. Previews
+  load in the background (non-blocking), are throttled and cached per folder, and fall back to the glyph
+  while loading or on error. `Mesh`/`Model` now expose local `Bounds`/`LocalBounds`.
 - **Animator Controllers (animation state machines)** — a new reusable `.sptcontroller` asset wires clips
   into a Unity-style state machine: states (each carrying its clip name and the file it comes from, so
   clips retarget by name across matching models), Float/Int/Bool/Trigger parameters, and transitions gated
