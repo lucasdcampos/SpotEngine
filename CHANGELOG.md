@@ -21,6 +21,12 @@ captured with VSync off.
   `FrameStats` records the real (unclamped) frame delta each frame; the editor viewport HUD now shows `ms`
   next to FPS, and a new `stats` command prints frame time / FPS / VSync state. See
   [Rendering](docs/rendering.md#measuring-performance).
+- **3D draw calls no longer re-upload scene-constant state per mesh** — the view-projection, camera
+  position, and all light/shadow uniforms are identical for every mesh in a frame, yet were re-sent on
+  every draw. They now upload once per shader per scene (GL keeps a program's uniforms across bind
+  switches), consecutive same-shader draws skip a redundant program bind, and the point-light uniform
+  names are pre-built so lighting no longer allocates strings on the render path. Rendered output is
+  unchanged.
 
 ### Added
 - **3D model thumbnails in the Asset Browser** — model assets (`.fbx`, `.obj`, `.gltf`, `.glb`, `.dae`,
