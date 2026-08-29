@@ -33,10 +33,6 @@ Spot is a 2D/3D game engine written in C# (.NET 10) on [Silk.NET](https://github
 14. [The Editor](editor.md) — the visual tool for building scenes
 15. [Projects & Building a Game](projects-and-building.md) — the project format and shipping a build
 
-**Samples**
-
-16. [The Sandbox Hub](sandbox-hub.md) — the showcase project, its menu hub, and the Horde Survival demo
-
 ## Quick start
 
 ```bash
