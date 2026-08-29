@@ -122,10 +122,11 @@ public sealed class AnimatorControllerPanel
             _pan += io.MouseDelta;
         }
 
-        // Transitions first so nodes render over them; collect edges for click selection afterwards.
-        DrawTransitions(dl, origin, palette);
-
         bool anyNodeHovered = false;
+
+        // Transitions first so nodes render over them; collect edges for click selection afterwards.
+        DrawTransitions(dl, origin, palette, ref anyNodeHovered);
+
         DrawAnchors(dl, origin, palette, ref anyNodeHovered);
         DrawStateNodes(dl, origin, palette, ref anyNodeHovered);
 
@@ -143,6 +144,27 @@ public sealed class AnimatorControllerPanel
             _selectedTransition = -1;
             _linkFromState = -1;
             _linkFromAny = false;
+        }
+
+        // Keyboard shortcuts
+        if (ImGui.IsWindowFocused() && ImGui.IsKeyPressed(ImGuiKey.Delete))
+        {
+            if (_selectedTransition >= 0 && _selectedTransition < _controller.Transitions.Count)
+            {
+                _controller.Transitions.RemoveAt(_selectedTransition);
+                _selectedTransition = -1;
+                _dirty = true;
+            }
+            else if (_selectedState >= 0 && _selectedState < _controller.States.Count)
+            {
+                AnimatorState state = _controller.States[_selectedState];
+                _controller.Transitions.RemoveAll(t =>
+                    string.Equals(t.From, state.Name, StringComparison.Ordinal) ||
+                    string.Equals(t.To, state.Name, StringComparison.Ordinal));
+                _controller.States.RemoveAt(_selectedState);
+                _selectedState = -1;
+                _dirty = true;
+            }
         }
 
         DrawCanvasContextMenu(origin);
@@ -272,13 +294,16 @@ public sealed class AnimatorControllerPanel
         AnimatorState? def = _controller.FindState(_controller.DefaultState);
         if (def is not null)
         {
-            DrawArrow(dl, entryScreen + anchorSize * 0.5f, Center(origin, StatePos(def)),
+            Vector2 defSize = new Vector2(NodeWidth, NodeHeight) * _zoom;
+            DrawArrow(dl, entryScreen + anchorSize * 0.5f, anchorSize, Center(origin, StatePos(def)), defSize,
                 ImGui.GetColorU32(new Vector4(0.40f, 0.85f, 0.45f, 0.9f)));
         }
     }
 
-    private void DrawTransitions(ImDrawListPtr dl, Vector2 origin, EditorPalette palette)
+    private void DrawTransitions(ImDrawListPtr dl, Vector2 origin, EditorPalette palette, ref bool anyHovered)
     {
+        Vector2 anySize = new Vector2(NodeWidth, NodeHeight * 0.7f) * _zoom;
+        Vector2 nodeSize = new Vector2(NodeWidth, NodeHeight) * _zoom;
         Vector2 anyCenter = origin + _pan + (_anyPos + new Vector2(NodeWidth, NodeHeight * 0.7f) * 0.5f) * _zoom;
 
         for (int i = 0; i < _controller.Transitions.Count; i++)
@@ -291,15 +316,34 @@ public sealed class AnimatorControllerPanel
             }
 
             Vector2 from = transition.FromAnyState ? anyCenter : StateCenterOrDefault(origin, transition.From);
+            Vector2 fromSize = transition.FromAnyState ? anySize : nodeSize;
             Vector2 target = Center(origin, StatePos(to));
+
+            bool hasReverse = !transition.FromAnyState && _controller.Transitions.Any(t =>
+                !t.FromAnyState && string.Equals(t.From, transition.To, StringComparison.Ordinal) && string.Equals(t.To, transition.From, StringComparison.Ordinal));
+
+            if (hasReverse)
+            {
+                Vector2 dir = target - from;
+                if (dir.LengthSquared() > 1e-3f)
+                {
+                    dir = Vector2.Normalize(dir);
+                    Vector2 right = new Vector2(-dir.Y, dir.X);
+                    float offset = 8.0f * _zoom;
+                    from += right * offset;
+                    target += right * offset;
+                }
+            }
+
             uint color = ImGui.GetColorU32(_selectedTransition == i ? palette.Accent : new Vector4(0.7f, 0.7f, 0.75f, 0.9f));
-            DrawArrow(dl, from, target, color);
+            DrawArrow(dl, from, fromSize, target, nodeSize, color);
 
             // A small clickable knob at the midpoint selects (or, via its menu, deletes) the transition.
             Vector2 mid = (from + target) * 0.5f;
             ImGui.PushID(1000 + i);
             ImGui.SetCursorScreenPos(mid - new Vector2(7.0f, 7.0f));
             ImGui.InvisibleButton("edge", new Vector2(14.0f, 14.0f));
+            anyHovered |= ImGui.IsItemHovered();
             if (ImGui.IsItemActivated())
             {
                 _selectedTransition = i;
@@ -813,8 +857,11 @@ public sealed class AnimatorControllerPanel
         return state is not null ? Center(origin, StatePos(state)) : origin;
     }
 
-    private static void DrawArrow(ImDrawListPtr dl, Vector2 from, Vector2 to, uint color)
+    private static void DrawArrow(ImDrawListPtr dl, Vector2 fromCenter, Vector2 fromSize, Vector2 toCenter, Vector2 toSize, uint color)
     {
+        Vector2 from = GetBoundaryPoint(fromCenter, fromSize, toCenter);
+        Vector2 to = GetBoundaryPoint(toCenter, toSize, fromCenter);
+
         dl.AddLine(from, to, color, 2.0f);
 
         Vector2 dir = to - from;
@@ -826,9 +873,25 @@ public sealed class AnimatorControllerPanel
 
         dir /= len;
         Vector2 normal = new Vector2(-dir.Y, dir.X);
-        Vector2 tip = to - dir * (NodeHeight * 0.5f);
+        Vector2 tip = to;
         const float s = 8.0f;
         dl.AddTriangleFilled(tip, tip - dir * s + normal * s * 0.6f, tip - dir * s - normal * s * 0.6f, color);
+    }
+
+    private static Vector2 GetBoundaryPoint(Vector2 center, Vector2 size, Vector2 targetCenter)
+    {
+        Vector2 dir = targetCenter - center;
+        if (dir.LengthSquared() < 1e-6f)
+        {
+            return center;
+        }
+
+        Vector2 halfSize = size * 0.5f;
+        float tx = dir.X != 0 ? halfSize.X / MathF.Abs(dir.X) : float.MaxValue;
+        float ty = dir.Y != 0 ? halfSize.Y / MathF.Abs(dir.Y) : float.MaxValue;
+
+        float t = MathF.Min(tx, ty);
+        return center + dir * t;
     }
 
     private static void CenteredText(ImDrawListPtr dl, Vector2 pos, Vector2 boxSize, string text, Vector4 color)
