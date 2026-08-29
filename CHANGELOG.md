@@ -20,6 +20,7 @@ will be finalized when 0.2 is tagged.
 - Editor per-frame overhead cut
 
 ### Added
+- Added Delete key shortcut to remove states and transitions in the Animator Controller editor
 - 3D model thumbnails in the Asset Browser
 - Animator Controllers (animation state machines)
 - Simplified `AnimatorComponent`
@@ -44,6 +45,8 @@ will be finalized when 0.2 is tagged.
 - Application Startup factory method initialization
 
 ### Fixed
+- Fixed transition selection not working in the Animator Controller editor
+- Fixed bidirectional transitions overlapping into a single line in the Animator Controller editor
 - Blank window until resize
 
 ## [v0.1.0] - 2026-08-12

@@ -30,6 +30,7 @@ dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/buil
 
 - **Never crash the engine.** Bad input, a throwing script, a broken scene, or a faulty panel must log and continue, never take the process down. Preserve the existing safety nets (`Application.Run` frame try/catch, `ScriptSystem` script quarantine, loaders that catch and log).
 - **Warnings are errors** in `Spot.Engine`, `Spot.DebugUI`, `Sandbox`, and `Spot.Build` (`TreatWarningsAsErrors`). New code there must be warning-clean. Nullable reference types and `ImplicitUsings` are on everywhere.
+- **Always prioritize UX and Keyboard Shortcuts.** When implementing new editor features or panels, consider the user experience: ensure common actions (like deleting, navigating, or undo/redo where applicable) have intuitive keyboard shortcuts and that visual feedback is clear.
 - **Before marking a task complete**, always build (`dotnet build SpotEngine.slnx`) and run the tests (`dotnet test SpotEngine.slnx`), and confirm both pass.
 - **Always update the docs** under `docs/` when you change behavior, add features, or alter architecture.
 - **Always update `CHANGELOG.md`** when you make significant changes. Keep it concise: one line per change, focusing only on what was added/changed/fixed, not how.
