@@ -4,43 +4,214 @@
       "Name": "Speed",
       "Type": "Float",
       "DefaultValue": 0
+    },
+    {
+      "Name": "Jump",
+      "Type": "Trigger",
+      "DefaultValue": 0
+    },
+    {
+      "Name": "Aiming",
+      "Type": "Bool",
+      "DefaultValue": 0
     }
   ],
   "States": [
     {
-      "Name": "Idle",
-      "Clip": "idle",
-      "ClipSource": "guid:859f7f7d3714439db676d83552e0213a",
+      "Name": "Standing Unarmed Idle",
+      "Clip": "human_standing_unarmed_idle",
+      "ClipSource": "guid:76d5f0d1cecd46fba6de6f5bf2d1bc20",
       "Speed": 1,
       "Loop": true,
-      "EditorX": 339.80212,
-      "EditorY": 4.0809155
+      "EditorX": 401.13297,
+      "EditorY": -23.883831
     },
     {
-      "Name": "Walking",
-      "Clip": "dance",
-      "ClipSource": "guid:c28544976e3f47928564b6b2844bd11c",
+      "Name": "Standing Unarmed Walking",
+      "Clip": "human_standing_unarmed_walking",
+      "ClipSource": "guid:896c58b6803f4a12af04945ed3bacd63",
       "Speed": 1,
       "Loop": true,
-      "EditorX": 304.1432,
-      "EditorY": 158.75017
+      "EditorX": 376.90573,
+      "EditorY": 177.24922
+    },
+    {
+      "Name": "Standing Unarmed Running",
+      "Clip": "human_standing_unarmed_running",
+      "ClipSource": "guid:1871887d9298480c8fd6b3ba88157778",
+      "Speed": 1,
+      "Loop": true,
+      "EditorX": 547.44086,
+      "EditorY": 287.86365
+    },
+    {
+      "Name": "Run Jump",
+      "Clip": "human_running_to_jumping",
+      "ClipSource": "guid:bc85c879ebe44b91b04b00a5c2310f61",
+      "Speed": 1,
+      "Loop": false,
+      "EditorX": 678.3324,
+      "EditorY": 131.33334
+    },
+    {
+      "Name": "Pistol Aim",
+      "Clip": "human_standing_pistol_aiming",
+      "ClipSource": "guid:8b45bfc6a1b74e269ad30896b3e0e05f",
+      "Speed": 1,
+      "Loop": true,
+      "EditorX": 62.49997,
+      "EditorY": 224.6661
     }
   ],
   "Transitions": [
     {
-      "From": "Idle",
+      "From": "Standing Unarmed Idle",
       "FromAnyState": false,
-      "To": "Walking",
-      "HasExitTime": true,
+      "To": "Pistol Aim",
+      "HasExitTime": false,
       "ExitTime": 1,
       "Conditions": [
         {
-          "Parameter": "",
+          "Parameter": "Aiming",
           "Mode": "Greater",
-          "Threshold": 0.1
+          "Threshold": 0.5
         }
       ]
+    },
+    {
+      "From": "Standing Unarmed Walking",
+      "FromAnyState": false,
+      "To": "Pistol Aim",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Aiming",
+          "Mode": "Greater",
+          "Threshold": 0.5
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Running",
+      "FromAnyState": false,
+      "To": "Pistol Aim",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Aiming",
+          "Mode": "Greater",
+          "Threshold": 0.5
+        }
+      ]
+    },
+    {
+      "From": "Pistol Aim",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Idle",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Aiming",
+          "Mode": "Less",
+          "Threshold": 0.5
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Idle",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Walking",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Speed",
+          "Mode": "Greater",
+          "Threshold": 0.01
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Walking",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Idle",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Speed",
+          "Mode": "Less",
+          "Threshold": 0.01
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Walking",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Running",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Speed",
+          "Mode": "Greater",
+          "Threshold": 4.5
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Running",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Idle",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Speed",
+          "Mode": "Less",
+          "Threshold": 0.01
+        }
+      ]
+    },
+    {
+      "From": "Standing Unarmed Running",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Walking",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Speed",
+          "Mode": "Less",
+          "Threshold": 4.5
+        }
+      ]
+    },
+    {
+      "From": "",
+      "FromAnyState": true,
+      "To": "Run Jump",
+      "HasExitTime": false,
+      "ExitTime": 1,
+      "Conditions": [
+        {
+          "Parameter": "Jump",
+          "Mode": "Greater",
+          "Threshold": 0.5
+        }
+      ]
+    },
+    {
+      "From": "Run Jump",
+      "FromAnyState": false,
+      "To": "Standing Unarmed Idle",
+      "HasExitTime": true,
+      "ExitTime": 0.85,
+      "Conditions": []
     }
   ],
-  "DefaultState": "Idle"
+  "DefaultState": "Standing Unarmed Idle"
 }

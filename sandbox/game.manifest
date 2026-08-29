@@ -12,7 +12,7 @@
   "AssetDirectory": null,
   "ContentDirectory": "Content",
   "ManifestPath": "manifest.json",
-  "StartScene": "Scenes/MainMenu.sptscene",
+  "StartScene": "Scenes/ThirdPerson.sptscene",
   "DefaultBindings": {},
   "AssetRoot": "Content"
 }

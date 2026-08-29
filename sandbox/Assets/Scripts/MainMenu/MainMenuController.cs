@@ -27,6 +27,7 @@ public sealed class MainMenuController : EntityBehaviour
 
     private static readonly (string Label, string Scene)[] TestScenes =
     {
+        ("Third Person", "Scenes/ThirdPerson.sptscene"),
         ("Physics Test", "Scenes/PhysicsTest.sptscene"),
         ("Main", "Scenes/Main.sptscene"),
         ("New Scene", "Scenes/NewScene.sptscene"),
