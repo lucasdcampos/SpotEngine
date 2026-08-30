@@ -25,6 +25,11 @@ public class WindowSpec
     /// Gets or sets the window height in pixels.
     /// </summary>
     public int Height { get; set; } = 720;
+
+    /// <summary>
+    /// Gets or sets the path to the window icon.
+    /// </summary>
+    public string? IconPath { get; set; }
 }
 
 /// <summary>
@@ -64,6 +69,21 @@ public sealed class Window : IDisposable
 
         _window = SilkWindow.Create(options);
         _window.Initialize();
+
+        if (!string.IsNullOrEmpty(spec.IconPath) && System.IO.File.Exists(spec.IconPath))
+        {
+            try
+            {
+                using var stream = System.IO.File.OpenRead(spec.IconPath);
+                var image = StbImageSharp.ImageResult.FromStream(stream, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
+                var rawImage = new Silk.NET.Core.RawImage(image.Width, image.Height, image.Data);
+                _window.SetWindowIcon(ref rawImage);
+            }
+            catch (Exception ex)
+            {
+                Log.CoreWarn("Failed to load window icon '{0}': {1}", spec.IconPath, ex.Message);
+            }
+        }
 
         // Center the window on the primary monitor by default. Hosts that manage their own window
         // placement (e.g. the editor restoring a saved layout) re-apply their position afterwards.
