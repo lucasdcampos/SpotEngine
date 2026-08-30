@@ -350,7 +350,33 @@ internal static class ComponentInspector
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
     {
         [typeof(ScriptComponent)] = DrawScriptComponent,
+        [typeof(UICanvasComponent)] = DrawUICanvasComponent,
     };
+
+    private static readonly string[] UIDocumentPatterns = { "*.sptui" };
+
+    private static void DrawUICanvasComponent(Entity entity, object component)
+    {
+        var canvas = (UICanvasComponent)component;
+
+        bool enabled = canvas.Enabled;
+        if (EditorGui.Checkbox("Enabled", ref enabled))
+            canvas.Enabled = enabled;
+
+        string? display = AssetDatabase.ToDisplayPath(canvas.DocumentRef);
+        if (EditorGui.AssetSlot("Document", "UI_FILE", UIDocumentPatterns, display, out string? newPath))
+            canvas.DocumentRef = AssetDatabase.ToGuidRef(newPath);
+
+        if (!string.IsNullOrEmpty(canvas.DocumentRef))
+        {
+            if (ImGui.Button("Edit UI", new Vector2(-1.0f, 0.0f)))
+            {
+                string? source = AssetDatabase.ToDisplayPath(canvas.DocumentRef);
+                if (!string.IsNullOrEmpty(source))
+                    WidgetInspector.OpenDocumentRequested?.Invoke(source);
+            }
+        }
+    }
 
     private static void DrawTextureSlot(Entity entity, object component, PropertyMeta meta)
     {

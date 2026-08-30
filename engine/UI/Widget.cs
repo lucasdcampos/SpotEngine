@@ -21,6 +21,13 @@ public abstract class Widget
 {
     private readonly List<Widget> _children = new();
 
+    /// <summary>
+    /// An optional name identifying this widget, used by the editor hierarchy and by code to look the widget
+    /// up after a document is instantiated (see <see cref="Find{T}(string)"/>). Names need not be unique, but
+    /// lookup returns the first match in draw order.
+    /// </summary>
+    public string Name = "";
+
     /// <summary>Where this widget sits inside its parent.</summary>
     public UIRect Rect = UIRect.Default;
 
@@ -101,6 +108,42 @@ public abstract class Widget
     /// <summary>Creates a <see cref="Toggle"/> child with the given label and returns it.</summary>
     /// <param name="label">The toggle label.</param>
     public Toggle Toggle(string label) => Add(new Toggle { Label = label });
+
+    /// <summary>
+    /// Finds the first descendant (or this widget) with the given <see cref="Name"/>, searching depth-first in
+    /// draw order. Returns <see langword="null"/> when none matches. Use this to wire behaviour to
+    /// editor-authored UI, e.g. <c>Scene.UI.Find&lt;Button&gt;("Play")?.OnClick += Handler;</c>.
+    /// </summary>
+    /// <param name="name">The widget name to look for.</param>
+    public Widget? Find(string name)
+    {
+        if (Name == name) return this;
+        foreach (Widget child in _children)
+        {
+            Widget? hit = child.Find(name);
+            if (hit is not null) return hit;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the first descendant (or this widget) of type <typeparamref name="T"/> with the given
+    /// <see cref="Name"/>, searching depth-first in draw order. Returns <see langword="null"/> when none matches.
+    /// </summary>
+    /// <typeparam name="T">The widget type to match.</typeparam>
+    /// <param name="name">The widget name to look for.</param>
+    public T? Find<T>(string name) where T : Widget
+    {
+        if (this is T self && Name == name) return self;
+        foreach (Widget child in _children)
+        {
+            T? hit = child.Find<T>(name);
+            if (hit is not null) return hit;
+        }
+
+        return null;
+    }
 
     /// <summary>Draws the widget's own visuals. Children are drawn afterward by the tree.</summary>
     protected virtual void OnDraw()

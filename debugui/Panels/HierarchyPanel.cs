@@ -34,11 +34,20 @@ public class HierarchyPanel
         _context = context;
     }
 
+    /// <summary>Draws the entity tree as its own window (used by the runtime debug overlay).</summary>
     public void OnImGuiRender(ref bool open)
     {
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
-        ImGui.Begin("Scene", ref open, flags);
+        ImGui.Begin("Hierarchy", ref open, ImGuiWindowFlags.NoCollapse);
+        DrawContents();
+        ImGui.End();
+    }
 
+    /// <summary>
+    /// Draws the entity tree into the current window. The editor hosts it inside a shared "Hierarchy" panel
+    /// that switches between this and the UI widget tree, so this draws no window of its own.
+    /// </summary>
+    public void DrawContents()
+    {
         // Deeper child indentation and a little extra row spacing make the nesting readable at a glance
         // without changing any behavior.
         var style = ImGui.GetStyle();
@@ -154,7 +163,6 @@ public class HierarchyPanel
         }
 
         ImGui.PopStyleVar(2);
-        ImGui.End();
     }
 
     /// <summary>Creates an empty entity, selects it, and returns it.</summary>

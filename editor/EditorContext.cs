@@ -1,5 +1,6 @@
 using Spot.Scenes;
 using Spot.DebugUI;
+using Spot.UI;
 
 namespace Spot.Editor;
 
@@ -10,8 +11,8 @@ public class EditorContext : ISelectionContext
     private Entity? _selection;
 
     /// <summary>
-    /// The currently selected entity. Selecting an entity clears any selected asset, so the Inspector
-    /// shows one or the other, never both.
+    /// The currently selected entity. Selecting an entity clears any selected asset and UI widget, so the
+    /// Inspector shows one thing at a time.
     /// </summary>
     public Entity? Selection
     {
@@ -22,6 +23,7 @@ public class EditorContext : ISelectionContext
             if (value != null)
             {
                 SelectedAssetPath = null;
+                SelectedWidget = null;
             }
         }
     }
@@ -31,4 +33,30 @@ public class EditorContext : ISelectionContext
     /// Set this to inspect an asset; setting <see cref="Selection"/> to an entity clears it.
     /// </summary>
     public string? SelectedAssetPath { get; set; }
+
+    /// <inheritdoc />
+    public HierarchyTarget HierarchyTarget { get; set; } = HierarchyTarget.Scene;
+
+    /// <inheritdoc />
+    public UIRoot? EditingDocument { get; set; }
+
+    /// <inheritdoc />
+    public string? EditingDocumentPath { get; set; }
+
+    private Widget? _selectedWidget;
+
+    /// <inheritdoc />
+    public Widget? SelectedWidget
+    {
+        get => _selectedWidget;
+        set
+        {
+            _selectedWidget = value;
+            if (value != null)
+            {
+                _selection = null;
+                SelectedAssetPath = null;
+            }
+        }
+    }
 }

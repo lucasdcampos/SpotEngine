@@ -1,9 +1,16 @@
 # Runtime UI
 
 Spot has a **runtime UI** for building a game's own HUDs, menus and end screens — separate from the
-editor's authoring UI, so the interface you build ships with the game. It is a **code-only, retained**
-tree: scripts create widgets and keep them, the engine lays them out, routes pointer input and draws them
-every frame. There is no UI authoring or serialization in the editor in this version.
+editor's authoring UI, so the interface you build ships with the game. It is a **retained** tree: widgets
+are created and kept, the engine lays them out, routes pointer input and draws them every frame.
+
+You can build a UI two ways, and mix them freely:
+
+- **In the editor** — author a **UI document** (`.sptui` asset) visually on a screen-space canvas, adding
+  panels, buttons, text and images just like entities in a scene. See *Authoring in the editor* below.
+- **In code** — reach a scene's UI root from a script's `UI` accessor and add widgets directly.
+
+Both operate on the *same* widget tree, so editor-authored UI and code drive the identical types.
 
 ## The tree
 
@@ -42,6 +49,40 @@ The built-in widgets cover the common cases:
 Panels, images and buttons can draw their background as a **nine-slice**: with a border set, the sprite's
 corners stay fixed while its edges and center stretch, so a single rounded-rect or framed sprite scales to
 any size without distorting its border.
+
+## Authoring in the editor
+
+A **UI document** is a `.sptui` asset — a saved widget tree with its scale settings. Create one from the
+Asset Browser (*New UI Document*) and double-click it to open the authoring panels:
+
+- **UI Canvas** — a screen-space surface, distinct from the 3D scene viewport, that renders the document
+  with the real UI renderer (so it is WYSIWYG). Click a widget to select it; drag its body to move it and
+  its handles to resize. Layout aids make assembly quick: a toggleable pixel **grid with snapping**,
+  **smart alignment guides** that snap a widget's edges and center to its siblings and container (with pink
+  guide lines), a live **size readout** while dragging, and **arrow-key nudging** (Shift nudges by one grid
+  step). Hold **Alt** while dragging to bypass snapping. It is the UI analog of the scene viewport.
+- **Hierarchy** — the same panel as the scene hierarchy, which shows the widget tree while you're working in
+  the UI Canvas (and the scene's entities when you click back into a scene viewport): add widgets
+  (Panel/Button/Text/Image/Slider/Toggle), delete, rename, duplicate (`Ctrl+D`), and drag-drop to reparent,
+  mirroring the scene hierarchy's shortcuts.
+- **Inspector** — the selected widget's properties: its anchored rectangle, colors, text, font and sprite
+  slots. Editing is immediate on the canvas. Press `Ctrl+S` to save the document.
+
+To show a document in a scene, add a **UI Canvas** component to an entity and point its *Document* slot at
+the `.sptui` (or drag the asset onto the slot). When play mode starts, the document's widgets are
+instantiated into the scene's UI. Give a widget a **name** in the inspector and reach it from a script by
+that name to wire up behaviour:
+
+```csharp
+protected override void OnStart()
+{
+    UI.Find<Button>("Play")!.OnClick += () => SceneManager.Load("Level1");
+    UI.Find<Toggle>("Mute")!.OnValueChanged += on => AudioManager.Muted = on;
+}
+```
+
+Editor-authored documents store appearance and layout; **behaviour is wired in code** by looking widgets up
+by name, so designers lay out the screen and scripts give it life.
 
 ## Input
 

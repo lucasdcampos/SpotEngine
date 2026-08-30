@@ -53,6 +53,10 @@ public class InspectorPanel : IDisposable
         {
             DrawPrefabEditor(_context.SelectedAssetPath);
         }
+        else if (_context.SelectedWidget != null)
+        {
+            WidgetInspector.Draw(_context.SelectedWidget);
+        }
         else if (_context.Selection != null)
         {
             Entity entity = _context.Selection.Value;

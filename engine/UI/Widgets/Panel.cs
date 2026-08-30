@@ -16,6 +16,12 @@ public class Panel : Widget
     /// <summary>An optional background sprite. When null the panel is a solid <see cref="Color"/> rectangle.</summary>
     public Texture2D? Sprite;
 
+    /// <summary>
+    /// The stored reference (source path or <c>guid:</c>) for <see cref="Sprite"/>, used to serialize the panel
+    /// in a <c>.sptui</c> document and re-load it. Set by the editor and the loader.
+    /// </summary>
+    public string SpriteRef = "";
+
     /// <summary>The nine-slice border as <c>(left, top, right, bottom)</c> in texels; zero stretches the whole sprite.</summary>
     public Vector4 Border;
 

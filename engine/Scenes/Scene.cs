@@ -53,6 +53,7 @@ public class Scene
     /// </summary>
     public Scene()
     {
+        Systems.Add(new DelegateSystem(SystemOrder.UICanvas, UICanvasSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
         Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
