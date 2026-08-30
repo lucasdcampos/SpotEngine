@@ -1416,7 +1416,9 @@ public class EditorScene : Scene
                     var processInfo = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = exePath,
-                        WorkingDirectory = Spot.Core.Project.Active.ProjectDirectory,
+                        // Run from the build output (Build/play): the cooked Content/ and game.manifest live
+                        // there, staged next to the exe, so nothing needs to sit in the project root.
+                        WorkingDirectory = result.OutputDir,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,

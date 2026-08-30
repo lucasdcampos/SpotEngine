@@ -41,36 +41,27 @@ public static class ProjectRunner
         ProjectGenerator.Generate(project);
 
         // The generated game loads cooked Content/, not source assets, so cook before launching — this is
-        // what makes `spot run` behave like a real build rather than only working inside the editor.
-        string contentRoot = Path.Combine(project.ProjectDirectory, ProjectStructure.ContentFolder);
-        try
+        // what makes `spot run` behave like a real build rather than only working inside the editor. Cook into
+        // a dedicated Build/run folder (with game.manifest beside it) and run from there, so the project root
+        // stays clean and only Build/ is produced.
+        string runDir = Path.Combine(project.ProjectDirectory, ProjectStructure.BuildFolder, "run");
+        if (!ProjectBuilder.StageRuntimePayload(project, runDir, onOutput, onError))
         {
-            onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(assetDir, contentRoot);
-            if (cook.Failed > 0)
-            {
-                // A single bad asset shouldn't stop a test run, but make the gap loud.
-                onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; those entries are missing. See the log for details.");
-            }
-            onOutput?.Invoke($"Cooked {cook.Cooked} asset(s).");
-        }
-        catch (Exception ex)
-        {
-            onError?.Invoke($"Asset cook failed: {ex.Message}");
             return -1;
         }
 
-        string csprojFile = project.Config.Name + ".csproj";
+        // Absolute so the project resolves regardless of the working directory we run the game from.
+        string csprojFile = Path.Combine(project.ProjectDirectory, project.Config.Name + ".csproj");
         string config = release ? "Release" : "Debug";
 
-        // WorkingDirectory is the project folder so the launched game's current directory matches, letting
-        // the engine find Content/manifest.json exactly where the cook wrote it. The child inherits our
+        // WorkingDirectory is Build/run so the launched game's current directory holds the cooked
+        // Content/manifest.json and game.manifest exactly as a shipped build would. The child inherits our
         // console (no redirection) so game logs stream straight through, like `dotnet run` would.
         var processInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = $"run --project \"{csprojFile}\" -c {config}",
-            WorkingDirectory = project.ProjectDirectory,
+            WorkingDirectory = runDir,
             UseShellExecute = false,
         };
 
@@ -110,7 +101,9 @@ public static class ProjectRunner
         }
 
         string assetDir = project.GetAssetDirectory();
-        string contentRoot = Path.Combine(project.ProjectDirectory, ProjectStructure.ContentFolder);
+        // Cook into a Build/ staging folder (not the project root) and copy it into wwwroot below.
+        string contentRoot = Path.Combine(project.ProjectDirectory,
+            ProjectStructure.BuildFolder, ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");

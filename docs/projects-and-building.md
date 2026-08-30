@@ -40,6 +40,21 @@ Producing a distributable build generally follows these steps:
    engine, cook content, and produce the final self-contained application into the project's build
    folder. The output is a folder you can zip up and hand to a player.
 
+### Where build artifacts go
+
+Everything a build or a Play/Run produces lands under **`Build/`** — the project root stays clean:
+
+- **`Play`** (in the editor) publishes a fast Debug build to `Build/play`, cooks the assets into
+  `Build/play/Content`, writes `game.manifest` beside the game, and launches it from that folder.
+- **`spot run`** cooks into `Build/run` and runs the game from there.
+- **`spot build <platform>`** publishes the self-contained app into `Build/<platform>` with its
+  `Content/` and `game.manifest` alongside.
+
+The cooked `Content/` and the `game.manifest` are **generated build outputs**, not source you edit or
+commit — they live only inside `Build/`, never at the project root. `game.manifest` is rewritten on
+every build/run from the `.sptproj` config, so changing the start scene in Project Settings takes
+effect on the next Play with no manual cleanup.
+
 ## Using the `spot` CLI
 
 The CLI exposes these operations. At a high level:

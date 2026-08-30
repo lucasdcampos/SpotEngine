@@ -62,28 +62,9 @@ public static class ProjectBuilder
         }
 
         // Keep the .csproj and bundled engine DLL in sync with the current engine before publishing.
+        // Content and game.manifest are staged into the publish output *after* it succeeds (see below), so
+        // the project root stays clean — a build leaves only Build/ behind.
         ProjectGenerator.Generate(project);
-
-        // Cook source assets into Content/ so the published build ships only engine-native artifacts.
-        // The generated .csproj copies Content/ (not Assets/) to the output.
-        string contentRoot = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
-        try
-        {
-            onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
-            if (cook.Failed > 0)
-            {
-                // Don't abort the build (a single bad asset shouldn't block Play), but make the gap loud:
-                // the shipped content is missing these entries and will fail to load at runtime.
-                onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; the build is missing those entries. See the log for details.");
-            }
-            onOutput?.Invoke($"Cooked {cook.Cooked} asset(s) -> {cook.ManifestPath}");
-        }
-        catch (Exception ex)
-        {
-            onError?.Invoke($"Asset cook failed: {ex.Message}");
-            return new BuildResult(false, -1, contentRoot);
-        }
 
         string rid = RuntimeIdentifier(platform);
 
@@ -127,7 +108,19 @@ public static class ProjectBuilder
             process.BeginErrorReadLine();
             process.WaitForExit();
 
-            return new BuildResult(process.ExitCode == 0, process.ExitCode, outputDir);
+            if (process.ExitCode != 0)
+            {
+                return new BuildResult(false, process.ExitCode, outputDir);
+            }
+
+            // Publish succeeded: cook the assets straight into the output's Content/ and write game.manifest
+            // beside the game, so it runs from its own folder without anything at the project root.
+            if (!StageRuntimePayload(project, outputDir, onOutput, onError))
+            {
+                return new BuildResult(false, -1, outputDir);
+            }
+
+            return new BuildResult(true, 0, outputDir);
         }
         catch (Exception ex)
         {
@@ -136,12 +129,46 @@ public static class ProjectBuilder
         }
     }
 
+    /// <summary>
+    /// Cooks the project's source assets into <c>&lt;outputDir&gt;/Content</c> and writes <c>game.manifest</c>
+    /// into <paramref name="outputDir"/>, producing the runtime payload the published/launched game loads from
+    /// its working directory. Kept out of the project root so a build or run leaves only <c>Build/</c> behind.
+    /// Returns false (after reporting) when the cook throws.
+    /// </summary>
+    internal static bool StageRuntimePayload(Project project, string outputDir,
+                                             Action<string>? onOutput, Action<string>? onError)
+    {
+        string contentRoot = Path.Combine(outputDir, Spot.Core.ProjectStructure.ContentFolder);
+        try
+        {
+            onOutput?.Invoke("Cooking assets...");
+            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            if (cook.Failed > 0)
+            {
+                // Don't abort (a single bad asset shouldn't block Play), but make the gap loud: the payload is
+                // missing these entries and they will fail to load at runtime.
+                onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; those entries are missing. See the log for details.");
+            }
+            onOutput?.Invoke($"Cooked {cook.Cooked} asset(s) -> {cook.ManifestPath}");
+
+            ProjectGenerator.WriteManifest(project, outputDir);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            onError?.Invoke($"Asset cook failed: {ex.Message}");
+            return false;
+        }
+    }
+
     // Cooks assets, generates the WebAssembly project, stages cooked content into its wwwroot with a preload
     // index, then publishes it. The published wwwroot is a static site: serve it with any host that returns
     // application/wasm for .wasm (the `dotnet serve`/`dotnet run` dev server does).
     private static BuildResult BuildBrowser(Project project, Action<string>? onOutput, Action<string>? onError)
     {
-        string contentRoot = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
+        // Cook into a Build/ staging folder (not the project root) and copy it into wwwroot below.
+        string contentRoot = Path.Combine(project.ProjectDirectory,
+            Spot.Core.ProjectStructure.BuildFolder, Spot.Core.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
