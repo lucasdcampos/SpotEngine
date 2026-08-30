@@ -45,6 +45,8 @@ will be finalized when 0.2 is tagged.
 - Application Startup factory method initialization
 
 ### Fixed
+- Play/Run no longer litter the project root: cooked `Content/` and `game.manifest` are staged into `Build/` beside the game
+- Project Settings start-scene change now takes effect on the next Play (manifest is always regenerated)
 - Fixed transition selection not working in the Animator Controller editor
 - Fixed bidirectional transitions overlapping into a single line in the Animator Controller editor
 - Blank window until resize

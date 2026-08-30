@@ -24,7 +24,6 @@ public static class ProjectGenerator
         CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.EngineBinFolder));
         WriteCsproj(project);
         WriteSolution(project);
-        WriteManifest(project, overwriteProgram);
         WriteProgram(project, overwriteProgram);
     }
 
@@ -333,12 +332,9 @@ System.Console.WriteLine(""Spot browser runtime started."");
     <AdditionalFiles Include=""Assets\**\*.cs.meta"" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
-    <None Remove=""Content\**"" />
-    <Content Include=""Content\**\*.*"" CopyToOutputDirectory=""PreserveNewest"" />
-    <Content Include=""game.manifest"" CopyToOutputDirectory=""PreserveNewest"" />
-  </ItemGroup>
+  <!-- Cooked content and game.manifest are NOT copied by the build: the pipeline (ProjectBuilder/ProjectRunner)
+       cooks source Assets straight into the publish/run output's Content\ and writes game.manifest beside the
+       game after publishing. This keeps the project root clean — a build leaves only Build\ behind. -->
 </Project>";
 
         File.WriteAllText(csprojPath, csprojContent);
@@ -374,10 +370,17 @@ EndGlobal
         File.WriteAllText(Path.Combine(project.ProjectDirectory, name + ".sln"), slnContent);
     }
 
-    private static void WriteManifest(Project project, bool overwriteManifest)
+    /// <summary>
+    /// Writes <c>game.manifest</c> (the runtime <see cref="ApplicationSpec"/>) into <paramref name="outputDir"/>,
+    /// beside the published game. Always overwritten: it is a generated build artifact derived from the project
+    /// config, so a changed start scene or name is reflected immediately (unlike Program.cs, there is no user
+    /// content to preserve). The build/run pipeline calls this after publishing so the file lands next to the
+    /// game rather than polluting the project root.
+    /// </summary>
+    public static void WriteManifest(Project project, string outputDir)
     {
-        string manifestPath = Path.Combine(project.ProjectDirectory, "game.manifest");
-        if (!overwriteManifest && File.Exists(manifestPath)) return;
+        Directory.CreateDirectory(outputDir);
+        string manifestPath = Path.Combine(outputDir, "game.manifest");
 
         var spec = new ApplicationSpec
         {
