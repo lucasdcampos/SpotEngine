@@ -12,6 +12,13 @@ public class Image : Widget
     /// <summary>The texture to display. When null the widget is a solid <see cref="Color"/> rectangle.</summary>
     public Texture2D? Texture;
 
+    /// <summary>
+    /// The stored reference (source path or <c>guid:</c>) for <see cref="Texture"/>, used to serialize the
+    /// image in a <c>.sptui</c> document and re-load it. Set by the editor and the loader; code that assigns
+    /// <see cref="Texture"/> directly can leave it empty.
+    /// </summary>
+    public string TextureRef = "";
+
     /// <summary>The tint multiplied with the texture, or the fill color when there is no texture.</summary>
     public Vector4 Color = Vector4.One;
 

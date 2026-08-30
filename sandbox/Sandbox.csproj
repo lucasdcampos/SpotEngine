@@ -57,10 +57,7 @@
     <AdditionalFiles Include="Assets\**\*.cs.meta" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
-    <None Remove="Content\**" />
-    <Content Include="Content\**\*.*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="game.manifest" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- Cooked content and game.manifest are NOT copied by the build: the pipeline (ProjectBuilder/ProjectRunner)
+       cooks source Assets straight into the publish/run output's Content\ and writes game.manifest beside the
+       game after publishing. This keeps the project root clean — a build leaves only Build\ behind. -->
 </Project>

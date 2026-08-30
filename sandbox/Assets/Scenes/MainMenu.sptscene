@@ -65,6 +65,10 @@
           1
         ]
       },
+      "UICanvas": {
+        "Enabled": true,
+        "DocumentRef": "UI/MainMenu.sptui"
+      },
       "Scripts": {
         "Enabled": true,
         "Items": [

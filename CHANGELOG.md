@@ -23,6 +23,8 @@ will be finalized when 0.2 is tagged.
 - Added Spot engine icon to the Editor window and executable
 - Editor UI authoring: create and edit `.sptui` UI documents on a screen-space canvas (UI Canvas + UI Hierarchy panels), attach them with the new UI Canvas component, and wire behaviour by looking widgets up by name
 - UI Canvas layout aids: pixel grid with snapping, smart alignment guides (snap to sibling edges/centers), arrow-key nudging, and a live size readout (Alt bypasses snapping)
+- UI Canvas navigation: middle-mouse panning, scroll zooming, configurable screen bounds, and dimmed out-of-bounds area
+- Appended '(UI)' to UI document tabs in the editor to differentiate them from Scene tabs
 - Added Delete key shortcut to remove states and transitions in the Animator Controller editor
 - 3D model thumbnails in the Asset Browser
 - Animator Controllers (animation state machines)

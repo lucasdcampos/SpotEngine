@@ -14,7 +14,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Controller, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Controller, UIDocument, Other }
 
     private readonly struct AssetEntry
     {
@@ -317,7 +317,7 @@ public class AssetBrowserPanel
                 _context.Selection = null;
                 _context.SelectedAssetPath = entry.FullPath;
             }
-            else if (entry.Kind == AssetKind.Scene || entry.Kind == AssetKind.Controller)
+            else if (entry.Kind == AssetKind.Scene || entry.Kind == AssetKind.Controller || entry.Kind == AssetKind.UIDocument)
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
@@ -432,6 +432,7 @@ public class AssetBrowserPanel
     private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
     private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
     private static readonly Vector4 ControllerColor = new(0.98f, 0.78f, 0.30f, 1.0f);
+    private static readonly Vector4 UIDocumentColor = new(0.55f, 0.85f, 0.95f, 1.0f);
 
     private static AudioClip? _previewClip;
     private static Voice _previewVoice;
@@ -563,6 +564,7 @@ public class AssetBrowserPanel
         AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
         AssetKind.Audio => (EditorIcons.Music, AudioColor),
         AssetKind.Controller => (EditorIcons.Rotate, ControllerColor),
+        AssetKind.UIDocument => (EditorIcons.Image, UIDocumentColor),
         _ => (EditorIcons.File, palette.TextDisabled),
     };
 
@@ -626,6 +628,14 @@ public class AssetBrowserPanel
         else if (entry.Kind == AssetKind.Controller)
         {
             if (ImGui.MenuItem("Edit Animator Controller"))
+            {
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
+            }
+        }
+        else if (entry.Kind == AssetKind.UIDocument)
+        {
+            if (ImGui.MenuItem("Edit UI"))
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
@@ -699,6 +709,12 @@ public class AssetBrowserPanel
         {
             string path = UniqueAssetPath(_currentDirectory, "NewController", ".sptcontroller");
             CreateAnimatorController(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
+        }
+        if (ImGui.MenuItem("New UI Document"))
+        {
+            string path = UniqueAssetPath(_currentDirectory, "NewUI", ".sptui");
+            CreateUIDocument(Path.GetFileName(path));
             StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
         ImGui.Separator();
@@ -854,6 +870,7 @@ public class AssetBrowserPanel
         if (ext == ".sptmat") return AssetKind.Material;
         if (ext == ".sptprefab") return AssetKind.Prefab;
         if (ext == ".sptcontroller") return AssetKind.Controller;
+        if (ext == ".sptui") return AssetKind.UIDocument;
         return AssetKind.Other;
     }
 
@@ -1002,6 +1019,28 @@ public class {className} : EntityBehaviour
         if (File.Exists(filepath)) return;
 
         new Spot.Assets.Material().Save(filepath);
+    }
+
+    private void CreateUIDocument(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptui")) name += ".sptui";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+
+        // Seed a minimal document: a single full-screen panel to drop widgets onto.
+        var root = new Spot.UI.UIRoot();
+        var panel = root.Panel();
+        panel.Name = "Root";
+        panel.Rect = new Spot.UI.UIRect
+        {
+            Anchor = System.Numerics.Vector2.Zero,
+            Pivot = System.Numerics.Vector2.Zero,
+            Position = System.Numerics.Vector2.Zero,
+            Size = new System.Numerics.Vector2(1920f, 1080f),
+        };
+        Spot.UI.Serialization.UISerializer.Save(root, filepath);
     }
 
     private void CreateAnimatorController(string name)
@@ -1164,6 +1203,7 @@ public class {className} : EntityBehaviour
             AssetKind.Prefab => ("PREFAB_FILE", entry.FullPath),
             AssetKind.Audio => ("AUDIO_FILE", entry.FullPath),
             AssetKind.Controller => ("CONTROLLER_FILE", entry.FullPath),
+            AssetKind.UIDocument => ("UI_FILE", entry.FullPath),
             _ => ("SCRIPT_FILE", entry.Name),
         };
 

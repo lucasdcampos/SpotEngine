@@ -36,7 +36,9 @@ The editor is organized into dockable panels you can rearrange and save into a l
   entity (double-clicking an entity in the hierarchy does the same). Hold `Ctrl` while dragging a gizmo
   to snap in increments (1 unit / 15° / 0.25×).
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
-  You create, delete, and reparent entities here.
+  You create, delete, and reparent entities here. It is also the UI widget tree: clicking the **UI Canvas**
+  switches it to the open document's widgets, and clicking a scene viewport switches it back to the scene's
+  entities — automatically, following whichever view you're working in.
 - **Inspector** — shows the components of the selected entity (or asset) and lets you edit their
   values. The inspector is generated from the components themselves, so custom components appear
   automatically.
@@ -47,6 +49,9 @@ The editor is organized into dockable panels you can rearrange and save into a l
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
   models apart at a glance without dropping them into a scene. Model thumbnails load in the background and
   are cached per folder.
+- **UI Canvas** — a screen-space surface for authoring a game UI (`.sptui`) document, separate from the
+  scene viewport; the shared **Hierarchy** panel shows its widgets while it is focused. See
+  [Runtime UI](ui.md#authoring-in-the-editor).
 - **Project settings** — project-wide configuration such as the start scene.
 
 ## The menu bar

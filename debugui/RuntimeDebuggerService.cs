@@ -12,6 +12,12 @@ public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugO
     public Entity? Selection { get; set; }
     public string? SelectedAssetPath { get; set; }
 
+    // The runtime debug overlay doesn't author UI documents; these satisfy the shared selection contract.
+    public HierarchyTarget HierarchyTarget { get; set; } = HierarchyTarget.Scene;
+    public Spot.UI.UIRoot? EditingDocument { get; set; }
+    public string? EditingDocumentPath { get; set; }
+    public Spot.UI.Widget? SelectedWidget { get; set; }
+
     public bool IsOpen => _showHierarchy || _showInspector || _showTime;
 
     private bool _showHierarchy;

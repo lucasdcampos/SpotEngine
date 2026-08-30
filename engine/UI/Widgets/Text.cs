@@ -16,6 +16,12 @@ public class Text : Widget
     /// <summary>The font to draw with, or null to use <see cref="UIRoot.DefaultFont"/>.</summary>
     public Font? Font;
 
+    /// <summary>
+    /// The stored reference (source path or <c>guid:</c>) for <see cref="Font"/>, used to serialize the text in
+    /// a <c>.sptui</c> document and re-load it. Empty falls back to the default font.
+    /// </summary>
+    public string FontRef = "";
+
     /// <summary>The text size in UI units.</summary>
     public float FontSize = 24f;
 

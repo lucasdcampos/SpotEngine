@@ -113,6 +113,20 @@ public sealed class UIRoot : Widget
         UIRenderer.End();
     }
 
+    /// <summary>
+    /// Lays the tree out for the given surface size without drawing, updating every widget's
+    /// <see cref="Widget.ScreenRect"/> and this root's <see cref="Scale"/>/<see cref="Width"/>/<see cref="Height"/>.
+    /// Tools (the editor's UI canvas) use it to hit-test and gizmo widgets in the same coordinates a later
+    /// <see cref="Render"/> uses.
+    /// </summary>
+    /// <param name="screenWidth">The surface width in screen pixels.</param>
+    /// <param name="screenHeight">The surface height in screen pixels.</param>
+    public void LayoutForSize(float screenWidth, float screenHeight)
+    {
+        UpdateScale(screenWidth, screenHeight);
+        Layout(new Vector4(0f, 0f, Width, Height));
+    }
+
     private void UpdateScale(float screenWidth, float screenHeight)
     {
         if (ScaleMode == UIScaleMode.ScaleWithHeight && ReferenceHeight > 0f && screenHeight > 0f)

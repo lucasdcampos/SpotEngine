@@ -5,6 +5,7 @@ using Spot.Build;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
+using Spot.DebugUI;
 using Spot.DebugUI.Panels;
 using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
@@ -57,6 +58,20 @@ public class OpenSceneData
     }
 }
 
+// One open UI document (a .sptui asset), shown as its own dockable tab. Mirrors OpenSceneData: the panel owns
+// the offscreen framebuffer it renders into, and the tab closes via its title-bar 'x'.
+public sealed class UIDocumentData
+{
+    public required Spot.UI.UIRoot Document;
+    public required string Path;
+    public required Spot.Editor.Panels.UICanvasPanel Panel;
+    public bool IsOpen = true;
+    public bool FirstFrame = true;
+    public bool FocusNextFrame = true;
+
+    public void Dispose() => Panel.Dispose();
+}
+
 public enum EditorState
 {
     Edit,
@@ -90,6 +105,12 @@ public class EditorScene : Scene
     private readonly ConsolePanel _consolePanel;
     private readonly AssetBrowserPanel _assetBrowserPanel;
     private readonly ProjectSettingsPanel _projectSettingsPanel;
+    private readonly UIHierarchyPanel _uiHierarchyPanel;
+
+    // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
+    // Hierarchy/Inspector while it is focused.
+    private readonly List<UIDocumentData> _openUIDocuments = new();
+    private UIDocumentData? _activeUIDocument;
 
     private Framebuffer? _gameFramebuffer;
 
@@ -140,7 +161,9 @@ public class EditorScene : Scene
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
+        _uiHierarchyPanel = new UIHierarchyPanel(_context);
         _assetBrowserPanel.OnAssetOpened += OpenAsset;
+        Spot.DebugUI.UI.WidgetInspector.OpenDocumentRequested = OpenUIDocument;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
         {
@@ -175,9 +198,69 @@ public class EditorScene : Scene
         {
             OpenAnimatorController(filepath);
         }
+        else if (filepath.EndsWith(".sptui", System.StringComparison.OrdinalIgnoreCase))
+        {
+            OpenUIDocument(filepath);
+        }
         else
         {
             OpenSceneAsset(filepath);
+        }
+    }
+
+    // Opens a .sptui document in its own tab (or focuses the tab if it is already open), like opening a scene.
+    // UISerializer.Load never throws (it logs and returns an empty document on failure), so this is safe.
+    private void OpenUIDocument(string filepath)
+    {
+        UIDocumentData? existing = _openUIDocuments.FirstOrDefault(
+            d => string.Equals(d.Path, filepath, System.StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            existing.IsOpen = true;
+            existing.FocusNextFrame = true;
+            SetActiveUIDocument(existing);
+            _showHierarchy = true;
+            return;
+        }
+
+        Spot.UI.UIRoot document = Spot.UI.Serialization.UISerializer.Load(filepath);
+        var data = new UIDocumentData
+        {
+            Document = document,
+            Path = filepath,
+            Panel = new UICanvasPanel(_context) { Document = document, DocumentPath = filepath },
+        };
+        _openUIDocuments.Add(data);
+        SetActiveUIDocument(data);
+        _showHierarchy = true;
+    }
+
+    // Makes a UI document the active one: points the shared context (Hierarchy/Inspector/save) at it. Switching
+    // documents clears the widget selection, so a stale widget from another document is never shown.
+    private void SetActiveUIDocument(UIDocumentData? data)
+    {
+        if (ReferenceEquals(_activeUIDocument, data)) return;
+
+        _activeUIDocument = data;
+        _context.EditingDocument = data?.Document;
+        _context.EditingDocumentPath = data?.Path;
+        _context.SelectedWidget = null;
+        if (data != null) _context.HierarchyTarget = HierarchyTarget.UI;
+    }
+
+    // Writes the active UI document back to its source path. Called on Ctrl+S while a document tab is focused.
+    private void SaveUIDocument()
+    {
+        if (_activeUIDocument == null) return;
+
+        try
+        {
+            Spot.UI.Serialization.UISerializer.Save(_activeUIDocument.Document, _activeUIDocument.Path);
+            Log.Info("Saved UI document '{0}'.", System.IO.Path.GetFileName(_activeUIDocument.Path));
+        }
+        catch (System.Exception ex)
+        {
+            Log.Error("Failed to save UI document '{0}': {1}", _activeUIDocument.Path, ex.Message);
         }
     }
 
@@ -773,6 +856,12 @@ public class EditorScene : Scene
         
         _gameFramebuffer.Unbind();
 
+        // Render each open UI document into its own offscreen target so its tab shows an up-to-date picture.
+        foreach (UIDocumentData data in _openUIDocuments)
+        {
+            if (data.IsOpen) data.Panel.RenderDocument();
+        }
+
         var window = Spot.Core.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -797,10 +886,20 @@ public class EditorScene : Scene
 
         // Each panel is now an independent dockable window: closable via its title-bar 'x' and
         // reopenable from View > Panels. The 'ref' visibility flag also drives the close button.
+        // A single Hierarchy panel that shows the scene's entities or the open UI document's widgets, switching
+        // automatically with the active view (clicking the UI Canvas shows the UI; clicking a scene viewport
+        // shows entities) — no manual toggle needed.
         if (_showHierarchy)
         {
-            _hierarchyPanel.OnImGuiRender(ref _showHierarchy);
+            ImGui.Begin("Hierarchy", ref _showHierarchy, ImGuiWindowFlags.NoCollapse);
+            if (_context.EditingDocument != null && _context.HierarchyTarget == HierarchyTarget.UI)
+                _uiHierarchyPanel.DrawContents();
+            else
+                _hierarchyPanel.DrawContents();
+            ImGui.End();
         }
+
+        DrawUIDocumentWindows(dockspaceId);
 
         for (int i = 0; i < _openScenes.Count; i++)
         {
@@ -855,6 +954,12 @@ public class EditorScene : Scene
                 _activeSceneData = sceneData;
                 _context.ActiveScene = sceneData.Scene;
                 _lastEditedSceneData = sceneData;
+            }
+
+            // Focusing a scene viewport switches the shared Hierarchy panel back to the scene's entities.
+            if (isFocused)
+            {
+                _context.HierarchyTarget = HierarchyTarget.Scene;
             }
 
             if (open)
@@ -1388,6 +1493,7 @@ public class EditorScene : Scene
         foreach (var sceneData in _openScenes) sceneData.Dispose();
         _gameFramebuffer?.Dispose();
         _inspectorPanel.Dispose();
+        foreach (UIDocumentData data in _openUIDocuments) data.Dispose();
         _context.ActiveScene?.OnExit();
     }
 
@@ -1503,7 +1609,7 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.30f, out uint bottom, out center);
         ImGuiDock.igDockBuilderSplitNode(bottom, ImGuiDir.Left, 0.50f, out uint bottomLeft, out uint bottomRight);
 
-        ImGuiDock.igDockBuilderDockWindow("Scene", rightTop);
+        ImGuiDock.igDockBuilderDockWindow("Hierarchy", rightTop);
         ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
         ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
@@ -1522,6 +1628,60 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderDockWindow("Game", center);
 
         ImGuiDock.igDockBuilderFinish(dockspaceId);
+    }
+
+    // Draws each open UI document as its own dockable tab (mirroring the scene tabs). Focusing a tab makes it
+    // the active document, so the shared Hierarchy/Inspector follow it; closing a tab disposes its panel.
+    private void DrawUIDocumentWindows(uint dockspaceId)
+    {
+        for (int i = 0; i < _openUIDocuments.Count; i++)
+        {
+            UIDocumentData data = _openUIDocuments[i];
+            if (!data.IsOpen) continue;
+
+            string name = System.IO.Path.GetFileNameWithoutExtension(data.Path);
+            string title = $"{name} (UI)###UIDoc_{data.Path}";
+
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
+            if (data.FocusNextFrame)
+            {
+                ImGui.SetNextWindowFocus();
+                data.FocusNextFrame = false;
+            }
+            if (data.FirstFrame)
+            {
+                uint targetDock = _lastGameDockId != 0 ? _lastGameDockId : dockspaceId;
+                ImGui.SetNextWindowDockID(targetDock, ImGuiCond.FirstUseEver);
+                data.FirstFrame = false;
+            }
+
+            bool open = ImGui.Begin(title, ref data.IsOpen,
+                ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+            ImGui.PopStyleVar();
+
+            if (ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow))
+            {
+                SetActiveUIDocument(data);
+                _context.HierarchyTarget = HierarchyTarget.UI;
+            }
+
+            if (open) data.Panel.OnImGuiRender();
+            ImGui.End();
+        }
+
+        for (int i = _openUIDocuments.Count - 1; i >= 0; i--)
+        {
+            if (!_openUIDocuments[i].IsOpen)
+            {
+                _openUIDocuments[i].Dispose();
+                _openUIDocuments.RemoveAt(i);
+            }
+        }
+
+        if (_activeUIDocument != null && !_openUIDocuments.Contains(_activeUIDocument))
+        {
+            SetActiveUIDocument(_openUIDocuments.Count > 0 ? _openUIDocuments[^1] : null);
+        }
     }
 
     private void DrawMenuBar()
@@ -1593,7 +1753,7 @@ public class EditorScene : Scene
             if (ImGui.BeginMenu("Panels"))
             {
                 ImGui.MenuItem("Game", "", ref _showGame);
-                ImGui.MenuItem("Scene", "", ref _showHierarchy);
+                ImGui.MenuItem("Hierarchy", "", ref _showHierarchy);
                 ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
@@ -1691,7 +1851,11 @@ public class EditorScene : Scene
         bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
         {
-            SaveScene();
+            // Save what you're working in: a focused UI document tab, otherwise the active scene.
+            if (_context.HierarchyTarget == HierarchyTarget.UI && _activeUIDocument != null)
+                SaveUIDocument();
+            else
+                SaveScene();
         }
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.N))
         {
@@ -2026,7 +2190,12 @@ public class EditorScene : Scene
         if (!needsStartScene) return;
 
         project.Config.StartScene = System.IO.Path.GetRelativePath(assetDir, sceneAbsolutePath).Replace('\\', '/');
-        Project.SaveActive(System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj"));
+        
+        string sptprojPath = project.FilePath;
+        if (string.IsNullOrEmpty(sptprojPath))
+            sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
+            
+        Project.SaveActive(sptprojPath);
         Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
     }
 

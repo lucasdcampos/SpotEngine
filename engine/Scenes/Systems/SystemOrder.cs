@@ -9,6 +9,9 @@ namespace Spot.Scenes;
 /// </summary>
 public static class SystemOrder
 {
+    /// <summary>Instantiates editor-authored UI canvases into the scene UI, before scripts can look them up.</summary>
+    public const int UICanvas = 50;
+
     /// <summary>Kinematic character controllers, resolved before the physics step.</summary>
     public const int CharacterController = 100;
 
