@@ -5,7 +5,6 @@ using Spot.Rendering;
 using Spot.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
-using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
 
@@ -27,7 +26,7 @@ public class ViewportPanel
     {
         _framebuffer = framebuffer;
     }
-    
+
     public void SetCameraPreviewFramebuffer(Framebuffer framebuffer)
     {
         _cameraPreviewFramebuffer = framebuffer;
@@ -47,7 +46,7 @@ public class ViewportPanel
             _framebuffer.Resize((uint)viewportSize.X, (uint)viewportSize.Y);
             if (handleInput && _camera != null)
                 _camera.SetViewportSize(viewportSize.X, viewportSize.Y);
-            
+
             var cursorPos = ImGui.GetCursorScreenPos();
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
             bool isHovered = ImGui.IsItemHovered();
@@ -94,11 +93,11 @@ public class ViewportPanel
                 DrawGizmoModeButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate);
                 ImGui.SameLine();
                 DrawGizmoModeButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale);
-                
+
                 ImGui.SameLine();
                 ImGui.Dummy(new Vector2(8, 0));
                 ImGui.SameLine();
-                
+
                 bool showColliders = Spot.Physics.PhysicsDebug.ShowColliders;
                 if (ImGui.Checkbox("Show Colliders", ref showColliders))
                 {
@@ -111,7 +110,7 @@ public class ViewportPanel
                 {
                     Spot.Rendering.RendererDebug.Fullbright = fullbright;
                 }
-                
+
                 ImGui.SameLine();
                 bool wireframe = Spot.Rendering.RendererDebug.Wireframe;
                 if (ImGui.Checkbox("Wireframe", ref wireframe))
@@ -124,7 +123,7 @@ public class ViewportPanel
                     // Render Camera Preview in bottom right
                     float previewWidth = 320;
                     float previewHeight = 180;
-                    
+
                     var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 20, previewHeight + 20);
 
                     // A framed, labeled preview card that matches the editor's surface treatment.
@@ -202,7 +201,7 @@ public class ViewportPanel
 
                     // 3D Mouselook
                     _camera.MouseLook(io.MouseDelta);
-                    
+
                     // 3D Movement
                     Vector3 moveDir = Vector3.Zero;
                     if (ImGui.IsKeyDown(ImGuiKey.W)) moveDir.Z += 1;
@@ -211,7 +210,7 @@ public class ViewportPanel
                     if (ImGui.IsKeyDown(ImGuiKey.D)) moveDir.X += 1;
                     if (ImGui.IsKeyDown(ImGuiKey.E)) moveDir.Y += 1;
                     if (ImGui.IsKeyDown(ImGuiKey.Q)) moveDir.Y -= 1;
-                    
+
                     if (moveDir != Vector3.Zero)
                     {
                         float speed = 5.0f; // units per second
@@ -231,8 +230,8 @@ public class ViewportPanel
 
                     if (!_gizmo.IsUsing)
                     {
-                        if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) && 
-                            (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (! _camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
+                        if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) &&
+                            (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (!_camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
                         {
                             // 2D/3D Pan
                             _camera.OnMouseDrag(io.MouseDelta);
