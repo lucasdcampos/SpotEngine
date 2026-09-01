@@ -1,6 +1,12 @@
 <Project>
+  <!-- Settings shared by every project in the repo. Per-project .csproj files add only what differs:
+       target framework, warnings-as-errors policy, unsafe blocks, and package references.
+       TreatWarningsAsErrors stays per-project on purpose — only Spot.Engine/DebugUI/Sandbox/Spot.Build
+       are held warning-clean; the editor, CLI, source generator, and tests are not. -->
   <PropertyGroup>
     <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 </Project>

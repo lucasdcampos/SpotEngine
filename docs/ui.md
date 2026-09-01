@@ -97,4 +97,3 @@ ignore world clicks that land on a menu.
 - [Text & Fonts](text.md) — how the `Text`, `Button` and `Toggle` labels are rendered
 - [Scripting](scripting.md) — where you build and drive the UI from
 - [Rendering](rendering.md) — the screen-space UI pass in the frame
-- [The Sandbox Hub](sandbox-hub.md) — the menu, options and HUD built with this UI
