@@ -57,7 +57,7 @@ pass itself runs without alpha blending. Pair sprites with an **orthographic cam
 
 Particles are drawn **after** the opaque passes — both the 3D meshes and the 2D sprite batch — and
 before post-processing, so they blend and glow over your scene (and feed bloom) rather than being
-painted over by it. See the [Sandbox Hub](sandbox-hub.md) for a worked 2D example.
+painted over by it.
 
 **World-space text** (a Text component on an entity) is drawn alongside particles — blended,
 camera-facing by default, before post-processing — so it is tone-mapped like the scene and occluded by
