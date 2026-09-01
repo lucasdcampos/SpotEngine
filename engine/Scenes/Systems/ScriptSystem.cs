@@ -132,7 +132,7 @@ internal static class ScriptSystem
 
     public static void ImGuiRender(Scene scene)
     {
-        foreach (Entity entity in scene.View<ScriptComponent>().ToList())
+        foreach (Entity entity in scene.View<ScriptComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
             var scriptComp = entity.GetComponent<ScriptComponent>();
@@ -156,7 +156,7 @@ internal static class ScriptSystem
 
     public static void DestroyAll(Scene scene)
     {
-        foreach (Entity entity in scene.View<ScriptComponent>().ToList())
+        foreach (Entity entity in scene.View<ScriptComponent>())
         {
             foreach (EntityBehaviour script in entity.GetComponent<ScriptComponent>().Scripts.ToList())
             {
