@@ -66,6 +66,31 @@ public static class FileDialogs
 
     public static string? OpenFile(string filter, string initialDir = "")
     {
+        if (OperatingSystem.IsWindows()) return OpenFileWindows(filter, initialDir);
+        if (OperatingSystem.IsMacOS()) return OpenFileMac(filter, initialDir);
+        if (OperatingSystem.IsLinux()) return OpenFileLinux(filter, initialDir);
+        return null;
+    }
+
+    public static string? SaveFile(string filter, string defExt = "", string initialDir = "")
+    {
+        if (OperatingSystem.IsWindows()) return SaveFileWindows(filter, defExt, initialDir);
+        if (OperatingSystem.IsMacOS()) return SaveFileMac(filter, defExt, initialDir);
+        if (OperatingSystem.IsLinux()) return SaveFileLinux(filter, defExt, initialDir);
+        return null;
+    }
+
+    public static string? SelectFolder()
+    {
+        if (OperatingSystem.IsWindows()) return SelectFolderWindows();
+        if (OperatingSystem.IsMacOS()) return SelectFolderMac();
+        if (OperatingSystem.IsLinux()) return SelectFolderLinux();
+        return null;
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string? OpenFileWindows(string filter, string initialDir)
+    {
         string? result = null;
         var thread = new Thread(() =>
         {
@@ -116,7 +141,8 @@ public static class FileDialogs
         return result;
     }
 
-    public static string? SaveFile(string filter, string defExt = "", string initialDir = "")
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string? SaveFileWindows(string filter, string defExt, string initialDir)
     {
         string? result = null;
         var thread = new Thread(() =>
@@ -171,7 +197,8 @@ public static class FileDialogs
         return result;
     }
 
-    public static string? SelectFolder()
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static string? SelectFolderWindows()
     {
         string? result = null;
         var thread = new Thread(() =>
@@ -212,5 +239,96 @@ public static class FileDialogs
         thread.Join();
 
         return result;
+    }
+
+    private static string? RunCommand(string fileName, string args)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = args,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null) return null;
+            
+            process.WaitForExit();
+            if (process.ExitCode != 0) return null;
+            
+            string output = process.StandardOutput.ReadToEnd().Trim();
+            return string.IsNullOrEmpty(output) ? null : output;
+        }
+        catch (Exception ex)
+        {
+            Spot.Core.Log.CoreError("Native dialog command failed ({0}): {1}", fileName, ex);
+            return null;
+        }
+    }
+
+    private static string? OpenFileMac(string filter, string initialDir)
+    {
+        string exts = GetMacExtensions(filter);
+        string typeFilter = string.IsNullOrEmpty(exts) ? "" : $" of type {{{exts}}}";
+        return RunCommand("osascript", $"-e 'POSIX path of (choose file with prompt \"Open File\"{typeFilter})'");
+    }
+
+    private static string? SaveFileMac(string filter, string defExt, string initialDir)
+    {
+        string defaultName = string.IsNullOrEmpty(defExt) ? "Untitled" : $"Untitled.{defExt}";
+        return RunCommand("osascript", $"-e 'POSIX path of (choose file name with prompt \"Save File\" default name \"{defaultName}\")'");
+    }
+
+    private static string? SelectFolderMac()
+    {
+        return RunCommand("osascript", "-e 'POSIX path of (choose folder with prompt \"Select Directory\")'");
+    }
+
+    private static string? OpenFileLinux(string filter, string initialDir)
+    {
+        string zenityFilter = GetZenityFilter(filter);
+        return RunCommand("zenity", $"--file-selection --title=\"Open File\" {zenityFilter}");
+    }
+
+    private static string? SaveFileLinux(string filter, string defExt, string initialDir)
+    {
+        string zenityFilter = GetZenityFilter(filter);
+        return RunCommand("zenity", $"--file-selection --save --title=\"Save File\" --confirm-overwrite {zenityFilter}");
+    }
+
+    private static string? SelectFolderLinux()
+    {
+        return RunCommand("zenity", "--file-selection --directory --title=\"Select Directory\"");
+    }
+
+    private static string GetMacExtensions(string filter)
+    {
+        if (string.IsNullOrEmpty(filter)) return "";
+        var parts = filter.Split('|');
+        if (parts.Length < 2) return "";
+        var exts = parts[1].Split(';');
+        var quoted = new System.Collections.Generic.List<string>();
+        foreach (var e in exts)
+        {
+            quoted.Add($"\"{e.TrimStart('*', '.')}\"");
+        }
+        return string.Join(", ", quoted);
+    }
+
+    private static string GetZenityFilter(string filter)
+    {
+        if (string.IsNullOrEmpty(filter)) return "";
+        var parts = filter.Split('|');
+        if (parts.Length < 2) return "";
+        var exts = parts[1].Split(';');
+        var cleaned = new System.Collections.Generic.List<string>();
+        foreach (var e in exts)
+        {
+            cleaned.Add(e.Trim());
+        }
+        return $"--file-filter=\"{parts[0]} | {string.Join(" ", cleaned)}\"";
     }
 }

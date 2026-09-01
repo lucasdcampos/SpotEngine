@@ -25,7 +25,7 @@ Two pieces of tooling operate on a project, and both share the same underlying l
   automation, and headless workflows.
 
 A published build is **self-contained and standalone** — it bundles the engine and everything the
-game needs, so players don't install anything extra. Builds can target **Windows** or **Linux**, or
+game needs, so players don't install anything extra. Builds can target **Windows**, **Linux**, or **Mac**, or
 **the browser** (WebAssembly + WebGL2) for 2D games — see [The browser target](#the-browser-target).
 
 ## From project to shippable app

@@ -645,7 +645,7 @@ public class AssetBrowserPanel
         {
             if (ImGui.MenuItem("Open Externally")) OpenExternally(entry.FullPath);
         }
-        if (ImGui.MenuItem("Show in Explorer"))
+        if (ImGui.MenuItem("Show in File Manager"))
         {
             RevealInExplorer(entry.FullPath);
         }
@@ -723,7 +723,7 @@ public class AssetBrowserPanel
             PasteClipboardInto(_currentDirectory);
         }
         ImGui.Separator();
-        if (ImGui.MenuItem("Open in Explorer"))
+        if (ImGui.MenuItem("Open in File Manager"))
         {
             OpenExternally(_currentDirectory);
         }
@@ -1492,7 +1492,27 @@ public class {className} : EntityBehaviour
     {
         try
         {
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            if (OperatingSystem.IsWindows())
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                System.Diagnostics.Process.Start("open", $"-R \"{path}\"");
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                var dir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+                if (dir != null)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "xdg-open",
+                        Arguments = $"\"{dir}\"",
+                        UseShellExecute = true
+                    });
+                }
+            }
         }
         catch { }
     }
