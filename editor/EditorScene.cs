@@ -98,7 +98,7 @@ public class EditorScene : Scene
     private string _newProjectLocation = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
 
     private readonly EditorContext _context = new();
-    
+
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
     private readonly ViewportPanel _gamePanel;
@@ -156,7 +156,7 @@ public class EditorScene : Scene
     {
         _hierarchyPanel = new HierarchyPanel(_context);
         _inspectorPanel = new InspectorPanel(_context);
-        
+
         _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
@@ -544,7 +544,7 @@ public class EditorScene : Scene
         if (_state == EditorState.Edit)
         {
             Entity? currentSelected = _context.Selection;
-            
+
             if (_lastSelectedParticleEntity.HasValue && currentSelected != _lastSelectedParticleEntity)
             {
                 // Only clear if the entity is still alive in the scene
@@ -578,22 +578,22 @@ public class EditorScene : Scene
     {
         if (_gameFramebuffer == null)
             return;
-            
+
         // Render Scene Views
         foreach (var sceneData in _openScenes)
         {
             if (!sceneData.IsOpen) continue;
-            
+
             sceneData.Framebuffer.Bind();
             Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             Renderer.Clear();
-            
+
             if (sceneData.EditorCamera.Is3D)
             {
                 Renderer.SetDepthTest(true);
                 Renderer.SetFaceCulling(true);
             }
-                
+
             RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position);
 
             // The editor grid and world axes are screen-aligned / crossed-quad overlays with no single
@@ -637,12 +637,12 @@ public class EditorScene : Scene
                 Renderer.SetDepthTest(false);
                 Renderer.SetFaceCulling(false);
             }
-            
+
             // Debug Physics Rendering
             if (_context.Selection.HasValue && sceneData == _activeSceneData)
             {
                 Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
-                
+
                 void DrawColliders(Entity entity)
                 {
                     if (entity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
@@ -652,13 +652,13 @@ public class EditorScene : Scene
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
-                    
+
                     if (entity.HasComponent<Spot.Physics.BoxCollider3DComponent>() && entity.HasComponent<TransformComponent>())
                     {
                         var transform = entity.GetComponent<TransformComponent>();
                         var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
-                        
+
                         Vector3 min = bounds.Min;
                         Vector3 max = bounds.Max;
                         Vector4 color = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -691,7 +691,7 @@ public class EditorScene : Scene
                         }
                     }
                 }
-                
+
                 DrawColliders(_context.Selection.Value);
                 Renderer2D.EndScene();
             }
@@ -762,7 +762,7 @@ public class EditorScene : Scene
             }
 
             sceneData.Framebuffer.Unbind();
-            
+
             // Render Camera Preview
             if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData && sceneData.ViewportVisible)
             {
@@ -785,7 +785,7 @@ public class EditorScene : Scene
                     }
 
                     RenderSystem.Render(sceneData.Scene, viewProj, transform.WorldPosition);
-                    
+
                     if (is3DPrev)
                     {
                         Renderer.SetDepthTest(false);
@@ -795,12 +795,12 @@ public class EditorScene : Scene
                 sceneData.CameraPreviewFramebuffer.Unbind();
             }
         }
-        
+
         // Render Game View
         _gameFramebuffer.Bind();
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         Renderer.Clear();
-        
+
         // Only render the game view when its panel is actually visible. When it is tabbed behind another
         // panel (or closed) this would otherwise be a full extra scene render — shadow pass, meshes, and
         // post-processing — every frame; skipping it is a large editor win and the panel keeps its last
@@ -832,7 +832,7 @@ public class EditorScene : Scene
                     break;
                 }
             }
-            
+
             Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
             Renderer.Clear();
 
@@ -843,9 +843,9 @@ public class EditorScene : Scene
                     Renderer.SetDepthTest(true);
                     Renderer.SetFaceCulling(true);
                 }
-                    
+
                 RenderSystem.Render(gameScene, viewProjection.Value, cameraPosition);
-                
+
                 if (is3D)
                 {
                     Renderer.SetDepthTest(false);
@@ -853,7 +853,7 @@ public class EditorScene : Scene
                 }
             }
         }
-        
+
         _gameFramebuffer.Unbind();
 
         // Render each open UI document into its own offscreen target so its tab shows an up-to-date picture.
@@ -909,13 +909,13 @@ public class EditorScene : Scene
             string sceneName = sceneData.FilePath != null
                 ? System.IO.Path.GetFileNameWithoutExtension(sceneData.FilePath)
                 : "Untitled";
-            
+
             // Generate unique title but nice display name
             string stableId = sceneData.FilePath != null ? sceneData.FilePath : $"Untitled_{i}";
             string title = $"{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{stableId}";
 
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
-            
+
             if (sceneData.FocusNextFrame)
             {
                 ImGui.SetNextWindowFocus();
@@ -942,7 +942,7 @@ public class EditorScene : Scene
 
             bool isFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow);
             bool isHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows | ImGuiHoveredFlags.RootWindow);
-            
+
             if (isHovered && (ImGui.IsMouseClicked(ImGuiMouseButton.Right) || ImGui.IsMouseClicked(ImGuiMouseButton.Middle)))
             {
                 ImGui.SetWindowFocus();
@@ -975,10 +975,10 @@ public class EditorScene : Scene
             }
             ImGui.End();
         }
-        
+
         // Remove closed scenes
         _openScenes.RemoveAll(s => !s.IsOpen);
-        if (!_openScenes.Contains(_activeSceneData))
+        if (_activeSceneData is null || !_openScenes.Contains(_activeSceneData))
         {
             _activeSceneData = _openScenes.Count > 0 ? _openScenes[0] : null;
             _context.ActiveScene = _activeSceneData?.Scene;
@@ -1079,7 +1079,7 @@ public class EditorScene : Scene
         if (ImGui.BeginPopupModal("Create New Project", ref modalOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.InputText("Project Name", ref _newProjectName, 128);
-            
+
             ImGui.InputText("Location", ref _newProjectLocation, 256);
             ImGui.SameLine();
             if (ImGui.Button("...##Location"))
@@ -1090,7 +1090,7 @@ public class EditorScene : Scene
                     _newProjectLocation = folder;
                 }
             }
-            
+
             if (ImGui.Button("Create", new Vector2(120, 0)))
             {
                 CreateProject(_newProjectName, _newProjectLocation);
@@ -1406,7 +1406,7 @@ public class EditorScene : Scene
     {
         string sptprojPath = Spot.Build.ProjectScaffolder.Create(name, location);
         Spot.Editor.Utils.RecentProjects.Add(sptprojPath);
-        
+
         _openScenes.Clear();
         var newSceneData = new OpenSceneData(_context);
         _openScenes.Add(newSceneData);
@@ -1508,7 +1508,7 @@ public class EditorScene : Scene
             _state = EditorState.Play;
             Spot.Core.Log.Info("Building project for Play...");
 
-            System.Threading.Tasks.Task.Run(() => 
+            System.Threading.Tasks.Task.Run(() =>
             {
                 var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
                     onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
@@ -1530,19 +1530,19 @@ public class EditorScene : Scene
                         RedirectStandardError = true,
                         CreateNoWindow = true
                     };
-                    
+
                     _gameProcess = new System.Diagnostics.Process { StartInfo = processInfo };
                     _gameProcess.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Info($"[Game] {e.Data}"); };
                     _gameProcess.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Error($"[Game] {e.Data}"); };
-                    
+
                     _gameProcess.EnableRaisingEvents = true;
-                    _gameProcess.Exited += (sender, e) => 
+                    _gameProcess.Exited += (sender, e) =>
                     {
                         Spot.Core.Log.Info("Game process exited.");
                         _gameProcess = null;
-                        _state = EditorState.Edit; 
+                        _state = EditorState.Edit;
                     };
-                    
+
                     _gameProcess.Start();
                     _gameProcess.BeginOutputReadLine();
                     _gameProcess.BeginErrorReadLine();
@@ -1613,7 +1613,7 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
         ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
-        
+
         for (int i = 0; i < _openScenes.Count; i++)
         {
             var sceneData = _openScenes[i];
@@ -1704,13 +1704,13 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("New Project...")) _isCreatingProject = true;
             if (ImGui.MenuItem("Open Project...")) OpenProject();
             ImGui.Separator();
-            
+
             if (ImGui.MenuItem("New Scene", "Ctrl+N")) NewScene();
             if (ImGui.MenuItem("Open Scene...")) OpenScene();
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
             if (ImGui.MenuItem("Save All Scenes", "Ctrl+Shift+S")) SaveAllScenes();
             ImGui.Separator();
-            
+
             if (Project.Active != null)
             {
                 ImGui.MenuItem("Project Settings", "", ref _showProjectSettings);
@@ -1734,7 +1734,7 @@ public class EditorScene : Scene
                 ImGui.MenuItem("Auto-Reload Scripts", "", ref _autoReloadScripts);
                 ImGui.Separator();
             }
-            
+
             if (ImGui.MenuItem("Exit")) RequestExit();
             ImGui.EndMenu();
         }
@@ -2000,7 +2000,7 @@ public class EditorScene : Scene
         {
             title += " (Playing)";
         }
-        
+
         if (title != _lastWindowTitle)
         {
             _lastWindowTitle = title;
@@ -2190,11 +2190,11 @@ public class EditorScene : Scene
         if (!needsStartScene) return;
 
         project.Config.StartScene = System.IO.Path.GetRelativePath(assetDir, sceneAbsolutePath).Replace('\\', '/');
-        
+
         string sptprojPath = project.FilePath;
         if (string.IsNullOrEmpty(sptprojPath))
             sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
-            
+
         Project.SaveActive(sptprojPath);
         Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
     }

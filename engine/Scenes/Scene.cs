@@ -147,9 +147,9 @@ public class Scene
     /// </summary>
     public virtual void OnRender()
     {
-        System.Numerics.Matrix4x4? viewProjection = null;
-        System.Numerics.Vector3 cameraPosition = System.Numerics.Vector3.Zero;
-        System.Numerics.Vector4 clearColor = new System.Numerics.Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+        Matrix4x4? viewProjection = null;
+        Vector3 cameraPosition = Vector3.Zero;
+        Vector4 clearColor = new(0.1f, 0.1f, 0.1f, 1.0f);
         bool is3D = false;
 
         foreach (var entity in View<CameraComponent>())
