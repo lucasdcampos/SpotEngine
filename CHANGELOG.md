@@ -21,6 +21,8 @@ will be finalized when 0.2 is tagged.
 - Animation sampling no longer re-runs a bone-name regex per channel each frame
 
 ### Added
+- Editor is now cross-platform with native file dialog support for Linux and macOS
+- Added macOS target (osx-x64) to the standalone project builder
 - Added Spot engine icon to the Editor window and executable
 - Editor UI authoring: create and edit `.sptui` UI documents on a screen-space canvas (UI Canvas + UI Hierarchy panels), attach them with the new UI Canvas component, and wire behaviour by looking widgets up by name
 - UI Canvas layout aids: pixel grid with snapping, smart alignment guides (snap to sibling edges/centers), arrow-key nudging, and a live size readout (Alt bypasses snapping)

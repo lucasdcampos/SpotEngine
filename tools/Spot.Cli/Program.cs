@@ -57,7 +57,7 @@ internal static class Program
         var (positionals, options) = ParseArgs(args, 1);
         if (positionals.Count == 0)
         {
-            Console.Error.WriteLine("error: 'new' requires a project name. Usage: spot new <name> [--path <dir>] [--build <windows|linux>]");
+            Console.Error.WriteLine("error: 'new' requires a project name. Usage: spot new <name> [--path <dir>] [--build <windows|linux|mac>]");
             return 1;
         }
 
@@ -94,7 +94,7 @@ internal static class Program
         var (positionals, options) = ParseArgs(args, 1);
         if (positionals.Count == 0)
         {
-            Console.Error.WriteLine("error: 'build' requires a platform. Usage: spot build <windows|linux|browser> [--project <path>]");
+            Console.Error.WriteLine("error: 'build' requires a platform. Usage: spot build <windows|linux|mac|browser> [--project <path>]");
             return 1;
         }
 
@@ -212,8 +212,9 @@ internal static class Program
     {
         "windows" or "win" => BuildPlatform.Windows,
         "linux" => BuildPlatform.Linux,
+        "mac" or "macos" or "osx" => BuildPlatform.Mac,
         "browser" or "web" or "wasm" => BuildPlatform.Browser,
-        _ => throw new ArgumentException($"Unknown platform '{value}'. Use 'windows', 'linux', or 'browser'."),
+        _ => throw new ArgumentException($"Unknown platform '{value}'. Use 'windows', 'linux', 'mac', or 'browser'."),
     };
 
     // Splits args (from <start>) into positionals and options. An option is "--key"; it consumes the
@@ -263,7 +264,7 @@ internal static class Program
         Console.WriteLine(@"spot - Spot engine project tool
 
 Usage:
-  spot new <name> [--path <dir>] [--build <windows|linux|browser>]
+  spot new <name> [--path <dir>] [--build <windows|linux|mac|browser>]
       Create a project (folder, Assets/, .sptproj) and generate its build files.
       With --build, also publish a standalone build for the given platform.
 
@@ -272,7 +273,7 @@ Usage:
       --full also overwrites Program.cs. <path> may be a .sptproj or a directory
       (defaults to the current directory).
 
-  spot build <windows|linux|browser> [--project <path>]
+  spot build <windows|linux|mac|browser> [--project <path>]
       Publish a standalone build for the platform into Build/<platform>. The browser
       target publishes a WebAssembly/WebGL2 static site into Build/browser (shared 3D
       pipeline, no post-processing).

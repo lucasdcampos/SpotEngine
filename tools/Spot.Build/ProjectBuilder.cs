@@ -10,6 +10,7 @@ public enum BuildPlatform
 {
     Windows,
     Linux,
+    Mac,
 
     /// <summary>A WebAssembly build that runs the shared 3D pipeline in the browser on WebGL2 (no post-processing).</summary>
     Browser,
@@ -29,6 +30,7 @@ public static class ProjectBuilder
     {
         BuildPlatform.Windows => "win-x64",
         BuildPlatform.Linux => "linux-x64",
+        BuildPlatform.Mac => "osx-x64",
         BuildPlatform.Browser => "browser-wasm",
         _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, "Unsupported build platform."),
     };
@@ -37,6 +39,7 @@ public static class ProjectBuilder
     {
         BuildPlatform.Windows => "windows",
         BuildPlatform.Linux => "linux",
+        BuildPlatform.Mac => "mac",
         _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, "Unsupported build platform."),
     };
 
