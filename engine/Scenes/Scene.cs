@@ -16,16 +16,11 @@ namespace Spot.Scenes;
 /// </summary>
 public class Scene
 {
-    private readonly HashSet<int> _entities = new();
-    private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
+    // The scene's entity/component store and runtime physics, split into focused collaborators. The scene
+    // keeps the public API and delegates storage, queries, hierarchy-active memoization, and physics here.
+    private readonly EntityRegistry _registry;
+    private readonly ScenePhysics _physics;
     private readonly HashSet<int> _pendingDestroy = new();
-    private readonly Dictionary<Type, IReadOnlyList<Entity>> _viewCache = new();
-    private readonly Dictionary<(Type, Type), IReadOnlyList<Entity>> _viewCache2 = new();
-    private int _nextId = 1;
-    private IPhysics3D? _physics3D;
-    private CollisionDispatcher? _collisions;
-    private IPhysics2D? _physics2D;
-    private CollisionDispatcher? _collisions2D;
 
     /// <summary>
     /// The ordered play-mode systems this scene runs each frame from <see cref="UpdateRuntime"/>. Every
@@ -53,6 +48,9 @@ public class Scene
     /// </summary>
     public Scene()
     {
+        _registry = new EntityRegistry(this);
+        _physics = new ScenePhysics(this);
+
         Systems.Add(new DelegateSystem(SystemOrder.UICanvas, UICanvasSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
@@ -122,107 +120,27 @@ public class Scene
             Input.GetMouseButtonUp(MouseButton.Left));
     }
 
-    /// <summary>
-    /// Runs the 3D physics step and dispatches its collision events. Wrapped so the physics backend and the
-    /// contacts it produces stay encapsulated on the scene while the built-in physics <see cref="ISystem"/>
-    /// simply triggers it in order (see <see cref="SystemOrder.Physics3D"/>).
-    /// </summary>
-    private void StepPhysics3D(float deltaTime)
-    {
-        IPhysics3D physics = EnsurePhysics3D();
-        physics.Step(this, deltaTime);
-        (_collisions ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
-    }
+    // Steps the 3D physics simulation and dispatches its contacts; the built-in Physics3D ISystem triggers
+    // this in order (see SystemOrder.Physics3D). The backend and dispatcher live on ScenePhysics.
+    private void StepPhysics3D(float deltaTime) => _physics.Step3D(deltaTime);
 
-    /// <summary>
-    /// Lazily builds this scene's 3D physics backend from <see cref="PhysicsSettings.Backend"/>. If the
-    /// preferred backend fails to initialize, falls back to the legacy AABB solver so play never dies.
-    /// </summary>
-    private IPhysics3D EnsurePhysics3D()
-    {
-        if (_physics3D is not null) return _physics3D;
-
-        if (PhysicsSettings.Backend == Physics3DBackend.Bepu)
-        {
-            try
-            {
-                _physics3D = new Physics.Bepu.BepuPhysics3D();
-                return _physics3D;
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to initialize the Bepu physics backend ({0}); falling back to the legacy solver.", ex.Message);
-            }
-        }
-
-        _physics3D = new LegacyPhysics3D();
-        return _physics3D;
-    }
-
-    /// <summary>
-    /// Runs the 2D physics step and dispatches its collision events. Mirrors <see cref="StepPhysics3D"/>; the
-    /// backend and its contacts stay encapsulated on the scene while the built-in physics <see cref="ISystem"/>
-    /// simply triggers it in order (see <see cref="SystemOrder.Physics2D"/>).
-    /// </summary>
-    private void StepPhysics2D(float deltaTime)
-    {
-        IPhysics2D physics = EnsurePhysics2D();
-        physics.Step(this, deltaTime);
-        (_collisions2D ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
-    }
-
-    /// <summary>
-    /// Lazily builds this scene's 2D physics backend from <see cref="PhysicsSettings.Backend2D"/>. If the
-    /// preferred backend fails to initialize, falls back to the legacy AABB solver so play never dies.
-    /// </summary>
-    private IPhysics2D EnsurePhysics2D()
-    {
-        if (_physics2D is not null) return _physics2D;
-
-        if (PhysicsSettings.Backend2D == Physics2DBackend.Aether)
-        {
-            try
-            {
-                _physics2D = new Physics.Aether.AetherPhysics2D();
-                return _physics2D;
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to initialize the Aether 2D physics backend ({0}); falling back to the legacy solver.", ex.Message);
-            }
-        }
-
-        _physics2D = new LegacyPhysics2D();
-        return _physics2D;
-    }
+    // Steps the 2D physics simulation and dispatches its contacts; the built-in Physics2D ISystem triggers
+    // this in order (see SystemOrder.Physics2D). The backend and dispatcher live on ScenePhysics.
+    private void StepPhysics2D(float deltaTime) => _physics.Step2D(deltaTime);
 
     /// <summary>
     /// Casts a ray against this scene's 3D physics and returns the closest hit within
     /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
     /// </summary>
-    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
-    {
-        if (_physics3D is null)
-        {
-            hit = default;
-            return false;
-        }
-        return _physics3D.Raycast(this, origin, direction, maxDistance, out hit);
-    }
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit) =>
+        _physics.Raycast(origin, direction, maxDistance, out hit);
 
     /// <summary>
     /// Casts a ray against this scene's 2D physics (XY plane) and returns the closest hit within
     /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
     /// </summary>
-    public bool Raycast2D(Vector2 origin, Vector2 direction, float maxDistance, out RaycastHit2D hit)
-    {
-        if (_physics2D is null)
-        {
-            hit = default;
-            return false;
-        }
-        return _physics2D.Raycast(this, origin, direction, maxDistance, out hit);
-    }
+    public bool Raycast2D(Vector2 origin, Vector2 direction, float maxDistance, out RaycastHit2D hit) =>
+        _physics.Raycast2D(origin, direction, maxDistance, out hit);
 
     /// <summary>
     /// Called every frame to render the scene, after the screen is cleared.
@@ -268,7 +186,7 @@ public class Scene
             }
 
             SceneRenderer.Render(this, viewProjection.Value, cameraPosition);
-            
+
             if (is3D)
             {
                 Renderer.SetDepthTest(false);
@@ -347,8 +265,7 @@ public class Scene
     /// <returns>The new entity.</returns>
     public Entity Instantiate(string name = "Entity")
     {
-        int id = _nextId++;
-        _entities.Add(id);
+        int id = _registry.CreateEntity();
 
         var entity = new Entity(id, this);
         entity.AddComponent(new LabelComponent(name));
@@ -371,13 +288,8 @@ public class Scene
     /// </summary>
     internal void Clear()
     {
-        _entities.Clear();
-        _pools.Clear();
+        _registry.Clear();
         _pendingDestroy.Clear();
-        _viewCache.Clear();
-        _viewCache2.Clear();
-        _activeInHierarchyMemo.Clear();
-        _nextId = 1;
         TeardownPhysics();
     }
 
@@ -386,36 +298,7 @@ public class Scene
     /// when the scene is exited so the native-free simulation and its buffers are released. Safe to call
     /// when no backend exists; a later <see cref="UpdateRuntime"/> rebuilds one on demand.
     /// </summary>
-    internal void TeardownPhysics()
-    {
-        if (_physics3D is not null)
-        {
-            try
-            {
-                _physics3D.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
-            }
-            _physics3D = null;
-            _collisions?.Reset();
-        }
-
-        if (_physics2D is not null)
-        {
-            try
-            {
-                _physics2D.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to dispose the 2D physics backend: {0}", ex.Message);
-            }
-            _physics2D = null;
-            _collisions2D?.Reset();
-        }
-    }
+    internal void TeardownPhysics() => _physics.Teardown();
 
     /// <summary>
     /// Returns a handle to the entity with the given id if it is still alive, otherwise
@@ -423,7 +306,7 @@ public class Scene
     /// remapping a selection after a snapshot restore).
     /// </summary>
     internal Entity? EntityById(int? id) =>
-        id is int value && _entities.Contains(value) ? new Entity(value, this) : null;
+        id is int value && _registry.Contains(value) ? new Entity(value, this) : null;
 
     /// <summary>
     /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the
@@ -456,8 +339,7 @@ public class Scene
             }
         }
 
-        if (_pools.TryGetValue(typeof(ScriptComponent), out Dictionary<int, object>? scriptPool) &&
-            scriptPool.TryGetValue(id, out object? value))
+        if (_registry.TryGet(typeof(ScriptComponent), id, out object? value))
         {
             foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
             {
@@ -492,14 +374,7 @@ public class Scene
             }
         }
 
-        _entities.Remove(id);
-        foreach (Dictionary<int, object> pool in _pools.Values)
-        {
-            pool.Remove(id);
-        }
-        _viewCache.Clear();
-        _viewCache2.Clear();
-        _activeInHierarchyMemo.Clear();
+        _registry.RemoveEntity(id);
     }
 
     /// <summary>
@@ -508,25 +383,8 @@ public class Scene
     /// <typeparam name="T">The component type to match.</typeparam>
     /// <returns>A snapshot of the matching entities, safe to modify the scene while iterating.</returns>
     public IReadOnlyList<Entity> View<T>()
-        where T : class
-    {
-        if (_viewCache.TryGetValue(typeof(T), out IReadOnlyList<Entity>? cached))
-        {
-            return cached;
-        }
-
-        var result = new List<Entity>();
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
-        {
-            foreach (int id in pool.Keys)
-            {
-                result.Add(new Entity(id, this));
-            }
-        }
-
-        _viewCache[typeof(T)] = result;
-        return result;
-    }
+        where T : class =>
+        _registry.View<T>();
 
     /// <summary>
     /// Returns every entity that has components of both <typeparamref name="T1"/> and <typeparamref name="T2"/>.
@@ -536,37 +394,8 @@ public class Scene
     /// <returns>A snapshot of the matching entities, safe to modify the scene while iterating.</returns>
     public IReadOnlyList<Entity> View<T1, T2>()
         where T1 : class
-        where T2 : class
-    {
-        var key = (typeof(T1), typeof(T2));
-        if (_viewCache2.TryGetValue(key, out IReadOnlyList<Entity>? cached))
-        {
-            return cached;
-        }
-
-        var result = new List<Entity>();
-        if (!_pools.TryGetValue(typeof(T1), out Dictionary<int, object>? pool1) ||
-            !_pools.TryGetValue(typeof(T2), out Dictionary<int, object>? pool2))
-        {
-            _viewCache2[key] = result;
-            return result;
-        }
-
-        // Iterate the smaller pool and probe the larger one.
-        (Dictionary<int, object> smaller, Dictionary<int, object> larger) =
-            pool1.Count <= pool2.Count ? (pool1, pool2) : (pool2, pool1);
-
-        foreach (int id in smaller.Keys)
-        {
-            if (larger.ContainsKey(id))
-            {
-                result.Add(new Entity(id, this));
-            }
-        }
-
-        _viewCache2[key] = result;
-        return result;
-    }
+        where T2 : class =>
+        _registry.View<T1, T2>();
 
     /// <summary>
     /// Returns every entity that has a component of type <typeparamref name="T"/> which is both enabled and
@@ -576,25 +405,8 @@ public class Scene
     /// </summary>
     /// <typeparam name="T">The component type to match.</typeparam>
     public IReadOnlyList<(Entity Entity, T Component)> ViewActive<T>()
-        where T : Component
-    {
-        var result = new List<(Entity, T)>();
-        foreach (Entity entity in View<T>())
-        {
-            if (!entity.IsActiveInHierarchy())
-            {
-                continue;
-            }
-
-            T component = GetComponent<T>(entity);
-            if (component.Enabled)
-            {
-                result.Add((entity, component));
-            }
-        }
-
-        return result;
-    }
+        where T : Component =>
+        _registry.ViewActive<T>();
 
     /// <summary>
     /// Moves every persistent root entity (marked via <see cref="Entity.DontDestroyOnLoad"/>) and its
@@ -611,7 +423,7 @@ public class Scene
 
         // Snapshot the roots first: adopting mutates this scene's entity set as it goes.
         var roots = new List<int>();
-        foreach (int id in _entities)
+        foreach (int id in _registry.EntityIds)
         {
             if (GetComponent(new Entity(id, this), typeof(LabelComponent)) is LabelComponent label &&
                 label.Persistent &&
@@ -638,28 +450,16 @@ public class Scene
         var order = new List<int>();
         CollectSubtree(source, rootId, order);
 
-        // Pass 1: re-mint ids and move each entity's component instances into this scene's pools.
+        // Pass 1: re-mint ids and move each entity's component instances into this scene's registry.
         var remap = new Dictionary<int, int>(order.Count);
         foreach (int oldId in order)
         {
-            int newId = _nextId++;
+            int newId = _registry.CreateEntity();
             remap[oldId] = newId;
-            _entities.Add(newId);
-
-            foreach (Dictionary<int, object> sourcePool in source._pools.Values)
-            {
-                if (sourcePool.Remove(oldId, out object? component))
-                {
-                    PoolFor(component.GetType())[newId] = component;
-                }
-            }
-
-            source._entities.Remove(oldId);
+            source._registry.MoveEntityComponentsTo(oldId, _registry, newId);
         }
-        source._viewCache.Clear();
-        source._viewCache2.Clear();
-        this._viewCache.Clear();
-        this._viewCache2.Clear();
+        source._registry.InvalidateCaches();
+        _registry.InvalidateCaches();
 
         // Pass 2: rebind every stored entity handle now that all new ids exist.
         foreach (int newId in remap.Values)
@@ -774,146 +574,66 @@ public class Scene
         return result;
     }
 
-    internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
-
-    // Memoized IsActiveInHierarchy results, keyed by entity id. An entity's active state (its
-    // LabelComponent.Enabled walked up the parent chain) is queried many times per frame — by every
-    // ViewActive and each RenderSystem pass — so it is cached and recomputed only when something that
-    // affects it changes: a component add/remove, a reparent, or an Enabled toggle, each of which calls
-    // InvalidateHierarchyActive.
-    private readonly Dictionary<int, bool> _activeInHierarchyMemo = new();
+    internal bool IsAlive(Entity entity) => _registry.Contains(entity.Id);
 
     /// <summary>
     /// Drops the cached hierarchy-active results so the next query recomputes. Called whenever something
     /// that affects active state changes: an entity's Enabled flag, a reparent, or a component add/remove.
     /// </summary>
-    internal void InvalidateHierarchyActive() => _activeInHierarchyMemo.Clear();
+    internal void InvalidateHierarchyActive() => _registry.InvalidateHierarchyActive();
 
-    internal bool IsActiveInHierarchy(int entityId)
-    {
-        if (_activeInHierarchyMemo.TryGetValue(entityId, out bool cached))
-        {
-            return cached;
-        }
+    internal bool IsActiveInHierarchy(int entityId) => _registry.IsActiveInHierarchy(entityId);
 
-        bool active = ComputeActiveInHierarchy(entityId);
-        _activeInHierarchyMemo[entityId] = active;
-        return active;
-    }
-
-    private bool ComputeActiveInHierarchy(int entityId)
-    {
-        if (!_pools.TryGetValue(typeof(LabelComponent), out Dictionary<int, object>? labelPool)) return false;
-        _pools.TryGetValue(typeof(RelationshipComponent), out Dictionary<int, object>? relPool);
-
-        int currentId = entityId;
-        while (true)
-        {
-            if (labelPool.TryGetValue(currentId, out object? labelObj))
-            {
-                if (!((LabelComponent)labelObj).Enabled) return false;
-            }
-            else return false;
-
-            if (relPool != null && relPool.TryGetValue(currentId, out object? relObj))
-            {
-                RelationshipComponent rel = (RelationshipComponent)relObj;
-                if (rel.Parent != null)
-                {
-                    currentId = rel.Parent.Value.Id;
-                    continue;
-                }
-            }
-            break;
-        }
-        return true;
-    }
+    // Component access delegates to the registry, which stores each component under its type and invalidates
+    // the query and hierarchy caches on mutation. The scene first wires the two components that need a
+    // back-reference (a transform to its entity, a label to its owning scene) before storing them.
 
     internal T AddComponent<T>(Entity entity, T component)
         where T : class
     {
-        if (component is TransformComponent transform)
-        {
-            transform.Entity = entity;
-        }
-        else if (component is LabelComponent label)
-        {
-            label.OwnerScene = this;
-        }
-
-        PoolFor(typeof(T))[entity.Id] = component;
-        _viewCache.Clear();
-        _viewCache2.Clear();
-        InvalidateHierarchyActive();
+        WireComponent(entity, component);
+        _registry.Set(typeof(T), entity.Id, component);
         return component;
     }
 
     internal T GetComponent<T>(Entity entity)
-        where T : class
-    {
-        if (TryGetComponent(entity, out T? component))
-        {
-            return component;
-        }
-
-        throw new InvalidOperationException($"Entity does not have a component of type {typeof(T).Name}.");
-    }
+        where T : class =>
+        _registry.Get<T>(entity.Id);
 
     internal bool TryGetComponent<T>(Entity entity, [NotNullWhen(true)] out T? component)
-        where T : class
-    {
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) &&
-            pool.TryGetValue(entity.Id, out object? value))
-        {
-            component = (T)value;
-            return true;
-        }
-
-        component = null;
-        return false;
-    }
+        where T : class =>
+        _registry.TryGet(entity.Id, out component);
 
     internal bool HasComponent<T>(Entity entity)
         where T : class =>
-        _pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) && pool.ContainsKey(entity.Id);
+        _registry.Has<T>(entity.Id);
 
     internal void RemoveComponent<T>(Entity entity)
-        where T : class
-    {
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
-        {
-            pool.Remove(entity.Id);
-            _viewCache.Clear();
-            _viewCache2.Clear();
-            InvalidateHierarchyActive();
-        }
-    }
+        where T : class =>
+        _registry.Remove<T>(entity.Id);
 
-    // Non-generic component access, keyed by runtime type. These mirror the generic API for callers
-    // that only know a component's Type at runtime (e.g. the editor's reflection-based inspector).
-    // Components are always stored under their concrete type, so keying by Type/GetType() is consistent
-    // with the generic path.
+    // Non-generic component access, keyed by runtime type, for callers that only know a component's Type at
+    // runtime (e.g. the editor's reflection-based inspector).
 
-    internal bool HasComponent(Entity entity, Type type) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.ContainsKey(entity.Id);
+    internal bool HasComponent(Entity entity, Type type) => _registry.Has(type, entity.Id);
 
-    internal object? GetComponent(Entity entity, Type type) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out object? value)
-            ? value
-            : null;
+    internal object? GetComponent(Entity entity, Type type) => _registry.Get(type, entity.Id);
 
-    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component)
-    {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out component))
-        {
-            return true;
-        }
-
-        component = null;
-        return false;
-    }
+    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component) =>
+        _registry.TryGet(type, entity.Id, out component);
 
     internal Component AddComponent(Entity entity, Component component)
+    {
+        WireComponent(entity, component);
+        _registry.Set(component.GetType(), entity.Id, component);
+        return component;
+    }
+
+    internal void RemoveComponent(Entity entity, Type type) => _registry.Remove(type, entity.Id);
+
+    // Gives a transform its owning entity and a label its owning scene so components can navigate back to
+    // the scene graph. Other component types need no wiring.
+    private void WireComponent(Entity entity, object component)
     {
         if (component is TransformComponent transform)
         {
@@ -923,33 +643,5 @@ public class Scene
         {
             label.OwnerScene = this;
         }
-
-        PoolFor(component.GetType())[entity.Id] = component;
-        _viewCache.Clear();
-        _viewCache2.Clear();
-        InvalidateHierarchyActive();
-        return component;
-    }
-
-    internal void RemoveComponent(Entity entity, Type type)
-    {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool))
-        {
-            pool.Remove(entity.Id);
-            _viewCache.Clear();
-            _viewCache2.Clear();
-            InvalidateHierarchyActive();
-        }
-    }
-
-    private Dictionary<int, object> PoolFor(Type type)
-    {
-        if (!_pools.TryGetValue(type, out Dictionary<int, object>? pool))
-        {
-            pool = new Dictionary<int, object>();
-            _pools[type] = pool;
-        }
-
-        return pool;
     }
 }
