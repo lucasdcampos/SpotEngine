@@ -18,6 +18,7 @@ will be finalized when 0.2 is tagged.
 - Redundant texture binds skipped in the 3D mesh pass
 - Hierarchy active-state is memoized
 - Editor per-frame overhead cut
+- Animation sampling no longer re-runs a bone-name regex per channel each frame
 
 ### Added
 - Added Spot engine icon to the Editor window and executable
@@ -48,6 +49,8 @@ will be finalized when 0.2 is tagged.
 
 ### Changed
 - Application Startup factory method initialization
+- Standardized the codebase: added an `.editorconfig` and a CI workflow (build + test on push/PR), centralized common build settings, and brought the Sandbox under warnings-as-errors
+- Decomposed two oversized files with no behaviour change: the `Renderer3D` shaders moved to a partial, and `Scene` split into entity-store, hierarchy-cache, and physics collaborators
 
 ### Fixed
 - Play/Run no longer litter the project root: cooked `Content/` and `game.manifest` are staged into `Build/` beside the game
