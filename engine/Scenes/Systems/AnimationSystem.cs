@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using Spot.Core;
 
 namespace Spot.Scenes;
@@ -47,16 +46,10 @@ public static class AnimationSystem
         return map;
     }
 
-    // Mixamo tags every skeleton with a namespace whose number varies per download ("mixamorig:", "mixamorig5:",
-    // ...), so a clip authored against one rig targets "mixamorig5:Hips" while the model in the scene is
-    // "mixamorig:Hips". Canonicalizing that namespace lets a clip retarget onto the same skeleton regardless of
-    // the number. Names without the namespace pass through unchanged.
-    private static readonly Regex s_mixamoNamespace = new(@"mixamorig\d+:", RegexOptions.Compiled);
-
     /// <summary>Canonicalizes a bone/node name so animation channels retarget across Mixamo exports.</summary>
     /// <param name="name">The raw node or bone name.</param>
     /// <returns>The name with its Mixamo skeleton namespace canonicalized to <c>mixamorig:</c>.</returns>
-    internal static string NormalizeBoneName(string name) => s_mixamoNamespace.Replace(name, "mixamorig:");
+    internal static string NormalizeBoneName(string name) => Spot.Animation.BoneName.Normalize(name);
 
     private static void Collect(Entity entity, Dictionary<string, Entity> map)
     {

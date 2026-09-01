@@ -44,6 +44,15 @@ public sealed class AnimationChannel
     /// <summary>Gets the name of the node (bone) this channel animates.</summary>
     public string NodeName { get; }
 
+    private string? _normalizedNodeName;
+
+    /// <summary>
+    /// <see cref="NodeName"/> canonicalized for retargeting via <see cref="BoneName.Normalize"/>, computed
+    /// once and cached. Lets the sampler bind the channel to a bone entity each frame without re-running the
+    /// normalization regex.
+    /// </summary>
+    public string NormalizedNodeName => _normalizedNodeName ??= BoneName.Normalize(NodeName);
+
     /// <summary>Gets the position keyframes, in time order.</summary>
     public IReadOnlyList<Keyframe<Vector3>> PositionKeys { get; }
 
