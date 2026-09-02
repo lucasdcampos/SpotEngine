@@ -64,6 +64,42 @@ public sealed class VertexArray : IDisposable
     }
 
     /// <summary>
+    /// Adds a per-instance vertex buffer: like <see cref="AddVertexBuffer"/>, but each attribute advances
+    /// once per instance (or every <paramref name="divisor"/> instances) rather than per vertex, feeding an
+    /// instanced draw. Its attributes follow those already added, so add the geometry buffer first.
+    /// </summary>
+    /// <param name="vertexBuffer">The buffer of per-instance data.</param>
+    /// <param name="divisor">The attribute advance rate: 1 per instance (the default), or every N instances.</param>
+    public void AddInstancedVertexBuffer(VertexBuffer vertexBuffer, uint divisor = 1)
+    {
+        Bind();
+        vertexBuffer.Bind();
+
+        uint stride = 0;
+        foreach (ShaderDataType type in vertexBuffer.Layout)
+        {
+            stride += type.Size();
+        }
+
+        int offset = 0;
+        foreach (ShaderDataType type in vertexBuffer.Layout)
+        {
+            _device.EnableVertexAttribArray(_attributeIndex);
+            _device.VertexAttribPointer(
+                _attributeIndex,
+                type.ComponentCount(),
+                type.ToVertexAttribType(),
+                false,
+                stride,
+                offset);
+            _device.VertexAttribDivisor(_attributeIndex, divisor);
+
+            offset += (int)type.Size();
+            _attributeIndex++;
+        }
+    }
+
+    /// <summary>
     /// Attaches an index buffer for indexed drawing.
     /// </summary>
     /// <param name="indexBuffer">The index buffer to attach.</param>

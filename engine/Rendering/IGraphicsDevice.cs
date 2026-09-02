@@ -253,6 +253,25 @@ public interface IGraphicsDevice
     /// <param name="count">The number of indices to draw.</param>
     void DrawElements(PrimitiveKind primitive, uint count);
 
+    /// <summary>
+    /// Draws <paramref name="instanceCount"/> copies of the currently bound indexed geometry in a single
+    /// call, each copy reading its own values from any vertex attributes configured with a non-zero divisor
+    /// (see <see cref="VertexAttribDivisor"/>). Supported on both backends (desktop GL and WebGL2).
+    /// </summary>
+    /// <param name="primitive">The primitive kind to assemble.</param>
+    /// <param name="count">The number of indices per instance.</param>
+    /// <param name="instanceCount">The number of instances to draw.</param>
+    void DrawElementsInstanced(PrimitiveKind primitive, uint count, uint instanceCount);
+
+    /// <summary>
+    /// Sets the instancing divisor of a vertex attribute on the bound vertex array: <c>0</c> advances the
+    /// attribute per vertex (the default), <c>1</c> per instance, <c>n</c> once every <c>n</c> instances.
+    /// Used to feed per-instance data (model matrices, colors) to an instanced draw.
+    /// </summary>
+    /// <param name="index">The attribute index.</param>
+    /// <param name="divisor">The advance rate: 0 per vertex, 1 per instance, and so on.</param>
+    void VertexAttribDivisor(uint index, uint divisor);
+
     /// <summary>Creates a new, uninitialized GPU buffer.</summary>
     /// <returns>A handle to the new buffer.</returns>
     BufferHandle CreateBuffer();
