@@ -144,8 +144,14 @@ public static class RenderSystem
             pointLightCount = 0;
         }
 
+        bool cull = !Spot.Rendering.RendererDebug.DisableFrustumCulling;
+
         if (castShadows)
         {
+            // Casters are culled against the light's frustum (the shadow matrix), so geometry that can
+            // never land on the shadow map is skipped — a different volume from the camera frustum below.
+            var shadowFrustum = new Spot.Rendering.Frustum(lightSpaceMatrix);
+
             Renderer3D.EnsureShadowMapResolution(Spot.Rendering.RenderSettings.ShadowMapResolution);
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
             foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
@@ -158,10 +164,18 @@ public static class RenderSystem
                 ResolveAssets(meshRenderer);
                 if (meshRenderer.Model is null) continue;
 
-                if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
-                    skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+                Matrix4x4[]? palette = null;
+                bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                    skinned.TryBuildPalette(entity, out palette);
+
+                if (cull && !IsVisible(shadowFrustum, meshRenderer.Model, transform.Matrix, isSkinned))
                 {
-                    DrawSkinnedShadowMeshes(meshRenderer, palette);
+                    continue;
+                }
+
+                if (isSkinned)
+                {
+                    DrawSkinnedShadowMeshes(meshRenderer, palette!);
                     continue;
                 }
 
@@ -202,6 +216,10 @@ public static class RenderSystem
             break; // only draw the first one
         }
 
+        var frustum = new Spot.Rendering.Frustum(viewProjection);
+        int visible = 0;
+        int culled = 0;
+
         foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
@@ -216,13 +234,23 @@ public static class RenderSystem
                 continue;
             }
 
+            Matrix4x4[]? palette = null;
+            bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                skinned.TryBuildPalette(entity, out palette);
+
+            if (cull && !IsVisible(frustum, meshRenderer.Model, transform.Matrix, isSkinned))
+            {
+                culled++;
+                continue;
+            }
+            visible++;
+
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
 
-            if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
-                skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+            if (isSkinned)
             {
-                DrawSkinnedMeshes(meshRenderer, palette, color, texture);
+                DrawSkinnedMeshes(meshRenderer, palette!, color, texture);
                 continue;
             }
 
@@ -230,6 +258,9 @@ public static class RenderSystem
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
             DrawMeshes(meshRenderer, world, color, texture, shaderType);
         }
+
+        Spot.Rendering.RendererDebug.VisibleMeshCount = visible;
+        Spot.Rendering.RendererDebug.CulledMeshCount = culled;
 
         Renderer3D.EndScene();
 
@@ -381,6 +412,18 @@ public static class RenderSystem
         lightProj.M41 += offset.X;
         lightProj.M42 += offset.Y;
         return lightView * lightProj;
+    }
+
+    /// <summary>
+    /// Tests a mesh entity against a frustum using its model's local bounds transformed to world space.
+    /// Skinned meshes are padded generously first: their bounds are the bind pose, which animation can
+    /// push geometry beyond, so a tight test would pop limbs out of view.
+    /// </summary>
+    private static bool IsVisible(in Spot.Rendering.Frustum frustum, Model model, in Matrix4x4 world, bool isSkinned)
+    {
+        Spot.Physics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
+        Spot.Physics.Aabb3d worldBounds = local.Transform(world);
+        return frustum.Intersects(worldBounds);
     }
 
     /// <summary>

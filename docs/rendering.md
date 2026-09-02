@@ -110,6 +110,18 @@ renders straight to the screen. "Limiting" a platform is therefore a **runtime c
 which `RenderSettings`), not a forked renderer. Neutralizing the post pipeline for the browser is a
 follow-up. See [Projects & Building](projects-and-building.md#the-browser-target) for the browser target.
 
+## Scalable rendering
+
+The 3D pipeline is built to scale to large scenes rather than draw everything blindly.
+
+**Frustum culling.** Before a mesh is drawn, its model bounds are transformed to world space and tested
+against the camera's view frustum; meshes fully outside the view are skipped, in both the main pass and
+the directional shadow pass (there tested against the light's frustum, so off-map casters are skipped
+too). Culling is conservative — it never drops something actually on screen. Skinned meshes have their
+bind-pose bounds padded first, so animation can never pop a limb out of view. The `RendererDebug`
+surface exposes `VisibleMeshCount` / `CulledMeshCount` (updated each frame) and a
+`DisableFrustumCulling` toggle for A/B comparison.
+
 ## Measuring performance
 
 `RenderSettings.VSync` (on by default) gates whether the buffer swap waits for the monitor's vertical
