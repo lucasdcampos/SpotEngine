@@ -229,12 +229,13 @@ public static partial class Renderer3D
             if (uClustered == 1)
             {
                 int fro = froxelIndex();
-                uint packed = texelFetch(uClusterGrid, ivec2(fro % GRID_TEX_W, fro / GRID_TEX_W), 0).r;
-                uint offset = packed >> 8u;
-                uint count = packed & 255u;
-                for (uint k = 0u; k < count; k++)
+                // Note: 'packed', 'offset', 'count' are reserved words in GLSL — avoid them as identifiers.
+                uint gridCell = texelFetch(uClusterGrid, ivec2(fro % GRID_TEX_W, fro / GRID_TEX_W), 0).r;
+                uint listOffset = gridCell >> 8u;
+                uint lightCount = gridCell & 255u;
+                for (uint k = 0u; k < lightCount; k++)
                 {
-                    uint li = offset + k;
+                    uint li = listOffset + k;
                     int i = int(texelFetch(uLightIndices, ivec2(int(li) % INDEX_TEX_W, int(li) / INDEX_TEX_W), 0).r);
                     sum += pointLightContribution(i, normal, viewDir, F0);
                 }
