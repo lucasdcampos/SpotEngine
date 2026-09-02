@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Spot.Assets;
 using Spot.Core;
 
 namespace Spot.Scenes;
@@ -28,6 +29,13 @@ public class SceneSerializer
 
     public string SerializeToString()
     {
+        // Give every entity a stable id before writing so an Entity-typed script field can reference a target
+        // that is written later in the file — the reference stores the target's id, which must already exist.
+        foreach (Entity entity in _scene.View<LabelComponent>())
+        {
+            entity.EnsurePersistentId();
+        }
+
         var entities = new JsonArray();
         foreach (var entity in _scene.View<LabelComponent>())
         {
@@ -45,17 +53,34 @@ public class SceneSerializer
     /// Writes a single entity and its descendants to a JSON object using the same reflection-based component
     /// handling as a full scene. Shared with the prefab serializer, which stores one such subtree.
     /// </summary>
+    /// <summary>
+    /// Assigns a stable id to <paramref name="root"/> and every descendant, so that a subtree (a prefab) can
+    /// be written with all entity references pointing at targets that already have ids.
+    /// </summary>
+    internal static void EnsureSubtreeIds(Entity root)
+    {
+        root.EnsurePersistentId();
+        foreach (Entity child in root.Children)
+        {
+            EnsureSubtreeIds(child);
+        }
+    }
+
     internal static JsonObject WriteEntity(Entity entity)
     {
         var obj = new JsonObject();
 
-        // Tag is structural: it holds the name, the entity's enabled state, and its category tag.
+        // Tag is structural: it holds the name, the entity's enabled state, its category tag, and its stable
+        // id (so entity references survive renames and reordering).
         var tag = entity.GetComponent<LabelComponent>();
         var tagObj = new JsonObject { ["Name"] = tag.Name, ["Enabled"] = entity.Enabled };
         if (!string.IsNullOrEmpty(tag.Tag))
         {
             tagObj["Tag"] = tag.Tag;
         }
+
+        string id = entity.EnsurePersistentId();
+        tagObj["Id"] = id;
 
         obj["Tag"] = tagObj;
 
@@ -94,6 +119,21 @@ public class SceneSerializer
         foreach (ScriptInstance item in scripts.Items)
         {
             var entry = new JsonObject { ["Type"] = item.ClassName };
+
+            // Persist the stable guid as the primary reference so a class rename never breaks the scene. If
+            // the entry has none yet but the registry knows the resolved type, capture it now (this upgrades
+            // pre-guid scenes to a stable reference on their next save).
+            string guid = item.Guid;
+            if (string.IsNullOrEmpty(guid) && item.Instance is not null
+                && ScriptRegistry.TryGetByName(item.ClassName, out ScriptDescriptor? descriptor))
+            {
+                guid = descriptor!.Guid;
+            }
+
+            if (!string.IsNullOrEmpty(guid))
+            {
+                entry["Guid"] = guid;
+            }
 
             // Persist the script's authored field values when the instance is available. Unresolved
             // scripts (no instance) keep just their class name so the reference survives.
@@ -151,16 +191,21 @@ public class SceneSerializer
             return false;
         }
 
-        // A scene with no "Entities" array is valid (an empty scene) rather than an error.
+        // A scene with no "Entities" array is valid (an empty scene) rather than an error. All top-level
+        // entities share one reference context so an Entity field can point across the whole scene; the
+        // deferred bindings are resolved once every entity exists.
         if (rootObj["Entities"] is JsonArray entities)
         {
+            var refs = new SceneReferences();
             foreach (JsonNode? entityNode in entities)
             {
                 if (entityNode is JsonObject entityObj)
                 {
-                    ReadEntity(_scene, entityObj, null);
+                    ReadEntitySubtree(_scene, entityObj, null, refs, freshIds: false);
                 }
             }
+
+            refs.ResolveDeferred();
         }
 
         return true;
@@ -169,18 +214,36 @@ public class SceneSerializer
     /// <summary>
     /// Reads a single entity (and its descendants) from a JSON object into the given scene under an optional
     /// parent, returning the created entity. Shared with the prefab serializer, which instantiates one such
-    /// subtree. Component and script failures are logged and skipped rather than thrown.
+    /// subtree — its entity ids are regenerated so repeated instances never collide, while references inside
+    /// the subtree are remapped to the fresh instance. Component and script failures are logged and skipped.
     /// </summary>
     internal static Entity ReadEntity(Scene scene, JsonObject entityObj, Entity? parent)
+    {
+        var refs = new SceneReferences();
+        Entity entity = ReadEntitySubtree(scene, entityObj, parent, refs, freshIds: true);
+        refs.ResolveDeferred();
+        return entity;
+    }
+
+    /// <summary>
+    /// Reads one entity subtree, registering ids and queuing entity references on <paramref name="refs"/>
+    /// without resolving them (the caller resolves once the whole load finishes). When
+    /// <paramref name="freshIds"/> is set, the entity is given a new id (prefab instancing) while still being
+    /// registered under its stored id so internal references remap to it; otherwise its stored id is kept.
+    /// </summary>
+    private static Entity ReadEntitySubtree(
+        Scene scene, JsonObject entityObj, Entity? parent, SceneReferences refs, bool freshIds)
     {
         string name = "Entity";
         bool enabled = true;
         string tag = string.Empty;
+        string storedId = string.Empty;
         if (entityObj["Tag"] is JsonObject tagObj)
         {
             name = tagObj["Name"]?.GetValue<string>() ?? "Entity";
             enabled = tagObj["Enabled"]?.GetValue<bool>() ?? true;
             tag = tagObj["Tag"]?.GetValue<string>() ?? string.Empty;
+            storedId = tagObj["Id"]?.GetValue<string>() ?? string.Empty;
         }
 
         var entity = scene.Instantiate(name);
@@ -191,6 +254,14 @@ public class SceneSerializer
             entity.SetParent(parent);
         }
 
+        // Keep the stored id for a normal load (references stay stable across saves); allocate a fresh one for
+        // a prefab instance so two instances don't share ids. Either way register under the stored id so
+        // references authored inside this subtree resolve to this entity.
+        entity.PersistentId = freshIds || string.IsNullOrEmpty(storedId)
+            ? entity.EnsurePersistentId()
+            : storedId;
+        refs.Register(string.IsNullOrEmpty(storedId) ? entity.PersistentId : storedId, entity);
+
         foreach (var (key, node) in entityObj)
         {
             if (key is "Tag" or "Children" || node is not JsonObject componentObj)
@@ -200,7 +271,7 @@ public class SceneSerializer
 
             if (key == "Scripts")
             {
-                DeserializeScripts(entity, componentObj);
+                DeserializeScripts(entity, componentObj, refs);
                 continue;
             }
 
@@ -227,7 +298,7 @@ public class SceneSerializer
             {
                 if (childNode is JsonObject childObj)
                 {
-                    ReadEntity(scene, childObj, entity);
+                    ReadEntitySubtree(scene, childObj, entity, refs, freshIds);
                 }
             }
         }
@@ -235,7 +306,7 @@ public class SceneSerializer
         return entity;
     }
 
-    private static void DeserializeScripts(Entity entity, JsonObject data)
+    private static void DeserializeScripts(Entity entity, JsonObject data, SceneReferences refs)
     {
         var scripts = new ScriptComponent { Enabled = data["Enabled"]?.GetValue<bool>() ?? true };
         entity.AddComponent(scripts);
@@ -251,9 +322,10 @@ public class SceneSerializer
                 }
 
                 string? className = entry["Type"]?.GetValue<string>();
-                if (!string.IsNullOrEmpty(className))
+                string? guid = entry["Guid"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(className) || !string.IsNullOrEmpty(guid))
                 {
-                    AddScript(entity, scripts, className, entry["Fields"] as JsonObject);
+                    AddScript(entity, scripts, guid, className ?? string.Empty, entry["Fields"] as JsonObject, refs);
                 }
             }
         }
@@ -265,26 +337,35 @@ public class SceneSerializer
                 string? className = node?.GetValue<string>();
                 if (!string.IsNullOrEmpty(className))
                 {
-                    AddScript(entity, scripts, className, null);
+                    AddScript(entity, scripts, null, className, null, refs);
                 }
             }
         }
     }
 
-    private static void AddScript(Entity entity, ScriptComponent scripts, string className, JsonObject? fields)
+    private static void AddScript(
+        Entity entity, ScriptComponent scripts, string? guid, string className, JsonObject? fields, SceneReferences refs)
     {
-        EntityBehaviour? instance = ScriptResolver.Create(className, entity);
-        if (instance != null && fields != null)
+        EntityBehaviour? instance = ScriptResolver.Create(guid, className, entity);
+
+        // If the class name was lost (guid-only reference) but the guid resolved, recover the readable name
+        // from the resolved instance so the inspector and later saves keep both.
+        if (string.IsNullOrEmpty(className) && instance is not null)
         {
-            ComponentSerialization.ApplyMembers(instance, fields);
+            className = instance.GetType().Name;
         }
 
-        scripts.Items.Add(new ScriptInstance(className, instance));
+        if (instance != null && fields != null)
+        {
+            ComponentSerialization.ApplyMembers(instance, fields, refs);
+        }
+
+        scripts.Items.Add(new ScriptInstance(className, instance, guid ?? string.Empty));
     }
 
     public bool Deserialize(string filepath)
     {
-        if (!File.Exists(filepath))
+        if (!AssetProvider.Current.Exists(filepath))
         {
             return false;
         }
@@ -292,7 +373,7 @@ public class SceneSerializer
         string json;
         try
         {
-            json = File.ReadAllText(filepath);
+            json = AssetProvider.Current.ReadAllText(filepath);
         }
         catch (Exception ex)
         {

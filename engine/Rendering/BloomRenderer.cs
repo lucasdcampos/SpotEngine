@@ -74,9 +74,12 @@ void main()
     private static Shader? s_brightShader;
     private static Shader? s_blurShader;
     private static VertexArray? s_quad;
-    private static Framebuffer? s_bright;
-    private static Framebuffer? s_pingA;
-    private static Framebuffer? s_pingB;
+    // Bloom's intermediate targets (bright pass + two ping-pong blur buffers), cached per render size in a
+    // tiny most-recently-used list. Like the HDR capture target, these must not be reallocated when the
+    // editor renders several differently-sized views in one frame — that churn was a large part of the
+    // editor's per-frame cost. The cap bounds VRAM and evicts sizes that stop being drawn.
+    private static readonly List<(uint W, uint H, Framebuffer Bright, Framebuffer PingA, Framebuffer PingB)> s_targets = new();
+    private const int MaxBloomTargets = 4;
 
     /// <summary>Creates the bloom shaders and full-screen quad. Called once after the renderer is ready.</summary>
     public static void Init()
@@ -120,18 +123,7 @@ void main()
         uint w = (uint)System.Math.Max(1, width / 2);
         uint h = (uint)System.Math.Max(1, height / 2);
 
-        if (s_bright is null)
-        {
-            s_bright = new Framebuffer(w, h, FramebufferFormat.RGBA16F);
-            s_pingA = new Framebuffer(w, h, FramebufferFormat.RGBA16F);
-            s_pingB = new Framebuffer(w, h, FramebufferFormat.RGBA16F);
-        }
-        else
-        {
-            s_bright.Resize(w, h);
-            s_pingA!.Resize(w, h);
-            s_pingB!.Resize(w, h);
-        }
+        (Framebuffer bright, Framebuffer pingA, Framebuffer pingB) = AcquireTargets(w, h);
 
         GL gl = Renderer.Gl;
         bool depthTest = gl.IsEnabled(EnableCap.DepthTest);
@@ -141,8 +133,8 @@ void main()
 
         s_quad.Bind();
 
-        // Bright-pass: scene HDR -> s_bright.
-        s_bright.Bind();
+        // Bright-pass: scene HDR -> bright.
+        bright.Bind();
         s_brightShader.Use();
         s_brightShader.SetUniform("uThreshold", threshold);
         s_brightShader.SetUniform("uKnee", KneeFraction);
@@ -155,12 +147,12 @@ void main()
         s_blurShader.Use();
         s_blurShader.SetUniform("uImage", 0);
 
-        uint sourceTexture = s_bright.ColorAttachment;
+        uint sourceTexture = bright.ColorAttachment;
         bool horizontal = true;
         int passes = System.Math.Max(1, iterations) * 2;
         for (int i = 0; i < passes; i++)
         {
-            Framebuffer target = horizontal ? s_pingA! : s_pingB!;
+            Framebuffer target = horizontal ? pingA : pingB;
             target.Bind();
             s_blurShader.SetUniform("uDirection", horizontal
                 ? new System.Numerics.Vector2(1.0f / w, 0.0f)
@@ -177,6 +169,43 @@ void main()
         if (depthTest) gl.Enable(EnableCap.DepthTest);
 
         return sourceTexture;
+    }
+
+    // Returns the bright/ping-pong triple for the requested half-resolution size, reusing a cached set when
+    // possible and creating (and, past the cap, evicting the least-recently-used) only on a new size. Reused
+    // sets move to the front so sizes drawn every frame stay resident and transient ones fall off.
+    private static (Framebuffer Bright, Framebuffer PingA, Framebuffer PingB) AcquireTargets(uint width, uint height)
+    {
+        for (int i = 0; i < s_targets.Count; i++)
+        {
+            (uint w, uint h, Framebuffer bright, Framebuffer pingA, Framebuffer pingB) = s_targets[i];
+            if (w == width && h == height)
+            {
+                if (i != 0)
+                {
+                    s_targets.RemoveAt(i);
+                    s_targets.Insert(0, (w, h, bright, pingA, pingB));
+                }
+
+                return (bright, pingA, pingB);
+            }
+        }
+
+        var entry = (width, height,
+            new Framebuffer(width, height, FramebufferFormat.RGBA16F),
+            new Framebuffer(width, height, FramebufferFormat.RGBA16F),
+            new Framebuffer(width, height, FramebufferFormat.RGBA16F));
+        s_targets.Insert(0, entry);
+        while (s_targets.Count > MaxBloomTargets)
+        {
+            var evicted = s_targets[^1];
+            evicted.Bright.Dispose();
+            evicted.PingA.Dispose();
+            evicted.PingB.Dispose();
+            s_targets.RemoveAt(s_targets.Count - 1);
+        }
+
+        return (entry.Item3, entry.Item4, entry.Item5);
     }
 
     private static void BindTexture(GL gl, uint texture)

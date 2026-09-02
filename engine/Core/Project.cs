@@ -17,16 +17,18 @@ public class Project
 
     public ProjectConfig Config { get; private set; }
     public string ProjectDirectory { get; set; }
+    public string FilePath { get; private set; }
 
-    private Project(ProjectConfig config, string directory)
+    private Project(ProjectConfig config, string directory, string filepath)
     {
         Config = config;
         ProjectDirectory = directory;
+        FilePath = filepath;
     }
 
     public static Project New()
     {
-        Active = new Project(new ProjectConfig(), string.Empty);
+        Active = new Project(new ProjectConfig(), string.Empty, string.Empty);
         return Active;
     }
 
@@ -41,7 +43,7 @@ public class Project
 
             if (config != null)
             {
-                Active = new Project(config, Path.GetDirectoryName(filepath) ?? string.Empty);
+                Active = new Project(config, Path.GetDirectoryName(filepath) ?? string.Empty, filepath);
                 AssetPath.Root = Active.GetAssetDirectory();
                 return Active;
             }
@@ -65,6 +67,7 @@ public class Project
         string json = JsonSerializer.Serialize(Active.Config, options);
         File.WriteAllText(filepath, json);
         Active.ProjectDirectory = Path.GetDirectoryName(filepath) ?? string.Empty;
+        Active.FilePath = filepath;
         AssetPath.Root = Active.GetAssetDirectory();
     }
 

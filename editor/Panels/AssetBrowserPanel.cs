@@ -14,7 +14,7 @@ namespace Spot.Editor.Panels;
 
 public class AssetBrowserPanel
 {
-    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Other }
+    private enum AssetKind { Folder, Script, Scene, Image, Model, Material, Prefab, Audio, Controller, UIDocument, Other }
 
     private readonly struct AssetEntry
     {
@@ -49,6 +49,15 @@ public class AssetBrowserPanel
     private string? _selectedPath;
     private string? _pendingNavigate;
 
+    // Multi-selection: every selected asset path (_selectedPath is the primary, i.e. the last one clicked).
+    // _rangeAnchorPath is the entry a Shift+click range extends from (the last plain/Ctrl click).
+    private readonly List<string> _selectedPaths = new();
+    private string? _rangeAnchorPath;
+
+    // A plain click inside a multi-selection is deferred: it collapses the selection to this asset on mouse
+    // release, but only if no drag started in between — so the whole selection can be dragged as a group.
+    private string? _pendingClickPath;
+
     // Full path of the asset currently being dragged, recorded when a drag starts so a folder drop target
     // can move it without reparsing the kind-specific payload.
     private string? _dragPath;
@@ -64,14 +73,32 @@ public class AssetBrowserPanel
     private bool _inlineRenameFocusPending;
     private bool _inlineRenameIsNew;
 
-    // Deferred deletion (still a confirmation modal).
+    // Deferred deletion (still a confirmation modal). Holds one or more targets for a multi-selection delete.
     private bool _isDeleting;
-    private string _deleteTarget = "";
+    private readonly List<string> _deleteTargets = new();
 
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
     private readonly Dictionary<string, Spot.Rendering.Framebuffer> _materialPreviews = new();
+    private readonly Dictionary<string, Spot.Rendering.Framebuffer> _modelPreviews = new();
+    private readonly HashSet<string> _modelFailed = new();
+
+    // Rendering a model preview costs a load + offscreen draw; cap how many first-time renders happen per
+    // frame so opening a folder full of models spreads the work over a few frames instead of hitching.
+    private const int MaxModelPreviewsPerFrame = 2;
+    private int _modelPreviewsThisFrame;
+
+    // Directory-listing cache. GatherEntries does filesystem I/O (enumerate + sort + a per-subfolder
+    // "has contents" probe), which previously ran every frame on the same folder. We reuse the last scan
+    // until the folder or search text changes (cache key), an in-panel mutation invalidates it, or a short
+    // refresh window elapses — so a file created by an external tool or the cook pipeline still shows up
+    // promptly without a per-frame scan.
+    private List<AssetEntry>? _entriesCache;
+    private string? _entriesCacheDir;
+    private string? _entriesCacheQuery;
+    private double _entriesCacheTime;
+    private const double EntriesRefreshSeconds = 0.5;
 
     public Action<string>? OnAssetOpened;
 
@@ -102,6 +129,7 @@ public class AssetBrowserPanel
         }
 
         _pendingNavigate = null;
+        _modelPreviewsThisFrame = 0;
 
         DrawToolbar();
         ImGui.Separator();
@@ -148,7 +176,7 @@ public class AssetBrowserPanel
         }
         if (ImGui.BeginDragDropTarget())
         {
-            if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, _baseDirectory);
+            if (TryAcceptAssetMove()) MoveDraggedInto(_baseDirectory);
             ImGui.EndDragDropTarget();
         }
 
@@ -168,7 +196,7 @@ public class AssetBrowserPanel
                 }
                 if (ImGui.BeginDragDropTarget())
                 {
-                    if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, accum);
+                    if (TryAcceptAssetMove()) MoveDraggedInto(accum);
                     ImGui.EndDragDropTarget();
                 }
             }
@@ -206,7 +234,7 @@ public class AssetBrowserPanel
         List<AssetEntry> entries;
         try
         {
-            entries = GatherEntries();
+            entries = GetEntries();
         }
         catch (Exception ex)
         {
@@ -233,13 +261,14 @@ public class AssetBrowserPanel
             {
                 ImGui.SameLine();
             }
-            DrawTile(entries[i], cellW, cellH, pad);
+            DrawTile(entries, i, cellW, cellH, pad);
         }
 
-        // Clicking empty space clears the selection.
-        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered())
+        // Clicking empty space clears the selection — unless Ctrl/Shift is held, which keeps extending it.
+        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered()
+            && !ImGui.GetIO().KeyCtrl && !ImGui.GetIO().KeyShift)
         {
-            _selectedPath = null;
+            ClearSelection();
             _context.SelectedAssetPath = null;
         }
 
@@ -248,6 +277,7 @@ public class AssetBrowserPanel
             bool hasSelection = _selectedPath != null;
             if (ImGui.GetIO().KeyCtrl)
             {
+                // Copy/cut/duplicate act on the primary selection; multi-asset clipboard isn't supported yet.
                 if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.C)) CopySelected(cut: false);
                 else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
                 else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateAsset(_selectedPath!);
@@ -263,15 +293,15 @@ public class AssetBrowserPanel
                 }
                 else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
                 {
-                    _isDeleting = true;
-                    _deleteTarget = _selectedPath!;
+                    RequestDeleteSelection();
                 }
             }
         }
     }
 
-    private void DrawTile(AssetEntry entry, float cellW, float cellH, float pad)
+    private void DrawTile(List<AssetEntry> entries, int index, float cellW, float cellH, float pad)
     {
+        AssetEntry entry = entries[index];
         var palette = EditorThemeManager.Current.Palette;
         var drawList = ImGui.GetWindowDrawList();
 
@@ -280,11 +310,19 @@ public class AssetBrowserPanel
         ImGui.InvisibleButton("tile", new Vector2(cellW, cellH));
 
         bool hovered = ImGui.IsItemHovered();
-        bool selected = _selectedPath == entry.FullPath;
+        bool selected = _selectedPaths.Contains(entry.FullPath);
 
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
-            _selectedPath = entry.FullPath;
+            HandleTileClick(entries, index);
+        }
+
+        // A deferred plain click inside a multi-selection collapses to this asset on release (when it wasn't
+        // the start of a drag, which clears the pending click in the drag source below).
+        if (_pendingClickPath == entry.FullPath && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
+            if (ImGui.IsItemHovered()) SelectSingle(entry.FullPath);
+            _pendingClickPath = null;
         }
         if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
         {
@@ -298,7 +336,7 @@ public class AssetBrowserPanel
                 _context.Selection = null;
                 _context.SelectedAssetPath = entry.FullPath;
             }
-            else if (entry.Kind == AssetKind.Scene)
+            else if (entry.Kind == AssetKind.Scene || entry.Kind == AssetKind.Controller || entry.Kind == AssetKind.UIDocument)
             {
                 if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
                 else OpenExternally(entry.FullPath);
@@ -318,16 +356,20 @@ public class AssetBrowserPanel
             _dragPath = entry.FullPath;
             (string payloadType, string payloadData) = DragPayloadFor(entry);
             SetDragPayload(payloadType, payloadData);
-            ImGui.Text(entry.Name);
+            // Dragging one of several selected assets carries the whole selection; label reflects that.
+            ImGui.Text(_selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1
+                ? $"{_selectedPaths.Count} items"
+                : entry.Name);
+            _pendingClickPath = null; // this press became a drag, so don't collapse the selection on release
             ImGui.EndDragDropSource();
         }
 
-        // Drop onto a folder tile to move the dragged asset (or folder) into it.
+        // Drop onto a folder tile to move the dragged asset (or the whole selection) into it.
         if (entry.IsDirectory && ImGui.BeginDragDropTarget())
         {
             if (TryAcceptAssetMove())
             {
-                MoveEntryInto(_dragPath, entry.FullPath);
+                MoveDraggedInto(entry.FullPath);
             }
             ImGui.EndDragDropTarget();
         }
@@ -412,6 +454,8 @@ public class AssetBrowserPanel
     private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
     private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
     private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
+    private static readonly Vector4 ControllerColor = new(0.98f, 0.78f, 0.30f, 1.0f);
+    private static readonly Vector4 UIDocumentColor = new(0.55f, 0.85f, 0.95f, 1.0f);
 
     private static AudioClip? _previewClip;
     private static Voice _previewVoice;
@@ -461,6 +505,15 @@ public class AssetBrowserPanel
             return;
         }
 
+        // Models render a live 3D thumbnail; while the model is still loading (or if it fails) we fall
+        // through to the cube glyph below.
+        if (entry.Kind == AssetKind.Model && TryGetModelPreview(entry.FullPath, out var mdlFb))
+        {
+            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
+            drawList.AddImage((IntPtr)mdlFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
+            return;
+        }
+
         // Folders are drawn as a vector shape (rather than a font glyph) so they can read as a modern folder
         // and visibly distinguish an empty folder from one that holds assets.
         if (entry.Kind == AssetKind.Folder)
@@ -475,49 +528,48 @@ public class AssetBrowserPanel
         DrawGlyph(drawList, iconMin, size, glyph, color);
     }
 
-    // Folders are always the same neutral gray; whether they hold assets is conveyed solely by the papers.
-    private static readonly Vector4 FolderColor = new(0.56f, 0.60f, 0.66f, 1.0f);
-    private static readonly Vector4 FolderPaperColor = new(0.94f, 0.95f, 0.97f, 1.0f);
-    private static readonly Vector4 FolderPaperColorBack = new(0.80f, 0.83f, 0.88f, 1.0f);
+    // Folders use a muted, professional warm yellow/orange to fit a modern dark editor.
+    private static readonly Vector4 FolderColor = new(0.80f, 0.65f, 0.35f, 1.0f);
+    private static readonly Vector4 FolderPaperColor = new(0.88f, 0.88f, 0.88f, 1.0f);
 
-    // Draws a modern flat folder scaled into the square icon box. The folder is always gray; a folder with
-    // contents shows a couple of sheets peeking out of the pocket, an empty one is just a closed folder.
+    // Draws a clean, minimal folder scaled into the square icon box.
+    // The design is flatter and smaller to reduce visual weight.
     private static void DrawFolderIcon(ImDrawListPtr dl, Vector2 iconMin, float size, bool hasContents)
     {
-        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.74f));
+        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.70f)); // Subtle tonal variation
         uint front = ImGui.GetColorU32(FolderColor);
 
-        float x0 = iconMin.X + size * 0.13f;
-        float x1 = iconMin.X + size * 0.87f;
-        float backTop = iconMin.Y + size * 0.31f;
-        float bottom = iconMin.Y + size * 0.76f;
-        float r = size * 0.055f;
+        // Tighter bounds to reduce bulkiness and improve proportions (approx 4:3)
+        float x0 = iconMin.X + size * 0.20f;
+        float x1 = iconMin.X + size * 0.80f;
+        float backTop = iconMin.Y + size * 0.38f;
+        float bottom = iconMin.Y + size * 0.75f;
+        float r = size * 0.04f; // Minimal corner rounding
 
-        // Tab on the back panel (top-left), rounded across the top only.
-        float tabW = (x1 - x0) * 0.42f;
-        float tabH = size * 0.10f;
+        // Tab on the back panel (top-left)
+        float tabW = (x1 - x0) * 0.38f;
+        float tabH = size * 0.08f;
         dl.AddRectFilled(new Vector2(x0, backTop - tabH), new Vector2(x0 + tabW, backTop + r), back, r,
             ImDrawFlags.RoundCornersTop);
 
-        // Back panel of the folder.
+        // Back panel of the folder
         dl.AddRectFilled(new Vector2(x0, backTop), new Vector2(x1, bottom), back, r);
 
-        float pocketTop = backTop + size * 0.14f;
+        float pocketTop = backTop + size * 0.10f;
 
-        // Sheets peeking above the front pocket signal that the folder is non-empty.
+        // A single clean sheet peeking out signals that the folder is non-empty
         if (hasContents)
         {
-            float sw = (x1 - x0) * 0.58f;
+            float sw = (x1 - x0) * 0.60f;
             float sx = x0 + (x1 - x0 - sw) * 0.5f;
-            float sr = size * 0.035f;
-            uint paperBack = ImGui.GetColorU32(FolderPaperColorBack);
+            float sr = size * 0.02f; // Sharper paper edges
             uint paper = ImGui.GetColorU32(FolderPaperColor);
-            // Back sheet, nudged aside; front sheet, higher and centered. Both hidden below by the pocket.
-            dl.AddRectFilled(new Vector2(sx + size * 0.05f, backTop + size * 0.055f), new Vector2(sx + sw + size * 0.05f, bottom), paperBack, sr, ImDrawFlags.RoundCornersTop);
-            dl.AddRectFilled(new Vector2(sx, backTop + size * 0.02f), new Vector2(sx + sw, bottom), paper, sr, ImDrawFlags.RoundCornersTop);
+            
+            // Draw the paper sheet tucked behind the front pocket
+            dl.AddRectFilled(new Vector2(sx, backTop - size * 0.02f), new Vector2(sx + sw, pocketTop + r), paper, sr, ImDrawFlags.RoundCornersTop);
         }
 
-        // Front pocket, lighter than the back so the rim + tab stay visible above it.
+        // Front pocket
         dl.AddRectFilled(new Vector2(x0, pocketTop), new Vector2(x1, bottom), front, r, ImDrawFlags.RoundCornersBottom);
     }
 
@@ -534,6 +586,8 @@ public class AssetBrowserPanel
         AssetKind.Material => (EditorIcons.Palette, MaterialColor),
         AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
         AssetKind.Audio => (EditorIcons.Music, AudioColor),
+        AssetKind.Controller => (EditorIcons.Rotate, ControllerColor),
+        AssetKind.UIDocument => (EditorIcons.Image, UIDocumentColor),
         _ => (EditorIcons.File, palette.TextDisabled),
     };
 
@@ -554,7 +608,12 @@ public class AssetBrowserPanel
             return;
         }
 
-        _selectedPath = entry.FullPath;
+        // Right-clicking an asset outside the current selection makes it the selection; right-clicking within
+        // a multi-selection keeps the whole group so an action (e.g. Delete) applies to all of it.
+        if (!_selectedPaths.Contains(entry.FullPath))
+        {
+            SelectSingle(entry.FullPath);
+        }
 
         if (entry.Kind == AssetKind.Material && ImGui.MenuItem("Edit Material"))
         {
@@ -594,11 +653,27 @@ public class AssetBrowserPanel
                 else OpenExternally(entry.FullPath);
             }
         }
+        else if (entry.Kind == AssetKind.Controller)
+        {
+            if (ImGui.MenuItem("Edit Animator Controller"))
+            {
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
+            }
+        }
+        else if (entry.Kind == AssetKind.UIDocument)
+        {
+            if (ImGui.MenuItem("Edit UI"))
+            {
+                if (OnAssetOpened != null) OnAssetOpened.Invoke(entry.FullPath);
+                else OpenExternally(entry.FullPath);
+            }
+        }
         else
         {
             if (ImGui.MenuItem("Open Externally")) OpenExternally(entry.FullPath);
         }
-        if (ImGui.MenuItem("Show in Explorer"))
+        if (ImGui.MenuItem("Show in File Manager"))
         {
             RevealInExplorer(entry.FullPath);
         }
@@ -618,10 +693,10 @@ public class AssetBrowserPanel
             string initial = isDir ? entry.Name : Path.GetFileNameWithoutExtension(entry.Name);
             StartInlineRename(entry.FullPath, initial);
         }
-        if (ImGui.MenuItem("Delete"))
+        bool multi = _selectedPaths.Count > 1;
+        if (ImGui.MenuItem(multi ? $"Delete {_selectedPaths.Count} Items" : "Delete"))
         {
-            _isDeleting = true;
-            _deleteTarget = entry.FullPath;
+            RequestDeleteSelection();
         }
 
         ImGui.EndPopup();
@@ -658,22 +733,139 @@ public class AssetBrowserPanel
             CreateMaterial(Path.GetFileName(path));
             StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
+        if (ImGui.MenuItem("New Animator Controller"))
+        {
+            string path = UniqueAssetPath(_currentDirectory, "NewController", ".sptcontroller");
+            CreateAnimatorController(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
+        }
+        if (ImGui.MenuItem("New UI Document"))
+        {
+            string path = UniqueAssetPath(_currentDirectory, "NewUI", ".sptui");
+            CreateUIDocument(Path.GetFileName(path));
+            StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
+        }
         ImGui.Separator();
         if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_clipboardPath != null))
         {
             PasteClipboardInto(_currentDirectory);
         }
         ImGui.Separator();
-        if (ImGui.MenuItem("Open in Explorer"))
+        if (ImGui.MenuItem("Open in File Manager"))
         {
             OpenExternally(_currentDirectory);
         }
         ImGui.EndPopup();
     }
 
+    // --- Multi-selection --------------------------------------------------------------------------------
+
+    // Collapses the selection to a single asset (also the primary and the range anchor).
+    private void SelectSingle(string path)
+    {
+        _selectedPath = path;
+        _selectedPaths.Clear();
+        _selectedPaths.Add(path);
+        _rangeAnchorPath = path;
+    }
+
+    private void ClearSelection()
+    {
+        _selectedPath = null;
+        _selectedPaths.Clear();
+        _rangeAnchorPath = null;
+        _pendingClickPath = null;
+    }
+
+    // Turns a click on a tile into a selection change, honoring Ctrl (toggle one) and Shift (range).
+    private void HandleTileClick(List<AssetEntry> entries, int index)
+    {
+        var io = ImGui.GetIO();
+        string path = entries[index].FullPath;
+        if (io.KeyShift && _rangeAnchorPath != null)
+        {
+            SelectRange(entries, _rangeAnchorPath, path);
+            // The anchor stays fixed so successive Shift+clicks grow/shrink the same range.
+        }
+        else if (io.KeyCtrl)
+        {
+            ToggleSelection(path);
+            _rangeAnchorPath = path;
+        }
+        else if (_selectedPaths.Contains(path) && _selectedPaths.Count > 1)
+        {
+            // Defer collapsing so a drag starting from within the selection carries the whole group.
+            _pendingClickPath = path;
+        }
+        else
+        {
+            SelectSingle(path);
+        }
+    }
+
+    private void ToggleSelection(string path)
+    {
+        if (_selectedPaths.Remove(path))
+        {
+            _selectedPath = _selectedPaths.Count > 0 ? _selectedPaths[^1] : null;
+        }
+        else
+        {
+            _selectedPaths.Add(path);
+            _selectedPath = path; // newly added asset becomes the primary selection
+        }
+    }
+
+    // Selects every entry between the anchor and the clicked tile in the grid's display order.
+    private void SelectRange(List<AssetEntry> entries, string anchorPath, string clickedPath)
+    {
+        int a = entries.FindIndex(e => e.FullPath == anchorPath);
+        int b = entries.FindIndex(e => e.FullPath == clickedPath);
+        if (a < 0 || b < 0)
+        {
+            SelectSingle(clickedPath);
+            return;
+        }
+        if (a > b) (a, b) = (b, a);
+        _selectedPaths.Clear();
+        for (int i = a; i <= b; i++) _selectedPaths.Add(entries[i].FullPath);
+        _selectedPath = clickedPath; // primary follows the cursor
+    }
+
+    // Fills the delete-confirmation target list from the current selection and opens the modal.
+    private void RequestDeleteSelection()
+    {
+        _deleteTargets.Clear();
+        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths);
+        else if (_selectedPath != null) _deleteTargets.Add(_selectedPath);
+        if (_deleteTargets.Count > 0) _isDeleting = true;
+    }
+
+    // Moves the dragged asset into destDir. When the dragged asset is part of a multi-selection, the whole
+    // selection moves together.
+    private void MoveDraggedInto(string destDir)
+    {
+        if (string.IsNullOrEmpty(_dragPath)) return;
+        if (_selectedPaths.Contains(_dragPath) && _selectedPaths.Count > 1)
+        {
+            foreach (string p in _selectedPaths.ToList()) MoveEntryInto(p, destDir);
+            ClearSelection();
+        }
+        else
+        {
+            MoveEntryInto(_dragPath, destDir);
+        }
+    }
+
     private void StartInlineRename(string fullPath, string bufferInitial, bool isNew = false)
     {
-        _selectedPath = fullPath;
+        // Creating a new asset routes here right after the file is written, so re-scan to include it.
+        if (isNew)
+        {
+            InvalidateEntries();
+        }
+
+        SelectSingle(fullPath);
         _inlineRenamePath = fullPath;
         _inlineRenameBuffer = bufferInitial;
         _inlineRenameFocusPending = true;
@@ -700,15 +892,21 @@ public class AssetBrowserPanel
         bool deleteOpen = true;
         if (ImGui.BeginPopupModal("Delete Asset", ref deleteOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.TextUnformatted($"Delete '{Path.GetFileName(_deleteTarget)}'?");
-            if (Directory.Exists(_deleteTarget))
+            ImGui.TextUnformatted(_deleteTargets.Count == 1
+                ? $"Delete '{Path.GetFileName(_deleteTargets[0])}'?"
+                : $"Delete {_deleteTargets.Count} items?");
+            if (_deleteTargets.Any(Directory.Exists))
             {
-                ImGui.TextColored(EditorThemeManager.Current.Palette.LogError, "This folder and all its contents will be removed.");
+                ImGui.TextColored(EditorThemeManager.Current.Palette.LogError,
+                    _deleteTargets.Count == 1
+                        ? "This folder and all its contents will be removed."
+                        : "Any folders and all their contents will be removed.");
             }
             ImGui.Spacing();
             if (ImGui.Button("Delete", new Vector2(120, 0)))
             {
-                DeleteEntry(_deleteTarget);
+                foreach (string target in _deleteTargets) DeleteEntry(target);
+                ClearSelection();
                 _isDeleting = false;
                 ImGui.CloseCurrentPopup();
             }
@@ -725,6 +923,31 @@ public class AssetBrowserPanel
             _isDeleting = false;
         }
     }
+
+    // Returns the current directory's entries, reusing the last scan when nothing that affects it has
+    // changed. Navigation and search changes miss the cache key; in-panel create/delete/rename/paste call
+    // InvalidateEntries; and the refresh window bounds how long an external change can go unseen.
+    private List<AssetEntry> GetEntries()
+    {
+        double now = Spot.Core.Application.Instance.Time;
+        if (_entriesCache != null
+            && _entriesCacheDir == _currentDirectory
+            && _entriesCacheQuery == _searchQuery
+            && now - _entriesCacheTime < EntriesRefreshSeconds)
+        {
+            return _entriesCache;
+        }
+
+        _entriesCache = GatherEntries();
+        _entriesCacheDir = _currentDirectory;
+        _entriesCacheQuery = _searchQuery;
+        _entriesCacheTime = now;
+        return _entriesCache;
+    }
+
+    // Forces the next GetEntries to re-scan, so an in-panel change shows immediately instead of waiting out
+    // the refresh window.
+    private void InvalidateEntries() => _entriesCache = null;
 
     private List<AssetEntry> GatherEntries()
     {
@@ -779,6 +1002,8 @@ public class AssetBrowserPanel
         if (AudioExtensions.Contains(ext)) return AssetKind.Audio;
         if (ext == ".sptmat") return AssetKind.Material;
         if (ext == ".sptprefab") return AssetKind.Prefab;
+        if (ext == ".sptcontroller") return AssetKind.Controller;
+        if (ext == ".sptui") return AssetKind.UIDocument;
         return AssetKind.Other;
     }
 
@@ -827,6 +1052,42 @@ public class AssetBrowserPanel
         }
         catch
         {
+            return false;
+        }
+    }
+
+    private bool TryGetModelPreview(string path, out Spot.Rendering.Framebuffer fb)
+    {
+        if (_modelPreviews.TryGetValue(path, out fb!))
+        {
+            return true;
+        }
+        if (_modelFailed.Contains(path) || _modelPreviews.Count >= MaxThumbnails
+            || _modelPreviewsThisFrame >= MaxModelPreviewsPerFrame)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Non-blocking: returns null until the geometry is parsed and uploaded (pumped elsewhere each
+            // frame). Show the glyph until then, and retry next frame.
+            var model = Spot.Assets.ModelImporter.RequestAsync(path);
+            if (model is null)
+            {
+                return false;
+            }
+
+            _modelPreviewsThisFrame++;
+            fb = new Spot.Rendering.Framebuffer(128, 128);
+            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb);
+            _modelPreviews[path] = fb;
+            return true;
+        }
+        catch (Exception e)
+        {
+            _modelFailed.Add(path);
+            Spot.Core.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
             return false;
         }
     }
@@ -893,6 +1154,42 @@ public class {className} : EntityBehaviour
         new Spot.Assets.Material().Save(filepath);
     }
 
+    private void CreateUIDocument(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptui")) name += ".sptui";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+
+        // Seed a minimal document: a single full-screen panel to drop widgets onto.
+        var root = new Spot.UI.UIRoot();
+        var panel = root.Panel();
+        panel.Name = "Root";
+        panel.Rect = new Spot.UI.UIRect
+        {
+            Anchor = System.Numerics.Vector2.Zero,
+            Pivot = System.Numerics.Vector2.Zero,
+            Position = System.Numerics.Vector2.Zero,
+            Size = new System.Numerics.Vector2(1920f, 1080f),
+        };
+        Spot.UI.Serialization.UISerializer.Save(root, filepath);
+    }
+
+    private void CreateAnimatorController(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (!name.EndsWith(".sptcontroller")) name += ".sptcontroller";
+        EnsureDirectory(_currentDirectory);
+        string filepath = Path.Combine(_currentDirectory, name);
+        if (File.Exists(filepath)) return;
+
+        var controller = new Spot.Animation.AnimatorController();
+        controller.States.Add(new Spot.Animation.AnimatorState { Name = "New State", EditorX = 220.0f, EditorY = 40.0f });
+        controller.DefaultState = "New State";
+        controller.Save(filepath);
+    }
+
     // Accepts an entity dragged from the hierarchy onto the asset grid, writing it out as a .sptprefab in the
     // current folder and marking the source entity as an instance of the new prefab.
     private void AcceptEntityDropToCreatePrefab()
@@ -926,7 +1223,7 @@ public class {className} : EntityBehaviour
             string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
             entity.AddComponent(new PrefabComponent { PrefabRef = reference });
 
-            _selectedPath = path;
+            SelectSingle(path);
             ClearThumbnails();
         }
         catch (Exception ex)
@@ -1009,7 +1306,11 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Move(fullPath, dest);
             else if (File.Exists(fullPath)) File.Move(fullPath, dest);
             if (_selectedPath == fullPath) _selectedPath = dest;
+            int selIdx = _selectedPaths.IndexOf(fullPath);
+            if (selIdx >= 0) _selectedPaths[selIdx] = dest;
+            if (_rangeAnchorPath == fullPath) _rangeAnchorPath = dest;
             if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = dest;
+            InvalidateEntries();
         }
         catch (Exception ex)
         {
@@ -1022,7 +1323,7 @@ public class {className} : EntityBehaviour
     private static readonly string[] MovablePayloads =
     {
         "FOLDER_FILE", "IMAGE_FILE", "MODEL_FILE", "MATERIAL_FILE",
-        "SCENE_FILE", "PREFAB_FILE", "AUDIO_FILE", "SCRIPT_FILE",
+        "SCENE_FILE", "PREFAB_FILE", "AUDIO_FILE", "SCRIPT_FILE", "CONTROLLER_FILE",
     };
 
     // The drag payload (type + data) for an entry. Data is the full path for everything the Inspector
@@ -1037,6 +1338,8 @@ public class {className} : EntityBehaviour
             AssetKind.Scene => ("SCENE_FILE", entry.FullPath),
             AssetKind.Prefab => ("PREFAB_FILE", entry.FullPath),
             AssetKind.Audio => ("AUDIO_FILE", entry.FullPath),
+            AssetKind.Controller => ("CONTROLLER_FILE", entry.FullPath),
+            AssetKind.UIDocument => ("UI_FILE", entry.FullPath),
             _ => ("SCRIPT_FILE", entry.Name),
         };
 
@@ -1098,6 +1401,9 @@ public class {className} : EntityBehaviour
             if (!MovePath(sourcePath, dest)) return;
 
             if (_selectedPath == sourcePath) _selectedPath = dest;
+            int selIdx = _selectedPaths.IndexOf(sourcePath);
+            if (selIdx >= 0) _selectedPaths[selIdx] = dest;
+            if (_rangeAnchorPath == sourcePath) _rangeAnchorPath = dest;
             if (_context.SelectedAssetPath == sourcePath) _context.SelectedAssetPath = dest;
             ClearThumbnails();
         }
@@ -1130,7 +1436,7 @@ public class {className} : EntityBehaviour
         try
         {
             CopyPath(path, dest);
-            _selectedPath = dest;
+            SelectSingle(dest);
             ClearThumbnails();
         }
         catch (Exception ex)
@@ -1176,14 +1482,14 @@ public class {className} : EntityBehaviour
                 if (!string.Equals(srcParent, destDir, StringComparison.OrdinalIgnoreCase))
                 {
                     MovePath(src, dest);
-                    _selectedPath = dest;
+                    SelectSingle(dest);
                     s_clipboardPath = null; // a cut is consumed by its paste
                 }
             }
             else
             {
                 CopyPath(src, dest);
-                _selectedPath = dest;
+                SelectSingle(dest);
             }
             ClearThumbnails();
         }
@@ -1248,6 +1554,8 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Delete(fullPath, recursive: true);
             else if (File.Exists(fullPath)) File.Delete(fullPath);
             if (_selectedPath == fullPath) _selectedPath = null;
+            _selectedPaths.Remove(fullPath);
+            if (_rangeAnchorPath == fullPath) _rangeAnchorPath = null;
             if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = null;
         }
         catch (Exception ex)
@@ -1264,12 +1572,15 @@ public class {className} : EntityBehaviour
             return;
         }
         _currentDirectory = path;
-        _selectedPath = null;
+        ClearSelection();
         ClearThumbnails();
     }
 
     private void ClearThumbnails()
     {
+        // Directory contents changed (navigation, delete, and paste all route through here), so the cached
+        // listing is stale too.
+        InvalidateEntries();
         foreach (var tex in _thumbnails.Values)
         {
             tex.Dispose();
@@ -1282,6 +1593,13 @@ public class {className} : EntityBehaviour
             fb.Dispose();
         }
         _materialPreviews.Clear();
+
+        foreach (var fb in _modelPreviews.Values)
+        {
+            fb.Dispose();
+        }
+        _modelPreviews.Clear();
+        _modelFailed.Clear();
     }
 
     private static void EnsureDirectory(string path)
@@ -1315,7 +1633,27 @@ public class {className} : EntityBehaviour
     {
         try
         {
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            if (OperatingSystem.IsWindows())
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                System.Diagnostics.Process.Start("open", $"-R \"{path}\"");
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                var dir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+                if (dir != null)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "xdg-open",
+                        Arguments = $"\"{dir}\"",
+                        UseShellExecute = true
+                    });
+                }
+            }
         }
         catch { }
     }

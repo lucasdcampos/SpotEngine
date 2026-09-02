@@ -6,6 +6,37 @@ namespace Spot.Rendering;
 /// </summary>
 public static class RenderSettings
 {
+    private static bool s_vsync = true;
+
+    /// <summary>
+    /// Whether frame presentation waits for the monitor's vertical blank. When on, the buffer swap blocks
+    /// until the next refresh, capping the frame rate at the refresh rate and avoiding tearing. Turn it off
+    /// to uncap the frame rate when profiling — otherwise the blocking swap hides the engine's true frame
+    /// time (the rate you read is just the refresh cap). Changing it takes effect on the next presented
+    /// frame via <see cref="VSyncChanged"/>, which the platform window listens to.
+    /// </summary>
+    public static bool VSync
+    {
+        get => s_vsync;
+        set
+        {
+            if (s_vsync == value)
+            {
+                return;
+            }
+
+            s_vsync = value;
+            VSyncChanged?.Invoke(value);
+        }
+    }
+
+    /// <summary>
+    /// Raised when <see cref="VSync"/> changes so the platform window can update its swap interval at
+    /// runtime. Wired internally by the engine; games and the editor simply set <see cref="VSync"/> and
+    /// need not subscribe.
+    /// </summary>
+    public static event Action<bool>? VSyncChanged;
+
     /// <summary>
     /// Whether the scene is rendered into a high-dynamic-range buffer and tone-mapped, even when the
     /// scene has no <c>PostProcessingComponent</c>. When on, a scene without one is composited with the
@@ -22,6 +53,16 @@ public static class RenderSettings
     /// light's own <c>CastShadows</c>; turning it off skips the shadow pass entirely.
     /// </summary>
     public static bool Shadows { get; set; } = true;
+
+    /// <summary>
+    /// Whether point lights are assigned to a view-frustum cluster grid (froxels) each frame so a fragment
+    /// only shades the lights whose volume reaches its cluster, instead of testing every light. This scales
+    /// the point-light cost with lights-per-cluster rather than total lights. When off, every lit fragment
+    /// loops over all submitted lights (the brute-force path). Defaults off; enable it for scenes with many
+    /// point lights. Falls back to brute force automatically for orthographic/degenerate cameras and on
+    /// backends without the required GPU features.
+    /// </summary>
+    public static bool ClusteredLighting { get; set; } = false;
 
     /// <summary>
     /// The side length, in world units, of the square region around the camera that receives directional

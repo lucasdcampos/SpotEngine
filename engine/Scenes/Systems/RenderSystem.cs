@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Spot.Assets;
 using Spot.Core;
 using Spot.Rendering;
@@ -19,15 +21,27 @@ namespace Spot.Scenes;
 /// </remarks>
 public static class RenderSystem
 {
-    private static Framebuffer? s_hdrFramebuffer;
-
-    // Number of horizontal+vertical blur pairs used for bloom. Higher widens the glow at a small fill
-    // cost; five reads as a soft, wide bloom at half resolution without visible box stepping.
-    private const int BloomIterations = 5;
+    /// <summary>
+    /// The installed scene post-processor (HDR capture + bloom + tone mapping + FXAA), or <see langword="null"/>
+    /// to render straight to the screen. The desktop host installs one; the browser currently runs without
+    /// post-processing. Keeping it behind this seam lets the shared render path stay backend-neutral.
+    /// </summary>
+    public static IScenePostProcessor? PostProcessor { get; set; }
 
     // Synthesized when HDR is on but the scene has no PostProcessingComponent, so tone mapping and FXAA
     // still apply. Reused across frames rather than reallocated each render.
     private static PostProcessingComponent? s_defaultPostProcess;
+
+    // Instancing buckets for the standard rigid mesh pass: entities sharing a (mesh, material) draw in one
+    // instanced call. Both the dictionary and its lists are reused frame to frame (lists returned to a pool
+    // after each flush) so the render path stays allocation-free once warmed up.
+    private readonly record struct BatchKey(Mesh Mesh, Material? Material);
+    private static readonly Dictionary<BatchKey, List<Renderer3D.InstanceData>> s_batches = new();
+    private static readonly Stack<List<Renderer3D.InstanceData>> s_batchPool = new();
+
+    // Reused each frame to gather the scene's point lights before handing them to Renderer3D — sized to the
+    // renderer's cap so a heavily-lit scene never reallocates (and never overflows a stackalloc).
+    private static readonly Renderer3D.PointLightData[] s_pointLightScratch = new Renderer3D.PointLightData[Renderer3D.MaxPointLights];
 
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
@@ -76,39 +90,13 @@ public static class RenderSystem
             postProcess = s_defaultPostProcess ??= new PostProcessingComponent();
         }
 
-        int[] currentFbo = new int[1];
-        int[] viewport = new int[4];
-        float[] clearColor = new float[4];
-
-        if (postProcess != null)
+        // Post-processing (HDR capture + bloom + tone mapping + FXAA) runs behind a seam so this render path
+        // stays backend-neutral. When no processor is installed (browser) or capture is declined (e.g. a
+        // zero-sized viewport), the scene renders straight to the screen with no post.
+        bool capturing = postProcess != null && PostProcessor != null && PostProcessor.Begin(postProcess);
+        if (!capturing)
         {
-            unsafe
-            {
-                fixed (int* ptr = currentFbo) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.FramebufferBinding, ptr);
-                fixed (int* ptr = viewport) Renderer.Api.GetInteger(Silk.NET.OpenGL.GLEnum.Viewport, ptr);
-                fixed (float* ptr = clearColor) Renderer.Api.GetFloat(Silk.NET.OpenGL.GLEnum.ColorClearValue, ptr);
-            }
-
-            // A minimized (or zero-sized) window reports a 0x0 viewport. Allocating an HDR framebuffer from
-            // that produces an invalid, incomplete framebuffer and a stream of GL errors, so skip the whole
-            // HDR/post path this frame — nothing is visible anyway. The resolve below is guarded on this too.
-            if (viewport[2] <= 0 || viewport[3] <= 0)
-            {
-                postProcess = null;
-            }
-            else
-            {
-                if (s_hdrFramebuffer == null || s_hdrFramebuffer.Width != viewport[2] || s_hdrFramebuffer.Height != viewport[3])
-                {
-                    s_hdrFramebuffer?.Dispose();
-                    s_hdrFramebuffer = new Framebuffer((uint)viewport[2], (uint)viewport[3], FramebufferFormat.RGBA16F);
-                }
-
-                s_hdrFramebuffer.Bind();
-                Renderer.SetClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
-                Renderer.Clear();
-                Renderer.Api.Viewport(0, 0, (uint)viewport[2], (uint)viewport[3]);
-            }
+            postProcess = null;
         }
 
         bool hasDirLight = false;
@@ -118,7 +106,7 @@ public static class RenderSystem
         bool castShadows = false;
         Matrix4x4 lightSpaceMatrix = Matrix4x4.Identity;
         
-        Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[4];
+        Renderer3D.PointLightData[] pointLights = s_pointLightScratch;
         int pointLightCount = 0;
 
         foreach (Entity entity in scene.View<TransformComponent, LightComponent>())
@@ -148,7 +136,7 @@ public static class RenderSystem
             }
             else if (light.Type == LightType.Point)
             {
-                if (pointLightCount < 4)
+                if (pointLightCount < pointLights.Length)
                 {
                     pointLights[pointLightCount] = new Renderer3D.PointLightData
                     {
@@ -169,8 +157,14 @@ public static class RenderSystem
             pointLightCount = 0;
         }
 
+        bool cull = !Spot.Rendering.RendererDebug.DisableFrustumCulling;
+
         if (castShadows)
         {
+            // Casters are culled against the light's frustum (the shadow matrix), so geometry that can
+            // never land on the shadow map is skipped — a different volume from the camera frustum below.
+            var shadowFrustum = new Spot.Rendering.Frustum(lightSpaceMatrix);
+
             Renderer3D.EnsureShadowMapResolution(Spot.Rendering.RenderSettings.ShadowMapResolution);
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
             foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
@@ -183,10 +177,18 @@ public static class RenderSystem
                 ResolveAssets(meshRenderer);
                 if (meshRenderer.Model is null) continue;
 
-                if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
-                    skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+                Matrix4x4[]? palette = null;
+                bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                    skinned.TryBuildPalette(entity, out palette);
+
+                if (cull && !IsVisible(shadowFrustum, meshRenderer.Model, transform.Matrix, isSkinned))
                 {
-                    DrawSkinnedShadowMeshes(meshRenderer, palette);
+                    continue;
+                }
+
+                if (isSkinned)
+                {
+                    DrawSkinnedShadowMeshes(meshRenderer, palette!);
                     continue;
                 }
 
@@ -198,10 +200,10 @@ public static class RenderSystem
 
         if (Spot.Rendering.RendererDebug.Wireframe)
         {
-            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Line);
+            Renderer.Device.SetWireframe(true);
         }
 
-        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount), cameraPos);
+        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos);
         
         foreach (Entity entity in scene.View<SkyboxComponent>())
         {
@@ -223,9 +225,13 @@ public static class RenderSystem
                 clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z,
                 clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z,
                 clouds.Speed, clouds.Density, clouds.Height, 
-                clouds.Opacity, clouds.Volume, Spot.Core.Application.Instance.Time);
+                clouds.Opacity, clouds.Volume, Spot.Core.Time.UnscaledTime);
             break; // only draw the first one
         }
+
+        var frustum = new Spot.Rendering.Frustum(viewProjection);
+        int visible = 0;
+        int culled = 0;
 
         foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
         {
@@ -241,26 +247,51 @@ public static class RenderSystem
                 continue;
             }
 
+            Matrix4x4[]? palette = null;
+            bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                skinned.TryBuildPalette(entity, out palette);
+
+            if (cull && !IsVisible(frustum, meshRenderer.Model, transform.Matrix, isSkinned))
+            {
+                culled++;
+                continue;
+            }
+            visible++;
+
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             Texture2D? texture = meshRenderer.Material?.Texture;
 
-            if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
-                skinned.TryBuildPalette(entity, out Matrix4x4[] palette))
+            if (isSkinned)
             {
-                DrawSkinnedMeshes(meshRenderer, palette, color, texture);
+                DrawSkinnedMeshes(meshRenderer, palette!, color, texture);
                 continue;
             }
 
             Matrix4x4 world = transform.Matrix;
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
-            DrawMeshes(meshRenderer, world, color, texture, shaderType);
+
+            // Standard rigid meshes are gathered into instanced batches (drawn after the loop); water keeps
+            // its own per-draw path (a distinct shader that isn't instanced).
+            if (shaderType == (int)Spot.Assets.MaterialShaderType.Standard)
+            {
+                CollectInstances(meshRenderer, world, color);
+            }
+            else
+            {
+                DrawMeshes(meshRenderer, world, color, texture, shaderType);
+            }
         }
+
+        FlushBatches();
+
+        Spot.Rendering.RendererDebug.VisibleMeshCount = visible;
+        Spot.Rendering.RendererDebug.CulledMeshCount = culled;
 
         Renderer3D.EndScene();
 
         if (Spot.Rendering.RendererDebug.Wireframe)
         {
-            Renderer.Api.PolygonMode(Silk.NET.OpenGL.GLEnum.FrontAndBack, Silk.NET.OpenGL.GLEnum.Fill);
+            Renderer.Device.SetWireframe(false);
         }
 
         Renderer2D.BeginScene(viewProjection);
@@ -330,30 +361,32 @@ public static class RenderSystem
         // additive particles feed bloom. In 3D scenes they still blend over the meshes drawn earlier.
         ParticleRenderSystem.Render(scene, viewProjection);
 
-        if (postProcess != null && s_hdrFramebuffer != null)
+        // World-space text (TextComponent) draws alongside particles — blended, camera-facing, and before
+        // post-processing so it is tone-mapped/bloomed like the rest of the scene, and occluded by geometry
+        // via the shared depth test.
+        TextRenderSystem.Render(scene, viewProjection);
+
+        if (capturing)
         {
-            // Extract and blur the scene's bright regions while the HDR buffer is still bound as the
-            // source. Bloom manages its own (half-res) targets and leaves nothing bound, so do it before
-            // rebinding the final target below.
-            uint bloomTexture = 0;
-            if (postProcess.EnableBloom)
-            {
-                bloomTexture = BloomRenderer.Generate(
-                    s_hdrFramebuffer.ColorAttachment, viewport[2], viewport[3], postProcess.BloomThreshold, BloomIterations);
-            }
-
-            Renderer.Api.BindFramebuffer(Silk.NET.OpenGL.FramebufferTarget.Framebuffer, (uint)currentFbo[0]);
-            Renderer.Api.Viewport(viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
-
-            // Carry the scene's depth from the HDR pass into the target buffer so anything drawn on top
-            // afterwards (e.g. the editor grid and world axes) is occluded by the geometry instead of
-            // showing through it. Skipped for the default framebuffer (game runtime), where nothing is
-            // drawn over the composite and its depth format may not match for a blit.
-            if (currentFbo[0] != 0)
-                s_hdrFramebuffer.BlitDepthTo((uint)currentFbo[0], viewport[0], viewport[1], (uint)viewport[2], (uint)viewport[3]);
-
-            PostProcessingRenderer.Draw(s_hdrFramebuffer.ColorAttachment, postProcess, bloomTexture);
+            PostProcessor!.Resolve(postProcess!);
         }
+
+        // Screen-space UI is the final pass: it draws to whatever framebuffer is now bound (the default one
+        // in a running game), after post-processing, so the interface is crisp and never tone-mapped or
+        // bloomed. Scenes without UI skip it entirely.
+        RenderUI(scene);
+    }
+
+    /// <summary>Draws the scene's screen-space UI tree sized to the current viewport, when it has any widgets.</summary>
+    private static void RenderUI(Scene scene)
+    {
+        Spot.UI.UIRoot? ui = scene.UIRootOrNull;
+        if (ui is null || ui.Children.Count == 0) return;
+
+        int width = (int)Renderer.ViewportWidth;
+        int height = (int)Renderer.ViewportHeight;
+        if (width <= 0 || height <= 0) return;
+        ui.Render(width, height);
     }
 
     /// <summary>
@@ -404,6 +437,79 @@ public static class RenderSystem
         lightProj.M41 += offset.X;
         lightProj.M42 += offset.Y;
         return lightView * lightProj;
+    }
+
+    /// <summary>
+    /// Tests a mesh entity against a frustum using its model's local bounds transformed to world space.
+    /// Skinned meshes are padded generously first: their bounds are the bind pose, which animation can
+    /// push geometry beyond, so a tight test would pop limbs out of view.
+    /// </summary>
+    private static bool IsVisible(in Spot.Rendering.Frustum frustum, Model model, in Matrix4x4 world, bool isSkinned)
+    {
+        Spot.Physics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
+        Spot.Physics.Aabb3d worldBounds = local.Transform(world);
+        return frustum.Intersects(worldBounds);
+    }
+
+    /// <summary>
+    /// Gathers a standard rigid renderer's submesh(es) into the instancing buckets, honoring
+    /// <see cref="MeshComponent.SubmeshIndex"/> exactly as <see cref="DrawMeshes"/> does. The actual draws
+    /// happen in <see cref="FlushBatches"/>, one instanced call per (mesh, material) bucket.
+    /// </summary>
+    private static void CollectInstances(MeshComponent meshRenderer, Matrix4x4 world, Vector4 color)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index < 0)
+        {
+            foreach (Mesh mesh in meshes)
+            {
+                AddInstance(mesh, meshRenderer.Material, world, color);
+            }
+        }
+        else if (index < meshes.Count)
+        {
+            AddInstance(meshes[index], meshRenderer.Material, world, color);
+        }
+    }
+
+    // Appends one instance to the bucket for its (mesh, material), creating the bucket (from the pool) on
+    // first use. Skinned meshes never reach here — they draw on the non-instanced path.
+    private static void AddInstance(Mesh mesh, Material? material, Matrix4x4 world, Vector4 color)
+    {
+        if (mesh.IsSkinned)
+        {
+            return;
+        }
+
+        var key = new BatchKey(mesh, material);
+        if (!s_batches.TryGetValue(key, out List<Renderer3D.InstanceData>? list))
+        {
+            list = s_batchPool.Count > 0 ? s_batchPool.Pop() : new List<Renderer3D.InstanceData>();
+            s_batches[key] = list;
+        }
+
+        list.Add(new Renderer3D.InstanceData { Model = world, Color = color });
+    }
+
+    // Draws every gathered bucket as a single instanced call, then clears the buckets and returns their
+    // lists to the pool for next frame.
+    private static void FlushBatches()
+    {
+        foreach (KeyValuePair<BatchKey, List<Renderer3D.InstanceData>> batch in s_batches)
+        {
+            List<Renderer3D.InstanceData> instances = batch.Value;
+            Renderer3D.DrawMeshInstanced(
+                batch.Key.Mesh,
+                CollectionsMarshal.AsSpan(instances),
+                batch.Key.Material?.Texture,
+                batch.Key.Material);
+
+            instances.Clear();
+            s_batchPool.Push(instances);
+        }
+
+        s_batches.Clear();
     }
 
     /// <summary>

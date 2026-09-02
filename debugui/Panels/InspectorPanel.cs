@@ -11,6 +11,10 @@ public class InspectorPanel : IDisposable
 {
     private readonly ISelectionContext _context;
     private Spot.Rendering.Framebuffer? _materialPreviewFb;
+    // The material path and property fingerprint the preview framebuffer was last rendered for, so the
+    // offscreen render only re-runs when something the preview shows actually changed.
+    private string? _materialPreviewPath;
+    private int _materialPreviewSig;
     // The material path we last logged a preview-render failure for, so a broken material logs once instead
     // of every frame the inspector is open.
     private string? _materialPreviewErrorPath;
@@ -48,6 +52,10 @@ public class InspectorPanel : IDisposable
         else if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptprefab", StringComparison.OrdinalIgnoreCase))
         {
             DrawPrefabEditor(_context.SelectedAssetPath);
+        }
+        else if (_context.SelectedWidget != null)
+        {
+            WidgetInspector.Draw(_context.SelectedWidget);
         }
         else if (_context.Selection != null)
         {
@@ -201,19 +209,28 @@ public class InspectorPanel : IDisposable
             _materialPreviewFb = new Spot.Rendering.Framebuffer(previewSize, previewSize);
         }
         
-        // A faulty material/shader must not throw out of the panel every frame. Render defensively; on
-        // failure keep whatever was last in the buffer and log once for this material.
-        try
+        // Rendering the preview is a full offscreen draw, so only do it when the selected material or one of
+        // its preview-relevant properties actually changed — not every frame the inspector is open. Edits
+        // below mutate the material this frame and are picked up on the next (an imperceptible one-frame lag).
+        int previewSig = MaterialPreviewHelper.Signature(material);
+        if (_materialPreviewPath != path || _materialPreviewSig != previewSig)
         {
-            MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
-            if (_materialPreviewErrorPath == path) _materialPreviewErrorPath = null;
-        }
-        catch (Exception ex)
-        {
-            if (_materialPreviewErrorPath != path)
+            // A faulty material/shader must not throw out of the panel. Render defensively; on failure keep
+            // whatever was last in the buffer and log once for this material.
+            try
             {
-                _materialPreviewErrorPath = path;
-                Spot.Core.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
+                MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
+                _materialPreviewPath = path;
+                _materialPreviewSig = previewSig;
+                if (_materialPreviewErrorPath == path) _materialPreviewErrorPath = null;
+            }
+            catch (Exception ex)
+            {
+                if (_materialPreviewErrorPath != path)
+                {
+                    _materialPreviewErrorPath = path;
+                    Spot.Core.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
+                }
             }
         }
 

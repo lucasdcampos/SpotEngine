@@ -35,7 +35,7 @@ The built-in components include:
 | 3D | **Mesh Renderer** — a model and its material; **Camera**; **Light** (directional or point); **Skybox**; **Dynamic Clouds** |
 | Effects | **Particle System** — CPU-simulated batched particle emitter |
 | Post | **Post Processing** — per-scene tone-mapping/bloom/vignette look |
-| Physics | **Physics Body** (2D/3D), **Box/Sphere/Capsule Colliders**, **Character Controller** |
+| Physics | **Physics Body** (2D/3D), 2D **Box/Circle Colliders**, 3D **Box/Sphere/Capsule Colliders**, **Character Controller** |
 | Audio | **Audio Source**, **Audio Listener** |
 | Content | **Prefab** — an instance of a reusable entity template |
 | Behavior | **Scripts** — custom logic you write (see [Scripting](scripting.md)) |

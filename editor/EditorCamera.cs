@@ -9,6 +9,13 @@ public class EditorCamera
     private float _aspectRatio = 1.0f;
     private float _zoomLevel = 2.0f;
     public float ZoomLevel => _zoomLevel;
+
+    /// <summary>Restores a saved 2D zoom level (clamped like scroll input), re-projecting immediately.</summary>
+    public void SetZoom(float zoom)
+    {
+        _zoomLevel = Math.Max(zoom, 0.25f);
+        UpdateProjection();
+    }
     private float _viewportHeight = 720.0f;
     
     // Camera state

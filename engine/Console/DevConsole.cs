@@ -490,7 +490,8 @@ public sealed class DevConsole
         // out of the field) or has a context popup open, so those interactions still work.
         bool escape = ImGui.IsKeyPressed(ImGuiKey.Escape, false);
         bool popupOpen = ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup);
-        if ((submitted || inputDeactivated) && consoleFocused && !escape && !popupOpen)
+        bool interactingWithItem = ImGui.IsAnyItemActive();
+        if ((submitted || (inputDeactivated && !interactingWithItem)) && consoleFocused && !escape && !popupOpen)
         {
             _reclaimFocus = true;
         }
@@ -579,6 +580,26 @@ public sealed class DevConsole
                 Print($"Wireframe toggled to {Spot.Rendering.RendererDebug.Wireframe}");
             }
         }, "Toggles wireframe rendering for 3D meshes");
+
+        Register("vsync", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RenderSettings.VSync = val;
+            }
+            else
+            {
+                Spot.Rendering.RenderSettings.VSync = !Spot.Rendering.RenderSettings.VSync;
+            }
+
+            Print($"VSync {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")} (use 'vsync off' to uncap and profile true frame time)");
+        }, "Toggles vertical sync (e.g., 'vsync', 'vsync off'); off uncaps the frame rate for profiling");
+
+        Register("stats", _ =>
+        {
+            Print($"Frame: {Spot.Core.FrameStats.FrameTimeMs:0.00} ms ({Spot.Core.FrameStats.Fps:0} FPS); last {Spot.Core.FrameStats.LastFrameMs:0.00} ms");
+            Print($"VSync: {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")}");
+        }, "Prints the current smoothed frame time / FPS and VSync state");
 
         Register("bind", args =>
         {

@@ -4,6 +4,7 @@ using Spot.Core;
 using Spot.Events;
 using Spot.Physics;
 using Spot.Rendering;
+using Spot.UI;
 
 namespace Spot.Scenes;
 
@@ -15,12 +16,11 @@ namespace Spot.Scenes;
 /// </summary>
 public class Scene
 {
-    private readonly HashSet<int> _entities = new();
-    private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
+    // The scene's entity/component store and runtime physics, split into focused collaborators. The scene
+    // keeps the public API and delegates storage, queries, hierarchy-active memoization, and physics here.
+    private readonly EntityRegistry _registry;
+    private readonly ScenePhysics _physics;
     private readonly HashSet<int> _pendingDestroy = new();
-    private int _nextId = 1;
-    private IPhysics3D? _physics3D;
-    private CollisionDispatcher? _collisions;
 
     /// <summary>
     /// The ordered play-mode systems this scene runs each frame from <see cref="UpdateRuntime"/>. Every
@@ -29,6 +29,18 @@ public class Scene
     /// </summary>
     public SystemRegistry Systems { get; } = new();
 
+    private UIRoot? _ui;
+
+    /// <summary>
+    /// This scene's screen-space UI tree. Built in code from scripts (see <c>EntityBehaviour.UI</c>): add
+    /// <see cref="Widget"/>s to it and the engine lays them out, routes pointer input each play-mode frame,
+    /// and draws them as the final pass. Created on first access, so scenes without UI cost nothing.
+    /// </summary>
+    public UIRoot UI => _ui ??= new UIRoot();
+
+    // The UI root without creating one — lets the render system and update tick skip scenes that never built UI.
+    internal UIRoot? UIRootOrNull => _ui;
+
     /// <summary>
     /// Creates a scene with the engine's built-in play-mode systems registered (character controllers, 2D
     /// and 3D physics, animation, particles, audio, and scripts, in that order). Register additional systems
@@ -36,8 +48,13 @@ public class Scene
     /// </summary>
     public Scene()
     {
+        _registry = new EntityRegistry(this);
+        _physics = new ScenePhysics(this);
+
+        Systems.Add(new DelegateSystem(SystemOrder.UICanvas, UICanvasSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, Physics2DSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
         Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
         Systems.Add(new DelegateSystem(SystemOrder.Particles, ParticleSystem.Update));
@@ -57,7 +74,6 @@ public class Scene
     /// </summary>
     public virtual void OnEnter()
     {
-        var window = Spot.Core.Application.Instance.Window;
         foreach (var entity in View<CameraComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
@@ -65,7 +81,7 @@ public class Scene
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
-                cc.SetViewportSize(window.Width, window.Height);
+                cc.SetViewportSize(Spot.Core.Display.Width, Spot.Core.Display.Height);
             }
         }
     }
@@ -85,68 +101,55 @@ public class Scene
     {
         OnUpdate(deltaTime);
         Systems.Update(this, deltaTime);
+        TickUI();
         FlushDestroyed();
     }
 
-    /// <summary>
-    /// Runs the 3D physics step and dispatches its collision events. Wrapped so the physics backend and the
-    /// contacts it produces stay encapsulated on the scene while the built-in physics <see cref="ISystem"/>
-    /// simply triggers it in order (see <see cref="SystemOrder.Physics3D"/>).
-    /// </summary>
-    private void StepPhysics3D(float deltaTime)
+    // Routes pointer input through the UI tree after scripts have (re)built it this frame. Skipped entirely
+    // until a scene actually has UI, so the common case touches neither the window nor the input statics.
+    private void TickUI()
     {
-        IPhysics3D physics = EnsurePhysics3D();
-        physics.Step(this, deltaTime);
-        (_collisions ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
+        if (_ui is null || _ui.Children.Count == 0) return;
+
+        _ui.Update(
+            Spot.Core.Display.Width,
+            Spot.Core.Display.Height,
+            Input.MousePosition,
+            Input.GetMouseButton(MouseButton.Left),
+            Input.GetMouseButtonDown(MouseButton.Left),
+            Input.GetMouseButtonUp(MouseButton.Left));
     }
 
-    /// <summary>
-    /// Lazily builds this scene's 3D physics backend from <see cref="PhysicsSettings.Backend"/>. If the
-    /// preferred backend fails to initialize, falls back to the legacy AABB solver so play never dies.
-    /// </summary>
-    private IPhysics3D EnsurePhysics3D()
-    {
-        if (_physics3D is not null) return _physics3D;
+    // Steps the 3D physics simulation and dispatches its contacts; the built-in Physics3D ISystem triggers
+    // this in order (see SystemOrder.Physics3D). The backend and dispatcher live on ScenePhysics.
+    private void StepPhysics3D(float deltaTime) => _physics.Step3D(deltaTime);
 
-        if (PhysicsSettings.Backend == Physics3DBackend.Bepu)
-        {
-            try
-            {
-                _physics3D = new Physics.Bepu.BepuPhysics3D();
-                return _physics3D;
-            }
-            catch (Exception ex)
-            {
-                Log.CoreError("Failed to initialize the Bepu physics backend ({0}); falling back to the legacy solver.", ex.Message);
-            }
-        }
-
-        _physics3D = new LegacyPhysics3D();
-        return _physics3D;
-    }
+    // Steps the 2D physics simulation and dispatches its contacts; the built-in Physics2D ISystem triggers
+    // this in order (see SystemOrder.Physics2D). The backend and dispatcher live on ScenePhysics.
+    private void StepPhysics2D(float deltaTime) => _physics.Step2D(deltaTime);
 
     /// <summary>
     /// Casts a ray against this scene's 3D physics and returns the closest hit within
     /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
     /// </summary>
-    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
-    {
-        if (_physics3D is null)
-        {
-            hit = default;
-            return false;
-        }
-        return _physics3D.Raycast(this, origin, direction, maxDistance, out hit);
-    }
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit) =>
+        _physics.Raycast(origin, direction, maxDistance, out hit);
+
+    /// <summary>
+    /// Casts a ray against this scene's 2D physics (XY plane) and returns the closest hit within
+    /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
+    /// </summary>
+    public bool Raycast2D(Vector2 origin, Vector2 direction, float maxDistance, out RaycastHit2D hit) =>
+        _physics.Raycast2D(origin, direction, maxDistance, out hit);
 
     /// <summary>
     /// Called every frame to render the scene, after the screen is cleared.
     /// </summary>
     public virtual void OnRender()
     {
-        System.Numerics.Matrix4x4? viewProjection = null;
-        System.Numerics.Vector3 cameraPosition = System.Numerics.Vector3.Zero;
-        System.Numerics.Vector4 clearColor = new System.Numerics.Vector4(0.1f, 0.1f, 0.1f, 1.0f);
+        Matrix4x4? viewProjection = null;
+        Vector3 cameraPosition = Vector3.Zero;
+        Vector4 clearColor = new(0.1f, 0.1f, 0.1f, 1.0f);
         bool is3D = false;
 
         foreach (var entity in View<CameraComponent>())
@@ -182,8 +185,8 @@ public class Scene
                 Renderer.SetFaceCulling(true);
             }
 
-            RenderSystem.Render(this, viewProjection.Value, cameraPosition);
-            
+            SceneRenderer.Render(this, viewProjection.Value, cameraPosition);
+
             if (is3D)
             {
                 Renderer.SetDepthTest(false);
@@ -262,8 +265,7 @@ public class Scene
     /// <returns>The new entity.</returns>
     public Entity Instantiate(string name = "Entity")
     {
-        int id = _nextId++;
-        _entities.Add(id);
+        int id = _registry.CreateEntity();
 
         var entity = new Entity(id, this);
         entity.AddComponent(new LabelComponent(name));
@@ -286,10 +288,8 @@ public class Scene
     /// </summary>
     internal void Clear()
     {
-        _entities.Clear();
-        _pools.Clear();
+        _registry.Clear();
         _pendingDestroy.Clear();
-        _nextId = 1;
         TeardownPhysics();
     }
 
@@ -298,20 +298,7 @@ public class Scene
     /// when the scene is exited so the native-free simulation and its buffers are released. Safe to call
     /// when no backend exists; a later <see cref="UpdateRuntime"/> rebuilds one on demand.
     /// </summary>
-    internal void TeardownPhysics()
-    {
-        if (_physics3D is null) return;
-        try
-        {
-            _physics3D.Dispose();
-        }
-        catch (Exception ex)
-        {
-            Log.CoreError("Failed to dispose the 3D physics backend: {0}", ex.Message);
-        }
-        _physics3D = null;
-        _collisions?.Reset();
-    }
+    internal void TeardownPhysics() => _physics.Teardown();
 
     /// <summary>
     /// Returns a handle to the entity with the given id if it is still alive, otherwise
@@ -319,7 +306,7 @@ public class Scene
     /// remapping a selection after a snapshot restore).
     /// </summary>
     internal Entity? EntityById(int? id) =>
-        id is int value && _entities.Contains(value) ? new Entity(value, this) : null;
+        id is int value && _registry.Contains(value) ? new Entity(value, this) : null;
 
     /// <summary>
     /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the
@@ -352,23 +339,42 @@ public class Scene
             }
         }
 
-        if (_pools.TryGetValue(typeof(ScriptComponent), out Dictionary<int, object>? scriptPool) &&
-            scriptPool.TryGetValue(id, out object? value))
+        if (_registry.TryGet(typeof(ScriptComponent), id, out object? value))
         {
             foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
             {
-                if (script.Started)
+                if (!script.Started)
+                {
+                    continue;
+                }
+
+                // A still-enabled script gets OnDisable before OnDestroy, mirroring OnEnable/OnCreate. Both
+                // are guarded so a throwing teardown hook cannot abort destruction of the rest of the tree.
+                if (script.ActiveLastFrame)
+                {
+                    script.ActiveLastFrame = false;
+                    try
+                    {
+                        script.OnDisable();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.CoreError("Script '{0}' threw from OnDisable; ignoring. {1}", script.GetType().Name, ex);
+                    }
+                }
+
+                try
                 {
                     script.OnDestroy();
+                }
+                catch (Exception ex)
+                {
+                    Log.CoreError("Script '{0}' threw from OnDestroy; ignoring. {1}", script.GetType().Name, ex);
                 }
             }
         }
 
-        _entities.Remove(id);
-        foreach (Dictionary<int, object> pool in _pools.Values)
-        {
-            pool.Remove(id);
-        }
+        _registry.RemoveEntity(id);
     }
 
     /// <summary>
@@ -377,19 +383,8 @@ public class Scene
     /// <typeparam name="T">The component type to match.</typeparam>
     /// <returns>A snapshot of the matching entities, safe to modify the scene while iterating.</returns>
     public IReadOnlyList<Entity> View<T>()
-        where T : class
-    {
-        var result = new List<Entity>();
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
-        {
-            foreach (int id in pool.Keys)
-            {
-                result.Add(new Entity(id, this));
-            }
-        }
-
-        return result;
-    }
+        where T : class =>
+        _registry.View<T>();
 
     /// <summary>
     /// Returns every entity that has components of both <typeparamref name="T1"/> and <typeparamref name="T2"/>.
@@ -399,29 +394,8 @@ public class Scene
     /// <returns>A snapshot of the matching entities, safe to modify the scene while iterating.</returns>
     public IReadOnlyList<Entity> View<T1, T2>()
         where T1 : class
-        where T2 : class
-    {
-        var result = new List<Entity>();
-        if (!_pools.TryGetValue(typeof(T1), out Dictionary<int, object>? pool1) ||
-            !_pools.TryGetValue(typeof(T2), out Dictionary<int, object>? pool2))
-        {
-            return result;
-        }
-
-        // Iterate the smaller pool and probe the larger one.
-        (Dictionary<int, object> smaller, Dictionary<int, object> larger) =
-            pool1.Count <= pool2.Count ? (pool1, pool2) : (pool2, pool1);
-
-        foreach (int id in smaller.Keys)
-        {
-            if (larger.ContainsKey(id))
-            {
-                result.Add(new Entity(id, this));
-            }
-        }
-
-        return result;
-    }
+        where T2 : class =>
+        _registry.View<T1, T2>();
 
     /// <summary>
     /// Returns every entity that has a component of type <typeparamref name="T"/> which is both enabled and
@@ -431,25 +405,8 @@ public class Scene
     /// </summary>
     /// <typeparam name="T">The component type to match.</typeparam>
     public IReadOnlyList<(Entity Entity, T Component)> ViewActive<T>()
-        where T : Component
-    {
-        var result = new List<(Entity, T)>();
-        foreach (Entity entity in View<T>())
-        {
-            if (!entity.IsActiveInHierarchy())
-            {
-                continue;
-            }
-
-            T component = GetComponent<T>(entity);
-            if (component.Enabled)
-            {
-                result.Add((entity, component));
-            }
-        }
-
-        return result;
-    }
+        where T : Component =>
+        _registry.ViewActive<T>();
 
     /// <summary>
     /// Moves every persistent root entity (marked via <see cref="Entity.DontDestroyOnLoad"/>) and its
@@ -466,7 +423,7 @@ public class Scene
 
         // Snapshot the roots first: adopting mutates this scene's entity set as it goes.
         var roots = new List<int>();
-        foreach (int id in _entities)
+        foreach (int id in _registry.EntityIds)
         {
             if (GetComponent(new Entity(id, this), typeof(LabelComponent)) is LabelComponent label &&
                 label.Persistent &&
@@ -493,24 +450,16 @@ public class Scene
         var order = new List<int>();
         CollectSubtree(source, rootId, order);
 
-        // Pass 1: re-mint ids and move each entity's component instances into this scene's pools.
+        // Pass 1: re-mint ids and move each entity's component instances into this scene's registry.
         var remap = new Dictionary<int, int>(order.Count);
         foreach (int oldId in order)
         {
-            int newId = _nextId++;
+            int newId = _registry.CreateEntity();
             remap[oldId] = newId;
-            _entities.Add(newId);
-
-            foreach (Dictionary<int, object> sourcePool in source._pools.Values)
-            {
-                if (sourcePool.Remove(oldId, out object? component))
-                {
-                    PoolFor(component.GetType())[newId] = component;
-                }
-            }
-
-            source._entities.Remove(oldId);
+            source._registry.MoveEntityComponentsTo(oldId, _registry, newId);
         }
+        source._registry.InvalidateCaches();
+        _registry.InvalidateCaches();
 
         // Pass 2: rebind every stored entity handle now that all new ids exist.
         foreach (int newId in remap.Values)
@@ -520,6 +469,11 @@ public class Scene
             if (TryGetComponent(entity, out TransformComponent? transform))
             {
                 transform.Entity = entity;
+            }
+
+            if (TryGetComponent(entity, out LabelComponent? label))
+            {
+                label.OwnerScene = this;
             }
 
             if (TryGetComponent(entity, out RelationshipComponent? rel))
@@ -620,109 +574,74 @@ public class Scene
         return result;
     }
 
-    internal bool IsAlive(Entity entity) => _entities.Contains(entity.Id);
+    internal bool IsAlive(Entity entity) => _registry.Contains(entity.Id);
+
+    /// <summary>
+    /// Drops the cached hierarchy-active results so the next query recomputes. Called whenever something
+    /// that affects active state changes: an entity's Enabled flag, a reparent, or a component add/remove.
+    /// </summary>
+    internal void InvalidateHierarchyActive() => _registry.InvalidateHierarchyActive();
+
+    internal bool IsActiveInHierarchy(int entityId) => _registry.IsActiveInHierarchy(entityId);
+
+    // Component access delegates to the registry, which stores each component under its type and invalidates
+    // the query and hierarchy caches on mutation. The scene first wires the two components that need a
+    // back-reference (a transform to its entity, a label to its owning scene) before storing them.
 
     internal T AddComponent<T>(Entity entity, T component)
         where T : class
     {
-        if (component is TransformComponent transform)
-        {
-            transform.Entity = entity;
-        }
-
-        PoolFor(typeof(T))[entity.Id] = component;
+        WireComponent(entity, component);
+        _registry.Set(typeof(T), entity.Id, component);
         return component;
     }
 
     internal T GetComponent<T>(Entity entity)
-        where T : class
-    {
-        if (TryGetComponent(entity, out T? component))
-        {
-            return component;
-        }
-
-        throw new InvalidOperationException($"Entity does not have a component of type {typeof(T).Name}.");
-    }
+        where T : class =>
+        _registry.Get<T>(entity.Id);
 
     internal bool TryGetComponent<T>(Entity entity, [NotNullWhen(true)] out T? component)
-        where T : class
-    {
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) &&
-            pool.TryGetValue(entity.Id, out object? value))
-        {
-            component = (T)value;
-            return true;
-        }
-
-        component = null;
-        return false;
-    }
+        where T : class =>
+        _registry.TryGet(entity.Id, out component);
 
     internal bool HasComponent<T>(Entity entity)
         where T : class =>
-        _pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) && pool.ContainsKey(entity.Id);
+        _registry.Has<T>(entity.Id);
 
     internal void RemoveComponent<T>(Entity entity)
-        where T : class
-    {
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
-        {
-            pool.Remove(entity.Id);
-        }
-    }
+        where T : class =>
+        _registry.Remove<T>(entity.Id);
 
-    // Non-generic component access, keyed by runtime type. These mirror the generic API for callers
-    // that only know a component's Type at runtime (e.g. the editor's reflection-based inspector).
-    // Components are always stored under their concrete type, so keying by Type/GetType() is consistent
-    // with the generic path.
+    // Non-generic component access, keyed by runtime type, for callers that only know a component's Type at
+    // runtime (e.g. the editor's reflection-based inspector).
 
-    internal bool HasComponent(Entity entity, Type type) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.ContainsKey(entity.Id);
+    internal bool HasComponent(Entity entity, Type type) => _registry.Has(type, entity.Id);
 
-    internal object? GetComponent(Entity entity, Type type) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out object? value)
-            ? value
-            : null;
+    internal object? GetComponent(Entity entity, Type type) => _registry.Get(type, entity.Id);
 
-    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component)
-    {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(entity.Id, out component))
-        {
-            return true;
-        }
-
-        component = null;
-        return false;
-    }
+    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component) =>
+        _registry.TryGet(type, entity.Id, out component);
 
     internal Component AddComponent(Entity entity, Component component)
+    {
+        WireComponent(entity, component);
+        _registry.Set(component.GetType(), entity.Id, component);
+        return component;
+    }
+
+    internal void RemoveComponent(Entity entity, Type type) => _registry.Remove(type, entity.Id);
+
+    // Gives a transform its owning entity and a label its owning scene so components can navigate back to
+    // the scene graph. Other component types need no wiring.
+    private void WireComponent(Entity entity, object component)
     {
         if (component is TransformComponent transform)
         {
             transform.Entity = entity;
         }
-
-        PoolFor(component.GetType())[entity.Id] = component;
-        return component;
-    }
-
-    internal void RemoveComponent(Entity entity, Type type)
-    {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool))
+        else if (component is LabelComponent label)
         {
-            pool.Remove(entity.Id);
+            label.OwnerScene = this;
         }
-    }
-
-    private Dictionary<int, object> PoolFor(Type type)
-    {
-        if (!_pools.TryGetValue(type, out Dictionary<int, object>? pool))
-        {
-            pool = new Dictionary<int, object>();
-            _pools[type] = pool;
-        }
-
-        return pool;
     }
 }

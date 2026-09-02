@@ -24,6 +24,10 @@ public static class Prefab
     /// <param name="entity">The entity to capture as a prefab.</param>
     public static string Serialize(Entity entity)
     {
+        // Give the whole subtree ids first so an Entity-typed field referencing another entity in the prefab
+        // serializes a target that already exists (references are remapped per-instance on instantiation).
+        SceneSerializer.EnsureSubtreeIds(entity);
+
         JsonObject root = SceneSerializer.WriteEntity(entity);
 
         // A prefab definition must not carry an instance link back to a prefab (including itself).
@@ -74,7 +78,7 @@ public static class Prefab
     {
         try
         {
-            return InstantiateInto(scene, File.ReadAllText(path), parent);
+            return InstantiateInto(scene, AssetProvider.Current.ReadAllText(path), parent);
         }
         catch (Exception ex)
         {

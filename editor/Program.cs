@@ -15,7 +15,7 @@ public static class Program
         {
             Name = "Spot.Editor",
             // Start at the launcher's compact size; the editor restores its own size when it loads.
-            Window = new WindowSpec { Title = "Spot Launcher", Width = 840, Height = 520 },
+            Window = new WindowSpec { Title = "Spot Launcher", Width = 840, Height = 520, IconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "spot-icon.png") },
             FontPath = System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"),
             FontSize = 16,
             // Extra atlas fonts, resolved by EditorFonts in registration order: a heavier Inter for
@@ -39,6 +39,11 @@ public static class Program
             // Authoring host: register the Assimp source importer so the editor can load source models
             // directly (the runtime deliberately does not — it loads cooked .sptmesh).
             ModelImporter.Register(new AssimpModelImporter());
+
+            // Gameplay scripts compile into the game's assembly, not the editor, so a scene opened for
+            // authoring routinely references script types this process hasn't loaded. Keep those references
+            // (the inspector shows them) but don't log them as warnings — they resolve at play time.
+            Spot.Scenes.ScriptResolver.QuietMissingScripts = true;
 
             var app = new Spot.Core.Application(spec);
             // Host the in-game debug overlay (hierarchy/inspector/time panels), now that it lives in
