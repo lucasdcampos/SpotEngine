@@ -67,6 +67,7 @@ will be finalized when 0.2 is tagged.
 - Fixed transition selection not working in the Animator Controller editor
 - Fixed bidirectional transitions overlapping into a single line in the Animator Controller editor
 - Clicking a 3D mesh in the viewport now selects its entity (primitives were unpickable; only imported models' pivots hit)
+- Viewport camera fly (right-drag) now confines the cursor to the viewport by recentring it each frame (GLFW's Disabled/Raw cursor lock silently failed to confine on some setups, letting the hidden cursor escape) and no longer triggers from a right-click in other panels (e.g. the hierarchy context menu)
 - Blank window until resize
 
 ## [v0.1.0] - 2026-08-12
