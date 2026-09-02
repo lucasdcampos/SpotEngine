@@ -18,10 +18,28 @@ public sealed class TransformComponent : Component
 
     public Entity? Entity { get; internal set; }
 
+    private Vector3 _position = Vector3.Zero;
+    private Vector3 _rotation = Vector3.Zero;
+    private Vector3 _scale = Vector3.One;
+
+    private Matrix4x4 _localMatrix = Matrix4x4.Identity;
+    private Matrix4x4 _worldMatrix = Matrix4x4.Identity;
+    
+    private bool _localDirty = true;
+    private bool _worldDirty = true;
+    
+    public int Version { get; private set; } = 1;
+    private int _parentVersion = 0;
+    private Entity? _lastParent = null;
+
     /// <summary>
     /// Gets or sets the position, in world units.
     /// </summary>
-    public Vector3 Position { get; set; } = Vector3.Zero;
+    public Vector3 Position 
+    { 
+        get => _position; 
+        set { if (_position != value) { _position = value; SetDirty(); } }
+    }
 
     /// <summary>
     /// Gets the world position.
@@ -32,7 +50,11 @@ public sealed class TransformComponent : Component
     /// <summary>
     /// Gets or sets the rotation as Euler angles in degrees (X = pitch, Y = yaw, Z = roll).
     /// </summary>
-    public Vector3 Rotation { get; set; } = Vector3.Zero;
+    public Vector3 Rotation 
+    { 
+        get => _rotation; 
+        set { if (_rotation != value) { _rotation = value; SetDirty(); } }
+    }
 
     /// <summary>
     /// Gets the world rotation as Euler angles in degrees.
@@ -43,8 +65,8 @@ public sealed class TransformComponent : Component
         get
         {
             Vector3 worldRot = Rotation;
-            Entity? parentEntity = Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) ? rel.Parent : null;
-            if (parentEntity != null && parentEntity.Value.TryGetComponent(out TransformComponent? parentTransform))
+            TransformComponent? parentTransform = GetParentTransform();
+            if (parentTransform != null)
             {
                 worldRot += parentTransform.WorldRotation;
             }
@@ -56,7 +78,11 @@ public sealed class TransformComponent : Component
     /// Gets or sets the scale along each axis.
     /// </summary>
     [InspectorReset(1.0f)]
-    public Vector3 Scale { get; set; } = Vector3.One;
+    public Vector3 Scale 
+    { 
+        get => _scale; 
+        set { if (_scale != value) { _scale = value; SetDirty(); } }
+    }
 
     /// <summary>
     /// Gets the world scale.
@@ -72,6 +98,25 @@ public sealed class TransformComponent : Component
         }
     }
 
+    private void SetDirty()
+    {
+        _localDirty = true;
+        _worldDirty = true;
+        Version++;
+    }
+
+    private TransformComponent? GetParentTransform()
+    {
+        if (Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
+        {
+            if (rel.Parent.Value.TryGetComponent(out TransformComponent? parentTransform))
+            {
+                return parentTransform;
+            }
+        }
+        return null;
+    }
+
     /// <summary>
     /// Gets the local model matrix.
     /// </summary>
@@ -80,10 +125,15 @@ public sealed class TransformComponent : Component
     {
         get
         {
-            Vector3 radians = Rotation * DegreesToRadians;
-            return Matrix4x4.CreateScale(Scale)
-                * Matrix4x4.CreateFromYawPitchRoll(radians.Y, radians.X, radians.Z)
-                * Matrix4x4.CreateTranslation(Position);
+            if (_localDirty)
+            {
+                Vector3 radians = _rotation * DegreesToRadians;
+                _localMatrix = Matrix4x4.CreateScale(_scale)
+                    * Matrix4x4.CreateFromYawPitchRoll(radians.Y, radians.X, radians.Z)
+                    * Matrix4x4.CreateTranslation(_position);
+                _localDirty = false;
+            }
+            return _localMatrix;
         }
     }
 
@@ -95,17 +145,45 @@ public sealed class TransformComponent : Component
     {
         get
         {
-            Matrix4x4 local = LocalMatrix;
+            TransformComponent? parentTransform = GetParentTransform();
+            Entity? currentParent = parentTransform?.Entity;
 
-            if (Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
+            // If reparented, force update
+            if (_lastParent != currentParent)
             {
-                if (rel.Parent.Value.TryGetComponent(out TransformComponent? parentTransform))
+                _lastParent = currentParent;
+                _worldDirty = true;
+            }
+
+            if (parentTransform != null)
+            {
+                int pVer = parentTransform.Version;
+                // Read parent.Matrix BEFORE checking if we need to update, as it updates its own version if dirty
+                Matrix4x4 pMat = parentTransform.Matrix;
+                
+                // pVer might have changed if parent recomputed its Matrix
+                pVer = parentTransform.Version;
+
+                if (_worldDirty || _parentVersion != pVer || _localDirty)
                 {
-                    return local * parentTransform.Matrix;
+                    _worldMatrix = LocalMatrix * pMat;
+                    _parentVersion = pVer;
+                    _worldDirty = false;
+                    Version++;
+                }
+            }
+            else
+            {
+                if (_worldDirty || _parentVersion != 0 || _localDirty)
+                {
+                    _worldMatrix = LocalMatrix;
+                    _parentVersion = 0;
+                    _worldDirty = false;
+                    Version++;
                 }
             }
 
-            return local;
+            return _worldMatrix;
         }
     }
 }

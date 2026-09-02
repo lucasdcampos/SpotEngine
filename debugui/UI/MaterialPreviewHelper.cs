@@ -10,6 +10,30 @@ public static class MaterialPreviewHelper
 {
     private static Model? s_sphereModel;
 
+    /// <summary>
+    /// A cheap fingerprint of the material's preview-relevant properties, so callers can re-render the
+    /// (expensive) offscreen preview only when one of them changes rather than every frame. Shared by the
+    /// inspector's live preview and the asset picker's thumbnail cache.
+    /// </summary>
+    public static int Signature(Material material)
+    {
+        var hash = new HashCode();
+        hash.Add(material.Color);
+        hash.Add(material.ShaderType);
+        hash.Add(material.Metallic);
+        hash.Add(material.EmissiveColor);
+        hash.Add(material.EmissiveIntensity);
+        hash.Add(material.Tiling);
+        hash.Add(material.AutoTile);
+        hash.Add(material.TexturePath);
+        hash.Add(material.NormalMapPath);
+        hash.Add(material.WaveSpeed);
+        hash.Add(material.WaveScale);
+        hash.Add(material.WaveStrength);
+        hash.Add(material.SpecularPower);
+        return hash.ToHashCode();
+    }
+
     public static void RenderToFramebuffer(Material material, Spot.Rendering.Framebuffer framebuffer)
     {
         if (s_sphereModel == null)

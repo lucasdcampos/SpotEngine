@@ -266,6 +266,17 @@ public class ImGuiService : IEngineService
     /// </summary>
     public void RenderFrame()
     {
+        // The Silk ImGui controller computes DisplayFramebufferScale as framebufferSize / windowSize; on some
+        // setups the platform reports a 0 framebuffer size at startup, which makes that scale 0 and the
+        // controller's renderer early-return — the UI draws nothing until a manual window resize. Default a
+        // non-positive scale to 1 (framebuffer == display) so the UI always presents; the true scale takes
+        // over as soon as the real framebuffer size arrives.
+        ImGuiIOPtr io = ImGui.GetIO();
+        if (io.DisplayFramebufferScale.X <= 0.0f || io.DisplayFramebufferScale.Y <= 0.0f)
+        {
+            io.DisplayFramebufferScale = new System.Numerics.Vector2(1.0f, 1.0f);
+        }
+
         _controller?.Render();
     }
 

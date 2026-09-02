@@ -1,4 +1,6 @@
+using System.Numerics;
 using Spot.Animation;
+using Spot.Physics;
 using Spot.Rendering;
 
 namespace Spot.Assets;
@@ -35,10 +37,38 @@ public sealed class Model
         Meshes = meshes;
         _submeshBones = submeshBones;
         Animations = animations ?? s_noClips;
+        LocalBounds = ComputeLocalBounds(meshes);
     }
 
     /// <summary>Gets the meshes that make up the model.</summary>
     public IReadOnlyList<Mesh> Meshes { get; }
+
+    /// <summary>
+    /// Gets the model's axis-aligned bounding box in local space: the union of its meshes' bounds.
+    /// A model with no meshes reports a zero-sized box at the origin. Useful for framing the model
+    /// (for example a thumbnail camera) or coarse culling.
+    /// </summary>
+    public Aabb3d LocalBounds { get; }
+
+    // Unions every submesh's local bounds into one box.
+    private static Aabb3d ComputeLocalBounds(IReadOnlyList<Mesh> meshes)
+    {
+        if (meshes.Count == 0)
+        {
+            return new Aabb3d(Vector3.Zero, Vector3.Zero);
+        }
+
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        foreach (Mesh mesh in meshes)
+        {
+            Aabb3d b = mesh.Bounds;
+            min = Vector3.Min(min, b.Min);
+            max = Vector3.Max(max, b.Max);
+        }
+
+        return new Aabb3d((min + max) * 0.5f, max - min);
+    }
 
     /// <summary>Gets the animation clips baked into the model (empty when it has none).</summary>
     public IReadOnlyList<AnimationClip> Animations { get; }

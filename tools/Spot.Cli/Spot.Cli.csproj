@@ -5,8 +5,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Spot.Cli</RootNamespace>
     <AssemblyName>spot</AssemblyName>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,9 +2,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
@@ -34,6 +34,7 @@
     <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
     <PackageReference Include="StbImageSharp" Version="2.30.15" />
+    <PackageReference Include="StbTrueTypeSharp" Version="1.26.13" />
     <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
   </ItemGroup>
 
@@ -47,10 +48,15 @@
     <EmbeddedResource Remove="Assets\**" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Ship cooked content, never the source Assets. The build step cooks Assets\ into Content\ first. -->
-    <None Remove="Content\**" />
-    <Content Include="Content\**\*.*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="game.manifest" CopyToOutputDirectory="PreserveNewest" />
+  <!-- Reflection-free script registry: the source generator emits an IScriptProvider for the game's scripts
+       (keyed by the stable guid in each script's .cs.meta), so resolution needs no Activator/assembly scan.
+       Exists-guarded: if the generator wasn't bundled, scripts still compile and resolve by reflection. -->
+  <ItemGroup Condition="Exists('EngineBin\Spot.ScriptGen.dll')">
+    <Analyzer Include="EngineBin\Spot.ScriptGen.dll" />
+    <AdditionalFiles Include="Assets\**\*.cs.meta" />
   </ItemGroup>
+
+  <!-- Cooked content and game.manifest are NOT copied by the build: the pipeline (ProjectBuilder/ProjectRunner)
+       cooks source Assets straight into the publish/run output's Content\ and writes game.manifest beside the
+       game after publishing. This keeps the project root clean — a build leaves only Build\ behind. -->
 </Project>

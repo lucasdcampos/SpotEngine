@@ -4,12 +4,35 @@ using Spot.Events;
 namespace Spot.Core;
 
 /// <summary>
+/// Locks or unlocks the hardware cursor on behalf of <see cref="Input"/>, without coupling it to a
+/// particular windowing backend. The active host installs an implementation — a Silk mouse on desktop,
+/// the Pointer Lock API in the browser — so the same input code drives both.
+/// </summary>
+internal interface ICursorController
+{
+    /// <summary>Gets or sets whether the hardware cursor is locked and hidden.</summary>
+    bool Locked { get; set; }
+
+    /// <summary>
+    /// Per-frame upkeep while the cursor is locked. The desktop host recentres the OS cursor and reports
+    /// the frame's relative motion through <see cref="Input.AddMouseMotion"/>, since the backend's own
+    /// "confine" cursor modes proved unreliable (the cursor still escaped). Hosts that already deliver
+    /// relative motion (the browser's Pointer Lock) leave this as a no-op.
+    /// </summary>
+    void Tick() { }
+}
+
+/// <summary>
 /// Polled input state, queryable at any time (typically from a scene's update). This is the
 /// convenient, Unity-style path: ask "is this key down?" instead of handling events. For discrete,
 /// event-driven input, override <see cref="Spot.Scenes.Scene.OnEvent"/> instead.
 /// </summary>
 public static class Input
 {
+    // The active platform's hardware-cursor controller, installed by the host once its window exists.
+    // Null (and cursor operations no-op) in headless tests and before the window is created.
+    internal static ICursorController? CursorController { get; set; }
+
     private static readonly HashSet<Key> DownKeys = new();
     private static readonly HashSet<Key> PressedThisFrame = new();
     private static readonly HashSet<Key> ReleasedThisFrame = new();
@@ -42,6 +65,11 @@ public static class Input
     private static Vector2 _mousePosition;
     private static Vector2 _mouseScrollDelta;
 
+    // While true the mouse position is driven by accumulated relative motion (the host recentres the
+    // hardware cursor each frame and feeds deltas), so absolute move events must not overwrite it. Set
+    // by the platform cursor controller when it locks the cursor for mouse-look.
+    internal static bool RelativeMouseMode { get; set; }
+
     // Named actions mapped to the physical inputs that trigger them (an action can have several, e.g.
     // "forward" -> W and Up). Names are compared case-insensitively so console usage is forgiving.
     // _defaults holds the project's startup bindings so a runtime "resetbinds" can restore them.
@@ -73,11 +101,7 @@ public static class Input
     /// </remarks>
     public static bool CursorLocked
     {
-        get
-        {
-            var mice = Application.Instance.Window.Input.Mice;
-            return mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw;
-        }
+        get => CursorController?.Locked ?? false;
         set
         {
             _desiredCursorLocked = value;
@@ -110,15 +134,29 @@ public static class Input
         ApplyCursorMode(captured ? false : _desiredCursorLocked);
     }
 
-    // Writes the cursor mode to the hardware, guarding against having no mouse device.
+    // Writes the cursor mode through the active platform controller, a no-op when none is installed.
     private static void ApplyCursorMode(bool locked)
     {
-        var mice = Application.Instance.Window.Input.Mice;
-        if (mice.Count > 0)
+        if (CursorController is { } controller)
         {
-            mice[0].Cursor.CursorMode = locked ? Silk.NET.Input.CursorMode.Raw : Silk.NET.Input.CursorMode.Normal;
+            controller.Locked = locked;
         }
     }
+
+    /// <summary>
+    /// Advances the platform cursor controller once per frame (see <see cref="ICursorController.Tick"/>).
+    /// Called by the host after polling input, so a locked cursor is recentred and its motion applied
+    /// before scenes read <see cref="MousePosition"/>.
+    /// </summary>
+    internal static void TickCursorLock() => CursorController?.Tick();
+
+    /// <summary>
+    /// Accumulates relative mouse motion into <see cref="MousePosition"/>. Used by the host while the
+    /// cursor is locked so frame-to-frame deltas keep driving mouse-look even though the hardware cursor
+    /// is pinned in place.
+    /// </summary>
+    /// <param name="delta">The relative motion since the last frame, in pixels.</param>
+    internal static void AddMouseMotion(Vector2 delta) => _mousePosition += delta;
 
     /// <summary>
     /// Returns whether the key is currently held down.
@@ -553,6 +591,7 @@ public static class Input
         _actions.Clear();
         _defaults.Clear();
         _engineCaptured = false;
+        RelativeMouseMode = false;
     }
 
     /// <summary>
@@ -591,7 +630,13 @@ public static class Input
                 break;
 
             case MouseMovedEvent moved:
-                _mousePosition = new Vector2(moved.X, moved.Y);
+                // While the cursor is locked the host drives the position through AddMouseMotion, so
+                // ignore absolute moves (which would otherwise snap it to the recentred hardware cursor).
+                if (!RelativeMouseMode)
+                {
+                    _mousePosition = new Vector2(moved.X, moved.Y);
+                }
+
                 break;
 
             case MouseScrolledEvent scrolled:

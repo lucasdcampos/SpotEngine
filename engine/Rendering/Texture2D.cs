@@ -1,4 +1,3 @@
-using Silk.NET.OpenGL;
 using Spot.Assets;
 using StbImageSharp;
 
@@ -9,16 +8,16 @@ namespace Spot.Rendering;
 /// </summary>
 public sealed class Texture2D : IDisposable
 {
-    private readonly GL _gl;
-    private uint _handle;
+    private readonly IGraphicsDevice _device;
+    private TextureHandle _handle;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Texture2D"/> class by loading an image from disk.
     /// </summary>
     /// <param name="path">The path to the image file (PNG, JPG, and other formats stb supports).</param>
-    public unsafe Texture2D(string path)
+    public Texture2D(string path)
     {
-        _gl = Renderer.Gl;
+        _device = Renderer.Device;
 
         // Resolve project-relative paths against the active project's asset directory so scenes and
         // materials committed with relative texture paths load on any machine.
@@ -32,10 +31,7 @@ public sealed class Texture2D : IDisposable
         Width = (uint)image.Width;
         Height = (uint)image.Height;
 
-        fixed (byte* pixels = image.Data)
-        {
-            Upload(pixels, false);
-        }
+        Upload(image.Data, false);
     }
 
     /// <summary>
@@ -45,23 +41,20 @@ public sealed class Texture2D : IDisposable
     /// <param name="height">The texture height in pixels.</param>
     /// <param name="rgbaPixels">The pixel data, four bytes (R, G, B, A) per pixel.</param>
     /// <param name="pointFilter">If true, uses nearest neighbor filtering instead of linear.</param>
-    public unsafe Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels, bool pointFilter = false)
+    public Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels, bool pointFilter = false)
     {
-        _gl = Renderer.Gl;
+        _device = Renderer.Device;
         Width = width;
         Height = height;
 
-        fixed (byte* pixels = rgbaPixels)
-        {
-            Upload(pixels, pointFilter);
-        }
+        Upload(rgbaPixels, pointFilter);
     }
 
     /// <summary>
-    /// Gets the native OpenGL texture handle. Exposed so editor UI can display the texture through
+    /// Gets the native texture handle. Exposed so editor UI can display the texture through
     /// ImGui (for example as an asset thumbnail via <c>ImGui.Image</c>).
     /// </summary>
-    public uint Handle => _handle;
+    public uint Handle => _handle.Id;
 
     /// <summary>
     /// Creates a soft checkerboard texture for debugging. Rendered at a real resolution (not one texel
@@ -139,56 +132,37 @@ public sealed class Texture2D : IDisposable
     /// Binds the texture to the given texture unit.
     /// </summary>
     /// <param name="slot">The texture unit index (matching the sampler uniform value).</param>
-    public void Bind(uint slot = 0)
-    {
-        _gl.ActiveTexture(TextureUnit.Texture0 + (int)slot);
-        _gl.BindTexture(TextureTarget.Texture2D, _handle);
-    }
+    public void Bind(uint slot = 0) => _device.BindTexture(slot, _handle);
 
     /// <inheritdoc />
-    public void Dispose() => _gl.DeleteTexture(_handle);
+    public void Dispose() => _device.DeleteTexture(_handle);
 
-    private unsafe void Upload(byte* pixels, bool pointFilter)
+    private void Upload(ReadOnlySpan<byte> pixels, bool pointFilter)
     {
-        _handle = _gl.GenTexture();
-        Bind();
+        _handle = _device.CreateTexture();
+        _device.BindTexture(0, _handle);
 
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.Repeat);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.Repeat);
-        
+        _device.SetTextureWrap(TextureWrap.Repeat);
+
         if (pointFilter)
         {
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+            _device.SetTextureFilter(TextureFilter.Nearest, TextureFilter.Nearest);
         }
         else
         {
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+            _device.SetTextureFilter(TextureFilter.LinearMipmapLinear, TextureFilter.Linear);
         }
 
         // Anisotropic filtering keeps textures on surfaces viewed at grazing angles (a ground plane,
-        // for example) crisp instead of blurring toward a flat average color. Guarded to a no-op where
-        // the extension is unsupported. 0x84FF = GL_MAX_TEXTURE_MAX_ANISOTROPY, 0x84FE = GL_TEXTURE_MAX_ANISOTROPY.
-        Span<float> maxAnisotropy = stackalloc float[1];
-        maxAnisotropy[0] = 0.0f;
-        _gl.GetFloat((GLEnum)0x84FF, maxAnisotropy);
-        if (maxAnisotropy[0] > 1.0f)
+        // for example) crisp instead of blurring toward a flat average color. A no-op where the
+        // extension is unsupported (max anisotropy reported as 1).
+        float maxAnisotropy = _device.GetMaxAnisotropy();
+        if (maxAnisotropy > 1.0f)
         {
-            _gl.TexParameter(TextureTarget.Texture2D, (GLEnum)0x84FE, Math.Min(8.0f, maxAnisotropy[0]));
+            _device.SetTextureMaxAnisotropy(Math.Min(8.0f, maxAnisotropy));
         }
 
-        _gl.TexImage2D(
-            TextureTarget.Texture2D,
-            0,
-            InternalFormat.Rgba8,
-            Width,
-            Height,
-            0,
-            PixelFormat.Rgba,
-            PixelType.UnsignedByte,
-            pixels);
-
-        _gl.GenerateMipmap(TextureTarget.Texture2D);
+        _device.TextureImage2DRgba8(Width, Height, pixels);
+        _device.GenerateMipmap2D();
     }
 }

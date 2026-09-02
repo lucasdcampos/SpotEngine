@@ -289,8 +289,13 @@ internal static class ComponentSerialization
         return json;
     }
 
-    /// <summary>Applies previously serialized field/property values from a JSON object onto an instance.</summary>
-    public static void ApplyMembers(object obj, JsonObject data)
+    /// <summary>
+    /// Applies previously serialized field/property values from a JSON object onto an instance.
+    /// <see cref="Entity"/>-typed members are resolved through <paramref name="refs"/> once the scene finishes
+    /// loading (their target may not exist yet); when <paramref name="refs"/> is <see langword="null"/> they
+    /// are left at their default.
+    /// </summary>
+    public static void ApplyMembers(object obj, JsonObject data, SceneReferences? refs = null)
     {
         foreach (ScriptMember member in ScriptMembersFor(obj.GetType()))
         {
@@ -301,6 +306,16 @@ internal static class ComponentSerialization
 
             try
             {
+                // Entity references bind after the whole scene has loaded: capture the stored id and defer the
+                // assignment so a reference to an entity that loads later still resolves.
+                if (member.Type == typeof(Entity))
+                {
+                    string id = node.GetValue<string>();
+                    ScriptMember captured = member;
+                    refs?.Defer(id, e => captured.Set(obj, e));
+                    continue;
+                }
+
                 object? value = FromNode(node, member.Type);
                 if (value != null)
                 {
@@ -350,7 +365,7 @@ internal static class ComponentSerialization
     private static bool IsSupported(Type t) =>
         t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
         t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4) ||
-        t == typeof(string[]);
+        t == typeof(string[]) || t == typeof(Entity);
 
     private static JsonNode? ToNode(object? value) => value switch
     {
@@ -364,6 +379,10 @@ internal static class ComponentSerialization
         Vector3 v => new JsonArray(v.X, v.Y, v.Z),
         Vector4 v => new JsonArray(v.X, v.Y, v.Z, v.W),
         string[] a => ToStringArray(a),
+
+        // An entity reference serializes as the target's stable id (allocating one if needed), which the
+        // load-time SceneReferences fixup resolves back to a live entity. An unset reference writes empty.
+        Entity ent => JsonValue.Create(ent.IsValid ? ent.EnsurePersistentId() : string.Empty),
         _ => null,
     };
 

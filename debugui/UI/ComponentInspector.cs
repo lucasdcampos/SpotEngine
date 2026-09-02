@@ -344,163 +344,36 @@ internal static class ComponentInspector
         [typeof(Model)] = DrawModelSlot,
         [typeof(Material)] = DrawMaterialSlot,
         [typeof(AudioClip)] = DrawAudioClipSlot,
+        [typeof(AnimatorController)] = DrawControllerSlot,
     };
 
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
     {
         [typeof(ScriptComponent)] = DrawScriptComponent,
-        [typeof(AnimatorComponent)] = DrawAnimatorComponent,
+        [typeof(UICanvasComponent)] = DrawUICanvasComponent,
     };
 
-    // The Animator needs a couple of bespoke widgets the generic drawer can't produce: a Default-Clip
-    // dropdown populated from the model's clips, and a list of extra clip files. The rest are plain toggles.
-    // (Playback isn't previewed in the editor — the editor viewport stays in edit mode; animations run in the
-    // built game, so there are no Play/Stop buttons here.)
-    private static void DrawAnimatorComponent(Entity entity, object component)
-    {
-        var animator = (AnimatorComponent)component;
+    private static readonly string[] UIDocumentPatterns = { "*.sptui" };
 
-        bool enabled = animator.Enabled;
+    private static void DrawUICanvasComponent(Entity entity, object component)
+    {
+        var canvas = (UICanvasComponent)component;
+
+        bool enabled = canvas.Enabled;
         if (EditorGui.Checkbox("Enabled", ref enabled))
-            animator.Enabled = enabled;
+            canvas.Enabled = enabled;
 
-        // The model the clips (and skeleton) come from — usually set on import, but retargetable here.
-        DrawNamedProperty(entity, component, typeof(AnimatorComponent), "Model");
+        string? display = AssetDatabase.ToDisplayPath(canvas.DocumentRef);
+        if (EditorGui.AssetSlot("Document", "UI_FILE", UIDocumentPatterns, display, out string? newPath))
+            canvas.DocumentRef = AssetDatabase.ToGuidRef(newPath);
 
-        string[] clipNames = GetClipNames(animator);
-        var options = new string[clipNames.Length + 1];
-        options[0] = "(none)";
-        Array.Copy(clipNames, 0, options, 1, clipNames.Length);
-
-        int current = 0;
-        if (!string.IsNullOrEmpty(animator.DefaultClip))
+        if (!string.IsNullOrEmpty(canvas.DocumentRef))
         {
-            int idx = Array.IndexOf(clipNames, animator.DefaultClip);
-            current = idx >= 0 ? idx + 1 : 0;
-        }
-
-        if (EditorGui.Combo("Default Clip", ref current, options))
-            animator.DefaultClip = current == 0 ? null : options[current];
-
-        bool playOnStart = animator.PlayOnStart;
-        if (EditorGui.Checkbox("Play On Start", ref playOnStart))
-            animator.PlayOnStart = playOnStart;
-
-        float speed = animator.Speed;
-        if (EditorGui.DragFloat("Speed", ref speed, 0.05f, 0.0f, 100.0f))
-            animator.Speed = speed;
-
-        bool loop = animator.Loop;
-        if (EditorGui.Checkbox("Loop", ref loop))
-            animator.Loop = loop;
-
-        DrawExtraClips(animator);
-    }
-
-    // Lists the extra clip files as removable rows and offers a slot to add another animation file. Paths are
-    // stored as portable guid references, matching the other asset slots.
-    private static void DrawExtraClips(AnimatorComponent animator)
-    {
-        ImGui.Separator();
-        ImGui.TextDisabled("Extra Clips");
-
-        int removeAt = -1;
-        for (int i = 0; i < animator.ExtraClipPaths.Length; i++)
-        {
-            ImGui.PushID(i);
-            ImGui.AlignTextToFramePadding();
-            // Show the file's name (which is how animation files are identified — Mixamo names every clip
-            // "mixamo.com"), not the raw guid ref or absolute path that ToDisplayPath resolves to.
-            string reference = animator.ExtraClipPaths[i];
-            string display = AssetDatabase.ToDisplayPath(reference) ?? reference;
-            string label = System.IO.Path.GetFileNameWithoutExtension(display);
-            ImGui.TextUnformatted(string.IsNullOrEmpty(label) ? display : label);
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip(display);
-            ImGui.SameLine();
-            ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - ImGui.GetFrameHeight());
-            if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
-                removeAt = i;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove clip file");
-            ImGui.PopID();
-        }
-
-        if (removeAt >= 0)
-        {
-            var list = animator.ExtraClipPaths.ToList();
-            list.RemoveAt(removeAt);
-            animator.ExtraClipPaths = list.ToArray();
-        }
-
-        string[] patterns = { "*.fbx", "*.gltf", "*.glb", "*.dae", "*.obj" };
-        if (EditorGui.AssetSlot("Add Clip", "MODEL_FILE", patterns, null, out string? newPath))
-        {
-            string? storedRef = AssetDatabase.ToGuidRef(newPath);
-            if (!string.IsNullOrEmpty(storedRef) && !animator.ExtraClipPaths.Contains(storedRef))
+            if (ImGui.Button("Edit UI", new Vector2(-1.0f, 0.0f)))
             {
-                var list = animator.ExtraClipPaths.ToList();
-                list.Add(storedRef);
-                animator.ExtraClipPaths = list.ToArray();
-            }
-        }
-    }
-
-    // Collects clip names from the animator's model plus any extra files. Model.Load is cached, so this is
-    // cheap after the first inspector frame; failures are ignored so a missing file can't break the panel.
-    private static string[] GetClipNames(AnimatorComponent animator)
-    {
-        var names = new List<string>();
-
-        Model? model = animator.Model;
-        if (model is null && !string.IsNullOrEmpty(animator.ModelPath))
-        {
-            try
-            {
-                model = Model.Load(animator.ModelPath);
-                animator.Model = model;
-            }
-            catch
-            {
-                // A model that can't resolve yet just yields no names; the dropdown shows "(none)".
-            }
-        }
-
-        if (model != null)
-        {
-            foreach (AnimationClip clip in model.Animations)
-            {
-                if (!names.Contains(clip.Name)) names.Add(clip.Name);
-            }
-        }
-
-        foreach (string path in animator.ExtraClipPaths)
-        {
-            if (string.IsNullOrEmpty(path)) continue;
-            try
-            {
-                foreach (AnimationClip clip in Model.Load(path).Animations)
-                {
-                    if (!names.Contains(clip.Name)) names.Add(clip.Name);
-                }
-            }
-            catch
-            {
-                // Ignore a clip file that can't load; the others still populate the list.
-            }
-        }
-
-        return names.ToArray();
-    }
-
-    // Draws one named property of a component through the generic path (used to reuse the Model asset slot
-    // inside a custom component drawer).
-    private static void DrawNamedProperty(Entity entity, object component, Type type, string propertyName)
-    {
-        foreach (PropertyMeta meta in MetaFor(type))
-        {
-            if (meta.Prop.Name == propertyName)
-            {
-                DrawProperty(entity, component, meta);
-                return;
+                string? source = AssetDatabase.ToDisplayPath(canvas.DocumentRef);
+                if (!string.IsNullOrEmpty(source))
+                    WidgetInspector.OpenDocumentRequested?.Invoke(source);
             }
         }
     }
@@ -604,6 +477,29 @@ internal static class ComponentInspector
         }
     }
 
+    private static void DrawControllerSlot(Entity entity, object component, PropertyMeta meta)
+    {
+        string? stored = (string?)meta.AssetPathProp!.GetValue(component);
+        string? display = AssetDatabase.ToDisplayPath(stored);
+
+        string[] patterns = { "*.sptcontroller" };
+        if (EditorGui.AssetSlot(meta.Label, "CONTROLLER_FILE", patterns, display, out string? newPath))
+        {
+            try
+            {
+                // Store a portable guid reference, matching the other asset slots.
+                string? storedRef = AssetDatabase.ToGuidRef(newPath);
+                var newController = storedRef != null ? AnimatorController.Load(storedRef) : null;
+                meta.Prop.SetValue(component, newController);
+                meta.AssetPathProp!.SetValue(component, storedRef);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to load animator controller '{0}': {1}", newPath, ex.Message);
+            }
+        }
+    }
+
     private static void DrawMaterialSlot(Entity entity, object component, PropertyMeta meta)
     {
         var material = (Material?)meta.Prop.GetValue(component);
@@ -694,10 +590,14 @@ internal static class ComponentInspector
         if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames.ToList(), out string? chosen)
             && chosen != null && !scriptComp.ClassNames.Contains(chosen))
         {
-            EntityBehaviour? instance = ScriptResolver.Resolve(chosen) != null
-                ? ScriptResolver.Create(chosen, entity)
+            // Capture (or mint) the script's stable guid so the attachment survives a class rename. The type
+            // usually isn't loaded in the editor, so attach by name+guid and only instantiate when it happens
+            // to be resolvable here, without logging the expected "not found".
+            string guid = EditorGui.GetOrCreateScriptGuid(chosen);
+            EntityBehaviour? instance = ScriptResolver.Resolve(guid, chosen) != null
+                ? ScriptResolver.Create(guid, chosen, entity)
                 : null;
-            scriptComp.Items.Add(new ScriptInstance(chosen, instance));
+            scriptComp.Items.Add(new ScriptInstance(chosen, instance, guid));
         }
     }
 
@@ -734,7 +634,12 @@ internal static class ComponentInspector
             ImGui.PushID(meta.Label);
             try
             {
-                DrawScriptField(script, meta);
+                // Editing a serialized field mirrors Unity's OnValidate: notify the script so it can clamp or
+                // react. Guarded in the engine so a throwing handler is quarantined, never crashing the editor.
+                if (DrawScriptField(script, meta))
+                {
+                    ScriptSystem.InvokeValidate(script);
+                }
             }
             catch (Exception ex)
             {
@@ -747,7 +652,8 @@ internal static class ComponentInspector
         }
     }
 
-    private static void DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
+    // Draws one script field; returns true when the user changed it (so the caller can fire OnValidate).
+    private static bool DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
     {
         Type t = meta.Type;
         string label = meta.Label;
@@ -756,20 +662,29 @@ internal static class ComponentInspector
         {
             float v = (float)meta.Get(script)!;
             if (EditorGui.DragFloat(label, ref v, meta.HasRange ? meta.Speed : 0.1f, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(int))
         {
             float v = (int)meta.Get(script)!;
             float speed = meta.HasRange ? meta.Speed : 1f;
             if (EditorGui.DragFloat(label, ref v, speed, meta.HasRange ? meta.Min : 0f, meta.HasRange ? meta.Max : 0f, "%.0f"))
+            {
                 meta.Set(script, (int)MathF.Round(v));
+                return true;
+            }
         }
         else if (t == typeof(bool))
         {
             bool v = (bool)meta.Get(script)!;
             if (EditorGui.Checkbox(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t.IsEnum)
         {
@@ -777,13 +692,19 @@ internal static class ComponentInspector
             int idx = Array.IndexOf(meta.EnumValues!, cur);
             if (idx < 0) idx = 0;
             if (EditorGui.Combo(label, ref idx, meta.EnumNames!))
+            {
                 meta.Set(script, meta.EnumValues![idx]);
+                return true;
+            }
         }
         else if (t == typeof(Vector2))
         {
             var v = (Vector2)meta.Get(script)!;
             if (EditorGui.Vector2Control(label, ref v, meta.HasReset ? meta.Reset : 0f))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(Vector3))
         {
@@ -792,20 +713,40 @@ internal static class ComponentInspector
                 ? EditorGui.Color3(label, ref v)
                 : EditorGui.Vector3Control(label, ref v, meta.HasReset ? meta.Reset : 0f);
             if (changed)
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(Vector4))
         {
             var v = (Vector4)meta.Get(script)!;
             if (EditorGui.Color4(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
         else if (t == typeof(string))
         {
             string v = (string?)meta.Get(script) ?? string.Empty;
             if (EditorGui.InputText(label, ref v))
+            {
                 meta.Set(script, v);
+                return true;
+            }
         }
+        else if (t == typeof(Entity))
+        {
+            var v = (Entity)meta.Get(script)!;
+            if (EditorGui.EntityField(label, script.Entity.Scene, ref v))
+            {
+                meta.Set(script, v);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static ScriptFieldMeta[] ScriptFieldsFor(Type type)
@@ -875,5 +816,6 @@ internal static class ComponentInspector
 
     private static bool IsScriptFieldType(Type t) =>
         t == typeof(bool) || t == typeof(int) || t == typeof(float) || t == typeof(string) ||
-        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4);
+        t.IsEnum || t == typeof(Vector2) || t == typeof(Vector3) || t == typeof(Vector4) ||
+        t == typeof(Entity);
 }

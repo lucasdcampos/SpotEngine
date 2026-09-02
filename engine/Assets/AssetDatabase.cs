@@ -40,7 +40,7 @@ public static class AssetDatabase
     private static readonly GuidResolver s_resolver = new();
 
     // Extensions copied verbatim into Content, preserving their relative path (loaded by name, not by guid).
-    private static readonly string[] s_copyThroughExtensions = { ".sptscene", ".ttf", ".otf" };
+    private static readonly string[] s_copyThroughExtensions = { ".sptscene" };
 
     static AssetDatabase()
     {
@@ -49,6 +49,9 @@ public static class AssetDatabase
         RegisterImporter(new MaterialImporter());
         RegisterImporter(new PrefabImporter());
         RegisterImporter(new AudioImporter());
+        RegisterImporter(new FontImporter());
+        RegisterImporter(new AnimatorControllerImporter());
+        RegisterImporter(new UIDocumentImporter());
     }
 
     /// <summary>Registers an importer for each of its source extensions. Later registrations win for an extension.</summary>
@@ -359,7 +362,7 @@ public static class AssetDatabase
     }
 
     // Reference properties in scenes/materials whose relative source-path values migrate to guid: references.
-    private static readonly string[] s_referenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath" };
+    private static readonly string[] s_referenceKeys = { "ModelPath", "MaterialPath", "TexturePath", "NormalMapPath", "ClipPath", "FontPath", "DocumentRef" };
 
     /// <summary>
     /// One-time migration: rewrites every scene (<c>.sptscene</c>) and material (<c>.sptmat</c>) under a

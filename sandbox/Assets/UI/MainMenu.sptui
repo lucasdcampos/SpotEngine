@@ -1,0 +1,1358 @@
+{
+  "ScaleMode": "ScaleWithHeight",
+  "ReferenceHeight": 1080,
+  "Widgets": [
+    {
+      "Type": "Panel",
+      "Name": "MainPanel",
+      "Rect": {
+        "Anchor": [
+          0.5,
+          0.5
+        ],
+        "Pivot": [
+          0.5,
+          0.5
+        ],
+        "Position": [
+          0,
+          0
+        ],
+        "Size": [
+          900,
+          700
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Color": [
+        0.1,
+        0.11,
+        0.14,
+        0.96
+      ],
+      "SpriteRef": "",
+      "Border": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "Children": [
+        {
+          "Type": "Text",
+          "Name": "Title",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              11,
+              36
+            ],
+            "Size": [
+              900,
+              64
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Spot Sandbox",
+          "FontRef": "",
+          "FontSize": 48,
+          "Color": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "Align": 1,
+          "Wrap": false
+        },
+        {
+          "Type": "Text",
+          "Name": "Subtitle",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              100
+            ],
+            "Size": [
+              900,
+              28
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Engine 0.2 demo hub",
+          "FontRef": "",
+          "FontSize": 22,
+          "Color": [
+            0.62,
+            0.65,
+            0.72,
+            1
+          ],
+          "Align": 1,
+          "Wrap": false
+        },
+        {
+          "Type": "Text",
+          "Name": "GamesHeading",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              152
+            ],
+            "Size": [
+              804,
+              28
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "GAMES",
+          "FontRef": "",
+          "FontSize": 22,
+          "Color": [
+            0.98,
+            0.6,
+            0.28,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_HordeSurvival",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              267,
+              194
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  22
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.95,
+                0.38,
+                0.32,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "Horde Survival",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_Physics2D",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              483,
+              194
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  24
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.95,
+                0.38,
+                0.32,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "Physics 2D",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Text",
+          "Name": "TestsHeading",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              384
+            ],
+            "Size": [
+              804,
+              28
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "TESTS",
+          "FontRef": "",
+          "FontSize": 22,
+          "Color": [
+            0.62,
+            0.65,
+            0.72,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_ThirdPerson",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              73,
+              426
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  22
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.58,
+                0.63,
+                0.74,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "Third Person",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_PhysicsTest",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              267,
+              426
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  22
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.58,
+                0.63,
+                0.74,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "Physics Test",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_Main",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              461,
+              426
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  22
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.58,
+                0.63,
+                0.74,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "Main",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "Card_NewScene",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              655,
+              426
+            ],
+            "Size": [
+              172,
+              156
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.17,
+            0.18,
+            0.23,
+            1
+          ],
+          "HoverColor": [
+            0.25,
+            0.28,
+            0.36,
+            1
+          ],
+          "PressedColor": [
+            0.13,
+            0.14,
+            0.18,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "Children": [
+            {
+              "Type": "Image",
+              "Name": "Icon",
+              "Rect": {
+                "Anchor": [
+                  0.5,
+                  0
+                ],
+                "Pivot": [
+                  0.5,
+                  0
+                ],
+                "Position": [
+                  0,
+                  22
+                ],
+                "Size": [
+                  80,
+                  80
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "TextureRef": "",
+              "Color": [
+                0.58,
+                0.63,
+                0.74,
+                1
+              ],
+              "Border": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "Type": "Text",
+              "Name": "Label",
+              "Rect": {
+                "Anchor": [
+                  0,
+                  0
+                ],
+                "Pivot": [
+                  0,
+                  0
+                ],
+                "Position": [
+                  0,
+                  114
+                ],
+                "Size": [
+                  172,
+                  28
+                ]
+              },
+              "Visible": true,
+              "Enabled": true,
+              "Content": "New Scene",
+              "FontRef": "",
+              "FontSize": 22,
+              "Color": [
+                0.93,
+                0.94,
+                0.97,
+                1
+              ],
+              "Align": 1,
+              "Wrap": false
+            }
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "OptionsButton",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              228,
+              624
+            ],
+            "Size": [
+              210,
+              46
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "Options",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "NormalColor": [
+            0.2,
+            0.22,
+            0.28,
+            1
+          ],
+          "HoverColor": [
+            0.28,
+            0.31,
+            0.38,
+            1
+          ],
+          "PressedColor": [
+            0.14,
+            0.16,
+            0.2,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "QuitButton",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              462,
+              624
+            ],
+            "Size": [
+              210,
+              46
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "Quit",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "NormalColor": [
+            0.34,
+            0.18,
+            0.19,
+            1
+          ],
+          "HoverColor": [
+            0.46,
+            0.22,
+            0.23,
+            1
+          ],
+          "PressedColor": [
+            0.14,
+            0.16,
+            0.2,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "Type": "Panel",
+      "Name": "OptionsPanel",
+      "Rect": {
+        "Anchor": [
+          0.5,
+          0.5
+        ],
+        "Pivot": [
+          0.5,
+          0.5
+        ],
+        "Position": [
+          0,
+          0
+        ],
+        "Size": [
+          460,
+          320
+        ]
+      },
+      "Visible": false,
+      "Enabled": false,
+      "Color": [
+        0.1,
+        0.11,
+        0.14,
+        0.96
+      ],
+      "SpriteRef": "",
+      "Border": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "Children": [
+        {
+          "Type": "Text",
+          "Name": "OptionsTitle",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              34
+            ],
+            "Size": [
+              460,
+              50
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Options",
+          "FontRef": "",
+          "FontSize": 40,
+          "Color": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "Align": 1,
+          "Wrap": false
+        },
+        {
+          "Type": "Text",
+          "Name": "VolumeHeading",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              98
+            ],
+            "Size": [
+              364,
+              28
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Master Volume",
+          "FontRef": "",
+          "FontSize": 22,
+          "Color": [
+            0.62,
+            0.65,
+            0.72,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Slider",
+          "Name": "MasterVolume",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              138
+            ],
+            "Size": [
+              372,
+              24
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Value": 1,
+          "Min": 0,
+          "Max": 1,
+          "TrackColor": [
+            0.12,
+            0.13,
+            0.16,
+            1
+          ],
+          "FillColor": [
+            0.3,
+            0.55,
+            0.95,
+            1
+          ],
+          "HandleColor": [
+            0.85,
+            0.87,
+            0.92,
+            1
+          ],
+          "HandleWidth": 14
+        },
+        {
+          "Type": "Toggle",
+          "Name": "Mute",
+          "Rect": {
+            "Anchor": [
+              0.5,
+              0
+            ],
+            "Pivot": [
+              0.5,
+              0
+            ],
+            "Position": [
+              0,
+              182
+            ],
+            "Size": [
+              372,
+              30
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "On": false,
+          "Label": "Mute",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "BoxColor": [
+            0.12,
+            0.13,
+            0.16,
+            1
+          ],
+          "HoverColor": [
+            0.18,
+            0.2,
+            0.25,
+            1
+          ],
+          "CheckColor": [
+            0.3,
+            0.75,
+            0.45,
+            1
+          ]
+        },
+        {
+          "Type": "Button",
+          "Name": "BackButton",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              44,
+              234
+            ],
+            "Size": [
+              372,
+              46
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "Back",
+          "FontRef": "",
+          "FontSize": 24,
+          "TextColor": [
+            0.93,
+            0.94,
+            0.97,
+            1
+          ],
+          "NormalColor": [
+            0.2,
+            0.22,
+            0.28,
+            1
+          ],
+          "HoverColor": [
+            0.28,
+            0.31,
+            0.38,
+            1
+          ],
+          "PressedColor": [
+            0.14,
+            0.16,
+            0.2,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

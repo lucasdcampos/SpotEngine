@@ -1,17 +1,6 @@
 using System.Numerics;
-using Silk.NET.OpenGL;
 
 namespace Spot.Rendering;
-
-/// <summary>How particle pixels combine with what's already on screen.</summary>
-public enum ParticleBlend
-{
-    /// <summary>Standard transparency: <c>src.a</c> over the background. Good for smoke, dust, soft sprites.</summary>
-    Alpha,
-
-    /// <summary>Additive: pixels only ever brighten the background. Good for fire, sparks, magic, glow.</summary>
-    Additive,
-}
 
 /// <summary>
 /// A batched renderer for particle quads. Like <see cref="Renderer2D"/> it accumulates quads into one
@@ -201,6 +190,69 @@ public static class ParticleRenderer
         s_indexCount += 6;
     }
 
+    /// <summary>
+    /// Submits one textured quad with an explicit atlas sub-rectangle — the world-text path. Like
+    /// <see cref="Submit"/> the quad is centered at <paramref name="center"/> spanning <c>center ± axisX ± axisY</c>,
+    /// but it samples <paramref name="uv"/> (as <c>(u0, v0, u1, v1)</c>) instead of the whole texture, so a
+    /// single glyph atlas can supply every glyph. UVs are mapped so <c>v0</c> (the atlas top) lands on the
+    /// <c>+axisY</c> edge, matching text laid out with y pointing down.
+    /// </summary>
+    /// <param name="center">The quad center, in world space.</param>
+    /// <param name="axisX">Half-width edge vector.</param>
+    /// <param name="axisY">Half-height edge vector (points to the glyph's top).</param>
+    /// <param name="color">The RGBA tint multiplied with the texture.</param>
+    /// <param name="texture">The texture to sample (a glyph atlas).</param>
+    /// <param name="blend">How the quad's pixels combine with the scene.</param>
+    /// <param name="uv">The atlas sub-rectangle as <c>(u0, v0, u1, v1)</c> in 0..1 texture space.</param>
+    public static void SubmitTextured(Vector3 center, Vector3 axisX, Vector3 axisY, Vector4 color, Texture2D texture, ParticleBlend blend, Vector4 uv)
+    {
+        bool batchBreak = s_indexCount >= MaxIndices
+            || (s_currentTexture is not null && s_currentTexture != texture)
+            || (s_indexCount > 0 && blend != s_currentBlend);
+        if (batchBreak)
+        {
+            Flush();
+            StartBatch();
+        }
+
+        s_currentTexture = texture;
+        s_currentBlend = blend;
+
+        // Corners paired with UVs so the atlas top (uv.Y) sits on the +axisY corners (glyph top).
+        Span<Vector3> corners = stackalloc Vector3[4]
+        {
+            center - axisX - axisY,
+            center + axisX - axisY,
+            center + axisX + axisY,
+            center - axisX + axisY,
+        };
+        Span<Vector2> uvs = stackalloc Vector2[4]
+        {
+            new Vector2(uv.X, uv.W),
+            new Vector2(uv.Z, uv.W),
+            new Vector2(uv.Z, uv.Y),
+            new Vector2(uv.X, uv.Y),
+        };
+
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 position = corners[i];
+            Vector2 texCoord = uvs[i];
+
+            s_vertices[s_vertexCursor++] = position.X;
+            s_vertices[s_vertexCursor++] = position.Y;
+            s_vertices[s_vertexCursor++] = position.Z;
+            s_vertices[s_vertexCursor++] = color.X;
+            s_vertices[s_vertexCursor++] = color.Y;
+            s_vertices[s_vertexCursor++] = color.Z;
+            s_vertices[s_vertexCursor++] = color.W;
+            s_vertices[s_vertexCursor++] = texCoord.X;
+            s_vertices[s_vertexCursor++] = texCoord.Y;
+        }
+
+        s_indexCount += 6;
+    }
+
     /// <summary>Ends the current batch, drawing any particles submitted since <see cref="BeginScene"/>.</summary>
     public static void EndScene()
     {
@@ -210,8 +262,8 @@ public static class ParticleRenderer
         // blending off. The depth test is left exactly as the caller had it.
         if (s_active)
         {
-            Renderer.Api.DepthMask(true);
-            Renderer.Api.Disable(EnableCap.Blend);
+            Renderer.SetDepthWrite(true);
+            Renderer.Device.SetCapability(GraphicsCapability.Blend, false);
             s_active = false;
         }
     }
@@ -230,14 +282,14 @@ public static class ParticleRenderer
             return;
         }
 
-        Renderer.Api.Enable(EnableCap.Blend);
-        Renderer.Api.BlendFunc(
-            BlendingFactor.SrcAlpha,
-            s_currentBlend == ParticleBlend.Additive ? BlendingFactor.One : BlendingFactor.OneMinusSrcAlpha);
+        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
+        Renderer.Device.SetBlendFunc(
+            BlendFactor.SrcAlpha,
+            s_currentBlend == ParticleBlend.Additive ? BlendFactor.One : BlendFactor.OneMinusSrcAlpha);
 
         // Transparent particles must not write depth, or nearer particles would cull farther ones that
         // should blend through. The depth *test* stays as-is so solid geometry still occludes them.
-        Renderer.Api.DepthMask(false);
+        Renderer.SetDepthWrite(false);
 
         s_vbo.SetData(s_vertices.AsSpan(0, s_vertexCursor));
 

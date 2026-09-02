@@ -5,6 +5,7 @@ using Spot.Build;
 using Spot.Rendering;
 using Spot.Scenes;
 using Spot.Editor.Panels;
+using Spot.DebugUI;
 using Spot.DebugUI.Panels;
 using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
@@ -36,6 +37,10 @@ public class OpenSceneData
     public bool FocusNextFrame = false;
     public bool FirstFrame = true;
 
+    // Whether this scene's viewport was actually visible last ImGui frame (not tabbed behind another panel).
+    // The render pass reads it to skip re-rendering a hidden viewport (and its camera preview overlay).
+    public bool ViewportVisible = true;
+
     public OpenSceneData(EditorContext context)
     {
         ViewportPanel = new ViewportPanel(context);
@@ -51,6 +56,20 @@ public class OpenSceneData
         Framebuffer.Dispose();
         CameraPreviewFramebuffer.Dispose();
     }
+}
+
+// One open UI document (a .sptui asset), shown as its own dockable tab. Mirrors OpenSceneData: the panel owns
+// the offscreen framebuffer it renders into, and the tab closes via its title-bar 'x'.
+public sealed class UIDocumentData
+{
+    public required Spot.UI.UIRoot Document;
+    public required string Path;
+    public required Spot.Editor.Panels.UICanvasPanel Panel;
+    public bool IsOpen = true;
+    public bool FirstFrame = true;
+    public bool FocusNextFrame = true;
+
+    public void Dispose() => Panel.Dispose();
 }
 
 public enum EditorState
@@ -79,19 +98,28 @@ public class EditorScene : Scene
     private string _newProjectLocation = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
 
     private readonly EditorContext _context = new();
-    
+
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
     private readonly ViewportPanel _gamePanel;
     private readonly ConsolePanel _consolePanel;
     private readonly AssetBrowserPanel _assetBrowserPanel;
     private readonly ProjectSettingsPanel _projectSettingsPanel;
+    private readonly UIHierarchyPanel _uiHierarchyPanel;
+
+    // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
+    // Hierarchy/Inspector while it is focused.
+    private readonly List<UIDocumentData> _openUIDocuments = new();
+    private UIDocumentData? _activeUIDocument;
 
     private Framebuffer? _gameFramebuffer;
 
     private List<OpenSceneData> _openScenes = new();
     private OpenSceneData? _activeSceneData = null;
     private OpenSceneData? _lastEditedSceneData = null;
+
+    // One dockable node-graph editor window per open .sptcontroller asset.
+    private readonly List<AnimatorControllerPanel> _animatorEditors = new();
 
     // Unsaved-changes confirmation state: a scene panel pending close, and the app-quit prompt.
     private OpenSceneData? _pendingCloseScene;
@@ -101,12 +129,20 @@ public class EditorScene : Scene
 
     // Per-panel visibility, toggled from View > Panels and by each window's close button.
     private bool _showGame = true;
+    // Whether the Game panel was actually visible last ImGui frame. The render pass reads it to skip the
+    // full extra scene render into the game framebuffer when the panel is tabbed behind another or closed.
+    private bool _gameViewVisible;
     private bool _showHierarchy = true;
     private bool _showInspector = true;
     private uint _lastGameDockId;
     private bool _showConsole = true;
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
+
+    // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
+    // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
+    private bool _autoReloadScripts = true;
+    private long _scriptsChangedAtTick;
 
     // When set, the default docked layout is rebuilt on the next frame (first launch / Reset Layout).
     private bool _rebuildDefaultLayout = !System.IO.File.Exists("imgui.ini");
@@ -120,12 +156,14 @@ public class EditorScene : Scene
     {
         _hierarchyPanel = new HierarchyPanel(_context);
         _inspectorPanel = new InspectorPanel(_context);
-        
+
         _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
-        _assetBrowserPanel.OnAssetOpened += OpenSceneAsset;
+        _uiHierarchyPanel = new UIHierarchyPanel(_context);
+        _assetBrowserPanel.OnAssetOpened += OpenAsset;
+        Spot.DebugUI.UI.WidgetInspector.OpenDocumentRequested = OpenUIDocument;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
         {
@@ -150,6 +188,90 @@ public class EditorScene : Scene
         _gamePanel.SetFramebuffer(_gameFramebuffer);
 
         LoadStartScene();
+    }
+
+    // Routes a double-clicked asset to the right editor: scenes open as tabs, animator controllers open as
+    // node-graph windows. Anything else is handled by the asset browser's own fallback.
+    private void OpenAsset(string filepath)
+    {
+        if (filepath.EndsWith(".sptcontroller", System.StringComparison.OrdinalIgnoreCase))
+        {
+            OpenAnimatorController(filepath);
+        }
+        else if (filepath.EndsWith(".sptui", System.StringComparison.OrdinalIgnoreCase))
+        {
+            OpenUIDocument(filepath);
+        }
+        else
+        {
+            OpenSceneAsset(filepath);
+        }
+    }
+
+    // Opens a .sptui document in its own tab (or focuses the tab if it is already open), like opening a scene.
+    // UISerializer.Load never throws (it logs and returns an empty document on failure), so this is safe.
+    private void OpenUIDocument(string filepath)
+    {
+        UIDocumentData? existing = _openUIDocuments.FirstOrDefault(
+            d => string.Equals(d.Path, filepath, System.StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            existing.IsOpen = true;
+            existing.FocusNextFrame = true;
+            SetActiveUIDocument(existing);
+            _showHierarchy = true;
+            return;
+        }
+
+        Spot.UI.UIRoot document = Spot.UI.Serialization.UISerializer.Load(filepath);
+        var data = new UIDocumentData
+        {
+            Document = document,
+            Path = filepath,
+            Panel = new UICanvasPanel(_context) { Document = document, DocumentPath = filepath },
+        };
+        _openUIDocuments.Add(data);
+        SetActiveUIDocument(data);
+        _showHierarchy = true;
+    }
+
+    // Makes a UI document the active one: points the shared context (Hierarchy/Inspector/save) at it. Switching
+    // documents clears the widget selection, so a stale widget from another document is never shown.
+    private void SetActiveUIDocument(UIDocumentData? data)
+    {
+        if (ReferenceEquals(_activeUIDocument, data)) return;
+
+        _activeUIDocument = data;
+        _context.EditingDocument = data?.Document;
+        _context.EditingDocumentPath = data?.Path;
+        _context.SelectedWidget = null;
+        if (data != null) _context.HierarchyTarget = HierarchyTarget.UI;
+    }
+
+    // Writes the active UI document back to its source path. Called on Ctrl+S while a document tab is focused.
+    private void SaveUIDocument()
+    {
+        if (_activeUIDocument == null) return;
+
+        try
+        {
+            Spot.UI.Serialization.UISerializer.Save(_activeUIDocument.Document, _activeUIDocument.Path);
+            Log.Info("Saved UI document '{0}'.", System.IO.Path.GetFileName(_activeUIDocument.Path));
+        }
+        catch (System.Exception ex)
+        {
+            Log.Error("Failed to save UI document '{0}': {1}", _activeUIDocument.Path, ex.Message);
+        }
+    }
+
+    private void OpenAnimatorController(string filepath)
+    {
+        var existing = _animatorEditors.FirstOrDefault(
+            e => string.Equals(e.Path, filepath, System.StringComparison.OrdinalIgnoreCase));
+        if (existing == null)
+        {
+            _animatorEditors.Add(new AnimatorControllerPanel(filepath));
+        }
     }
 
     // Loads the active project's start scene (falling back to an empty standalone scene when there
@@ -194,7 +316,7 @@ public class EditorScene : Scene
 
     // Scans the active project's assets and installs the Library-backed content resolver, so guid: references
     // in scenes/materials resolve to cooked artifacts — the editor renders exactly what a build would ship.
-    private static void ActivateProjectPipeline()
+    private void ActivateProjectPipeline()
     {
         var project = Project.Active;
         if (project == null)
@@ -206,42 +328,172 @@ public class EditorScene : Scene
         Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.LibraryFolder));
 
         LoadProjectAssembly(project);
+        StartScriptWatcher(project);
     }
+
+    // The collectible host for the active project's script assembly. Loading through it (instead of a plain
+    // Assembly.Load into the default context) lets the editor reload scripts without restarting.
+    private static readonly ScriptHost s_scriptHost = new();
 
     private static void LoadProjectAssembly(Project project)
     {
-        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
-        if (System.IO.Directory.Exists(binDir))
+        string? dll = FindProjectAssembly(project);
+        if (dll != null)
         {
-            var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
-            var latest = System.Linq.Enumerable.FirstOrDefault(System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
-            if (latest != null)
+            s_scriptHost.Load(dll);
+        }
+    }
+
+    // The newest built <Name>.dll under the project's bin tree, or null when the project hasn't been built.
+    private static string? FindProjectAssembly(Project project)
+    {
+        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
+        if (!System.IO.Directory.Exists(binDir))
+        {
+            return null;
+        }
+
+        var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
+        return System.Linq.Enumerable.FirstOrDefault(
+            System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
+    }
+
+    // Set by the script file watcher when a .cs under Assets changes, so the editor can offer (or perform) a
+    // reload without restarting. Read on the UI thread; the reload itself runs there too.
+    private volatile bool _scriptsOutOfDate;
+    private System.IO.FileSystemWatcher? _scriptWatcher;
+
+    // Watches the project's Assets tree for script edits. Flags the editor to reload rather than reloading from
+    // the watcher's own thread, so the actual swap always happens on the UI thread mid-frame.
+    private void StartScriptWatcher(Project project)
+    {
+        StopScriptWatcher();
+
+        string assets = project.GetAssetDirectory();
+        if (!System.IO.Directory.Exists(assets))
+        {
+            return;
+        }
+
+        try
+        {
+            var watcher = new System.IO.FileSystemWatcher(assets, "*.cs")
             {
-                try
+                IncludeSubdirectories = true,
+                NotifyFilter = System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.Size,
+            };
+            void OnChange()
+            {
+                _scriptsOutOfDate = true;
+                _scriptsChangedAtTick = System.Environment.TickCount64;
+            }
+
+            watcher.Changed += (_, _) => OnChange();
+            watcher.Created += (_, _) => OnChange();
+            watcher.Deleted += (_, _) => OnChange();
+            watcher.Renamed += (_, _) => OnChange();
+            watcher.EnableRaisingEvents = true;
+            _scriptWatcher = watcher;
+        }
+        catch (System.Exception ex)
+        {
+            // A missing directory or a platform quirk must never take the editor down; scripts can still be
+            // reloaded manually from the menu.
+            Spot.Core.Log.CoreWarn("Could not watch project scripts for changes: {0}", ex.Message);
+        }
+    }
+
+    private void StopScriptWatcher()
+    {
+        _scriptWatcher?.Dispose();
+        _scriptWatcher = null;
+    }
+
+    /// <summary>
+    /// Rebuilds the active project and swaps in the freshly compiled script assembly without restarting the
+    /// editor, preserving each live script's authored field values and entity references across the reload.
+    /// Only runs in edit mode; a failed build or load logs and leaves the current scripts in place.
+    /// </summary>
+    private void ReloadScripts()
+    {
+        Project? project = Spot.Core.Project.Active;
+        if (project == null || _state != EditorState.Edit)
+        {
+            return;
+        }
+
+        _scriptsOutOfDate = false;
+        Spot.Core.Log.Info("Reloading scripts...");
+
+        // 1. Recompile. A failed build leaves the running scripts untouched.
+        var result = Spot.Build.ProjectBuilder.Build(
+            project,
+            Spot.Build.BuildPlatform.Windows,
+            onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
+            onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
+            fastDebug: true);
+
+        if (!result.Success)
+        {
+            Spot.Core.Log.Error("Script reload aborted: build failed.");
+            return;
+        }
+
+        // 2. Snapshot every live script's fields and drop the instance references, so the old load context has
+        //    nothing keeping it alive and can be collected.
+        var snapshots = new List<ScriptReloadSnapshot>();
+        foreach (OpenSceneData sceneData in _openScenes)
+        {
+            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
+            {
+                var comp = entity.GetComponent<ScriptComponent>();
+                foreach (ScriptInstance item in comp.Items)
                 {
-                    byte[] assemblyBytes = System.IO.File.ReadAllBytes(latest);
-                    
-                    // Also try to load the PDB if it exists next to the DLL, so stack traces and debugging work.
-                    string pdbPath = System.IO.Path.ChangeExtension(latest, ".pdb");
-                    if (System.IO.File.Exists(pdbPath))
-                    {
-                        byte[] pdbBytes = System.IO.File.ReadAllBytes(pdbPath);
-                        System.Reflection.Assembly.Load(assemblyBytes, pdbBytes);
-                    }
-                    else
-                    {
-                        System.Reflection.Assembly.Load(assemblyBytes);
-                    }
-                    
-                    Spot.Core.Log.CoreInfo("Loaded project assembly: {0}", latest);
-                }
-                catch (System.Exception ex)
-                {
-                    Spot.Core.Log.CoreWarn("Failed to load project assembly '{0}': {1}", latest, ex.Message);
+                    System.Text.Json.Nodes.JsonObject? fields =
+                        item.Instance != null ? ComponentSerialization.SerializeMembers(item.Instance) : null;
+                    snapshots.Add(new ScriptReloadSnapshot(sceneData.Scene, entity, item, fields));
+                    item.Instance = null;
                 }
             }
         }
+
+        // 3. Swap the assembly.
+        s_scriptHost.Unload();
+        string? dll = FindProjectAssembly(project);
+        if (dll == null || !s_scriptHost.Load(dll))
+        {
+            Spot.Core.Log.Error("Script reload failed to load the rebuilt assembly; scripts are now unresolved.");
+            return;
+        }
+
+        // 4. Re-resolve each script from the new assembly and restore its fields. Entity references are rebound
+        //    per scene through a SceneReferences map keyed on the entities' stable ids.
+        foreach (var group in System.Linq.Enumerable.GroupBy(snapshots, s => s.Scene))
+        {
+            var refs = new SceneReferences();
+            foreach (Entity entity in group.Key.View<LabelComponent>())
+            {
+                refs.Register(entity.EnsurePersistentId(), entity);
+            }
+
+            foreach (ScriptReloadSnapshot snap in group)
+            {
+                EntityBehaviour? instance = ScriptResolver.Create(snap.Item.Guid, snap.Item.ClassName, snap.Entity);
+                snap.Item.Instance = instance;
+                if (instance != null && snap.Fields != null)
+                {
+                    ComponentSerialization.ApplyMembers(instance, snap.Fields, refs);
+                }
+            }
+
+            refs.ResolveDeferred();
+        }
+
+        Spot.Core.Log.Info("Scripts reloaded.");
     }
+
+    private readonly record struct ScriptReloadSnapshot(
+        Scene Scene, Entity Entity, ScriptInstance Item, System.Text.Json.Nodes.JsonObject? Fields);
 
     private void LoadStartScene()
     {
@@ -264,6 +516,14 @@ public class EditorScene : Scene
 
         ActivateProjectPipeline();
 
+        // Restore the previous working session (open scenes/UI/animator, panels, cameras) when one was
+        // saved and at least one of its scenes still exists; otherwise fall back to the project start scene.
+        var session = Spot.Editor.Utils.EditorSession.Load(Project.Active);
+        if (session != null && RestoreSession(session))
+        {
+            return;
+        }
+
         string startAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
         if (System.IO.File.Exists(startAbs))
         {
@@ -279,6 +539,134 @@ public class EditorScene : Scene
         }
     }
 
+    // Reopens the scenes / UI documents / animator windows the user had open, restores each scene's editor
+    // camera and the panel visibility, and refocuses the previously active scene tab. Missing files are
+    // skipped (they may have been deleted/renamed since). Returns false when no saved scene still exists, so
+    // the caller can fall back to the project start scene.
+    private bool RestoreSession(Spot.Editor.Utils.EditorSessionState session)
+    {
+        int openedScenes = 0;
+        foreach (string path in session.OpenScenes)
+        {
+            if (!System.IO.File.Exists(path))
+            {
+                Log.CoreWarn("Skipping missing scene from last session: '{0}'.", path);
+                continue;
+            }
+            int before = _openScenes.Count;
+            OpenSceneAsset(path);
+            if (_openScenes.Count > before) openedScenes++;
+        }
+
+        if (openedScenes == 0)
+        {
+            return false;
+        }
+
+        // Restore each viewport's editor camera by matching the saved pose to the opened scene tab.
+        foreach (var cam in session.Cameras)
+        {
+            string normPath = System.IO.Path.GetFullPath(cam.Path).ToLowerInvariant();
+            var data = _openScenes.FirstOrDefault(
+                s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == normPath);
+            if (data == null) continue;
+
+            var c = data.EditorCamera;
+            c.Is3D = cam.Is3D;
+            c.Position = new System.Numerics.Vector3(cam.PosX, cam.PosY, cam.PosZ);
+            c.Pitch = cam.Pitch;
+            c.Yaw = cam.Yaw;
+            c.SetZoom(cam.Zoom);
+        }
+
+        // Refocus the tab that was active last session (OpenSceneAsset already left the last-opened one active).
+        if (session.ActiveScene != null)
+        {
+            string activeNorm = System.IO.Path.GetFullPath(session.ActiveScene).ToLowerInvariant();
+            var active = _openScenes.FirstOrDefault(
+                s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == activeNorm);
+            if (active != null)
+            {
+                active.FocusNextFrame = true;
+                _activeSceneData = active;
+                _lastEditedSceneData = active;
+                _context.ActiveScene = active.Scene;
+            }
+        }
+
+        foreach (string path in session.OpenUIDocuments)
+        {
+            if (System.IO.File.Exists(path)) OpenUIDocument(path);
+        }
+        if (session.ActiveUIDocument != null)
+        {
+            var doc = _openUIDocuments.FirstOrDefault(
+                d => string.Equals(d.Path, session.ActiveUIDocument, System.StringComparison.OrdinalIgnoreCase));
+            if (doc != null)
+            {
+                doc.FocusNextFrame = true;
+                SetActiveUIDocument(doc);
+            }
+        }
+
+        foreach (string path in session.OpenAnimators)
+        {
+            if (System.IO.File.Exists(path)) OpenAnimatorController(path);
+        }
+
+        _showGame = session.ShowGame;
+        _showHierarchy = session.ShowHierarchy;
+        _showInspector = session.ShowInspector;
+        _showConsole = session.ShowConsole;
+        _showAssetBrowser = session.ShowAssetBrowser;
+        _showProjectSettings = session.ShowProjectSettings;
+
+        return true;
+    }
+
+    // Captures the current working session so the next launch of this project can restore it. No-op without
+    // an active project (an unsaved scratch project has nowhere to write).
+    private void SaveSession()
+    {
+        var project = Project.Active;
+        if (project == null) return;
+
+        var state = new Spot.Editor.Utils.EditorSessionState
+        {
+            ActiveScene = _activeSceneData?.FilePath,
+            ActiveUIDocument = _activeUIDocument?.Path,
+            ShowGame = _showGame,
+            ShowHierarchy = _showHierarchy,
+            ShowInspector = _showInspector,
+            ShowConsole = _showConsole,
+            ShowAssetBrowser = _showAssetBrowser,
+            ShowProjectSettings = _showProjectSettings,
+        };
+
+        foreach (var sceneData in _openScenes)
+        {
+            if (sceneData.FilePath == null) continue;
+            state.OpenScenes.Add(sceneData.FilePath);
+            var c = sceneData.EditorCamera;
+            state.Cameras.Add(new Spot.Editor.Utils.SceneCameraState
+            {
+                Path = sceneData.FilePath,
+                PosX = c.Position.X,
+                PosY = c.Position.Y,
+                PosZ = c.Position.Z,
+                Pitch = c.Pitch,
+                Yaw = c.Yaw,
+                Zoom = c.ZoomLevel,
+                Is3D = c.Is3D,
+            });
+        }
+
+        foreach (var doc in _openUIDocuments) state.OpenUIDocuments.Add(doc.Path);
+        foreach (var anim in _animatorEditors) state.OpenAnimators.Add(anim.Path);
+
+        Spot.Editor.Utils.EditorSession.Save(project, state);
+    }
+
     public override void OnUpdate(float deltaTime)
     {
         // The game now runs in an external process, so the editor's copy of the scene
@@ -292,7 +680,7 @@ public class EditorScene : Scene
         if (_state == EditorState.Edit)
         {
             Entity? currentSelected = _context.Selection;
-            
+
             if (_lastSelectedParticleEntity.HasValue && currentSelected != _lastSelectedParticleEntity)
             {
                 // Only clear if the entity is still alive in the scene
@@ -326,22 +714,22 @@ public class EditorScene : Scene
     {
         if (_gameFramebuffer == null)
             return;
-            
+
         // Render Scene Views
         foreach (var sceneData in _openScenes)
         {
             if (!sceneData.IsOpen) continue;
-            
+
             sceneData.Framebuffer.Bind();
             Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
             Renderer.Clear();
-            
+
             if (sceneData.EditorCamera.Is3D)
             {
                 Renderer.SetDepthTest(true);
                 Renderer.SetFaceCulling(true);
             }
-                
+
             RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position);
 
             // The editor grid and world axes are screen-aligned / crossed-quad overlays with no single
@@ -385,12 +773,12 @@ public class EditorScene : Scene
                 Renderer.SetDepthTest(false);
                 Renderer.SetFaceCulling(false);
             }
-            
+
             // Debug Physics Rendering
             if (_context.Selection.HasValue && sceneData == _activeSceneData)
             {
                 Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
-                
+
                 void DrawColliders(Entity entity)
                 {
                     if (entity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
@@ -400,13 +788,13 @@ public class EditorScene : Scene
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
-                    
+
                     if (entity.HasComponent<Spot.Physics.BoxCollider3DComponent>() && entity.HasComponent<TransformComponent>())
                     {
                         var transform = entity.GetComponent<TransformComponent>();
                         var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
-                        
+
                         Vector3 min = bounds.Min;
                         Vector3 max = bounds.Max;
                         Vector4 color = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -439,7 +827,7 @@ public class EditorScene : Scene
                         }
                     }
                 }
-                
+
                 DrawColliders(_context.Selection.Value);
                 Renderer2D.EndScene();
             }
@@ -510,9 +898,9 @@ public class EditorScene : Scene
             }
 
             sceneData.Framebuffer.Unbind();
-            
+
             // Render Camera Preview
-            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData)
+            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData && sceneData.ViewportVisible)
             {
                 sceneData.CameraPreviewFramebuffer.Bind();
                 var entity = _context.Selection.Value;
@@ -533,7 +921,7 @@ public class EditorScene : Scene
                     }
 
                     RenderSystem.Render(sceneData.Scene, viewProj, transform.WorldPosition);
-                    
+
                     if (is3DPrev)
                     {
                         Renderer.SetDepthTest(false);
@@ -543,14 +931,20 @@ public class EditorScene : Scene
                 sceneData.CameraPreviewFramebuffer.Unbind();
             }
         }
-        
+
         // Render Game View
         _gameFramebuffer.Bind();
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         Renderer.Clear();
-        
-        var gameScene = _state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene;
-        
+
+        // Only render the game view when its panel is actually visible. When it is tabbed behind another
+        // panel (or closed) this would otherwise be a full extra scene render — shadow pass, meshes, and
+        // post-processing — every frame; skipping it is a large editor win and the panel keeps its last
+        // image until shown again.
+        var gameScene = _gameViewVisible
+            ? (_state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene)
+            : null;
+
         if (gameScene != null)
         {
             System.Numerics.Matrix4x4? viewProjection = null;
@@ -574,7 +968,7 @@ public class EditorScene : Scene
                     break;
                 }
             }
-            
+
             Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
             Renderer.Clear();
 
@@ -585,9 +979,9 @@ public class EditorScene : Scene
                     Renderer.SetDepthTest(true);
                     Renderer.SetFaceCulling(true);
                 }
-                    
+
                 RenderSystem.Render(gameScene, viewProjection.Value, cameraPosition);
-                
+
                 if (is3D)
                 {
                     Renderer.SetDepthTest(false);
@@ -595,8 +989,14 @@ public class EditorScene : Scene
                 }
             }
         }
-        
+
         _gameFramebuffer.Unbind();
+
+        // Render each open UI document into its own offscreen target so its tab shows an up-to-date picture.
+        foreach (UIDocumentData data in _openUIDocuments)
+        {
+            if (data.IsOpen) data.Panel.RenderDocument();
+        }
 
         var window = Spot.Core.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
@@ -622,10 +1022,20 @@ public class EditorScene : Scene
 
         // Each panel is now an independent dockable window: closable via its title-bar 'x' and
         // reopenable from View > Panels. The 'ref' visibility flag also drives the close button.
+        // A single Hierarchy panel that shows the scene's entities or the open UI document's widgets, switching
+        // automatically with the active view (clicking the UI Canvas shows the UI; clicking a scene viewport
+        // shows entities) — no manual toggle needed.
         if (_showHierarchy)
         {
-            _hierarchyPanel.OnImGuiRender(ref _showHierarchy);
+            ImGui.Begin("Hierarchy", ref _showHierarchy, ImGuiWindowFlags.NoCollapse);
+            if (_context.EditingDocument != null && _context.HierarchyTarget == HierarchyTarget.UI)
+                _uiHierarchyPanel.DrawContents();
+            else
+                _hierarchyPanel.DrawContents();
+            ImGui.End();
         }
+
+        DrawUIDocumentWindows(dockspaceId);
 
         for (int i = 0; i < _openScenes.Count; i++)
         {
@@ -635,13 +1045,13 @@ public class EditorScene : Scene
             string sceneName = sceneData.FilePath != null
                 ? System.IO.Path.GetFileNameWithoutExtension(sceneData.FilePath)
                 : "Untitled";
-            
+
             // Generate unique title but nice display name
             string stableId = sceneData.FilePath != null ? sceneData.FilePath : $"Untitled_{i}";
             string title = $"{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{stableId}";
 
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
-            
+
             if (sceneData.FocusNextFrame)
             {
                 ImGui.SetNextWindowFocus();
@@ -657,6 +1067,7 @@ public class EditorScene : Scene
             bool wasOpen = sceneData.IsOpen;
             bool open = ImGui.Begin(title, ref sceneData.IsOpen, ImGuiWindowFlags.NoCollapse);
             ImGui.PopStyleVar();
+            sceneData.ViewportVisible = open;
 
             // Closing a scene with unsaved changes: keep it open and confirm first.
             if (wasOpen && !sceneData.IsOpen && sceneData.IsDirty)
@@ -667,7 +1078,7 @@ public class EditorScene : Scene
 
             bool isFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow);
             bool isHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows | ImGuiHoveredFlags.RootWindow);
-            
+
             if (isHovered && (ImGui.IsMouseClicked(ImGuiMouseButton.Right) || ImGui.IsMouseClicked(ImGuiMouseButton.Middle)))
             {
                 ImGui.SetWindowFocus();
@@ -679,6 +1090,12 @@ public class EditorScene : Scene
                 _activeSceneData = sceneData;
                 _context.ActiveScene = sceneData.Scene;
                 _lastEditedSceneData = sceneData;
+            }
+
+            // Focusing a scene viewport switches the shared Hierarchy panel back to the scene's entities.
+            if (isFocused)
+            {
+                _context.HierarchyTarget = HierarchyTarget.Scene;
             }
 
             if (open)
@@ -694,20 +1111,22 @@ public class EditorScene : Scene
             }
             ImGui.End();
         }
-        
+
         // Remove closed scenes
         _openScenes.RemoveAll(s => !s.IsOpen);
-        if (!_openScenes.Contains(_activeSceneData))
+        if (_activeSceneData is null || !_openScenes.Contains(_activeSceneData))
         {
             _activeSceneData = _openScenes.Count > 0 ? _openScenes[0] : null;
             _context.ActiveScene = _activeSceneData?.Scene;
             if (_activeSceneData != null) _lastEditedSceneData = _activeSceneData;
         }
 
+        _gameViewVisible = false;
         if (_showGame)
         {
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
             bool open = ImGui.Begin("Game", ref _showGame, ImGuiWindowFlags.NoCollapse);
+            _gameViewVisible = open;
             _lastGameDockId = ImGui.GetWindowDockID();
             ImGui.PopStyleVar();
             if (open)
@@ -776,6 +1195,17 @@ public class EditorScene : Scene
             ImGui.End();
         }
 
+        // Animator-controller node-graph editors: each is its own window, removed when its close button is hit.
+        for (int i = _animatorEditors.Count - 1; i >= 0; i--)
+        {
+            bool editorOpen = true;
+            _animatorEditors[i].OnImGuiRender(ref editorOpen);
+            if (!editorOpen)
+            {
+                _animatorEditors.RemoveAt(i);
+            }
+        }
+
         if (_isCreatingProject)
         {
             ImGui.OpenPopup("Create New Project");
@@ -785,7 +1215,7 @@ public class EditorScene : Scene
         if (ImGui.BeginPopupModal("Create New Project", ref modalOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.InputText("Project Name", ref _newProjectName, 128);
-            
+
             ImGui.InputText("Location", ref _newProjectLocation, 256);
             ImGui.SameLine();
             if (ImGui.Button("...##Location"))
@@ -796,7 +1226,7 @@ public class EditorScene : Scene
                     _newProjectLocation = folder;
                 }
             }
-            
+
             if (ImGui.Button("Create", new Vector2(120, 0)))
             {
                 CreateProject(_newProjectName, _newProjectLocation);
@@ -1112,7 +1542,7 @@ public class EditorScene : Scene
     {
         string sptprojPath = Spot.Build.ProjectScaffolder.Create(name, location);
         Spot.Editor.Utils.RecentProjects.Add(sptprojPath);
-        
+
         _openScenes.Clear();
         var newSceneData = new OpenSceneData(_context);
         _openScenes.Add(newSceneData);
@@ -1194,10 +1624,13 @@ public class EditorScene : Scene
     {
         Spot.Core.Application.Instance.CanClose = null;
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
+        SaveSession();
 
+        StopScriptWatcher();
         foreach (var sceneData in _openScenes) sceneData.Dispose();
         _gameFramebuffer?.Dispose();
         _inspectorPanel.Dispose();
+        foreach (UIDocumentData data in _openUIDocuments) data.Dispose();
         _context.ActiveScene?.OnExit();
     }
 
@@ -1212,7 +1645,7 @@ public class EditorScene : Scene
             _state = EditorState.Play;
             Spot.Core.Log.Info("Building project for Play...");
 
-            System.Threading.Tasks.Task.Run(() => 
+            System.Threading.Tasks.Task.Run(() =>
             {
                 var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
                     onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
@@ -1226,25 +1659,27 @@ public class EditorScene : Scene
                     var processInfo = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = exePath,
-                        WorkingDirectory = Spot.Core.Project.Active.ProjectDirectory,
+                        // Run from the build output (Build/play): the cooked Content/ and game.manifest live
+                        // there, staged next to the exe, so nothing needs to sit in the project root.
+                        WorkingDirectory = result.OutputDir,
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         CreateNoWindow = true
                     };
-                    
+
                     _gameProcess = new System.Diagnostics.Process { StartInfo = processInfo };
                     _gameProcess.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Info($"[Game] {e.Data}"); };
                     _gameProcess.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Error($"[Game] {e.Data}"); };
-                    
+
                     _gameProcess.EnableRaisingEvents = true;
-                    _gameProcess.Exited += (sender, e) => 
+                    _gameProcess.Exited += (sender, e) =>
                     {
                         Spot.Core.Log.Info("Game process exited.");
                         _gameProcess = null;
-                        _state = EditorState.Edit; 
+                        _state = EditorState.Edit;
                     };
-                    
+
                     _gameProcess.Start();
                     _gameProcess.BeginOutputReadLine();
                     _gameProcess.BeginErrorReadLine();
@@ -1311,11 +1746,11 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderSplitNode(center, ImGuiDir.Down, 0.30f, out uint bottom, out center);
         ImGuiDock.igDockBuilderSplitNode(bottom, ImGuiDir.Left, 0.50f, out uint bottomLeft, out uint bottomRight);
 
-        ImGuiDock.igDockBuilderDockWindow("Scene", rightTop);
+        ImGuiDock.igDockBuilderDockWindow("Hierarchy", rightTop);
         ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
         ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
-        
+
         for (int i = 0; i < _openScenes.Count; i++)
         {
             var sceneData = _openScenes[i];
@@ -1330,6 +1765,60 @@ public class EditorScene : Scene
         ImGuiDock.igDockBuilderDockWindow("Game", center);
 
         ImGuiDock.igDockBuilderFinish(dockspaceId);
+    }
+
+    // Draws each open UI document as its own dockable tab (mirroring the scene tabs). Focusing a tab makes it
+    // the active document, so the shared Hierarchy/Inspector follow it; closing a tab disposes its panel.
+    private void DrawUIDocumentWindows(uint dockspaceId)
+    {
+        for (int i = 0; i < _openUIDocuments.Count; i++)
+        {
+            UIDocumentData data = _openUIDocuments[i];
+            if (!data.IsOpen) continue;
+
+            string name = System.IO.Path.GetFileNameWithoutExtension(data.Path);
+            string title = $"{name} (UI)###UIDoc_{data.Path}";
+
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
+            if (data.FocusNextFrame)
+            {
+                ImGui.SetNextWindowFocus();
+                data.FocusNextFrame = false;
+            }
+            if (data.FirstFrame)
+            {
+                uint targetDock = _lastGameDockId != 0 ? _lastGameDockId : dockspaceId;
+                ImGui.SetNextWindowDockID(targetDock, ImGuiCond.FirstUseEver);
+                data.FirstFrame = false;
+            }
+
+            bool open = ImGui.Begin(title, ref data.IsOpen,
+                ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+            ImGui.PopStyleVar();
+
+            if (ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow))
+            {
+                SetActiveUIDocument(data);
+                _context.HierarchyTarget = HierarchyTarget.UI;
+            }
+
+            if (open) data.Panel.OnImGuiRender();
+            ImGui.End();
+        }
+
+        for (int i = _openUIDocuments.Count - 1; i >= 0; i--)
+        {
+            if (!_openUIDocuments[i].IsOpen)
+            {
+                _openUIDocuments[i].Dispose();
+                _openUIDocuments.RemoveAt(i);
+            }
+        }
+
+        if (_activeUIDocument != null && !_openUIDocuments.Contains(_activeUIDocument))
+        {
+            SetActiveUIDocument(_openUIDocuments.Count > 0 ? _openUIDocuments[^1] : null);
+        }
     }
 
     private void DrawMenuBar()
@@ -1352,13 +1841,13 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("New Project...")) _isCreatingProject = true;
             if (ImGui.MenuItem("Open Project...")) OpenProject();
             ImGui.Separator();
-            
+
             if (ImGui.MenuItem("New Scene", "Ctrl+N")) NewScene();
             if (ImGui.MenuItem("Open Scene...")) OpenScene();
             if (ImGui.MenuItem("Save Scene", "Ctrl+S")) SaveScene();
             if (ImGui.MenuItem("Save All Scenes", "Ctrl+Shift+S")) SaveAllScenes();
             ImGui.Separator();
-            
+
             if (Project.Active != null)
             {
                 ImGui.MenuItem("Project Settings", "", ref _showProjectSettings);
@@ -1367,6 +1856,7 @@ public class EditorScene : Scene
                 {
                     if (ImGui.MenuItem("Windows")) BuildProject(Spot.Build.BuildPlatform.Windows);
                     if (ImGui.MenuItem("Linux")) BuildProject(Spot.Build.BuildPlatform.Linux);
+                    if (ImGui.MenuItem("Browser (WebGL2)")) BuildProject(Spot.Build.BuildPlatform.Browser);
                     ImGui.EndMenu();
                 }
                 if (ImGui.BeginMenu("Regenerate Project Files"))
@@ -1376,8 +1866,12 @@ public class EditorScene : Scene
                     ImGui.EndMenu();
                 }
                 ImGui.Separator();
+                string reloadLabel = _scriptsOutOfDate ? "Reload Scripts *" : "Reload Scripts";
+                if (ImGui.MenuItem(reloadLabel, "Ctrl+R", false, _state == EditorState.Edit)) ReloadScripts();
+                ImGui.MenuItem("Auto-Reload Scripts", "", ref _autoReloadScripts);
+                ImGui.Separator();
             }
-            
+
             if (ImGui.MenuItem("Exit")) RequestExit();
             ImGui.EndMenu();
         }
@@ -1396,7 +1890,7 @@ public class EditorScene : Scene
             if (ImGui.BeginMenu("Panels"))
             {
                 ImGui.MenuItem("Game", "", ref _showGame);
-                ImGui.MenuItem("Scene", "", ref _showHierarchy);
+                ImGui.MenuItem("Hierarchy", "", ref _showHierarchy);
                 ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
@@ -1494,7 +1988,11 @@ public class EditorScene : Scene
         bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
         {
-            SaveScene();
+            // Save what you're working in: a focused UI document tab, otherwise the active scene.
+            if (_context.HierarchyTarget == HierarchyTarget.UI && _activeUIDocument != null)
+                SaveUIDocument();
+            else
+                SaveScene();
         }
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.N))
         {
@@ -1508,7 +2006,24 @@ public class EditorScene : Scene
         {
             Redo();
         }
+        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
+        {
+            ReloadScripts();
+        }
+
+        // Auto-reload: once script edits have settled (a short debounce past the last file event) and the user
+        // isn't mid-interaction, rebuild and swap the assembly. Manual reload stays available regardless.
+        if (_state == EditorState.Edit && _autoReloadScripts && _scriptsOutOfDate
+            && System.Environment.TickCount64 - _scriptsChangedAtTick > ScriptReloadDebounceMs
+            && !EditorIsInteracting())
+        {
+            ReloadScripts();
+        }
     }
+
+    // How long to wait after the last detected script file change before auto-reloading, so a burst of saves
+    // (or an editor writing a temp file then renaming) collapses into a single rebuild.
+    private const long ScriptReloadDebounceMs = 600;
 
     // The most entries kept per scene's undo history.
     private const int MaxUndo = 100;
@@ -1622,7 +2137,7 @@ public class EditorScene : Scene
         {
             title += " (Playing)";
         }
-        
+
         if (title != _lastWindowTitle)
         {
             _lastWindowTitle = title;
@@ -1812,7 +2327,12 @@ public class EditorScene : Scene
         if (!needsStartScene) return;
 
         project.Config.StartScene = System.IO.Path.GetRelativePath(assetDir, sceneAbsolutePath).Replace('\\', '/');
-        Project.SaveActive(System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj"));
+
+        string sptprojPath = project.FilePath;
+        if (string.IsNullOrEmpty(sptprojPath))
+            sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
+
+        Project.SaveActive(sptprojPath);
         Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
     }
 

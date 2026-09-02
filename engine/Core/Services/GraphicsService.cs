@@ -1,4 +1,5 @@
 using Spot.Rendering;
+using Spot.Scenes;
 
 namespace Spot.Core.Services;
 
@@ -21,11 +22,21 @@ public class GraphicsService : IEngineService
         PostProcessingRenderer.Init();
         BloomRenderer.Init();
         ParticleRenderer.Init();
+        UIRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+
+        // The desktop scene renderer applies the full HDR/bloom/tone-mapping post pipeline; the browser leaves
+        // this null and renders straight to the screen.
+        RenderSystem.PostProcessor = new DesktopScenePostProcessor();
+
+        // Route Scene.OnRender through the full 3D-first pipeline (the same RenderSystem the browser now runs).
+        SceneRenderer.Callback = static (scene, viewProjection, cameraPosition) =>
+            RenderSystem.Render(scene, viewProjection, cameraPosition);
     }
 
     public void Shutdown()
     {
+        UIRenderer.Shutdown();
         ParticleRenderer.Shutdown();
         Renderer2D.Shutdown();
     }

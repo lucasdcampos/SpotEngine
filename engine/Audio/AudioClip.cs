@@ -3,15 +3,15 @@ using Spot.Assets;
 namespace Spot.Audio;
 
 /// <summary>
-/// A fully-decoded sound: interleaved 16-bit PCM held in memory, ready to be uploaded to an OpenAL buffer
-/// the first time it plays. This is the audio counterpart to <c>Texture2D</c> — the runtime asset that
+/// A fully-decoded sound: interleaved 16-bit PCM held in memory, ready to be uploaded to a backend audio
+/// buffer the first time it plays. This is the audio counterpart to <c>Texture2D</c> — the runtime asset that
 /// components reference. Loading follows the same rule as every other asset: a <c>guid:</c> reference
 /// resolves to its cooked <c>.sptaudio</c>, while any other value is decoded from a source <c>.wav</c>/<c>.ogg</c>.
 /// </summary>
 public sealed class AudioClip : IDisposable
 {
-    /// <summary>The cached OpenAL buffer handle (0 until first uploaded by <see cref="AudioManager"/>).</summary>
-    internal uint AlBuffer;
+    /// <summary>The cached backend audio buffer handle (0 until first uploaded by <see cref="AudioManager"/>).</summary>
+    internal uint BackendBuffer;
 
     /// <summary>Initializes a clip from decoded PCM.</summary>
     /// <param name="pcm">Interleaved signed 16-bit PCM samples.</param>

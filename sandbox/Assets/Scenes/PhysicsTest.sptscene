@@ -3,7 +3,8 @@
     {
       "Tag": {
         "Name": "Sun",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "ce04623212534509b5203d74291e0460"
       },
       "Transform": {
         "Enabled": true,
@@ -71,7 +72,8 @@
     {
       "Tag": {
         "Name": "Post Processing",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "dde1768ace294ceea1c4788b68ed09c1"
       },
       "Transform": {
         "Enabled": true,
@@ -107,7 +109,8 @@
     {
       "Tag": {
         "Name": "Ground",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "bff97e7ff93b4a82946cd39d1a93adc1"
       },
       "Transform": {
         "Enabled": true,
@@ -174,7 +177,8 @@
     {
       "Tag": {
         "Name": "Player",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "7dc36224c9a340f8b4c12722dc6a4481"
       },
       "Transform": {
         "Enabled": true,
@@ -247,7 +251,8 @@
         {
           "Tag": {
             "Name": "Camera",
-            "Enabled": true
+            "Enabled": true,
+            "Id": "7b34bf016d1146aca21fe9fca0dd8710"
           },
           "Transform": {
             "Enabled": true,
@@ -292,7 +297,8 @@
     {
       "Tag": {
         "Name": "Stack0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "22bff7cfaf544c1cb727bbad9d79d293"
       },
       "Transform": {
         "Enabled": true,
@@ -359,7 +365,8 @@
     {
       "Tag": {
         "Name": "Stack1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "540efa6383b1455e92f6bc7fce9ac9d1"
       },
       "Transform": {
         "Enabled": true,
@@ -426,7 +433,8 @@
     {
       "Tag": {
         "Name": "Stack2",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "745629f1a0314681a98b29e4edfaf25b"
       },
       "Transform": {
         "Enabled": true,
@@ -493,7 +501,8 @@
     {
       "Tag": {
         "Name": "Stack3",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "4cd234ed24d641ff9794711f8604b4d5"
       },
       "Transform": {
         "Enabled": true,
@@ -560,7 +569,8 @@
     {
       "Tag": {
         "Name": "Stack4",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "d28e04f711e942f0951500cc27aa5f06"
       },
       "Transform": {
         "Enabled": true,
@@ -627,7 +637,8 @@
     {
       "Tag": {
         "Name": "Stack5",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "9382f52018ee4088bbc1e73400895e96"
       },
       "Transform": {
         "Enabled": true,
@@ -694,7 +705,8 @@
     {
       "Tag": {
         "Name": "Fall0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "344eafecda88498db2dbdaac195389cc"
       },
       "Transform": {
         "Enabled": true,
@@ -761,7 +773,8 @@
     {
       "Tag": {
         "Name": "Fall1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "abee19970f0e4abd8a304531db981800"
       },
       "Transform": {
         "Enabled": true,
@@ -828,7 +841,8 @@
     {
       "Tag": {
         "Name": "Fall2",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "60a2bbef9fd745508e89168ee1f0b445"
       },
       "Transform": {
         "Enabled": true,
@@ -895,7 +909,8 @@
     {
       "Tag": {
         "Name": "Fall3",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "2c2780f3642149d6a399c998dba1a9a5"
       },
       "Transform": {
         "Enabled": true,
@@ -962,7 +977,8 @@
     {
       "Tag": {
         "Name": "Bounce0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "f0e2220714d342a88d1b73afd87a07e7"
       },
       "Transform": {
         "Enabled": true,
@@ -1029,7 +1045,8 @@
     {
       "Tag": {
         "Name": "Bounce1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "8c9f6d26f7504b54b0bb56168410b87e"
       },
       "Transform": {
         "Enabled": true,
@@ -1096,7 +1113,8 @@
     {
       "Tag": {
         "Name": "Bounce2",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "4d385c8b62804815a8ca574a4833085b"
       },
       "Transform": {
         "Enabled": true,
@@ -1163,7 +1181,8 @@
     {
       "Tag": {
         "Name": "Pyr0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "9b2728f370ac41749f01f9c0cd0d0c81"
       },
       "Transform": {
         "Enabled": true,
@@ -1230,7 +1249,8 @@
     {
       "Tag": {
         "Name": "Pyr1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "483375586b684365b164ef04ee5d0d6d"
       },
       "Transform": {
         "Enabled": true,
@@ -1297,7 +1317,8 @@
     {
       "Tag": {
         "Name": "Pyr2",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "da9d9505acf0490da80955fe07ba6a98"
       },
       "Transform": {
         "Enabled": true,
@@ -1364,7 +1385,8 @@
     {
       "Tag": {
         "Name": "Pyr3",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "0ab85b6296ab4ffea35da95f689208af"
       },
       "Transform": {
         "Enabled": true,
@@ -1431,7 +1453,8 @@
     {
       "Tag": {
         "Name": "Pyr4",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "7df5ddfdd04c4a099fa558a68c7cf5d1"
       },
       "Transform": {
         "Enabled": true,
@@ -1498,7 +1521,8 @@
     {
       "Tag": {
         "Name": "Pyr5",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "b1ac324993fd461c9c705ac1e8c49ab5"
       },
       "Transform": {
         "Enabled": true,
@@ -1565,7 +1589,8 @@
     {
       "Tag": {
         "Name": "Ramp",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "81fea4eee84f424ab93e46f49500452f"
       },
       "Transform": {
         "Enabled": true,
@@ -1632,7 +1657,8 @@
     {
       "Tag": {
         "Name": "Slide0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "028564fea70e49d4854b2d142294b8d3"
       },
       "Transform": {
         "Enabled": true,
@@ -1699,7 +1725,8 @@
     {
       "Tag": {
         "Name": "Slide1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "87bf2968f37746e88f28aa45fd41bff8"
       },
       "Transform": {
         "Enabled": true,
@@ -1766,7 +1793,8 @@
     {
       "Tag": {
         "Name": "Wall00",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "3f254c0a08f3417d84f397e4041ac25c"
       },
       "Transform": {
         "Enabled": true,
@@ -1833,7 +1861,8 @@
     {
       "Tag": {
         "Name": "Wall01",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "b4f9077da08e47fc8c1054c766f21ccc"
       },
       "Transform": {
         "Enabled": true,
@@ -1900,7 +1929,8 @@
     {
       "Tag": {
         "Name": "Wall02",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "5e15b4afa3c14486af35e3adf06b6c9e"
       },
       "Transform": {
         "Enabled": true,
@@ -1967,7 +1997,8 @@
     {
       "Tag": {
         "Name": "Wall10",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "96289518e03448d88d91b15f67aaaab2"
       },
       "Transform": {
         "Enabled": true,
@@ -2034,7 +2065,8 @@
     {
       "Tag": {
         "Name": "Wall11",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "41fa328560414ae39a2ab2209a7026ff"
       },
       "Transform": {
         "Enabled": true,
@@ -2101,7 +2133,8 @@
     {
       "Tag": {
         "Name": "Wall12",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "d8a132d8a073428481ce9efe8cd4e0a3"
       },
       "Transform": {
         "Enabled": true,
@@ -2168,7 +2201,8 @@
     {
       "Tag": {
         "Name": "Wall20",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "363bed9202b54cfb83749692a2d7ed5a"
       },
       "Transform": {
         "Enabled": true,
@@ -2235,7 +2269,8 @@
     {
       "Tag": {
         "Name": "Wall21",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "b7862c1485cf4eceabf1875b30e42d7f"
       },
       "Transform": {
         "Enabled": true,
@@ -2302,7 +2337,8 @@
     {
       "Tag": {
         "Name": "Wall22",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "7f5a420890d3411da35791990e38d39a"
       },
       "Transform": {
         "Enabled": true,
@@ -2369,7 +2405,8 @@
     {
       "Tag": {
         "Name": "Heavy",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "3224f30779e343bc8a957cc28574a21b"
       },
       "Transform": {
         "Enabled": true,
@@ -2436,7 +2473,8 @@
     {
       "Tag": {
         "Name": "Light0",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "65c8e28623fd4cc79ab220f40584289e"
       },
       "Transform": {
         "Enabled": true,
@@ -2503,7 +2541,8 @@
     {
       "Tag": {
         "Name": "Light1",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "278b499b2e1b44b1a8972182c7476a5f"
       },
       "Transform": {
         "Enabled": true,
@@ -2570,7 +2609,8 @@
     {
       "Tag": {
         "Name": "ybot",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "a1fd96edd01f45c5be5cc7695172f157"
       },
       "Transform": {
         "Enabled": true,
@@ -2592,21 +2632,15 @@
       },
       "Animator": {
         "Enabled": true,
-        "ModelPath": "Models/ybot.fbx",
-        "DefaultClip": "dance",
-        "PlayOnStart": true,
-        "Speed": 1,
-        "Loop": true,
-        "ExtraClipPaths": [
-          "guid:859f7f7d3714439db676d83552e0213a",
-          "guid:c28544976e3f47928564b6b2844bd11c"
-        ]
+        "ControllerPath": "guid:79026e138363499a8ca74539cf28f683",
+        "ModelPath": "guid:bb4c9beac4144ad0a212f4674e0d206a"
       },
       "Children": [
         {
           "Tag": {
             "Name": "mixamorig:Hips",
-            "Enabled": true
+            "Enabled": true,
+            "Id": "9627326bf1404322b6b835168915dca3"
           },
           "Transform": {
             "Enabled": true,
@@ -2630,7 +2664,8 @@
             {
               "Tag": {
                 "Name": "mixamorig:Spine",
-                "Enabled": true
+                "Enabled": true,
+                "Id": "75c3f8b0e9d94212b8b263205e2b65e2"
               },
               "Transform": {
                 "Enabled": true,
@@ -2654,7 +2689,8 @@
                 {
                   "Tag": {
                     "Name": "mixamorig:Spine1",
-                    "Enabled": true
+                    "Enabled": true,
+                    "Id": "efdf192e93fb41b6bca87e2dcce9d75d"
                   },
                   "Transform": {
                     "Enabled": true,
@@ -2678,7 +2714,8 @@
                     {
                       "Tag": {
                         "Name": "mixamorig:Spine2",
-                        "Enabled": true
+                        "Enabled": true,
+                        "Id": "29a68d5d4b6048ac87f0c7bc288e2d4c"
                       },
                       "Transform": {
                         "Enabled": true,
@@ -2702,7 +2739,8 @@
                         {
                           "Tag": {
                             "Name": "mixamorig:Neck",
-                            "Enabled": true
+                            "Enabled": true,
+                            "Id": "76ff83c7dabb46038db63b52cecd5083"
                           },
                           "Transform": {
                             "Enabled": true,
@@ -2726,7 +2764,8 @@
                             {
                               "Tag": {
                                 "Name": "mixamorig:Head",
-                                "Enabled": true
+                                "Enabled": true,
+                                "Id": "8ab249476b914f4c861cb6731a837198"
                               },
                               "Transform": {
                                 "Enabled": true,
@@ -2750,7 +2789,8 @@
                                 {
                                   "Tag": {
                                     "Name": "mixamorig:HeadTop_End",
-                                    "Enabled": true
+                                    "Enabled": true,
+                                    "Id": "e62b6cb9af5d4b04b091c78f690b472e"
                                   },
                                   "Transform": {
                                     "Enabled": true,
@@ -2778,7 +2818,8 @@
                         {
                           "Tag": {
                             "Name": "mixamorig:LeftShoulder",
-                            "Enabled": true
+                            "Enabled": true,
+                            "Id": "a53cfd502bd64c3d9583632f7a8bbdea"
                           },
                           "Transform": {
                             "Enabled": true,
@@ -2802,7 +2843,8 @@
                             {
                               "Tag": {
                                 "Name": "mixamorig:LeftArm",
-                                "Enabled": true
+                                "Enabled": true,
+                                "Id": "8668530e68ac4e97bd4a98a8c4bc5085"
                               },
                               "Transform": {
                                 "Enabled": true,
@@ -2826,7 +2868,8 @@
                                 {
                                   "Tag": {
                                     "Name": "mixamorig:LeftForeArm",
-                                    "Enabled": true
+                                    "Enabled": true,
+                                    "Id": "8e8830eea88c44ddb3f0e5fca9c40613"
                                   },
                                   "Transform": {
                                     "Enabled": true,
@@ -2850,7 +2893,8 @@
                                     {
                                       "Tag": {
                                         "Name": "mixamorig:LeftHand",
-                                        "Enabled": true
+                                        "Enabled": true,
+                                        "Id": "b0924d1cb5694f57898981e6ec37c39c"
                                       },
                                       "Transform": {
                                         "Enabled": true,
@@ -2874,7 +2918,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:LeftHandThumb1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "707ad15d63b24a23bd13bb8f92177b51"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -2898,7 +2943,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:LeftHandThumb2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "1f3c0022e049494c90e9e2e31f70f7ec"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -2922,7 +2968,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:LeftHandThumb3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "ef6f5f0538b64e06826cb6ef9f82a874"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -2946,7 +2993,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:LeftHandThumb4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "0c3513b904e24291afcfcd0d8f34b352"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -2976,7 +3024,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:LeftHandIndex1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "81d28776f345433d87c3d044ff4ed09b"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3000,7 +3049,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:LeftHandIndex2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "964e27a2264440ce9e7156385bb9c166"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3024,7 +3074,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:LeftHandIndex3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "a4715ad6dafb44c0a9f53f02cfba3cf2"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3048,7 +3099,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:LeftHandIndex4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "ca3d6bd6badd4225a04f8b40604d4f1b"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3078,7 +3130,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:LeftHandMiddle1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "75f66eedb429409784c39a9bb03f2124"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3102,7 +3155,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:LeftHandMiddle2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "2b8d71638de243eba75cf083e426a70f"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3126,7 +3180,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:LeftHandMiddle3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "ae357097af1148f4a816a5a091945353"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3150,7 +3205,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:LeftHandMiddle4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "9967fa37cfc64c8c896b0d0a1a730225"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3180,7 +3236,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:LeftHandRing1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "0e911579a85b482db78eb968112084a9"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3204,7 +3261,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:LeftHandRing2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "902be86ae7f9477b9210c7d0cdd23cd6"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3228,7 +3286,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:LeftHandRing3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "5b882eadc4aa4daeaa5ef668b14491ef"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3252,7 +3311,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:LeftHandRing4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "d19a81d4ca13484484dc0f940b2fb743"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3282,7 +3342,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:LeftHandPinky1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "e39e6d11af13464aa5934766c50cf648"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3306,7 +3367,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:LeftHandPinky2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "bebe614d498a4b5b913f436a57a3fb85"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3330,7 +3392,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:LeftHandPinky3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "37cf675b2d7a4e72b4b31bb2070b0630"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3354,7 +3417,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:LeftHandPinky4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "dfc529f9a0284f918273286d04a936f1"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3392,7 +3456,8 @@
                         {
                           "Tag": {
                             "Name": "mixamorig:RightShoulder",
-                            "Enabled": true
+                            "Enabled": true,
+                            "Id": "1cec758243d348a488a25bddd39d7b45"
                           },
                           "Transform": {
                             "Enabled": true,
@@ -3416,7 +3481,8 @@
                             {
                               "Tag": {
                                 "Name": "mixamorig:RightArm",
-                                "Enabled": true
+                                "Enabled": true,
+                                "Id": "fc634f49bb3948fcaa2b2a343467cd2d"
                               },
                               "Transform": {
                                 "Enabled": true,
@@ -3440,7 +3506,8 @@
                                 {
                                   "Tag": {
                                     "Name": "mixamorig:RightForeArm",
-                                    "Enabled": true
+                                    "Enabled": true,
+                                    "Id": "5a851233b3614f4386e0cf2e3f6ba6e4"
                                   },
                                   "Transform": {
                                     "Enabled": true,
@@ -3464,7 +3531,8 @@
                                     {
                                       "Tag": {
                                         "Name": "mixamorig:RightHand",
-                                        "Enabled": true
+                                        "Enabled": true,
+                                        "Id": "ea7b4607c2dd45489ef39373facef427"
                                       },
                                       "Transform": {
                                         "Enabled": true,
@@ -3488,7 +3556,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:RightHandThumb1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "72b7d1d0c9da4e87b7f6b090c6b01924"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3512,7 +3581,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:RightHandThumb2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "5ca15dd88cc9460ca731ad0124472d73"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3536,7 +3606,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:RightHandThumb3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "2ee91a6848fa4f669072c97c2ccc193b"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3560,7 +3631,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:RightHandThumb4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "65915a287aed424c895c6a6aa4eccf79"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3590,7 +3662,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:RightHandIndex1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "86ac6cc63f9247838c71f87300b5e97b"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3614,7 +3687,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:RightHandIndex2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "817ee77c132f405fafc4d810cba25355"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3638,7 +3712,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:RightHandIndex3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "bb028136d8344d859d6148153279102c"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3662,7 +3737,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:RightHandIndex4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "4f23ee7585c84128810a82dd26a26a0c"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3692,7 +3768,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:RightHandMiddle1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "a0e7511391a642efba6b54e05ab9e55b"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3716,7 +3793,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:RightHandMiddle2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "f9416e4629044bd9b4fb81a772085b02"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3740,7 +3818,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:RightHandMiddle3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "fa3f2c1855de4782913a727858e50b07"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3764,7 +3843,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:RightHandMiddle4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "73da69888aa5424087403011a8d6cd14"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3794,7 +3874,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:RightHandRing1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "cd39a00166b7405badb41fd3cac89305"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3818,7 +3899,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:RightHandRing2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "78a427f0bcb548988c7fd63135d8ce78"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3842,7 +3924,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:RightHandRing3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "1f740cd1ed344896afcaab1fbfde5176"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3866,7 +3949,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:RightHandRing4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "3692970f48184882bb0336467d9910dd"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -3896,7 +3980,8 @@
                                         {
                                           "Tag": {
                                             "Name": "mixamorig:RightHandPinky1",
-                                            "Enabled": true
+                                            "Enabled": true,
+                                            "Id": "6c07f79334db4efbb08789cb72b62bbf"
                                           },
                                           "Transform": {
                                             "Enabled": true,
@@ -3920,7 +4005,8 @@
                                             {
                                               "Tag": {
                                                 "Name": "mixamorig:RightHandPinky2",
-                                                "Enabled": true
+                                                "Enabled": true,
+                                                "Id": "1afec0cbde0446afbee5d998e823a707"
                                               },
                                               "Transform": {
                                                 "Enabled": true,
@@ -3944,7 +4030,8 @@
                                                 {
                                                   "Tag": {
                                                     "Name": "mixamorig:RightHandPinky3",
-                                                    "Enabled": true
+                                                    "Enabled": true,
+                                                    "Id": "7cf2a726a6d6493db65c5f41bcc41c78"
                                                   },
                                                   "Transform": {
                                                     "Enabled": true,
@@ -3968,7 +4055,8 @@
                                                     {
                                                       "Tag": {
                                                         "Name": "mixamorig:RightHandPinky4",
-                                                        "Enabled": true
+                                                        "Enabled": true,
+                                                        "Id": "09f0288cb7cd4e40b96ed6bc14ab7244"
                                                       },
                                                       "Transform": {
                                                         "Enabled": true,
@@ -4012,7 +4100,8 @@
             {
               "Tag": {
                 "Name": "mixamorig:LeftUpLeg",
-                "Enabled": true
+                "Enabled": true,
+                "Id": "c8bba8ef5f1640268c1cd871d79e50cc"
               },
               "Transform": {
                 "Enabled": true,
@@ -4036,7 +4125,8 @@
                 {
                   "Tag": {
                     "Name": "mixamorig:LeftLeg",
-                    "Enabled": true
+                    "Enabled": true,
+                    "Id": "0d1ff3a905544d63ac316323fc4b7be0"
                   },
                   "Transform": {
                     "Enabled": true,
@@ -4060,7 +4150,8 @@
                     {
                       "Tag": {
                         "Name": "mixamorig:LeftFoot",
-                        "Enabled": true
+                        "Enabled": true,
+                        "Id": "e970b0b4bbf44b1d82976b3c8f158cfa"
                       },
                       "Transform": {
                         "Enabled": true,
@@ -4084,7 +4175,8 @@
                         {
                           "Tag": {
                             "Name": "mixamorig:LeftToeBase",
-                            "Enabled": true
+                            "Enabled": true,
+                            "Id": "f4513617c5fd4cebb2b807210551cabc"
                           },
                           "Transform": {
                             "Enabled": true,
@@ -4108,7 +4200,8 @@
                             {
                               "Tag": {
                                 "Name": "mixamorig:LeftToe_End",
-                                "Enabled": true
+                                "Enabled": true,
+                                "Id": "41aa3855948b46c788bf757eef80cf67"
                               },
                               "Transform": {
                                 "Enabled": true,
@@ -4140,7 +4233,8 @@
             {
               "Tag": {
                 "Name": "mixamorig:RightUpLeg",
-                "Enabled": true
+                "Enabled": true,
+                "Id": "4d811fc7e2604335adb70eb13bdd92b0"
               },
               "Transform": {
                 "Enabled": true,
@@ -4164,7 +4258,8 @@
                 {
                   "Tag": {
                     "Name": "mixamorig:RightLeg",
-                    "Enabled": true
+                    "Enabled": true,
+                    "Id": "bcea3ca92a0844cfbb3c1072553b3538"
                   },
                   "Transform": {
                     "Enabled": true,
@@ -4188,7 +4283,8 @@
                     {
                       "Tag": {
                         "Name": "mixamorig:RightFoot",
-                        "Enabled": true
+                        "Enabled": true,
+                        "Id": "129178fac7de4daaa5830b7e529ef049"
                       },
                       "Transform": {
                         "Enabled": true,
@@ -4212,7 +4308,8 @@
                         {
                           "Tag": {
                             "Name": "mixamorig:RightToeBase",
-                            "Enabled": true
+                            "Enabled": true,
+                            "Id": "486451e812f3467aa9e2c748fa851aaf"
                           },
                           "Transform": {
                             "Enabled": true,
@@ -4236,7 +4333,8 @@
                             {
                               "Tag": {
                                 "Name": "mixamorig:RightToe_End",
-                                "Enabled": true
+                                "Enabled": true,
+                                "Id": "8ec0f7878aed4c4781526401a0d4c5ac"
                               },
                               "Transform": {
                                 "Enabled": true,
@@ -4270,7 +4368,8 @@
         {
           "Tag": {
             "Name": "Alpha_Surface",
-            "Enabled": true
+            "Enabled": true,
+            "Id": "59c0d231c6924270a7c2238fc8ac5665"
           },
           "Transform": {
             "Enabled": true,
@@ -4309,7 +4408,8 @@
         {
           "Tag": {
             "Name": "Alpha_Joints",
-            "Enabled": true
+            "Enabled": true,
+            "Id": "c1cd3a5bdba34c679b373d933b9c8a17"
           },
           "Transform": {
             "Enabled": true,
@@ -4350,7 +4450,8 @@
     {
       "Tag": {
         "Name": "Particles",
-        "Enabled": true
+        "Enabled": true,
+        "Id": "45e4d0e278f6484c83fee288a9fe9f07"
       },
       "Transform": {
         "Enabled": true,

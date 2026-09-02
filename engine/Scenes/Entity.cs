@@ -66,14 +66,34 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public bool IsActiveInHierarchy()
     {
-        if (!Enabled) return false;
-        var current = Parent;
-        while (current != null)
+        return OwningScene.IsActiveInHierarchy(Id);
+    }
+
+    /// <summary>
+    /// Gets or sets the entity's stable, serialization-time identifier (stored in its
+    /// <see cref="LabelComponent"/>). Used to reference the entity from serialized data such as an
+    /// <see cref="Entity"/>-typed script field. Empty until the entity is first serialized; use
+    /// <see cref="EnsurePersistentId"/> to allocate one.
+    /// </summary>
+    internal string PersistentId
+    {
+        get => GetComponent<LabelComponent>().EntityGuid;
+        set => GetComponent<LabelComponent>().EntityGuid = value ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns the entity's stable <see cref="PersistentId"/>, allocating a fresh one the first time it is
+    /// needed so entity references have a target to point at.
+    /// </summary>
+    internal string EnsurePersistentId()
+    {
+        LabelComponent label = GetComponent<LabelComponent>();
+        if (string.IsNullOrEmpty(label.EntityGuid))
         {
-            if (!current.Value.Enabled) return false;
-            current = current.Value.Parent;
+            label.EntityGuid = System.Guid.NewGuid().ToString("N");
         }
-        return true;
+
+        return label.EntityGuid;
     }
 
     /// <summary>
@@ -144,9 +164,12 @@ public readonly struct Entity : IEquatable<Entity>
         {
             if (!parent.Value.TryGetComponent(out RelationshipComponent? parentRel))
                 parentRel = parent.Value.AddComponent(new RelationshipComponent());
-            
+
             parentRel.Children.Add(this);
         }
+
+        // Reparenting changes this subtree's active-in-hierarchy chain; drop the scene's memoized results.
+        OwningScene.InvalidateHierarchyActive();
     }
 
     /// <summary>

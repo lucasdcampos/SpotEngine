@@ -1,5 +1,3 @@
-using Silk.NET.OpenGL;
-
 namespace Spot.Rendering;
 
 /// <summary>
@@ -16,7 +14,7 @@ public sealed class VertexBuffer : IDisposable
     /// <param name="layout">The attributes that make up a single vertex, in order.</param>
     public VertexBuffer(ReadOnlySpan<float> vertices, params ShaderDataType[] layout)
     {
-        _buffer = new BufferObject<float>(vertices, BufferTargetARB.ArrayBuffer);
+        _buffer = new BufferObject<float>(vertices, BufferKind.Vertex);
         Layout = layout;
     }
 
@@ -28,7 +26,7 @@ public sealed class VertexBuffer : IDisposable
     /// <param name="layout">The attributes that make up a single vertex, in order.</param>
     public VertexBuffer(uint capacityInFloats, params ShaderDataType[] layout)
     {
-        _buffer = new BufferObject<float>(capacityInFloats, BufferTargetARB.ArrayBuffer);
+        _buffer = new BufferObject<float>(capacityInFloats, BufferKind.Vertex);
         Layout = layout;
     }
 

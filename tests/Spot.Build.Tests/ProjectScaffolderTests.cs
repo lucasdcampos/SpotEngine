@@ -35,8 +35,10 @@ public class ProjectScaffolderTests
         Assert.True(File.Exists(Path.Combine(projDir, "MyGame.csproj")));
         Assert.True(File.Exists(Path.Combine(projDir, "MyGame.sln")));
         Assert.True(File.Exists(Path.Combine(projDir, "Program.cs")));
-        Assert.True(File.Exists(Path.Combine(projDir, "game.manifest")));
         Assert.True(File.Exists(Path.Combine(projDir, "EngineBin", "Spot.Engine.dll")));
+
+        // game.manifest is a build-output artifact (staged into Build/ by the pipeline), not a root file.
+        Assert.False(File.Exists(Path.Combine(projDir, "game.manifest")));
     }
 
     [Theory]

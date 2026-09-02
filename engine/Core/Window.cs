@@ -25,6 +25,11 @@ public class WindowSpec
     /// Gets or sets the window height in pixels.
     /// </summary>
     public int Height { get; set; } = 720;
+
+    /// <summary>
+    /// Gets or sets the path to the window icon.
+    /// </summary>
+    public string? IconPath { get; set; }
 }
 
 /// <summary>
@@ -49,6 +54,7 @@ public sealed class Window : IDisposable
         _spec = spec;
         _width = spec.Width;
         _height = spec.Height;
+        Display.SetSize(_width, _height);
 
         WindowOptions options = WindowOptions.Default;
         options.Title = spec.Title;
@@ -59,10 +65,25 @@ public sealed class Window : IDisposable
             ContextFlags.Default,
             new APIVersion(4, 6));
         options.WindowBorder = WindowBorder.Resizable;
-        options.VSync = true;
+        options.VSync = Spot.Rendering.RenderSettings.VSync;
 
         _window = SilkWindow.Create(options);
         _window.Initialize();
+
+        if (!string.IsNullOrEmpty(spec.IconPath) && System.IO.File.Exists(spec.IconPath))
+        {
+            try
+            {
+                using var stream = System.IO.File.OpenRead(spec.IconPath);
+                var image = StbImageSharp.ImageResult.FromStream(stream, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
+                var rawImage = new Silk.NET.Core.RawImage(image.Width, image.Height, image.Data);
+                _window.SetWindowIcon(ref rawImage);
+            }
+            catch (Exception ex)
+            {
+                Log.CoreWarn("Failed to load window icon '{0}': {1}", spec.IconPath, ex.Message);
+            }
+        }
 
         // Center the window on the primary monitor by default. Hosts that manage their own window
         // placement (e.g. the editor restoring a saved layout) re-apply their position afterwards.
@@ -76,7 +97,16 @@ public sealed class Window : IDisposable
         }
 
         _input = _window.CreateInput();
+        // Centre in the mouse-position coordinate space (the window's client size, matching IMouse.Position)
+        // so recentring keeps the cursor comfortably inside the window regardless of DPI/framebuffer scale.
+        global::Spot.Core.Input.CursorController = new SilkCursorController(
+            _input, () => new System.Numerics.Vector2(_window.Size.X / 2f, _window.Size.Y / 2f));
         SetupCallbacks();
+
+        // Apply engine-wide VSync changes to this window at runtime (the `vsync` console command, an editor
+        // toggle, or a game turning it off to profile). Unsubscribed on Dispose so the static event never
+        // pins a disposed window.
+        Spot.Rendering.RenderSettings.VSyncChanged += OnVSyncChanged;
 
         Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
     }
@@ -98,6 +128,17 @@ public sealed class Window : IDisposable
     {
         get => _window.Title;
         set => _window.Title = value;
+    }
+
+    /// <summary>
+    /// Gets or sets whether presentation waits for vertical sync on this window. Setting it updates the
+    /// swap interval immediately. Prefer <see cref="Spot.Rendering.RenderSettings.VSync"/> as the
+    /// engine-wide source of truth; it flows here automatically.
+    /// </summary>
+    public bool VSync
+    {
+        get => _window.VSync;
+        set => _window.VSync = value;
     }
 
     /// <summary>
@@ -141,10 +182,25 @@ public sealed class Window : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        Spot.Rendering.RenderSettings.VSyncChanged -= OnVSyncChanged;
         _input.Dispose();
         _window.DoEvents();
         _window.Reset();
         _window.Dispose();
+    }
+
+    // Pushes an engine-wide VSync change onto the Silk window. Guarded so a backend that rejects a late
+    // swap-interval change logs and continues rather than taking the process down (never crash the engine).
+    private void OnVSyncChanged(bool enabled)
+    {
+        try
+        {
+            _window.VSync = enabled;
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Failed to apply VSync change to the window: {0}", ex.Message);
+        }
     }
 
     private void SetupCallbacks()
@@ -155,6 +211,7 @@ public sealed class Window : IDisposable
         {
             _width = size.X;
             _height = size.Y;
+            Display.SetSize(_width, _height);
             _callback?.Invoke(new WindowResizeEvent(size.X, size.Y));
         };
 
@@ -227,6 +284,92 @@ public sealed class Window : IDisposable
                 _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightTrigger, trigger.Position));
             }
         };
+    }
+
+    // Drives the hardware cursor through the window's Silk mouse, letting Input lock/unlock it without
+    // depending on Silk. Locking hides the cursor and confines it *manually*: every frame Tick() reads how
+    // far it drifted from the window centre, reports that as relative motion, then warps it back. GLFW's
+    // own Raw/Disabled "confine" modes proved unreliable (they read back as applied while the OS cursor
+    // still roamed free and escaped the window), so we recentre it ourselves — the backend-independent
+    // way to guarantee the cursor stays put during mouse-look.
+    private sealed class SilkCursorController : ICursorController
+    {
+        private readonly IInputContext _input;
+        private readonly Func<System.Numerics.Vector2> _windowCenter;
+        private bool _locked;
+        private bool _justLocked;
+        private System.Numerics.Vector2 _unlockPosition;
+
+        public SilkCursorController(IInputContext input, Func<System.Numerics.Vector2> windowCenter)
+        {
+            _input = input;
+            _windowCenter = windowCenter;
+        }
+
+        public bool Locked
+        {
+            get => _locked;
+
+            set
+            {
+                if (value == _locked)
+                {
+                    return;
+                }
+
+                _locked = value;
+                IMouse? mouse = _input.Mice.Count > 0 ? _input.Mice[0] : null;
+                if (value)
+                {
+                    // Remember where to restore the cursor to on unlock, then hide it and let Tick() take
+                    // over confinement from the next frame.
+                    if (mouse != null)
+                    {
+                        _unlockPosition = mouse.Position;
+                        mouse.Cursor.CursorMode = CursorMode.Hidden;
+                    }
+                    _justLocked = true;
+                }
+                else if (mouse != null)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Normal;
+                    mouse.Position = _unlockPosition; // reappear where the lock began, not parked at centre
+                }
+
+                global::Spot.Core.Input.RelativeMouseMode = value;
+            }
+        }
+
+        public void Tick()
+        {
+            if (!_locked || _input.Mice.Count == 0)
+            {
+                return;
+            }
+
+            IMouse mouse = _input.Mice[0];
+            // Keep it hidden in case anything (e.g. the ImGui overlay) reset the cursor this frame.
+            if (mouse.Cursor.CursorMode != CursorMode.Hidden)
+            {
+                mouse.Cursor.CursorMode = CursorMode.Hidden;
+            }
+
+            System.Numerics.Vector2 center = _windowCenter();
+            if (_justLocked)
+            {
+                // First locked frame: just centre the cursor; the offset from the press point isn't motion.
+                mouse.Position = center;
+                _justLocked = false;
+                return;
+            }
+
+            System.Numerics.Vector2 delta = mouse.Position - center;
+            if (delta != System.Numerics.Vector2.Zero)
+            {
+                global::Spot.Core.Input.AddMouseMotion(delta);
+                mouse.Position = center; // snap back so the next frame's offset is pure movement
+            }
+        }
     }
 
     private static GamepadButton MapGamepadButton(ButtonName name)

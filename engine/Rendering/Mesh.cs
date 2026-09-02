@@ -1,4 +1,6 @@
+using System.Numerics;
 using Spot.Animation;
+using Spot.Physics;
 
 namespace Spot.Rendering;
 
@@ -73,6 +75,7 @@ public sealed class Mesh : IDisposable
     private readonly VertexArray _vao;
     private readonly VertexBuffer _vbo;
     private readonly IndexBuffer _ibo;
+    private VertexArray? _instancedVao;
 
     /// <summary>
     /// Initializes a new rigid <see cref="Mesh"/> and uploads its data to the GPU.
@@ -117,6 +120,7 @@ public sealed class Mesh : IDisposable
         _vao.SetIndexBuffer(_ibo);
 
         IndexCount = _ibo.Count;
+        Bounds = ComputeBounds(vertices, skinned ? SkinnedFloatsPerVertex : FloatsPerVertex);
     }
 
     /// <summary>Gets the number of indices to draw.</summary>
@@ -125,12 +129,64 @@ public sealed class Mesh : IDisposable
     /// <summary>Gets whether this mesh uses the skinned vertex layout (bone indices + weights).</summary>
     public bool IsSkinned { get; }
 
+    /// <summary>
+    /// Gets the mesh's axis-aligned bounding box in local (model) space, computed from its vertex positions.
+    /// A mesh with no vertices reports a zero-sized box at the origin.
+    /// </summary>
+    public Aabb3d Bounds { get; }
+
+    // Sweeps the interleaved vertex positions (the first three floats of every vertex) for their min/max.
+    private static Aabb3d ComputeBounds(ReadOnlySpan<float> vertices, int stride)
+    {
+        if (vertices.Length < stride)
+        {
+            return new Aabb3d(Vector3.Zero, Vector3.Zero);
+        }
+
+        var min = new Vector3(float.MaxValue);
+        var max = new Vector3(float.MinValue);
+        for (int i = 0; i + 2 < vertices.Length; i += stride)
+        {
+            var p = new Vector3(vertices[i], vertices[i + 1], vertices[i + 2]);
+            min = Vector3.Min(min, p);
+            max = Vector3.Max(max, p);
+        }
+
+        return new Aabb3d((min + max) * 0.5f, max - min);
+    }
+
     /// <summary>Gets the vertex array backing this mesh, for issuing draw calls.</summary>
     internal VertexArray VertexArray => _vao;
+
+    /// <summary>
+    /// Lazily builds (once, then cached) a vertex array that pairs this mesh's geometry with a shared
+    /// per-instance buffer, so a batch of identical meshes can be drawn in a single instanced call. Only
+    /// meaningful for rigid meshes: the instance attributes occupy locations 3+, which the skinned layout
+    /// already uses for bone data.
+    /// </summary>
+    /// <param name="instanceBuffer">
+    /// The shared per-instance buffer (model matrix rows + color). Its GPU handle must stay stable for the
+    /// life of the mesh, since the returned VAO records it — the renderer keeps one fixed-capacity buffer.
+    /// </param>
+    /// <returns>The cached instanced vertex array.</returns>
+    internal VertexArray GetInstancedVertexArray(VertexBuffer instanceBuffer)
+    {
+        if (_instancedVao is null)
+        {
+            var vao = new VertexArray();
+            vao.AddVertexBuffer(_vbo);                       // locations 0-2: position, normal, texcoord
+            vao.AddInstancedVertexBuffer(instanceBuffer, 1); // locations 3-6: model matrix, 7: color
+            vao.SetIndexBuffer(_ibo);
+            _instancedVao = vao;
+        }
+
+        return _instancedVao;
+    }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        _instancedVao?.Dispose();
         _vao.Dispose();
         _vbo.Dispose();
         _ibo.Dispose();

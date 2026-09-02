@@ -5,7 +5,6 @@ using Spot.Rendering;
 using Spot.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
-using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
 
@@ -18,6 +17,31 @@ public class ViewportPanel
     private readonly TransformGizmo _gizmo = new();
     private readonly SceneIcons _sceneIcons = new();
 
+    // Latched right-drag "fly the 3D camera" state. Held from press to release so the cursor
+    // lock stays stable and a right-click in another panel (e.g. the hierarchy context menu)
+    // never starts flying.
+    private bool _isFlyingCamera;
+
+    // Whether *this* panel currently owns the hardware cursor lock. Only the panel that grabbed
+    // the lock may release it: with several scene viewports open, every non-flying panel used to
+    // reset the cursor to Normal each frame, yanking the lock out from under the panel that was
+    // actively flying and letting the (hidden) cursor drift out of the viewport.
+    private bool _ownsCursorLock;
+
+    // While flying we only *hide* the cursor and confine it ourselves by snapping it back to the
+    // viewport centre every frame (see the fly block). GLFW's Disabled/Raw "confine" modes proved
+    // unreliable here — they read back as applied but the OS cursor still roams free and escapes —
+    // so manual recentring is the backend-independent way to guarantee it never leaves the viewport.
+    private const Silk.NET.Input.CursorMode LockMode = Silk.NET.Input.CursorMode.Hidden;
+
+    // Where the cursor was when flying started; restored on release so it reappears where the drag
+    // began instead of jumping to the viewport centre.
+    private Vector2 _flyAnchor;
+
+    // Counts frames since flying started; the first frame is skipped for look (it centres the cursor
+    // from the press point, which isn't a real movement delta).
+    private int _flyFrame;
+
     public ViewportPanel(EditorContext context)
     {
         _context = context;
@@ -27,7 +51,7 @@ public class ViewportPanel
     {
         _framebuffer = framebuffer;
     }
-    
+
     public void SetCameraPreviewFramebuffer(Framebuffer framebuffer)
     {
         _cameraPreviewFramebuffer = framebuffer;
@@ -40,6 +64,14 @@ public class ViewportPanel
 
     public void OnImGuiRender(bool handleInput = true)
     {
+        // Safety net: if we grabbed the cursor lock but won't run input this frame (panel lost
+        // focus mid-flight, entered Play, etc.), release it here so the cursor can never get
+        // stranded in the hidden/locked state.
+        if (!handleInput && _ownsCursorLock)
+        {
+            ReleaseCursorLock();
+        }
+
         var viewportSize = ImGui.GetContentRegionAvail();
 
         if (_framebuffer != null && viewportSize.X > 0 && viewportSize.Y > 0)
@@ -47,7 +79,7 @@ public class ViewportPanel
             _framebuffer.Resize((uint)viewportSize.X, (uint)viewportSize.Y);
             if (handleInput && _camera != null)
                 _camera.SetViewportSize(viewportSize.X, viewportSize.Y);
-            
+
             var cursorPos = ImGui.GetCursorScreenPos();
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
             bool isHovered = ImGui.IsItemHovered();
@@ -94,11 +126,11 @@ public class ViewportPanel
                 DrawGizmoModeButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate);
                 ImGui.SameLine();
                 DrawGizmoModeButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale);
-                
+
                 ImGui.SameLine();
                 ImGui.Dummy(new Vector2(8, 0));
                 ImGui.SameLine();
-                
+
                 bool showColliders = Spot.Physics.PhysicsDebug.ShowColliders;
                 if (ImGui.Checkbox("Show Colliders", ref showColliders))
                 {
@@ -111,7 +143,7 @@ public class ViewportPanel
                 {
                     Spot.Rendering.RendererDebug.Fullbright = fullbright;
                 }
-                
+
                 ImGui.SameLine();
                 bool wireframe = Spot.Rendering.RendererDebug.Wireframe;
                 if (ImGui.Checkbox("Wireframe", ref wireframe))
@@ -124,7 +156,7 @@ public class ViewportPanel
                     // Render Camera Preview in bottom right
                     float previewWidth = 320;
                     float previewHeight = 180;
-                    
+
                     var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 20, previewHeight + 20);
 
                     // A framed, labeled preview card that matches the editor's surface treatment.
@@ -140,7 +172,25 @@ public class ViewportPanel
                 }
 
                 var io = ImGui.GetIO();
-                bool isFlyingCamera = _camera.Is3D && ImGui.IsMouseDown(ImGuiMouseButton.Right) && (isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Right, 0));
+
+                // Right-drag flies the 3D camera. Latch the state on press (only when the viewport
+                // is actually hovered) and hold it until the button is released. Recomputing it from
+                // a live hover/drag check each frame is fragile: the check flickers, which unlocks the
+                // cursor mid-look (letting it escape the viewport) and can wrongly start flying from a
+                // right-click made in another panel, e.g. the hierarchy context menu, since
+                // IsMouseDragging(Right) is global and not scoped to this window.
+                if (_isFlyingCamera)
+                {
+                    if (!ImGui.IsMouseDown(ImGuiMouseButton.Right))
+                        _isFlyingCamera = false;
+                }
+                else if (_camera.Is3D && isHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+                {
+                    _isFlyingCamera = true;
+                    _flyFrame = 0;
+                    _flyAnchor = io.MousePos;
+                }
+                bool isFlyingCamera = _isFlyingCamera;
 
                 // --- EDITOR ICONS (billboards for invisible entities: cameras, lights, sky) ---
                 // Drawn before the gizmo so gizmo handles render on top; the hovered icon (if any) is
@@ -192,17 +242,35 @@ public class ViewportPanel
 
                 if (isFlyingCamera)
                 {
-                    // Lock cursor
+                    // Hide the cursor and confine it ourselves: every frame we read how far it drifted
+                    // from the viewport centre, feed that as the look delta, then warp it straight back
+                    // to the centre. Because it can never reach an edge, it can never leave the
+                    // viewport — regardless of whether GLFW's own confine modes work on this machine.
                     var mice = Spot.Core.Application.Instance.Window.Input.Mice;
-                    if (mice.Count > 0 && mice[0].Cursor.CursorMode != Silk.NET.Input.CursorMode.Raw)
+                    var mouse = mice.Count > 0 ? mice[0] : null;
+                    if (mouse != null && mouse.Cursor.CursorMode != LockMode)
                     {
-                        mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Raw;
+                        mouse.Cursor.CursorMode = LockMode;
                     }
                     io.ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
+                    _ownsCursorLock = true;
+
+                    Vector2 center = cursorPos + viewportSize * 0.5f;
+                    Vector2 lookDelta = Vector2.Zero;
+                    if (_flyFrame > 0)
+                    {
+                        // Offset from centre == this frame's movement, since we recentre every frame.
+                        lookDelta = io.MousePos - center;
+                    }
+                    if (mouse != null)
+                    {
+                        mouse.Position = center;   // snap back so the next frame's offset is pure movement
+                    }
+                    _flyFrame++;
 
                     // 3D Mouselook
-                    _camera.MouseLook(io.MouseDelta);
-                    
+                    _camera.MouseLook(lookDelta);
+
                     // 3D Movement
                     Vector3 moveDir = Vector3.Zero;
                     if (ImGui.IsKeyDown(ImGuiKey.W)) moveDir.Z += 1;
@@ -211,7 +279,7 @@ public class ViewportPanel
                     if (ImGui.IsKeyDown(ImGuiKey.D)) moveDir.X += 1;
                     if (ImGui.IsKeyDown(ImGuiKey.E)) moveDir.Y += 1;
                     if (ImGui.IsKeyDown(ImGuiKey.Q)) moveDir.Y -= 1;
-                    
+
                     if (moveDir != Vector3.Zero)
                     {
                         float speed = 5.0f; // units per second
@@ -221,18 +289,17 @@ public class ViewportPanel
                 }
                 else
                 {
-                    // Unlock cursor
-                    var mice = Spot.Core.Application.Instance.Window.Input.Mice;
-                    if (mice.Count > 0 && mice[0].Cursor.CursorMode == Silk.NET.Input.CursorMode.Raw)
+                    // Release the cursor only if this panel is the one holding the lock. Other
+                    // viewports must not touch it, or they'd unlock a panel that is still flying.
+                    if (_ownsCursorLock)
                     {
-                        mice[0].Cursor.CursorMode = Silk.NET.Input.CursorMode.Normal;
+                        ReleaseCursorLock();
                     }
-                    io.ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
 
                     if (!_gizmo.IsUsing)
                     {
-                        if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) && 
-                            (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (! _camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
+                        if ((isHovered || ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || ImGui.IsMouseDragging(ImGuiMouseButton.Right)) &&
+                            (ImGui.IsMouseDragging(ImGuiMouseButton.Middle) || (!_camera.Is3D && ImGui.IsMouseDragging(ImGuiMouseButton.Right))))
                         {
                             // 2D/3D Pan
                             _camera.OnMouseDrag(io.MouseDelta);
@@ -245,6 +312,26 @@ public class ViewportPanel
         {
             ImGui.Text("Viewport Placeholder");
         }
+    }
+
+    // Restores the hardware cursor to its normal (visible, free) state and drops this panel's
+    // ownership of the lock. Safe to call whether or not the cursor is currently captured.
+    private void ReleaseCursorLock()
+    {
+        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+        if (mice.Count > 0)
+        {
+            var mouse = mice[0];
+            // Put the cursor back where the drag began (kept inside the viewport) so it doesn't
+            // reappear parked at the viewport centre.
+            mouse.Position = _flyAnchor;
+            if (mouse.Cursor.CursorMode != Silk.NET.Input.CursorMode.Normal)
+            {
+                mouse.Cursor.CursorMode = Silk.NET.Input.CursorMode.Normal;
+            }
+        }
+        ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
+        _ownsCursorLock = false;
     }
 
     // Subtle top-right HUD: a camera-orientation gizmo with an FPS and camera readout beneath it. All
@@ -271,8 +358,9 @@ public class ViewportPanel
         float rightEdge = cursorPos.X + viewportSize.X - 12.0f;
         float y = center.Y + axisLen + 12.0f;
 
-        float fps = ImGui.GetIO().Framerate;
-        DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS", palette.Text);
+        float fps = Spot.Core.FrameStats.Fps;
+        float ms = Spot.Core.FrameStats.FrameTimeMs;
+        DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS  ({ms:0.0} ms)", palette.Text);
 
         DrawRightText(drawList, rightEdge, ref y, _camera.Is3D ? "Perspective" : "Orthographic", palette.TextDisabled);
 
