@@ -149,15 +149,18 @@ const glImports = {
     texImage2DRgba8: (w, h, data) =>
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.slice()),
     // Render-target / typed texture allocation. `format` is a small code (not a GL enum): 0 RGBA8, 1 RGBA16F,
-    // 2 depth32f, 3 depth24-stencil8. A zero-length view means "allocate uninitialized" (an FBO attachment).
+    // 2 depth32f, 3 depth24-stencil8, 4 R32UI. A zero-length view means "allocate uninitialized" (an FBO
+    // attachment). R32UI carries real data, which must be presented to WebGL2 as a Uint32Array.
     texImage2D: (format, w, h, data) => {
         const spec = [
             [gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE],
             [gl.RGBA16F, gl.RGBA, gl.FLOAT],
             [gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT],
             [gl.DEPTH24_STENCIL8, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8],
+            [gl.R32UI, gl.RED_INTEGER, gl.UNSIGNED_INT],
         ][format];
-        const pixels = (data && data.length) ? data.slice() : null;
+        let pixels = (data && data.length) ? data.slice() : null;
+        if (pixels && format === 4) pixels = new Uint32Array(pixels.buffer);
         gl.texImage2D(gl.TEXTURE_2D, 0, spec[0], w, h, 0, spec[1], spec[2], pixels);
     },
     texCompareMode: (enabled) => {

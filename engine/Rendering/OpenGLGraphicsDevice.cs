@@ -432,6 +432,7 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
             (InternalFormat.DepthComponent32f, PixelFormat.DepthComponent, PixelType.Float),
         TextureInternalFormat.Depth24Stencil8 =>
             (InternalFormat.Depth24Stencil8, PixelFormat.DepthStencil, PixelType.UnsignedInt248),
+        TextureInternalFormat.R32UI => (InternalFormat.R32ui, PixelFormat.RedInteger, PixelType.UnsignedInt),
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown texture internal format."),
     };
 

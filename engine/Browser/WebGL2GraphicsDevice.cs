@@ -388,6 +388,7 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
         TextureInternalFormat.Rgba16F => 1,
         TextureInternalFormat.DepthComponent32F => 2,
         TextureInternalFormat.Depth24Stencil8 => 3,
+        TextureInternalFormat.R32UI => 4,
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown texture internal format."),
     };
 

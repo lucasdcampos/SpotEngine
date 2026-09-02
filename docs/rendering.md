@@ -136,6 +136,17 @@ lit by many point lights at once. The UBO seam (`BindBufferBase`, uniform-block 
 `IGraphicsDevice` and works on both backends; where uniform buffers are somehow unavailable, point lights
 are disabled rather than crashing (the directional light still renders).
 
+**Clustered lighting.** With many lights, testing every one at every fragment is wasteful. Enable
+`RenderSettings.ClusteredLighting` and the view frustum is diced each frame into a cluster grid ("froxels")
+— screen tiles in x/y, an exponential radial-distance slice in z — and each light is assigned (on the CPU)
+to the froxels its range reaches. The assignment is carried to the shader in two integer lookup textures (a
+per-froxel `offset·count`, and a flat light-index list), so a fragment loops over just its froxel's lights.
+The froxel a fragment falls in is computed the same way on both sides, and everything derives from the
+view-projection so no extra camera plumbing is needed. It is **off by default** and falls back to the
+brute-force loop for orthographic/degenerate cameras; it applies to standard meshes (water always uses the
+brute-force loop). The integer-texture seam (`R32UI` + `usampler2D` lookups) is part of `IGraphicsDevice`,
+so — like everything else here — it runs on both the desktop and WebGL2 backends.
+
 ## Measuring performance
 
 `RenderSettings.VSync` (on by default) gates whether the buffer swap waits for the monitor's vertical
