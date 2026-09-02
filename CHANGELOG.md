@@ -11,6 +11,7 @@ Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is prov
 will be finalized when 0.2 is tagged.
 
 ### Performance
+- Frustum culling: off-screen 3D meshes are skipped in both the main and shadow passes
 - Fixed a severe editor stall from per-frame framebuffer reallocation
 - Editor secondary views render only when visible
 - VSync is now a runtime setting, plus frame-time instrumentation
