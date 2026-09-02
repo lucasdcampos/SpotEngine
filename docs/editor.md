@@ -59,6 +59,14 @@ The editor is organized into dockable panels you can rearrange and save into a l
   [Runtime UI](ui.md#authoring-in-the-editor).
 - **Project settings** — project-wide configuration such as the start scene.
 
+The editor remembers your working session **per project**. When you reopen a project it restores the
+scene, UI, and animator tabs you had open (and refocuses the one that was active), the panel visibility
+from **View → Panels**, and each viewport's editor camera — so you continue exactly where you left off
+rather than back at the project's start scene. Tabs whose files were deleted or renamed since are quietly
+skipped. The session is saved on exit to `Library/editor_session.json` inside the project (an editor-only
+cache, safe to delete or leave out of version control); a brand-new project with no saved session opens on
+its start scene as before.
+
 ## The menu bar
 
 Along the top, the menu bar groups project, edit, view, and help actions, with the play/stop control

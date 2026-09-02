@@ -516,6 +516,14 @@ public class EditorScene : Scene
 
         ActivateProjectPipeline();
 
+        // Restore the previous working session (open scenes/UI/animator, panels, cameras) when one was
+        // saved and at least one of its scenes still exists; otherwise fall back to the project start scene.
+        var session = Spot.Editor.Utils.EditorSession.Load(Project.Active);
+        if (session != null && RestoreSession(session))
+        {
+            return;
+        }
+
         string startAbs = System.IO.Path.Combine(Project.Active.GetAssetDirectory(), Project.Active.Config.StartScene);
         if (System.IO.File.Exists(startAbs))
         {
@@ -529,6 +537,134 @@ public class EditorScene : Scene
             _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
         }
+    }
+
+    // Reopens the scenes / UI documents / animator windows the user had open, restores each scene's editor
+    // camera and the panel visibility, and refocuses the previously active scene tab. Missing files are
+    // skipped (they may have been deleted/renamed since). Returns false when no saved scene still exists, so
+    // the caller can fall back to the project start scene.
+    private bool RestoreSession(Spot.Editor.Utils.EditorSessionState session)
+    {
+        int openedScenes = 0;
+        foreach (string path in session.OpenScenes)
+        {
+            if (!System.IO.File.Exists(path))
+            {
+                Log.CoreWarn("Skipping missing scene from last session: '{0}'.", path);
+                continue;
+            }
+            int before = _openScenes.Count;
+            OpenSceneAsset(path);
+            if (_openScenes.Count > before) openedScenes++;
+        }
+
+        if (openedScenes == 0)
+        {
+            return false;
+        }
+
+        // Restore each viewport's editor camera by matching the saved pose to the opened scene tab.
+        foreach (var cam in session.Cameras)
+        {
+            string normPath = System.IO.Path.GetFullPath(cam.Path).ToLowerInvariant();
+            var data = _openScenes.FirstOrDefault(
+                s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == normPath);
+            if (data == null) continue;
+
+            var c = data.EditorCamera;
+            c.Is3D = cam.Is3D;
+            c.Position = new System.Numerics.Vector3(cam.PosX, cam.PosY, cam.PosZ);
+            c.Pitch = cam.Pitch;
+            c.Yaw = cam.Yaw;
+            c.SetZoom(cam.Zoom);
+        }
+
+        // Refocus the tab that was active last session (OpenSceneAsset already left the last-opened one active).
+        if (session.ActiveScene != null)
+        {
+            string activeNorm = System.IO.Path.GetFullPath(session.ActiveScene).ToLowerInvariant();
+            var active = _openScenes.FirstOrDefault(
+                s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == activeNorm);
+            if (active != null)
+            {
+                active.FocusNextFrame = true;
+                _activeSceneData = active;
+                _lastEditedSceneData = active;
+                _context.ActiveScene = active.Scene;
+            }
+        }
+
+        foreach (string path in session.OpenUIDocuments)
+        {
+            if (System.IO.File.Exists(path)) OpenUIDocument(path);
+        }
+        if (session.ActiveUIDocument != null)
+        {
+            var doc = _openUIDocuments.FirstOrDefault(
+                d => string.Equals(d.Path, session.ActiveUIDocument, System.StringComparison.OrdinalIgnoreCase));
+            if (doc != null)
+            {
+                doc.FocusNextFrame = true;
+                SetActiveUIDocument(doc);
+            }
+        }
+
+        foreach (string path in session.OpenAnimators)
+        {
+            if (System.IO.File.Exists(path)) OpenAnimatorController(path);
+        }
+
+        _showGame = session.ShowGame;
+        _showHierarchy = session.ShowHierarchy;
+        _showInspector = session.ShowInspector;
+        _showConsole = session.ShowConsole;
+        _showAssetBrowser = session.ShowAssetBrowser;
+        _showProjectSettings = session.ShowProjectSettings;
+
+        return true;
+    }
+
+    // Captures the current working session so the next launch of this project can restore it. No-op without
+    // an active project (an unsaved scratch project has nowhere to write).
+    private void SaveSession()
+    {
+        var project = Project.Active;
+        if (project == null) return;
+
+        var state = new Spot.Editor.Utils.EditorSessionState
+        {
+            ActiveScene = _activeSceneData?.FilePath,
+            ActiveUIDocument = _activeUIDocument?.Path,
+            ShowGame = _showGame,
+            ShowHierarchy = _showHierarchy,
+            ShowInspector = _showInspector,
+            ShowConsole = _showConsole,
+            ShowAssetBrowser = _showAssetBrowser,
+            ShowProjectSettings = _showProjectSettings,
+        };
+
+        foreach (var sceneData in _openScenes)
+        {
+            if (sceneData.FilePath == null) continue;
+            state.OpenScenes.Add(sceneData.FilePath);
+            var c = sceneData.EditorCamera;
+            state.Cameras.Add(new Spot.Editor.Utils.SceneCameraState
+            {
+                Path = sceneData.FilePath,
+                PosX = c.Position.X,
+                PosY = c.Position.Y,
+                PosZ = c.Position.Z,
+                Pitch = c.Pitch,
+                Yaw = c.Yaw,
+                Zoom = c.ZoomLevel,
+                Is3D = c.Is3D,
+            });
+        }
+
+        foreach (var doc in _openUIDocuments) state.OpenUIDocuments.Add(doc.Path);
+        foreach (var anim in _animatorEditors) state.OpenAnimators.Add(anim.Path);
+
+        Spot.Editor.Utils.EditorSession.Save(project, state);
     }
 
     public override void OnUpdate(float deltaTime)
@@ -1488,6 +1624,7 @@ public class EditorScene : Scene
     {
         Spot.Core.Application.Instance.CanClose = null;
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
+        SaveSession();
 
         StopScriptWatcher();
         foreach (var sceneData in _openScenes) sceneData.Dispose();
