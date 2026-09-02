@@ -25,6 +25,7 @@ will be finalized when 0.2 is tagged.
 - Animation sampling no longer re-runs a bone-name regex per channel each frame
 
 ### Added
+- Multi-selection in the editor Hierarchy and Asset Browser (Ctrl+click, Shift+click) to delete, reorder, reparent, duplicate, or move several items at once
 - Editor is now cross-platform with native file dialog support for Linux and macOS
 - Added macOS target (osx-x64) to the standalone project builder
 - Added Spot engine icon to the Editor window and executable

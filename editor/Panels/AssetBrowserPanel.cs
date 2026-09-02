@@ -49,6 +49,15 @@ public class AssetBrowserPanel
     private string? _selectedPath;
     private string? _pendingNavigate;
 
+    // Multi-selection: every selected asset path (_selectedPath is the primary, i.e. the last one clicked).
+    // _rangeAnchorPath is the entry a Shift+click range extends from (the last plain/Ctrl click).
+    private readonly List<string> _selectedPaths = new();
+    private string? _rangeAnchorPath;
+
+    // A plain click inside a multi-selection is deferred: it collapses the selection to this asset on mouse
+    // release, but only if no drag started in between — so the whole selection can be dragged as a group.
+    private string? _pendingClickPath;
+
     // Full path of the asset currently being dragged, recorded when a drag starts so a folder drop target
     // can move it without reparsing the kind-specific payload.
     private string? _dragPath;
@@ -64,9 +73,9 @@ public class AssetBrowserPanel
     private bool _inlineRenameFocusPending;
     private bool _inlineRenameIsNew;
 
-    // Deferred deletion (still a confirmation modal).
+    // Deferred deletion (still a confirmation modal). Holds one or more targets for a multi-selection delete.
     private bool _isDeleting;
-    private string _deleteTarget = "";
+    private readonly List<string> _deleteTargets = new();
 
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
@@ -167,7 +176,7 @@ public class AssetBrowserPanel
         }
         if (ImGui.BeginDragDropTarget())
         {
-            if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, _baseDirectory);
+            if (TryAcceptAssetMove()) MoveDraggedInto(_baseDirectory);
             ImGui.EndDragDropTarget();
         }
 
@@ -187,7 +196,7 @@ public class AssetBrowserPanel
                 }
                 if (ImGui.BeginDragDropTarget())
                 {
-                    if (TryAcceptAssetMove()) MoveEntryInto(_dragPath, accum);
+                    if (TryAcceptAssetMove()) MoveDraggedInto(accum);
                     ImGui.EndDragDropTarget();
                 }
             }
@@ -252,13 +261,14 @@ public class AssetBrowserPanel
             {
                 ImGui.SameLine();
             }
-            DrawTile(entries[i], cellW, cellH, pad);
+            DrawTile(entries, i, cellW, cellH, pad);
         }
 
-        // Clicking empty space clears the selection.
-        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered())
+        // Clicking empty space clears the selection — unless Ctrl/Shift is held, which keeps extending it.
+        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered()
+            && !ImGui.GetIO().KeyCtrl && !ImGui.GetIO().KeyShift)
         {
-            _selectedPath = null;
+            ClearSelection();
             _context.SelectedAssetPath = null;
         }
 
@@ -267,6 +277,7 @@ public class AssetBrowserPanel
             bool hasSelection = _selectedPath != null;
             if (ImGui.GetIO().KeyCtrl)
             {
+                // Copy/cut/duplicate act on the primary selection; multi-asset clipboard isn't supported yet.
                 if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.C)) CopySelected(cut: false);
                 else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
                 else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateAsset(_selectedPath!);
@@ -282,15 +293,15 @@ public class AssetBrowserPanel
                 }
                 else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
                 {
-                    _isDeleting = true;
-                    _deleteTarget = _selectedPath!;
+                    RequestDeleteSelection();
                 }
             }
         }
     }
 
-    private void DrawTile(AssetEntry entry, float cellW, float cellH, float pad)
+    private void DrawTile(List<AssetEntry> entries, int index, float cellW, float cellH, float pad)
     {
+        AssetEntry entry = entries[index];
         var palette = EditorThemeManager.Current.Palette;
         var drawList = ImGui.GetWindowDrawList();
 
@@ -299,11 +310,19 @@ public class AssetBrowserPanel
         ImGui.InvisibleButton("tile", new Vector2(cellW, cellH));
 
         bool hovered = ImGui.IsItemHovered();
-        bool selected = _selectedPath == entry.FullPath;
+        bool selected = _selectedPaths.Contains(entry.FullPath);
 
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
         {
-            _selectedPath = entry.FullPath;
+            HandleTileClick(entries, index);
+        }
+
+        // A deferred plain click inside a multi-selection collapses to this asset on release (when it wasn't
+        // the start of a drag, which clears the pending click in the drag source below).
+        if (_pendingClickPath == entry.FullPath && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
+            if (ImGui.IsItemHovered()) SelectSingle(entry.FullPath);
+            _pendingClickPath = null;
         }
         if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
         {
@@ -337,16 +356,20 @@ public class AssetBrowserPanel
             _dragPath = entry.FullPath;
             (string payloadType, string payloadData) = DragPayloadFor(entry);
             SetDragPayload(payloadType, payloadData);
-            ImGui.Text(entry.Name);
+            // Dragging one of several selected assets carries the whole selection; label reflects that.
+            ImGui.Text(_selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1
+                ? $"{_selectedPaths.Count} items"
+                : entry.Name);
+            _pendingClickPath = null; // this press became a drag, so don't collapse the selection on release
             ImGui.EndDragDropSource();
         }
 
-        // Drop onto a folder tile to move the dragged asset (or folder) into it.
+        // Drop onto a folder tile to move the dragged asset (or the whole selection) into it.
         if (entry.IsDirectory && ImGui.BeginDragDropTarget())
         {
             if (TryAcceptAssetMove())
             {
-                MoveEntryInto(_dragPath, entry.FullPath);
+                MoveDraggedInto(entry.FullPath);
             }
             ImGui.EndDragDropTarget();
         }
@@ -585,7 +608,12 @@ public class AssetBrowserPanel
             return;
         }
 
-        _selectedPath = entry.FullPath;
+        // Right-clicking an asset outside the current selection makes it the selection; right-clicking within
+        // a multi-selection keeps the whole group so an action (e.g. Delete) applies to all of it.
+        if (!_selectedPaths.Contains(entry.FullPath))
+        {
+            SelectSingle(entry.FullPath);
+        }
 
         if (entry.Kind == AssetKind.Material && ImGui.MenuItem("Edit Material"))
         {
@@ -665,10 +693,10 @@ public class AssetBrowserPanel
             string initial = isDir ? entry.Name : Path.GetFileNameWithoutExtension(entry.Name);
             StartInlineRename(entry.FullPath, initial);
         }
-        if (ImGui.MenuItem("Delete"))
+        bool multi = _selectedPaths.Count > 1;
+        if (ImGui.MenuItem(multi ? $"Delete {_selectedPaths.Count} Items" : "Delete"))
         {
-            _isDeleting = true;
-            _deleteTarget = entry.FullPath;
+            RequestDeleteSelection();
         }
 
         ImGui.EndPopup();
@@ -730,6 +758,105 @@ public class AssetBrowserPanel
         ImGui.EndPopup();
     }
 
+    // --- Multi-selection --------------------------------------------------------------------------------
+
+    // Collapses the selection to a single asset (also the primary and the range anchor).
+    private void SelectSingle(string path)
+    {
+        _selectedPath = path;
+        _selectedPaths.Clear();
+        _selectedPaths.Add(path);
+        _rangeAnchorPath = path;
+    }
+
+    private void ClearSelection()
+    {
+        _selectedPath = null;
+        _selectedPaths.Clear();
+        _rangeAnchorPath = null;
+        _pendingClickPath = null;
+    }
+
+    // Turns a click on a tile into a selection change, honoring Ctrl (toggle one) and Shift (range).
+    private void HandleTileClick(List<AssetEntry> entries, int index)
+    {
+        var io = ImGui.GetIO();
+        string path = entries[index].FullPath;
+        if (io.KeyShift && _rangeAnchorPath != null)
+        {
+            SelectRange(entries, _rangeAnchorPath, path);
+            // The anchor stays fixed so successive Shift+clicks grow/shrink the same range.
+        }
+        else if (io.KeyCtrl)
+        {
+            ToggleSelection(path);
+            _rangeAnchorPath = path;
+        }
+        else if (_selectedPaths.Contains(path) && _selectedPaths.Count > 1)
+        {
+            // Defer collapsing so a drag starting from within the selection carries the whole group.
+            _pendingClickPath = path;
+        }
+        else
+        {
+            SelectSingle(path);
+        }
+    }
+
+    private void ToggleSelection(string path)
+    {
+        if (_selectedPaths.Remove(path))
+        {
+            _selectedPath = _selectedPaths.Count > 0 ? _selectedPaths[^1] : null;
+        }
+        else
+        {
+            _selectedPaths.Add(path);
+            _selectedPath = path; // newly added asset becomes the primary selection
+        }
+    }
+
+    // Selects every entry between the anchor and the clicked tile in the grid's display order.
+    private void SelectRange(List<AssetEntry> entries, string anchorPath, string clickedPath)
+    {
+        int a = entries.FindIndex(e => e.FullPath == anchorPath);
+        int b = entries.FindIndex(e => e.FullPath == clickedPath);
+        if (a < 0 || b < 0)
+        {
+            SelectSingle(clickedPath);
+            return;
+        }
+        if (a > b) (a, b) = (b, a);
+        _selectedPaths.Clear();
+        for (int i = a; i <= b; i++) _selectedPaths.Add(entries[i].FullPath);
+        _selectedPath = clickedPath; // primary follows the cursor
+    }
+
+    // Fills the delete-confirmation target list from the current selection and opens the modal.
+    private void RequestDeleteSelection()
+    {
+        _deleteTargets.Clear();
+        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths);
+        else if (_selectedPath != null) _deleteTargets.Add(_selectedPath);
+        if (_deleteTargets.Count > 0) _isDeleting = true;
+    }
+
+    // Moves the dragged asset into destDir. When the dragged asset is part of a multi-selection, the whole
+    // selection moves together.
+    private void MoveDraggedInto(string destDir)
+    {
+        if (string.IsNullOrEmpty(_dragPath)) return;
+        if (_selectedPaths.Contains(_dragPath) && _selectedPaths.Count > 1)
+        {
+            foreach (string p in _selectedPaths.ToList()) MoveEntryInto(p, destDir);
+            ClearSelection();
+        }
+        else
+        {
+            MoveEntryInto(_dragPath, destDir);
+        }
+    }
+
     private void StartInlineRename(string fullPath, string bufferInitial, bool isNew = false)
     {
         // Creating a new asset routes here right after the file is written, so re-scan to include it.
@@ -738,7 +865,7 @@ public class AssetBrowserPanel
             InvalidateEntries();
         }
 
-        _selectedPath = fullPath;
+        SelectSingle(fullPath);
         _inlineRenamePath = fullPath;
         _inlineRenameBuffer = bufferInitial;
         _inlineRenameFocusPending = true;
@@ -765,15 +892,21 @@ public class AssetBrowserPanel
         bool deleteOpen = true;
         if (ImGui.BeginPopupModal("Delete Asset", ref deleteOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.TextUnformatted($"Delete '{Path.GetFileName(_deleteTarget)}'?");
-            if (Directory.Exists(_deleteTarget))
+            ImGui.TextUnformatted(_deleteTargets.Count == 1
+                ? $"Delete '{Path.GetFileName(_deleteTargets[0])}'?"
+                : $"Delete {_deleteTargets.Count} items?");
+            if (_deleteTargets.Any(Directory.Exists))
             {
-                ImGui.TextColored(EditorThemeManager.Current.Palette.LogError, "This folder and all its contents will be removed.");
+                ImGui.TextColored(EditorThemeManager.Current.Palette.LogError,
+                    _deleteTargets.Count == 1
+                        ? "This folder and all its contents will be removed."
+                        : "Any folders and all their contents will be removed.");
             }
             ImGui.Spacing();
             if (ImGui.Button("Delete", new Vector2(120, 0)))
             {
-                DeleteEntry(_deleteTarget);
+                foreach (string target in _deleteTargets) DeleteEntry(target);
+                ClearSelection();
                 _isDeleting = false;
                 ImGui.CloseCurrentPopup();
             }
@@ -1090,7 +1223,7 @@ public class {className} : EntityBehaviour
             string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
             entity.AddComponent(new PrefabComponent { PrefabRef = reference });
 
-            _selectedPath = path;
+            SelectSingle(path);
             ClearThumbnails();
         }
         catch (Exception ex)
@@ -1173,6 +1306,9 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Move(fullPath, dest);
             else if (File.Exists(fullPath)) File.Move(fullPath, dest);
             if (_selectedPath == fullPath) _selectedPath = dest;
+            int selIdx = _selectedPaths.IndexOf(fullPath);
+            if (selIdx >= 0) _selectedPaths[selIdx] = dest;
+            if (_rangeAnchorPath == fullPath) _rangeAnchorPath = dest;
             if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = dest;
             InvalidateEntries();
         }
@@ -1265,6 +1401,9 @@ public class {className} : EntityBehaviour
             if (!MovePath(sourcePath, dest)) return;
 
             if (_selectedPath == sourcePath) _selectedPath = dest;
+            int selIdx = _selectedPaths.IndexOf(sourcePath);
+            if (selIdx >= 0) _selectedPaths[selIdx] = dest;
+            if (_rangeAnchorPath == sourcePath) _rangeAnchorPath = dest;
             if (_context.SelectedAssetPath == sourcePath) _context.SelectedAssetPath = dest;
             ClearThumbnails();
         }
@@ -1297,7 +1436,7 @@ public class {className} : EntityBehaviour
         try
         {
             CopyPath(path, dest);
-            _selectedPath = dest;
+            SelectSingle(dest);
             ClearThumbnails();
         }
         catch (Exception ex)
@@ -1343,14 +1482,14 @@ public class {className} : EntityBehaviour
                 if (!string.Equals(srcParent, destDir, StringComparison.OrdinalIgnoreCase))
                 {
                     MovePath(src, dest);
-                    _selectedPath = dest;
+                    SelectSingle(dest);
                     s_clipboardPath = null; // a cut is consumed by its paste
                 }
             }
             else
             {
                 CopyPath(src, dest);
-                _selectedPath = dest;
+                SelectSingle(dest);
             }
             ClearThumbnails();
         }
@@ -1415,6 +1554,8 @@ public class {className} : EntityBehaviour
             if (Directory.Exists(fullPath)) Directory.Delete(fullPath, recursive: true);
             else if (File.Exists(fullPath)) File.Delete(fullPath);
             if (_selectedPath == fullPath) _selectedPath = null;
+            _selectedPaths.Remove(fullPath);
+            if (_rangeAnchorPath == fullPath) _rangeAnchorPath = null;
             if (_context.SelectedAssetPath == fullPath) _context.SelectedAssetPath = null;
         }
         catch (Exception ex)
@@ -1431,7 +1572,7 @@ public class {className} : EntityBehaviour
             return;
         }
         _currentDirectory = path;
-        _selectedPath = null;
+        ClearSelection();
         ClearThumbnails();
     }
 
