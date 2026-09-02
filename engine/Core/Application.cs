@@ -415,6 +415,10 @@ public class Application
         Input.SetEngineCaptured(_console.IsOpen || (Debugger?.IsOpen ?? false));
 
         _window!.PollEvents();
+
+        // After the frame's mouse events are in, recentre a locked cursor and turn its drift into relative
+        // motion — before scenes read Input.MousePosition in Update. Keeps mouse-look confined to the window.
+        Input.TickCursorLock();
     }
 
     private void Update()
