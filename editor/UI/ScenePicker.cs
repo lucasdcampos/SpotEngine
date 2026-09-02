@@ -1,5 +1,7 @@
 using System;
 using System.Numerics;
+using Spot.Assets;
+using Spot.Physics;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -8,8 +10,9 @@ namespace Spot.Editor.UI;
 /// <summary>
 /// Mouse picking for the editor viewport. Casts a ray from the cursor through the camera and finds
 /// the entity under it. Works identically for the 2D orthographic and 3D perspective cameras because
-/// the scene is made of unit quads (<see cref="Sprite2DComponent"/> + <see cref="TransformComponent"/>): the ray is
-/// tested against each quad in its own local space, so rotation and scale are handled for free.
+/// every candidate is tested in its own local space, so rotation and scale are handled for free:
+/// <see cref="Sprite2DComponent"/> quads against the unit quad, and <see cref="MeshComponent"/> models
+/// against their local-space bounding box.
 /// </summary>
 public static class ScenePicker
 {
@@ -83,10 +86,52 @@ public static class ScenePicker
             }
         }
 
+        // Pass 2: the 3D meshes (primitives and imported models). Test the ray against each mesh's
+        // local-space bounding box, transformed into the entity's local space so rotation and scale are
+        // handled for free. Competes with the quad pass on depth so the nearest thing under the cursor wins.
+        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+        {
+            MeshComponent mesh = entity.GetComponent<MeshComponent>();
+            Model? model = mesh.Model;
+            if (model is null || model.Meshes.Count == 0)
+                continue;
+
+            // A single submesh part (imported models spread one submesh per entity) uses that submesh's
+            // box; a whole-model renderer (SubmeshIndex == -1, e.g. primitives) uses the union of them all.
+            Aabb3d local = mesh.SubmeshIndex >= 0 && mesh.SubmeshIndex < model.Meshes.Count
+                ? model.Meshes[mesh.SubmeshIndex].Bounds
+                : model.LocalBounds;
+
+            // Skinned parts are posed by bones, not this transform, so pad the bind-pose box the same way
+            // the render culling does, keeping animated geometry inside the tested volume.
+            if (entity.HasComponent<SkinnedMeshComponent>())
+                local = local.Expanded(2.0f);
+
+            TransformComponent t = entity.GetComponent<TransformComponent>();
+            if (!Matrix4x4.Invert(t.Matrix, out Matrix4x4 invModel))
+                continue;
+
+            Vector3 localOrigin = Vector3.Transform(rayOrigin, invModel);
+            Vector3 localDir = Vector3.TransformNormal(rayDir, invModel);
+            if (!RayAabb(localOrigin, localDir, local.Min, local.Max, out float tHit))
+                continue;
+
+            Vector3 localHit = localOrigin + localDir * tHit;
+            Vector3 worldHit = Vector3.Transform(localHit, t.Matrix);
+            float dist = Vector3.Dot(worldHit - rayOrigin, rayDir);
+            if (dist < 0f)
+                continue; // behind the camera
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = entity;
+            }
+        }
+
         if (best != null)
             return best;
 
-        // Pass 2: fallback for entities with no quad (empties, cameras). Pick the one whose origin
+        // Pass 3: fallback for entities with no drawable (empties, cameras). Pick the one whose origin
         // projects nearest to the cursor within a small pixel radius.
         Entity? bestIcon = null;
         float bestPix = IconRadiusPx;
@@ -109,6 +154,48 @@ public static class ScenePicker
         }
 
         return bestIcon;
+    }
+
+    // Slab test of a ray against an axis-aligned box, all in the same (local) space. Returns the entry
+    // parameter along <paramref name="dir"/>; when the ray starts inside the box, the entry is clamped to 0
+    // so the origin itself counts as the hit. <paramref name="dir"/> need not be normalized — the returned
+    // parameter is in its units, which is fine since the caller maps the hit back to world space to compare depth.
+    private static bool RayAabb(Vector3 origin, Vector3 dir, Vector3 min, Vector3 max, out float tEnter)
+    {
+        tEnter = 0f;
+        float tMin = float.NegativeInfinity;
+        float tMax = float.PositiveInfinity;
+
+        for (int axis = 0; axis < 3; axis++)
+        {
+            float o = axis == 0 ? origin.X : axis == 1 ? origin.Y : origin.Z;
+            float d = axis == 0 ? dir.X : axis == 1 ? dir.Y : dir.Z;
+            float lo = axis == 0 ? min.X : axis == 1 ? min.Y : min.Z;
+            float hi = axis == 0 ? max.X : axis == 1 ? max.Y : max.Z;
+
+            if (MathF.Abs(d) < 1e-9f)
+            {
+                if (o < lo || o > hi)
+                    return false; // parallel to this slab and outside it
+                continue;
+            }
+
+            float t1 = (lo - o) / d;
+            float t2 = (hi - o) / d;
+            if (t1 > t2)
+                (t1, t2) = (t2, t1);
+
+            tMin = MathF.Max(tMin, t1);
+            tMax = MathF.Min(tMax, t2);
+            if (tMin > tMax)
+                return false;
+        }
+
+        if (tMax < 0f)
+            return false; // box is entirely behind the ray origin
+
+        tEnter = MathF.Max(tMin, 0f);
+        return true;
     }
 
     private static bool Unproject(float ndcX, float ndcY, float ndcZ, Matrix4x4 invVp, out Vector3 world)

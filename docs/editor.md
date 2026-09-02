@@ -31,10 +31,12 @@ size and the scene is built.
 The editor is organized into dockable panels you can rearrange and save into a layout:
 
 - **Scene view** — the interactive viewport where you see and navigate your scene, with a free-fly
-  editor camera and on-screen transform gizmos for moving, rotating, and scaling entities. With the
-  viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale and `F` frames the selected
-  entity (double-clicking an entity in the hierarchy does the same). Hold `Ctrl` while dragging a gizmo
-  to snap in increments (1 unit / 15° / 0.25×).
+  editor camera and on-screen transform gizmos for moving, rotating, and scaling entities. Left-click an
+  entity to select it: 2D sprites, 3D meshes (both procedural primitives and imported models), and the
+  billboards of invisible entities (cameras, lights, sky) are all clickable, and clicking empty space
+  clears the selection. With the viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale
+  and `F` frames the selected entity (double-clicking an entity in the hierarchy does the same). Hold
+  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×).
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
   You create, delete, and reparent entities here. Select several at once with `Ctrl`+click (toggle one)
   and `Shift`+click (range), then delete, duplicate, reparent (drag any one of them), or reorder

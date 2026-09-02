@@ -66,6 +66,7 @@ will be finalized when 0.2 is tagged.
 - Project Settings start-scene change now takes effect on the next Play (manifest is always regenerated)
 - Fixed transition selection not working in the Animator Controller editor
 - Fixed bidirectional transitions overlapping into a single line in the Animator Controller editor
+- Clicking a 3D mesh in the viewport now selects its entity (primitives were unpickable; only imported models' pivots hit)
 - Blank window until resize
 
 ## [v0.1.0] - 2026-08-12
