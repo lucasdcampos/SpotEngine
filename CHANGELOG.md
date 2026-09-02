@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is provisional and
-will be finalized when 0.2 is tagged.
+Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
+
+## [v0.2.0] - 2026-09-02
+
+**Gameplay & Shipping.**
 
 ### Performance
 - Frustum culling: off-screen 3D meshes are skipped in both the main and shadow passes
