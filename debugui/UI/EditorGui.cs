@@ -632,12 +632,12 @@ public static class EditorGui
         {
             var dl = ImGui.GetWindowDrawList();
             Vector2 iconCenter = btnMin + new Vector2(4.0f + h * 0.5f, h * 0.5f);
-            Texture2D? thumb = IsImagePath(path!) ? EditorThumbnails.Get(AssetPath.Resolve(path!)) : null;
-            if (thumb != null)
+            nint thumb = ResolveThumbnail(path!);
+            if (thumb != 0)
             {
                 float s = h - 6.0f;
                 Vector2 tl = iconCenter - new Vector2(s * 0.5f, s * 0.5f);
-                dl.AddImageRounded((IntPtr)thumb.Handle, tl, tl + new Vector2(s, s),
+                dl.AddImageRounded(thumb, tl, tl + new Vector2(s, s),
                     new Vector2(0, 1), new Vector2(1, 0), 0xFFFFFFFF, 3.0f);
             }
             else
@@ -689,7 +689,8 @@ public static class EditorGui
         if (!ImGui.BeginPopup(popupName))
             return;
 
-        ImGui.SetNextItemWidth(320);
+        const float width = 340.0f;
+        ImGui.SetNextItemWidth(width);
         if (_assetPickerJustOpened)
         {
             ImGui.SetKeyboardFocusHere();
@@ -698,7 +699,7 @@ public static class EditorGui
         ImGui.InputTextWithHint("##Search", $"{EditorIcons.Search}  Search assets...", ref _assetSearchFilter, 128);
         ImGui.Separator();
 
-        ImGui.BeginChild("AssetList", new Vector2(320, 340), ImGuiChildFlags.None);
+        ImGui.BeginChild("AssetList", new Vector2(width, 360), ImGuiChildFlags.None);
 
         if (PickerRow(EditorIcons.Times, Palette.TextDisabled, "None", null, string.IsNullOrEmpty(currentPath)))
         {
@@ -729,9 +730,8 @@ public static class EditorGui
             bool isSelected = string.Equals(currentPath, path, StringComparison.OrdinalIgnoreCase);
             string? subtitle = RelativeFolder(assetRoot, path);
             (string glyph, Vector4 color) = AssetGlyph(path);
-            string? thumbPath = IsImagePath(path) ? path : null;
 
-            if (PickerRow(glyph, color, filename, subtitle, isSelected, thumbPath))
+            if (PickerRow(glyph, color, filename, subtitle, isSelected, ResolveThumbnail(path)))
             {
                 outPath = path;
                 changed = true;
@@ -747,35 +747,37 @@ public static class EditorGui
     }
 
     /// <summary>
-    /// One row of the asset picker: a thumbnail or kind glyph, the asset name, and a dim folder subtitle.
-    /// Returns true when clicked. When <paramref name="thumbPath"/> is set and loads, an image preview is
-    /// drawn instead of the glyph.
+    /// One row of the asset picker: a thumbnail tile (an image preview, a rendered material sphere, or a
+    /// kind glyph), the asset name, and a dim folder subtitle. Returns true when clicked. When
+    /// <paramref name="thumbTex"/> is non-zero it is drawn as the preview; otherwise the glyph is used.
     /// </summary>
-    private static bool PickerRow(string glyph, Vector4 glyphColor, string title, string? subtitle, bool selected, string? thumbPath = null)
+    private static bool PickerRow(string glyph, Vector4 glyphColor, string title, string? subtitle, bool selected, nint thumbTex = 0)
     {
-        float rowH = MathF.Max(ImGui.GetTextLineHeight() * 2.0f + 6.0f, 34.0f);
+        float rowH = MathF.Max(ImGui.GetTextLineHeight() * 2.0f + 8.0f, 40.0f);
         Vector2 min = ImGui.GetCursorScreenPos();
         bool clicked = ImGui.Selectable($"##{title}{subtitle}", selected, ImGuiSelectableFlags.None, new Vector2(0.0f, rowH));
 
         var dl = ImGui.GetWindowDrawList();
-        float pad = 6.0f;
+        float pad = 7.0f;
         float thumb = rowH - pad * 2.0f;
-        Vector2 iconCenter = min + new Vector2(pad + thumb * 0.5f, rowH * 0.5f);
+        Vector2 tl = min + new Vector2(pad, pad);
+        Vector2 br = tl + new Vector2(thumb, thumb);
+        Vector2 iconCenter = (tl + br) * 0.5f;
 
-        Texture2D? tex = thumbPath != null ? EditorThumbnails.Get(AssetPath.Resolve(thumbPath)) : null;
-        if (tex != null)
+        // A consistent rounded tile behind every row so glyphs and previews line up in the same footprint.
+        dl.AddRectFilled(tl, br, ImGui.GetColorU32(Palette.FrameBg), 4.0f);
+        if (thumbTex != 0)
         {
-            Vector2 tl = iconCenter - new Vector2(thumb * 0.5f, thumb * 0.5f);
-            dl.AddRectFilled(tl, tl + new Vector2(thumb, thumb), 0x40000000, 3.0f);
-            dl.AddImageRounded((IntPtr)tex.Handle, tl, tl + new Vector2(thumb, thumb),
-                new Vector2(0, 1), new Vector2(1, 0), 0xFFFFFFFF, 3.0f);
+            // Framebuffer- and file-backed textures are both bottom-up, so flip V for an upright preview.
+            dl.AddImageRounded(thumbTex, tl, br, new Vector2(0, 1), new Vector2(1, 0), 0xFFFFFFFF, 4.0f);
         }
         else
         {
-            DrawGlyphCentered(dl, EditorFonts.Icons, thumb * 0.7f, iconCenter, glyph, glyphColor);
+            DrawGlyphCentered(dl, EditorFonts.Icons, thumb * 0.62f, iconCenter, glyph, glyphColor);
         }
+        dl.AddRect(tl, br, ImGui.GetColorU32(WithAlpha(Palette.Border, 0.6f)), 4.0f);
 
-        float textX = min.X + pad * 2.0f + thumb;
+        float textX = br.X + pad;
         uint titleCol = ImGui.GetColorU32(Palette.Text);
         if (string.IsNullOrEmpty(subtitle))
         {
@@ -789,6 +791,20 @@ public static class EditorGui
             dl.AddText(new Vector2(textX, top + lineH), ImGui.GetColorU32(Palette.TextDisabled), subtitle);
         }
         return clicked;
+    }
+
+    // The preview texture handle for a picker row / asset slot: a cached image thumbnail, a rendered
+    // material sphere, or 0 to fall back to a kind glyph.
+    private static nint ResolveThumbnail(string path)
+    {
+        if (IsImagePath(path))
+        {
+            Texture2D? tex = EditorThumbnails.Get(AssetPath.Resolve(path));
+            return tex != null ? (nint)tex.Handle : 0;
+        }
+        if (path.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
+            return MaterialThumbnails.Get(AssetPath.Resolve(path));
+        return 0;
     }
 
     // ----- Script slot -----------------------------------------------------------------------------
