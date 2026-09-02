@@ -97,7 +97,10 @@ public sealed class Window : IDisposable
         }
 
         _input = _window.CreateInput();
-        global::Spot.Core.Input.CursorController = new SilkCursorController(_input);
+        // Centre in the mouse-position coordinate space (the window's client size, matching IMouse.Position)
+        // so recentring keeps the cursor comfortably inside the window regardless of DPI/framebuffer scale.
+        global::Spot.Core.Input.CursorController = new SilkCursorController(
+            _input, () => new System.Numerics.Vector2(_window.Size.X / 2f, _window.Size.Y / 2f));
         SetupCallbacks();
 
         // Apply engine-wide VSync changes to this window at runtime (the `vsync` console command, an editor
@@ -284,28 +287,87 @@ public sealed class Window : IDisposable
     }
 
     // Drives the hardware cursor through the window's Silk mouse, letting Input lock/unlock it without
-    // depending on Silk. Raw mode locks and hides the cursor (relative deltas for mouse-look).
+    // depending on Silk. Locking hides the cursor and confines it *manually*: every frame Tick() reads how
+    // far it drifted from the window centre, reports that as relative motion, then warps it back. GLFW's
+    // own Raw/Disabled "confine" modes proved unreliable (they read back as applied while the OS cursor
+    // still roamed free and escaped the window), so we recentre it ourselves — the backend-independent
+    // way to guarantee the cursor stays put during mouse-look.
     private sealed class SilkCursorController : ICursorController
     {
         private readonly IInputContext _input;
+        private readonly Func<System.Numerics.Vector2> _windowCenter;
+        private bool _locked;
+        private bool _justLocked;
+        private System.Numerics.Vector2 _unlockPosition;
 
-        public SilkCursorController(IInputContext input) => _input = input;
+        public SilkCursorController(IInputContext input, Func<System.Numerics.Vector2> windowCenter)
+        {
+            _input = input;
+            _windowCenter = windowCenter;
+        }
 
         public bool Locked
         {
-            get
-            {
-                IReadOnlyList<IMouse> mice = _input.Mice;
-                return mice.Count > 0 && mice[0].Cursor.CursorMode == CursorMode.Raw;
-            }
+            get => _locked;
 
             set
             {
-                IReadOnlyList<IMouse> mice = _input.Mice;
-                if (mice.Count > 0)
+                if (value == _locked)
                 {
-                    mice[0].Cursor.CursorMode = value ? CursorMode.Raw : CursorMode.Normal;
+                    return;
                 }
+
+                _locked = value;
+                IMouse? mouse = _input.Mice.Count > 0 ? _input.Mice[0] : null;
+                if (value)
+                {
+                    // Remember where to restore the cursor to on unlock, then hide it and let Tick() take
+                    // over confinement from the next frame.
+                    if (mouse != null)
+                    {
+                        _unlockPosition = mouse.Position;
+                        mouse.Cursor.CursorMode = CursorMode.Hidden;
+                    }
+                    _justLocked = true;
+                }
+                else if (mouse != null)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Normal;
+                    mouse.Position = _unlockPosition; // reappear where the lock began, not parked at centre
+                }
+
+                global::Spot.Core.Input.RelativeMouseMode = value;
+            }
+        }
+
+        public void Tick()
+        {
+            if (!_locked || _input.Mice.Count == 0)
+            {
+                return;
+            }
+
+            IMouse mouse = _input.Mice[0];
+            // Keep it hidden in case anything (e.g. the ImGui overlay) reset the cursor this frame.
+            if (mouse.Cursor.CursorMode != CursorMode.Hidden)
+            {
+                mouse.Cursor.CursorMode = CursorMode.Hidden;
+            }
+
+            System.Numerics.Vector2 center = _windowCenter();
+            if (_justLocked)
+            {
+                // First locked frame: just centre the cursor; the offset from the press point isn't motion.
+                mouse.Position = center;
+                _justLocked = false;
+                return;
+            }
+
+            System.Numerics.Vector2 delta = mouse.Position - center;
+            if (delta != System.Numerics.Vector2.Zero)
+            {
+                global::Spot.Core.Input.AddMouseMotion(delta);
+                mouse.Position = center; // snap back so the next frame's offset is pure movement
             }
         }
     }

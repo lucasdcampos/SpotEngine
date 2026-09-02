@@ -12,11 +12,14 @@ worked:
 - **Held / pressed / released** for keyboard keys and mouse buttons (the "down this frame" and "up
   this frame" variants fire for a single frame, so they're right for one-shot actions like a jump).
 - **Mouse position** and **scroll delta** for the current frame.
-- **Cursor lock**, which hides and captures the cursor for mouse-look. The engine transparently
-  frees the cursor while it owns input (see [Capture](#capture-and-the-console) below) and restores
-  your requested state afterward. In the browser this maps to the Pointer Lock API; because browsers
-  only grant it from a user gesture, the lock engages on the first canvas click after the game asks
-  for it (mouse-look then works and the cursor hides, exactly as on desktop).
+- **Cursor lock**, which hides and captures the cursor for mouse-look. While locked, `MousePosition`
+  keeps reporting a virtual position that moves with the mouse, so your frame-to-frame delta drives
+  the look; the hardware cursor stays confined to the window (on desktop the engine recentres it each
+  frame rather than relying on the windowing backend's confine mode, which proved unreliable). The
+  engine transparently frees the cursor while it owns input (see [Capture](#capture-and-the-console)
+  below) and restores your requested state afterward. In the browser this maps to the Pointer Lock
+  API; because browsers only grant it from a user gesture, the lock engages on the first canvas click
+  after the game asks for it (mouse-look then works and the cursor hides, exactly as on desktop).
 
 This is the most direct option and is perfect for prototypes and editor tooling. For shipping game
 code, prefer **actions**, so the keys aren't hard-coded.
