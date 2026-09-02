@@ -72,6 +72,13 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
         _gl.DrawElements(Map(primitive), count, DrawElementsType.UnsignedInt, null);
 
     /// <inheritdoc />
+    public unsafe void DrawElementsInstanced(PrimitiveKind primitive, uint count, uint instanceCount) =>
+        _gl.DrawElementsInstanced(Map(primitive), count, DrawElementsType.UnsignedInt, null, instanceCount);
+
+    /// <inheritdoc />
+    public void VertexAttribDivisor(uint index, uint divisor) => _gl.VertexAttribDivisor(index, divisor);
+
+    /// <inheritdoc />
     public BufferHandle CreateBuffer() => new(_gl.GenBuffer());
 
     /// <inheritdoc />

@@ -81,6 +81,13 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
         JsDrawElements(MapPrimitive(primitive), (int)count, GLc.UnsignedInt, 0);
 
     /// <inheritdoc />
+    public void DrawElementsInstanced(PrimitiveKind primitive, uint count, uint instanceCount) =>
+        JsDrawElementsInstanced(MapPrimitive(primitive), (int)count, GLc.UnsignedInt, 0, (int)instanceCount);
+
+    /// <inheritdoc />
+    public void VertexAttribDivisor(uint index, uint divisor) => JsVertexAttribDivisor((int)index, (int)divisor);
+
+    /// <inheritdoc />
     public BufferHandle CreateBuffer() => new((uint)JsCreateBuffer());
 
     /// <inheritdoc />
@@ -454,6 +461,12 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
 
     [JSImport("gl.drawElements", Module)]
     private static partial void JsDrawElements(int mode, int count, int type, int offset);
+
+    [JSImport("gl.drawElementsInstanced", Module)]
+    private static partial void JsDrawElementsInstanced(int mode, int count, int type, int offset, int instanceCount);
+
+    [JSImport("gl.vertexAttribDivisor", Module)]
+    private static partial void JsVertexAttribDivisor(int index, int divisor);
 
     [JSImport("gl.createBuffer", Module)]
     private static partial int JsCreateBuffer();

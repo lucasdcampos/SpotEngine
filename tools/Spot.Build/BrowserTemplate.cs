@@ -95,6 +95,8 @@ const glImports = {
     blendFunc: (s, d) => gl.blendFunc(s, d),
     drawArrays: (mode, first, count) => gl.drawArrays(mode, first, count),
     drawElements: (mode, count, type, offset) => gl.drawElements(mode, count, type, offset),
+    drawElementsInstanced: (mode, count, type, offset, instanceCount) =>
+        gl.drawElementsInstanced(mode, count, type, offset, instanceCount),
 
     createBuffer: () => reg(gl.createBuffer()),
     bindBuffer: (target, b) => gl.bindBuffer(target, objs[b]),
@@ -108,6 +110,7 @@ const glImports = {
     enableVertexAttribArray: (i) => gl.enableVertexAttribArray(i),
     vertexAttribPointer: (i, size, type, norm, stride, offset) =>
         gl.vertexAttribPointer(i, size, type, norm, stride, offset),
+    vertexAttribDivisor: (i, divisor) => gl.vertexAttribDivisor(i, divisor),
     deleteVertexArray: (v) => gl.deleteVertexArray(objs[v]),
 
     createShader: (type) => reg(gl.createShader(type)),

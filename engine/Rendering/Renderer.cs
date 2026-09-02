@@ -143,4 +143,18 @@ public static partial class Renderer
         vertexArray.Bind();
         Device.DrawElements(PrimitiveKind.Triangles, indexCount);
     }
+
+    /// <summary>
+    /// Draws <paramref name="instanceCount"/> copies of the given indexed geometry in a single call, each
+    /// reading its own per-instance attributes. The vertex array must have an index buffer and a
+    /// per-instance vertex buffer (see <see cref="VertexArray.AddInstancedVertexBuffer"/>).
+    /// </summary>
+    /// <param name="vertexArray">The instanced vertex array to draw. It must have an index buffer set.</param>
+    /// <param name="indexCount">The number of indices per instance.</param>
+    /// <param name="instanceCount">The number of instances to draw.</param>
+    public static void DrawIndexedInstanced(VertexArray vertexArray, uint indexCount, uint instanceCount)
+    {
+        vertexArray.Bind();
+        Device.DrawElementsInstanced(PrimitiveKind.Triangles, indexCount, instanceCount);
+    }
 }
