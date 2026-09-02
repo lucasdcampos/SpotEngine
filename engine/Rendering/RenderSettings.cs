@@ -55,6 +55,16 @@ public static class RenderSettings
     public static bool Shadows { get; set; } = true;
 
     /// <summary>
+    /// Whether point lights are assigned to a view-frustum cluster grid (froxels) each frame so a fragment
+    /// only shades the lights whose volume reaches its cluster, instead of testing every light. This scales
+    /// the point-light cost with lights-per-cluster rather than total lights. When off, every lit fragment
+    /// loops over all submitted lights (the brute-force path). Defaults off; enable it for scenes with many
+    /// point lights. Falls back to brute force automatically for orthographic/degenerate cameras and on
+    /// backends without the required GPU features.
+    /// </summary>
+    public static bool ClusteredLighting { get; set; } = false;
+
+    /// <summary>
     /// The side length, in world units, of the square region around the camera that receives directional
     /// shadows. The shadow frustum follows the camera, so shadows work everywhere in the world (unlike the
     /// old origin-anchored box) — this only bounds how far from the viewer they reach. Larger covers more

@@ -91,6 +91,14 @@ public static partial class Renderer3D
     private static BufferHandle s_lightUbo;
     private static bool s_lightsSupported;
 
+    // Clustered forward lighting state, filled by BeginScene when RenderSettings.ClusteredLighting is on and
+    // the camera is perspective. s_clusterActive gates the shader's clustered path per scene.
+    private static LightClusters? s_clusters;
+    private static int s_clusterActive;
+    private static float s_clusterNear;
+    private static float s_clusterFar;
+    private static Vector2 s_screenSize;
+
     private static int s_hasDirLight = 0;
     private static int s_castShadows = 0;
     private static Vector3 s_lightDir = Vector3.UnitY;
@@ -181,6 +189,8 @@ public static partial class Renderer3D
         s_instancedShader!.BindUniformBlock("Lights", LightsBinding);
         s_skinnedShader!.BindUniformBlock("Lights", LightsBinding);
         s_waterShader!.BindUniformBlock("Lights", LightsBinding);
+
+        s_clusters = new LightClusters();
     }
 
     /// <summary>
@@ -223,6 +233,35 @@ public static partial class Renderer3D
             IGraphicsDevice device = Renderer.Device;
             device.BindBuffer(BufferKind.Uniform, s_lightUbo);
             device.BufferSubData<GpuPointLight>(BufferKind.Uniform, 0, s_gpuLights.AsSpan(0, s_pointLightCount));
+        }
+
+        UpdateClusters(viewProjection, pointLights.Slice(0, s_pointLightCount));
+    }
+
+    // Builds the light cluster grid for this scene when clustered lighting is enabled and viable, else marks
+    // the brute-force path. Always leaves the cluster textures bound (units 3/4) so the shader's usamplers
+    // have a valid integer texture even when clustering is off.
+    private static void UpdateClusters(Matrix4x4 viewProjection, ReadOnlySpan<PointLightData> lights)
+    {
+        s_clusterActive = 0;
+        if (s_clusters is null)
+        {
+            return;
+        }
+
+        s_screenSize = new Vector2(Renderer.ViewportWidth, Renderer.ViewportHeight);
+        if (RenderSettings.ClusteredLighting && s_pointLightCount > 0 &&
+            s_screenSize.X > 0 && s_screenSize.Y > 0 &&
+            s_clusters.Build(viewProjection, s_inverseViewProjection, s_cameraPosition, s_screenSize.X, s_screenSize.Y, lights))
+        {
+            s_clusterActive = 1;
+            s_clusterNear = s_clusters.Near;
+            s_clusterFar = s_clusters.Far;
+        }
+        else
+        {
+            // Keep the textures bound so the usamplers stay valid on strict backends (WebGL2).
+            s_clusters.Bind();
         }
     }
 
@@ -314,11 +353,11 @@ public static partial class Renderer3D
         // rather than on every draw call.
         if (shaderType == 1)
         {
-            EnsureFrameConstants(activeShader, ref s_waterConstantsStamp);
+            EnsureFrameConstants(activeShader, ref s_waterConstantsStamp, clusterCapable: false);
         }
         else
         {
-            EnsureFrameConstants(activeShader, ref s_stdConstantsStamp);
+            EnsureFrameConstants(activeShader, ref s_stdConstantsStamp, clusterCapable: true);
         }
 
         activeShader.SetUniform("uModel", model);
@@ -406,7 +445,7 @@ public static partial class Renderer3D
             s_lastMeshShader = s_instancedShader;
         }
 
-        EnsureFrameConstants(s_instancedShader, ref s_instancedConstantsStamp);
+        EnsureFrameConstants(s_instancedShader, ref s_instancedConstantsStamp, clusterCapable: true);
 
         s_instancedShader.SetUniform("uTexture", 0);
         s_instancedShader.SetUniform("uTiling", material?.Tiling ?? Vector2.One);
@@ -468,7 +507,7 @@ public static partial class Renderer3D
             s_lastMeshShader = activeShader;
         }
 
-        EnsureFrameConstants(activeShader, ref s_skinnedConstantsStamp);
+        EnsureFrameConstants(activeShader, ref s_skinnedConstantsStamp, clusterCapable: true);
 
         activeShader.SetUniform("uColor", color);
         activeShader.SetUniform("uTexture", 0);
@@ -546,7 +585,7 @@ public static partial class Renderer3D
     // per-shader stamp is compared against the current scene stamp, so the first draw that uses each shader
     // pays the upload and the rest skip it — GL keeps a program's uniform values across bind switches, so
     // re-selecting a shader later in the pass doesn't need them re-sent.
-    private static void EnsureFrameConstants(Shader shader, ref int shaderStamp)
+    private static void EnsureFrameConstants(Shader shader, ref int shaderStamp, bool clusterCapable)
     {
         if (shaderStamp == s_sceneStamp)
         {
@@ -556,11 +595,12 @@ public static partial class Renderer3D
         shaderStamp = s_sceneStamp;
         shader.SetUniform("uViewProjection", s_viewProjection);
         shader.SetUniform("uCameraPos", s_cameraPosition);
-        ApplyLighting(shader);
+        ApplyLighting(shader, clusterCapable);
     }
 
     // Uploads the directional light, shadow map and point lights shared by the standard and skinned shaders.
-    private static void ApplyLighting(Shader shader)
+    // clusterCapable is false for the water shader, which has no cluster uniforms (it always brute-forces).
+    private static void ApplyLighting(Shader shader, bool clusterCapable)
     {
         shader.SetUniform("uHasDirectionalLight", s_hasDirLight);
         if (s_hasDirLight == 1)
@@ -591,6 +631,22 @@ public static partial class Renderer3D
         // The lights themselves live in the shared "Lights" UBO (uploaded once per scene in BeginScene);
         // only the per-program count uniform is set here.
         shader.SetUniform("uPointLightCount", s_pointLightCount);
+
+        // Clustered lighting: the grid/index lookup textures live at fixed units; uClustered gates whether
+        // the shader reads them or falls back to looping all lights. Only the standard-family shaders carry
+        // these uniforms (water always brute-forces), so skip them otherwise.
+        if (clusterCapable)
+        {
+            shader.SetUniform("uClustered", s_clusterActive);
+            if (s_clusterActive == 1)
+            {
+                shader.SetUniform("uNear", s_clusterNear);
+                shader.SetUniform("uFar", s_clusterFar);
+                shader.SetUniform("uScreenSize", s_screenSize);
+                shader.SetUniform("uClusterGrid", (int)LightClusters.GridTextureUnit);
+                shader.SetUniform("uLightIndices", (int)LightClusters.IndexTextureUnit);
+            }
+        }
     }
 
     /// <summary>

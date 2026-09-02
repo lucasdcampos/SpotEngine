@@ -176,6 +176,10 @@ public enum TextureInternalFormat
 
     /// <summary>Packed 24-bit depth + 8-bit stencil, for a render target's depth-stencil attachment.</summary>
     Depth24Stencil8,
+
+    /// <summary>A single 32-bit unsigned integer channel, sampled as a <c>usampler2D</c> — for GPU lookup
+    /// tables such as the light cluster grid and light-index list. Must use nearest filtering.</summary>
+    R32UI,
 }
 
 /// <summary>The attachment point a texture occupies on a framebuffer.</summary>

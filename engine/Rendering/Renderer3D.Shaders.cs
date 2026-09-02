@@ -122,6 +122,21 @@ public static partial class Renderer3D
         };
         uniform int uPointLightCount;
 
+        // Clustered forward lighting: when uClustered is 1, a fragment loops only the lights assigned to its
+        // froxel via two integer lookup textures (grid: packed offset<<8|count per froxel; indices: the flat
+        // per-froxel light lists). Grid dimensions must match LightClusters.cs.
+        uniform int uClustered;
+        uniform float uNear;
+        uniform float uFar;
+        uniform vec2 uScreenSize;
+        uniform highp usampler2D uClusterGrid;
+        uniform highp usampler2D uLightIndices;
+        const int CLUSTERS_X = 16;
+        const int CLUSTERS_Y = 9;
+        const int CLUSTERS_Z = 24;
+        const int GRID_TEX_W = 64;
+        const int INDEX_TEX_W = 256;
+
         out vec4 fragColor;
 
         // Normal-offset shadows: instead of a depth bias measured in the light's NDC z (which balloons
@@ -174,6 +189,66 @@ public static partial class Renderer3D
             return normalize(TBN * tangentNormal);
         }
 
+        // One point light's Blinn-Phong contribution, shared by the brute-force and clustered loops.
+        vec3 pointLightContribution(int i, vec3 normal, vec3 viewDir, vec3 F0)
+        {
+            vec3 lightPos = uLights[i].positionRange.xyz;
+            float lightRange = uLights[i].positionRange.w;
+            vec3 lightCol = uLights[i].colorIntensity.rgb;
+            float lightInt = uLights[i].colorIntensity.a;
+
+            vec3 lightDir = lightPos - vFragPos;
+            float distance = length(lightDir);
+            if (distance >= lightRange) return vec3(0.0);
+
+            lightDir = normalize(lightDir);
+            vec3 halfVector = normalize(lightDir + viewDir);
+            float diff = max(dot(normal, lightDir), 0.0);
+            float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
+            vec3 specular = lightCol * spec * F0;
+            float attenuation = 1.0 - (distance / lightRange);
+            attenuation = attenuation * attenuation;
+            return (lightCol * diff + specular) * lightInt * attenuation;
+        }
+
+        // The froxel this fragment falls in: screen tile in x/y, exponential radial-distance slice in z.
+        int froxelIndex()
+        {
+            float dist = length(vFragPos - uCameraPos);
+            float zf = log(max(dist, uNear) / uNear) / log(uFar / uNear);
+            int zSlice = clamp(int(zf * float(CLUSTERS_Z)), 0, CLUSTERS_Z - 1);
+            vec2 tileSize = uScreenSize / vec2(float(CLUSTERS_X), float(CLUSTERS_Y));
+            ivec2 tile = clamp(ivec2(gl_FragCoord.xy / tileSize), ivec2(0), ivec2(CLUSTERS_X - 1, CLUSTERS_Y - 1));
+            return tile.x + tile.y * CLUSTERS_X + zSlice * CLUSTERS_X * CLUSTERS_Y;
+        }
+
+        // Sums the point lights affecting this fragment — its froxel's list when clustered, else all of them.
+        vec3 accumulatePointLights(vec3 normal, vec3 viewDir, vec3 F0)
+        {
+            vec3 sum = vec3(0.0);
+            if (uClustered == 1)
+            {
+                int fro = froxelIndex();
+                uint packed = texelFetch(uClusterGrid, ivec2(fro % GRID_TEX_W, fro / GRID_TEX_W), 0).r;
+                uint offset = packed >> 8u;
+                uint count = packed & 255u;
+                for (uint k = 0u; k < count; k++)
+                {
+                    uint li = offset + k;
+                    int i = int(texelFetch(uLightIndices, ivec2(int(li) % INDEX_TEX_W, int(li) / INDEX_TEX_W), 0).r);
+                    sum += pointLightContribution(i, normal, viewDir, F0);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < uPointLightCount; i++)
+                {
+                    sum += pointLightContribution(i, normal, viewDir, F0);
+                }
+            }
+            return sum;
+        }
+
         void main()
         {
             vec2 scale2D = vec2(1.0);
@@ -212,30 +287,7 @@ public static partial class Renderer3D
                 lighting += uAmbientIntensity * uLightColor;
             }
             
-            for(int i = 0; i < uPointLightCount; i++)
-            {
-                vec3 lightPos = uLights[i].positionRange.xyz;
-                float lightRange = uLights[i].positionRange.w;
-                vec3 lightCol = uLights[i].colorIntensity.rgb;
-                float lightInt = uLights[i].colorIntensity.a;
-
-                vec3 lightDir = lightPos - vFragPos;
-                float distance = length(lightDir);
-                if(distance < lightRange)
-                {
-                    lightDir = normalize(lightDir);
-                    vec3 halfVector = normalize(lightDir + viewDir);
-
-                    float diff = max(dot(normal, lightDir), 0.0);
-                    float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
-                    vec3 specular = lightCol * spec * F0;
-
-                    float attenuation = 1.0 - (distance / lightRange);
-                    attenuation = attenuation * attenuation;
-
-                    lighting += (lightCol * diff + specular) * lightInt * attenuation;
-                }
-            }
+            lighting += accumulatePointLights(normal, viewDir, F0);
             
             vec3 emissive = uEmissiveColor * uEmissiveIntensity;
 
