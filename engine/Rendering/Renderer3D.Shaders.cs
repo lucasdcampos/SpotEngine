@@ -110,14 +110,17 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
+        // Point lights live in a std140 uniform block so the count scales far past the old fixed four.
+        // Each light is two vec4s (position+range, color+intensity) to sidestep std140's vec3 padding.
+        const int MAX_LIGHTS = 256;
         struct PointLight {
-            vec3 position;
-            vec3 color;
-            float intensity;
-            float range;
+            vec4 positionRange;
+            vec4 colorIntensity;
+        };
+        layout(std140) uniform Lights {
+            PointLight uLights[MAX_LIGHTS];
         };
         uniform int uPointLightCount;
-        uniform PointLight uPointLights[4];
 
         out vec4 fragColor;
 
@@ -209,23 +212,28 @@ public static partial class Renderer3D
                 lighting += uAmbientIntensity * uLightColor;
             }
             
-            for(int i = 0; i < uPointLightCount && i < 4; i++)
+            for(int i = 0; i < uPointLightCount; i++)
             {
-                vec3 lightDir = uPointLights[i].position - vFragPos;
+                vec3 lightPos = uLights[i].positionRange.xyz;
+                float lightRange = uLights[i].positionRange.w;
+                vec3 lightCol = uLights[i].colorIntensity.rgb;
+                float lightInt = uLights[i].colorIntensity.a;
+
+                vec3 lightDir = lightPos - vFragPos;
                 float distance = length(lightDir);
-                if(distance < uPointLights[i].range)
+                if(distance < lightRange)
                 {
                     lightDir = normalize(lightDir);
                     vec3 halfVector = normalize(lightDir + viewDir);
-                    
+
                     float diff = max(dot(normal, lightDir), 0.0);
                     float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
-                    vec3 specular = uPointLights[i].color * spec * F0;
-                    
-                    float attenuation = 1.0 - (distance / uPointLights[i].range);
+                    vec3 specular = lightCol * spec * F0;
+
+                    float attenuation = 1.0 - (distance / lightRange);
                     attenuation = attenuation * attenuation;
-                    
-                    lighting += (uPointLights[i].color * diff + specular) * uPointLights[i].intensity * attenuation;
+
+                    lighting += (lightCol * diff + specular) * lightInt * attenuation;
                 }
             }
             
@@ -320,14 +328,16 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
+        // Shared std140 point-light block (see the standard shader). Two vec4s per light.
+        const int MAX_LIGHTS = 256;
         struct PointLight {
-            vec3 position;
-            vec3 color;
-            float intensity;
-            float range;
+            vec4 positionRange;
+            vec4 colorIntensity;
+        };
+        layout(std140) uniform Lights {
+            PointLight uLights[MAX_LIGHTS];
         };
         uniform int uPointLightCount;
-        uniform PointLight uPointLights[4];
 
         // Sky colours of the active procedural skybox, so the water reflects the same sky the scene
         // shows. uHasSkybox is 0 when the scene has no skybox, in which case a neutral fallback is used.
@@ -504,20 +514,25 @@ public static partial class Renderer3D
                 specularSum += spec * uLightColor * (1.0 - shadow) * 2.5;
             }
 
-            for (int i = 0; i < uPointLightCount && i < 4; i++)
+            for (int i = 0; i < uPointLightCount; i++)
             {
-                vec3 Lv = uPointLights[i].position - vFragPos;
+                vec3 lightPos = uLights[i].positionRange.xyz;
+                float lightRange = uLights[i].positionRange.w;
+                vec3 lightCol = uLights[i].colorIntensity.rgb;
+                float lightInt = uLights[i].colorIntensity.a;
+
+                vec3 Lv = lightPos - vFragPos;
                 float dist = length(Lv);
-                if (dist < uPointLights[i].range)
+                if (dist < lightRange)
                 {
                     vec3 L = Lv / max(dist, 1e-4);
-                    float atten = 1.0 - (dist / uPointLights[i].range);
+                    float atten = 1.0 - (dist / lightRange);
                     atten *= atten;
                     float diff = max(dot(N, L), 0.0);
-                    lit += bodyColor * uPointLights[i].color * uPointLights[i].intensity * diff * atten;
+                    lit += bodyColor * lightCol * lightInt * diff * atten;
                     vec3 H = normalize(L + viewDir);
                     float spec = pow(max(dot(N, H), 0.0), uSpecularPower);
-                    specularSum += spec * uPointLights[i].color * uPointLights[i].intensity * atten * 2.0;
+                    specularSum += spec * lightCol * lightInt * atten * 2.0;
                 }
             }
 

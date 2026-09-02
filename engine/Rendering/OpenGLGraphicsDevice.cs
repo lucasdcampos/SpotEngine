@@ -112,6 +112,21 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     public void DeleteBuffer(BufferHandle handle) => _gl.DeleteBuffer(handle.Id);
 
     /// <inheritdoc />
+    public bool SupportsUniformBuffers => true;
+
+    /// <inheritdoc />
+    public void BindBufferBase(BufferKind kind, uint bindingPoint, BufferHandle handle) =>
+        _gl.BindBufferBase(Map(kind), bindingPoint, handle.Id);
+
+    /// <inheritdoc />
+    public uint GetUniformBlockIndex(ProgramHandle program, string blockName) =>
+        _gl.GetUniformBlockIndex(program.Id, blockName);
+
+    /// <inheritdoc />
+    public void UniformBlockBinding(ProgramHandle program, uint blockIndex, uint bindingPoint) =>
+        _gl.UniformBlockBinding(program.Id, blockIndex, bindingPoint);
+
+    /// <inheritdoc />
     public VertexArrayHandle CreateVertexArray() => new(_gl.GenVertexArray());
 
     /// <inheritdoc />
@@ -368,6 +383,7 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     {
         BufferKind.Vertex => BufferTargetARB.ArrayBuffer,
         BufferKind.Index => BufferTargetARB.ElementArrayBuffer,
+        BufferKind.Uniform => BufferTargetARB.UniformBuffer,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown buffer kind."),
     };
 
