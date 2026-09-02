@@ -122,6 +122,14 @@ bind-pose bounds padded first, so animation can never pop a limb out of view. Th
 surface exposes `VisibleMeshCount` / `CulledMeshCount` (updated each frame) and a
 `DisableFrustumCulling` toggle for A/B comparison.
 
+**GPU instancing.** After culling, standard (non-water) rigid meshes are grouped by mesh + material and
+drawn with **instanced draw calls** — one call per group, however many copies it holds — instead of one
+call per object. Each copy's world matrix and color travel as per-instance vertex attributes, so a forest
+of hundreds of identical trees costs a handful of draw calls rather than hundreds. The grouping buffers
+are reused frame to frame, so the path is allocation-free once warmed up. Skinned and water meshes keep
+their own per-draw paths. This flows through `IGraphicsDevice` (a `DrawElementsInstanced` /
+`VertexAttribDivisor` seam), so it runs on both the desktop and WebGL2 backends.
+
 ## Measuring performance
 
 `RenderSettings.VSync` (on by default) gates whether the buffer swap waits for the monitor's vertical

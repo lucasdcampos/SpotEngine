@@ -75,6 +75,7 @@ public sealed class Mesh : IDisposable
     private readonly VertexArray _vao;
     private readonly VertexBuffer _vbo;
     private readonly IndexBuffer _ibo;
+    private VertexArray? _instancedVao;
 
     /// <summary>
     /// Initializes a new rigid <see cref="Mesh"/> and uploads its data to the GPU.
@@ -157,9 +158,35 @@ public sealed class Mesh : IDisposable
     /// <summary>Gets the vertex array backing this mesh, for issuing draw calls.</summary>
     internal VertexArray VertexArray => _vao;
 
+    /// <summary>
+    /// Lazily builds (once, then cached) a vertex array that pairs this mesh's geometry with a shared
+    /// per-instance buffer, so a batch of identical meshes can be drawn in a single instanced call. Only
+    /// meaningful for rigid meshes: the instance attributes occupy locations 3+, which the skinned layout
+    /// already uses for bone data.
+    /// </summary>
+    /// <param name="instanceBuffer">
+    /// The shared per-instance buffer (model matrix rows + color). Its GPU handle must stay stable for the
+    /// life of the mesh, since the returned VAO records it — the renderer keeps one fixed-capacity buffer.
+    /// </param>
+    /// <returns>The cached instanced vertex array.</returns>
+    internal VertexArray GetInstancedVertexArray(VertexBuffer instanceBuffer)
+    {
+        if (_instancedVao is null)
+        {
+            var vao = new VertexArray();
+            vao.AddVertexBuffer(_vbo);                       // locations 0-2: position, normal, texcoord
+            vao.AddInstancedVertexBuffer(instanceBuffer, 1); // locations 3-6: model matrix, 7: color
+            vao.SetIndexBuffer(_ibo);
+            _instancedVao = vao;
+        }
+
+        return _instancedVao;
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        _instancedVao?.Dispose();
         _vao.Dispose();
         _vbo.Dispose();
         _ibo.Dispose();

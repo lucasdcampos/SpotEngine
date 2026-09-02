@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Spot.Assets;
 using Spot.Core;
 using Spot.Rendering;
@@ -29,6 +31,13 @@ public static class RenderSystem
     // Synthesized when HDR is on but the scene has no PostProcessingComponent, so tone mapping and FXAA
     // still apply. Reused across frames rather than reallocated each render.
     private static PostProcessingComponent? s_defaultPostProcess;
+
+    // Instancing buckets for the standard rigid mesh pass: entities sharing a (mesh, material) draw in one
+    // instanced call. Both the dictionary and its lists are reused frame to frame (lists returned to a pool
+    // after each flush) so the render path stays allocation-free once warmed up.
+    private readonly record struct BatchKey(Mesh Mesh, Material? Material);
+    private static readonly Dictionary<BatchKey, List<Renderer3D.InstanceData>> s_batches = new();
+    private static readonly Stack<List<Renderer3D.InstanceData>> s_batchPool = new();
 
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
@@ -256,8 +265,20 @@ public static class RenderSystem
 
             Matrix4x4 world = transform.Matrix;
             int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
-            DrawMeshes(meshRenderer, world, color, texture, shaderType);
+
+            // Standard rigid meshes are gathered into instanced batches (drawn after the loop); water keeps
+            // its own per-draw path (a distinct shader that isn't instanced).
+            if (shaderType == (int)Spot.Assets.MaterialShaderType.Standard)
+            {
+                CollectInstances(meshRenderer, world, color);
+            }
+            else
+            {
+                DrawMeshes(meshRenderer, world, color, texture, shaderType);
+            }
         }
+
+        FlushBatches();
 
         Spot.Rendering.RendererDebug.VisibleMeshCount = visible;
         Spot.Rendering.RendererDebug.CulledMeshCount = culled;
@@ -424,6 +445,67 @@ public static class RenderSystem
         Spot.Physics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
         Spot.Physics.Aabb3d worldBounds = local.Transform(world);
         return frustum.Intersects(worldBounds);
+    }
+
+    /// <summary>
+    /// Gathers a standard rigid renderer's submesh(es) into the instancing buckets, honoring
+    /// <see cref="MeshComponent.SubmeshIndex"/> exactly as <see cref="DrawMeshes"/> does. The actual draws
+    /// happen in <see cref="FlushBatches"/>, one instanced call per (mesh, material) bucket.
+    /// </summary>
+    private static void CollectInstances(MeshComponent meshRenderer, Matrix4x4 world, Vector4 color)
+    {
+        IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
+        int index = meshRenderer.SubmeshIndex;
+        if (index < 0)
+        {
+            foreach (Mesh mesh in meshes)
+            {
+                AddInstance(mesh, meshRenderer.Material, world, color);
+            }
+        }
+        else if (index < meshes.Count)
+        {
+            AddInstance(meshes[index], meshRenderer.Material, world, color);
+        }
+    }
+
+    // Appends one instance to the bucket for its (mesh, material), creating the bucket (from the pool) on
+    // first use. Skinned meshes never reach here — they draw on the non-instanced path.
+    private static void AddInstance(Mesh mesh, Material? material, Matrix4x4 world, Vector4 color)
+    {
+        if (mesh.IsSkinned)
+        {
+            return;
+        }
+
+        var key = new BatchKey(mesh, material);
+        if (!s_batches.TryGetValue(key, out List<Renderer3D.InstanceData>? list))
+        {
+            list = s_batchPool.Count > 0 ? s_batchPool.Pop() : new List<Renderer3D.InstanceData>();
+            s_batches[key] = list;
+        }
+
+        list.Add(new Renderer3D.InstanceData { Model = world, Color = color });
+    }
+
+    // Draws every gathered bucket as a single instanced call, then clears the buckets and returns their
+    // lists to the pool for next frame.
+    private static void FlushBatches()
+    {
+        foreach (KeyValuePair<BatchKey, List<Renderer3D.InstanceData>> batch in s_batches)
+        {
+            List<Renderer3D.InstanceData> instances = batch.Value;
+            Renderer3D.DrawMeshInstanced(
+                batch.Key.Mesh,
+                CollectionsMarshal.AsSpan(instances),
+                batch.Key.Material?.Texture,
+                batch.Key.Material);
+
+            instances.Clear();
+            s_batchPool.Push(instances);
+        }
+
+        s_batches.Clear();
     }
 
     /// <summary>

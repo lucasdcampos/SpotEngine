@@ -15,20 +15,63 @@ public static partial class Renderer3D
         uniform mat4 uViewProjection;
         uniform mat4 uModel;
         uniform mat4 uLightSpaceMatrix;
+        uniform vec4 uColor;
+        uniform vec3 uModelScale;
 
         out vec3 vFragPos;
         out vec4 vFragPosLightSpace;
         out vec3 vNormal;
         out vec2 vTexCoord;
+        out vec4 vColor;
+        out vec3 vModelScale;
 
         void main()
         {
             vec4 worldPos = uModel * vec4(aPosition, 1.0);
             vFragPos = worldPos.xyz;
             vFragPosLightSpace = uLightSpaceMatrix * worldPos;
-            
+
             vNormal = mat3(uModel) * aNormal;
             vTexCoord = aTexCoord;
+            vColor = uColor;
+            vModelScale = uModelScale;
+            gl_Position = uViewProjection * worldPos;
+        }
+        """;
+
+    // Instanced counterpart of the standard vertex shader: the model matrix and color come from
+    // per-instance vertex attributes (locations 3-6 for the mat4, 7 for the color) instead of uniforms,
+    // so a whole batch of identical meshes draws in one call. Model scale for auto-tiling is derived
+    // from the instance matrix's basis vectors. Feeds the same FragmentShaderSource as the others.
+    private const string InstancedVertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 1) in vec3 aNormal;
+        layout (location = 2) in vec2 aTexCoord;
+        layout (location = 3) in mat4 iModel;   // occupies locations 3,4,5,6
+        layout (location = 7) in vec4 iColor;
+
+        uniform mat4 uViewProjection;
+        uniform mat4 uLightSpaceMatrix;
+
+        out vec3 vFragPos;
+        out vec4 vFragPosLightSpace;
+        out vec3 vNormal;
+        out vec2 vTexCoord;
+        out vec4 vColor;
+        out vec3 vModelScale;
+
+        void main()
+        {
+            vec4 worldPos = iModel * vec4(aPosition, 1.0);
+            vFragPos = worldPos.xyz;
+            vFragPosLightSpace = uLightSpaceMatrix * worldPos;
+
+            vNormal = mat3(iModel) * aNormal;
+            vTexCoord = aTexCoord;
+            vColor = iColor;
+            vModelScale = vec3(length(iModel[0].xyz), length(iModel[1].xyz), length(iModel[2].xyz));
             gl_Position = uViewProjection * worldPos;
         }
         """;
@@ -40,8 +83,12 @@ public static partial class Renderer3D
         in vec4 vFragPosLightSpace;
         in vec3 vNormal;
         in vec2 vTexCoord;
+        // Color and model scale arrive as varyings (set by the vertex stage from either a uniform or
+        // per-instance attributes), so the same fragment shader serves the standard, skinned, and
+        // instanced draw paths.
+        in vec4 vColor;
+        in vec3 vModelScale;
 
-        uniform vec4 uColor;
         uniform sampler2D uTexture;
         uniform sampler2D uNormalMap;
         uniform sampler2DShadow uShadowMap;
@@ -56,7 +103,6 @@ public static partial class Renderer3D
 
         uniform vec2 uTiling;
         uniform int uAutoTile;
-        uniform vec3 uModelScale;
 
         uniform int uHasDirectionalLight;
         uniform int uCastShadows;
@@ -130,13 +176,13 @@ public static partial class Renderer3D
             vec2 scale2D = vec2(1.0);
             if (uAutoTile == 1) {
                 vec3 n = abs(normalize(vNormal));
-                if (n.x > n.y && n.x > n.z) scale2D = uModelScale.zy;
-                else if (n.y > n.x && n.y > n.z) scale2D = uModelScale.xz;
-                else scale2D = uModelScale.xy;
+                if (n.x > n.y && n.x > n.z) scale2D = vModelScale.zy;
+                else if (n.y > n.x && n.y > n.z) scale2D = vModelScale.xz;
+                else scale2D = vModelScale.xy;
             }
             vec2 finalUV = vTexCoord * uTiling * scale2D;
 
-            vec4 albedo = texture(uTexture, finalUV) * uColor;
+            vec4 albedo = texture(uTexture, finalUV) * vColor;
             vec3 normal = uHasNormalMap == 1 ? getNormalFromMap(finalUV) : normalize(vNormal);
             
             vec3 viewDir = normalize(uCameraPos - vFragPos);
@@ -868,6 +914,7 @@ public static partial class Renderer3D
 
         uniform mat4 uViewProjection;
         uniform mat4 uLightSpaceMatrix;
+        uniform vec4 uColor;
 
         const int MAX_BONES = 128;
         uniform mat4 uBones[MAX_BONES];
@@ -876,6 +923,8 @@ public static partial class Renderer3D
         out vec4 vFragPosLightSpace;
         out vec3 vNormal;
         out vec2 vTexCoord;
+        out vec4 vColor;
+        out vec3 vModelScale;
 
         mat4 skinMatrix()
         {
@@ -897,6 +946,8 @@ public static partial class Renderer3D
             vFragPosLightSpace = uLightSpaceMatrix * worldPos;
             vNormal = mat3(skin) * aNormal;
             vTexCoord = aTexCoord;
+            vColor = uColor;
+            vModelScale = vec3(1.0); // skinning replaces the model matrix, so auto-tile is off
             gl_Position = uViewProjection * worldPos;
         }
         """;

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Spot.Rendering;
 
@@ -22,7 +23,29 @@ public static partial class Renderer3D
     /// </summary>
     public const int MaxBones = 128;
 
+    /// <summary>
+    /// Per-instance data for an instanced mesh draw: the world matrix and a color, laid out as 20 tightly
+    /// packed floats (a mat4 followed by a vec4) that map directly to the instanced shader's attributes.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct InstanceData
+    {
+        /// <summary>The instance's world (model) matrix.</summary>
+        public Matrix4x4 Model;
+
+        /// <summary>The instance's color, multiplied into the shaded result (and the texture, when set).</summary>
+        public Vector4 Color;
+    }
+
+    // Floats per InstanceData (mat4 = 16 + vec4 = 4). Also the count of instances uploaded per draw before
+    // the shared buffer is refilled — a fixed capacity keeps its GPU handle stable so the per-mesh instanced
+    // VAOs that reference it never dangle.
+    private const int InstanceFloats = 20;
+    private const int MaxInstancesPerBatch = 1024;
+
     private static Shader? s_shader;
+    private static Shader? s_instancedShader;
+    private static VertexBuffer? s_instanceBuffer;
     private static Shader? s_waterShader;
     private static Shader? s_skyboxShader;
     private static Shader? s_cloudsShader;
@@ -73,6 +96,7 @@ public static partial class Renderer3D
     // draw into a single upload per shader per scene. -1 means "not yet applied".
     private static int s_sceneStamp;
     private static int s_stdConstantsStamp = -1;
+    private static int s_instancedConstantsStamp = -1;
     private static int s_waterConstantsStamp = -1;
     private static int s_skinnedConstantsStamp = -1;
 
@@ -92,6 +116,7 @@ public static partial class Renderer3D
     public static void Init()
     {
         s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
+        s_instancedShader = new Shader(InstancedVertexShaderSource, FragmentShaderSource);
         s_waterShader = new Shader(WaterVertexShaderSource, WaterFragmentShaderSource);
         s_skyboxShader = new Shader(SkyboxVertexShaderSource, SkyboxFragmentShaderSource);
         s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
@@ -100,7 +125,17 @@ public static partial class Renderer3D
         s_skinnedShader = new Shader(SkinnedVertexShaderSource, FragmentShaderSource);
         s_skinnedShadowShader = new Shader(SkinnedShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_emptyVao = new VertexArray();
-        
+
+        // One fixed-capacity, dynamically-updated buffer feeds every instanced batch. Its handle stays put
+        // for the process lifetime, so the per-mesh instanced VAOs that bind it never point at freed storage.
+        s_instanceBuffer = new VertexBuffer(
+            (uint)(MaxInstancesPerBatch * InstanceFloats),
+            ShaderDataType.Float4,  // model matrix row 0 (instanced attribute location 3)
+            ShaderDataType.Float4,  // model matrix row 1 (location 4)
+            ShaderDataType.Float4,  // model matrix row 2 (location 5)
+            ShaderDataType.Float4,  // model matrix row 3 (location 6)
+            ShaderDataType.Float4); // color (location 7)
+
         s_shadowMap = new DepthFramebuffer(2048, 2048);
 
         // A 1x1 white texture lets untextured (solid-color) meshes reuse the textured path: texture * color == color.
@@ -295,6 +330,67 @@ public static partial class Renderer3D
         }
 
         Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    /// <summary>
+    /// Draws many copies of one rigid mesh — each with its own world matrix and color — in as few draw calls
+    /// as possible (one per <see cref="MaxInstancesPerBatch"/> instances). All copies share the material, so
+    /// only their per-instance transform and color vary; the standard (lit) shader is used. This is the
+    /// scalable counterpart to <see cref="DrawMesh"/> for scenes that place the same model many times.
+    /// </summary>
+    /// <param name="mesh">The rigid mesh to draw (must not use the skinned layout).</param>
+    /// <param name="instances">The per-instance world matrices and colors.</param>
+    /// <param name="texture">The shared surface texture, or <see langword="null"/> for a solid color.</param>
+    /// <param name="material">The shared surface material, or <see langword="null"/> for defaults.</param>
+    public static void DrawMeshInstanced(Mesh mesh, ReadOnlySpan<InstanceData> instances, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    {
+        if (instances.IsEmpty || s_instancedShader is null || s_whiteTexture is null || s_instanceBuffer is null)
+        {
+            return;
+        }
+
+        BindAlbedo(texture ?? s_whiteTexture);
+
+        if (!ReferenceEquals(s_instancedShader, s_lastMeshShader))
+        {
+            s_instancedShader.Use();
+            s_lastMeshShader = s_instancedShader;
+        }
+
+        EnsureFrameConstants(s_instancedShader, ref s_instancedConstantsStamp);
+
+        s_instancedShader.SetUniform("uTexture", 0);
+        s_instancedShader.SetUniform("uTiling", material?.Tiling ?? Vector2.One);
+        s_instancedShader.SetUniform("uAutoTile", (material?.AutoTile ?? false) ? 1 : 0);
+        s_instancedShader.SetUniform("uMetallic", material?.Metallic ?? 0.0f);
+        s_instancedShader.SetUniform("uEmissiveColor", material?.EmissiveColor ?? Vector3.Zero);
+        s_instancedShader.SetUniform("uEmissiveIntensity", material?.EmissiveIntensity ?? 1.0f);
+
+        if (material?.NormalMap != null)
+        {
+            if (!ReferenceEquals(material.NormalMap, s_lastNormalTexture))
+            {
+                material.NormalMap.Bind(2);
+                s_lastNormalTexture = material.NormalMap;
+            }
+            s_instancedShader.SetUniform("uNormalMap", 2);
+            s_instancedShader.SetUniform("uHasNormalMap", 1);
+        }
+        else
+        {
+            s_instancedShader.SetUniform("uHasNormalMap", 0);
+        }
+
+        VertexArray vao = mesh.GetInstancedVertexArray(s_instanceBuffer);
+        ReadOnlySpan<float> floats = MemoryMarshal.Cast<InstanceData, float>(instances);
+
+        // Upload and draw in chunks no larger than the shared buffer's capacity.
+        for (int offset = 0; offset < instances.Length; offset += MaxInstancesPerBatch)
+        {
+            int count = System.Math.Min(MaxInstancesPerBatch, instances.Length - offset);
+            s_instanceBuffer.SetData(floats.Slice(offset * InstanceFloats, count * InstanceFloats));
+            Renderer.DrawIndexedInstanced(vao, mesh.IndexCount, (uint)count);
+        }
     }
 
     /// <summary>
