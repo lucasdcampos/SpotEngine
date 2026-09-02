@@ -9,7 +9,28 @@ namespace Spot.DebugUI;
 public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugOverlay
 {
     public Scene? ActiveScene => SceneManager.Current;
-    public Entity? Selection { get; set; }
+
+    // Backing store for the (multi-)entity selection; the last element is the primary selection.
+    private readonly List<Entity> _selectedEntities = new();
+
+    public Entity? Selection
+    {
+        get => _selectedEntities.Count > 0 ? _selectedEntities[^1] : null;
+        set
+        {
+            _selectedEntities.Clear();
+            if (value != null) _selectedEntities.Add(value.Value);
+        }
+    }
+
+    public IReadOnlyList<Entity> SelectedEntities => _selectedEntities;
+
+    public void SetSelectedEntities(IReadOnlyList<Entity> entities)
+    {
+        _selectedEntities.Clear();
+        _selectedEntities.AddRange(entities);
+    }
+
     public string? SelectedAssetPath { get; set; }
 
     // The runtime debug overlay doesn't author UI documents; these satisfy the shared selection contract.

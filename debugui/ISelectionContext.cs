@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Spot.Scenes;
 using Spot.UI;
 
@@ -18,6 +19,21 @@ public interface ISelectionContext
     Scene? ActiveScene { get; }
     Entity? Selection { get; set; }
     string? SelectedAssetPath { get; set; }
+
+    /// <summary>
+    /// Every currently selected entity, in the order they were added. The primary selection
+    /// (<see cref="Selection"/>) is the last element and is what the Inspector and transform gizmo anchor to.
+    /// A plain click selects one entity; Ctrl+click toggles one in or out; Shift+click selects a range.
+    /// Setting <see cref="Selection"/> collapses this to that single entity (or empties it when set to null).
+    /// </summary>
+    IReadOnlyList<Entity> SelectedEntities { get; }
+
+    /// <summary>
+    /// Replaces the entity multi-selection with <paramref name="entities"/>. The last entity becomes the
+    /// primary <see cref="Selection"/>. Passing an empty list clears the selection. Like the
+    /// <see cref="Selection"/> setter, a non-empty selection clears any selected asset and UI widget.
+    /// </summary>
+    void SetSelectedEntities(IReadOnlyList<Entity> entities);
 
     /// <summary>
     /// Which tree the single Hierarchy panel shows. The editor flips it to <see cref="HierarchyTarget.UI"/> when

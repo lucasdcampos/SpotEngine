@@ -18,6 +18,17 @@ public class HierarchyPanel
     private bool _renameFocusPending;
     private bool _isNewEntity;
 
+    // Multi-selection anchor: the entity a Shift+click range extends from (the last plain/Ctrl click).
+    private int _selectionAnchorId = -1;
+
+    // A plain click inside a multi-selection is deferred: it collapses the selection to this entity on mouse
+    // release, but only if no drag started in between — so the whole selection can be dragged as a group.
+    private int _pendingClickEntityId = -1;
+
+    // Set by a context-menu "Delete" on a multi-selection; the actual destroy is deferred to the end of
+    // DrawContents so entities aren't torn down while the tree is still being drawn.
+    private bool _deleteSelectionPending;
+
     // Explicit root-entity ordering (dictionary pools have no stable order for reordering).
     private readonly List<int> _rootOrder = new();
 
@@ -62,9 +73,20 @@ public class HierarchyPanel
                 DrawEntityNode(new Entity(rootId, _context.ActiveScene));
             }
 
-            if (ImGui.IsMouseDown(0) && ImGui.IsWindowHovered())
+            // A multi-selection delete requested from a context menu is applied here, once the whole tree
+            // has been drawn, so entities aren't destroyed mid-iteration.
+            if (_deleteSelectionPending)
+            {
+                DeleteSelected();
+                _deleteSelectionPending = false;
+            }
+
+            // Click on empty space clears the selection — but not while Ctrl/Shift is held, so those modifiers
+            // keep extending the multi-selection rather than wiping it.
+            if (ImGui.IsMouseDown(0) && ImGui.IsWindowHovered() && !ImGui.GetIO().KeyCtrl && !ImGui.GetIO().KeyShift)
             {
                 _context.Selection = null;
+                _selectionAnchorId = -1;
             }
 
             if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _renamingEntityId == -1 && !ImGui.IsAnyItemActive())
@@ -74,7 +96,7 @@ public class HierarchyPanel
                 {
                     if (sel != null && ImGui.IsKeyPressed(ImGuiKey.C)) CopyEntity(sel.Value);
                     else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.X)) CutEntity(sel.Value);
-                    else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateEntity(sel.Value);
+                    else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateSelected();
                     else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteEntity(sel);
                 }
                 else if (sel != null)
@@ -88,8 +110,7 @@ public class HierarchyPanel
                     }
                     else if (ImGui.IsKeyPressed(ImGuiKey.Delete))
                     {
-                        _context.ActiveScene?.Destroy(sel.Value);
-                        _context.Selection = null;
+                        DeleteSelected();
                     }
                 }
             }
@@ -103,8 +124,7 @@ public class HierarchyPanel
                     if (payload.NativePtr != null)
                     {
                         int payloadId = *(int*)payload.Data;
-                        Entity draggedEntity = new Entity(payloadId, _context.ActiveScene!);
-                        draggedEntity.SetParent(null);
+                        ReparentDragged(payloadId, null);
                     }
 
                     var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
@@ -287,7 +307,7 @@ public class HierarchyPanel
         string name = entity.Name;
         bool isRenaming = _renamingEntityId == entity.Id;
 
-        ImGuiTreeNodeFlags flags = ((_context.Selection != null && _context.Selection.Value == entity) ? ImGuiTreeNodeFlags.Selected : 0) | ImGuiTreeNodeFlags.OpenOnArrow;
+        ImGuiTreeNodeFlags flags = (IsSelected(entity) ? ImGuiTreeNodeFlags.Selected : 0) | ImGuiTreeNodeFlags.OpenOnArrow;
         if (!isRenaming) flags |= ImGuiTreeNodeFlags.SpanAvailWidth;
 
         bool hasChildren = entity.Children.Any();
@@ -348,7 +368,19 @@ public class HierarchyPanel
         {
             if (ImGui.IsItemClicked())
             {
-                _context.Selection = entity;
+                HandleSelectionClick(entity);
+            }
+
+            // A deferred plain click inside a multi-selection collapses to this entity on release (when it
+            // wasn't the start of a drag, which clears the pending click below).
+            if (_pendingClickEntityId == entity.Id && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+            {
+                if (ImGui.IsItemHovered())
+                {
+                    _context.Selection = entity;
+                    _selectionAnchorId = entity.Id;
+                }
+                _pendingClickEntityId = -1;
             }
 
             if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
@@ -365,7 +397,10 @@ public class HierarchyPanel
                 int id = entity.Id;
                 ImGui.SetDragDropPayload("ENTITY", (IntPtr)(&id), 4);
             }
-            ImGui.Text(entity.Name);
+            // Dragging one of several selected entities carries the whole selection; label reflects that.
+            int selectedCount = _context.SelectedEntities.Count;
+            ImGui.Text(IsSelected(entity) && selectedCount > 1 ? $"{selectedCount} entities" : entity.Name);
+            _pendingClickEntityId = -1; // this press became a drag, so don't collapse the selection on release
             ImGui.EndDragDropSource();
         }
 
@@ -378,12 +413,7 @@ public class HierarchyPanel
                 if (payload.NativePtr != null)
                 {
                     int payloadId = *(int*)payload.Data;
-                    Entity draggedEntity = new Entity(payloadId, entity.Scene);
-                    // Prevent reparenting to self or a child (basic check, could be recursive)
-                    if (draggedEntity != entity)
-                    {
-                        draggedEntity.SetParent(entity);
-                    }
+                    ReparentDragged(payloadId, entity);
                 }
 
                 // Dropping a prefab onto an entity instantiates it as a child of that entity.
@@ -405,9 +435,18 @@ public class HierarchyPanel
             ImGui.EndDragDropTarget();
         }
 
-        bool entityDeleted = false;
         if (ImGui.BeginPopupContextItem())
         {
+            // Right-clicking an entity that isn't part of the current selection makes it the selection, so the
+            // menu acts on what was clicked. Right-clicking within a multi-selection keeps the whole group.
+            if (!IsSelected(entity))
+            {
+                _context.Selection = entity;
+                _selectionAnchorId = entity.Id;
+            }
+
+            bool multi = _context.SelectedEntities.Count > 1;
+
             if (ImGui.MenuItem("Rename"))
             {
                 _renamingEntityId = entity.Id;
@@ -418,25 +457,27 @@ public class HierarchyPanel
             ImGui.Separator();
             if (ImGui.MenuItem("Copy", "Ctrl+C")) CopyEntity(entity);
             if (ImGui.MenuItem("Cut", "Ctrl+X")) CutEntity(entity);
-            if (ImGui.MenuItem("Duplicate", "Ctrl+D")) DuplicateEntity(entity);
+            if (ImGui.MenuItem("Duplicate", "Ctrl+D")) DuplicateSelected();
             if (ImGui.MenuItem("Paste", "Ctrl+V", false, s_entityClipboardJson != null)) PasteEntity(entity);
             ImGui.Separator();
-            if (ImGui.MenuItem("Move Up")) MoveEntityUp(entity);
-            if (ImGui.MenuItem("Move Down")) MoveEntityDown(entity);
+            if (ImGui.MenuItem("Move Up")) MoveSelected(up: true);
+            if (ImGui.MenuItem("Move Down")) MoveSelected(up: false);
             ImGui.Separator();
             if (ImGui.MenuItem("Create Child Entity"))
             {
                 var child = _context.ActiveScene!.Instantiate("Empty Entity");
                 child.SetParent(entity);
                 _context.Selection = child;
+                _selectionAnchorId = child.Id;
                 _renamingEntityId = child.Id;
                 _entityRenameBuffer = "Empty Entity";
                 _renameFocusPending = true;
                 _isNewEntity = true;
             }
-            if (ImGui.MenuItem("Delete Entity"))
+            if (ImGui.MenuItem(multi ? $"Delete {_context.SelectedEntities.Count} Entities" : "Delete Entity"))
             {
-                entityDeleted = true;
+                // Deferred: destroying now would tear down entities the tree is still drawing this frame.
+                _deleteSelectionPending = true;
             }
             ImGui.EndPopup();
         }
@@ -462,13 +503,6 @@ public class HierarchyPanel
                 ReturnEntityList(children);
             }
             ImGui.TreePop();
-        }
-
-        if (entityDeleted)
-        {
-            _context.ActiveScene?.Destroy(entity);
-            if (_context.Selection != null && _context.Selection.Value == entity)
-                _context.Selection = null;
         }
     }
 
@@ -689,6 +723,223 @@ public class HierarchyPanel
             int idx = children.IndexOf(entity);
             if (idx >= 0 && idx < children.Count - 1)
                 (children[idx], children[idx + 1]) = (children[idx + 1], children[idx]);
+        }
+    }
+
+    // --- Multi-selection ----------------------------------------------------------------------------------
+
+    private bool IsSelected(Entity entity)
+    {
+        foreach (Entity e in _context.SelectedEntities)
+            if (e == entity) return true;
+        return false;
+    }
+
+    // Turns a click on an entity row into a selection change, honoring Ctrl (toggle one) and Shift (range).
+    private void HandleSelectionClick(Entity entity)
+    {
+        var io = ImGui.GetIO();
+        if (io.KeyShift && _selectionAnchorId != -1)
+        {
+            SelectRange(_selectionAnchorId, entity.Id);
+            // The anchor stays fixed so successive Shift+clicks grow/shrink the same range.
+        }
+        else if (io.KeyCtrl)
+        {
+            ToggleSelection(entity);
+            _selectionAnchorId = entity.Id;
+        }
+        else if (IsSelected(entity) && _context.SelectedEntities.Count > 1)
+        {
+            // Defer collapsing so a drag starting from within the selection carries the whole group.
+            _pendingClickEntityId = entity.Id;
+        }
+        else
+        {
+            _context.Selection = entity;
+            _selectionAnchorId = entity.Id;
+        }
+    }
+
+    private void ToggleSelection(Entity entity)
+    {
+        var list = new List<Entity>(_context.SelectedEntities);
+        int idx = list.FindIndex(e => e == entity);
+        if (idx >= 0) list.RemoveAt(idx);
+        else list.Add(entity); // newly added entity becomes the primary (last) selection
+        _context.SetSelectedEntities(list);
+    }
+
+    // Selects every entity between the anchor and the clicked row in display (flattened tree) order.
+    private void SelectRange(int anchorId, int clickedId)
+    {
+        var flat = FlattenTree();
+        int a = flat.FindIndex(e => e.Id == anchorId);
+        int b = flat.FindIndex(e => e.Id == clickedId);
+        if (a < 0 || b < 0)
+        {
+            _context.Selection = new Entity(clickedId, _context.ActiveScene!);
+            _selectionAnchorId = clickedId;
+            return;
+        }
+        if (a > b) (a, b) = (b, a);
+        var range = flat.GetRange(a, b - a + 1);
+        // Keep the clicked entity as the primary selection (last), so the Inspector/gizmo follow the cursor.
+        if (range.Count > 0 && range[^1].Id != clickedId) range.Reverse();
+        _context.SetSelectedEntities(range);
+    }
+
+    // Flattens the whole tree into its on-screen top-to-bottom order (root order, each node followed by its
+    // descendants), which is what Shift+range selection walks over.
+    private List<Entity> FlattenTree()
+    {
+        var result = new List<Entity>();
+        var scene = _context.ActiveScene;
+        if (scene == null) return result;
+        foreach (int rootId in _rootOrder)
+            AppendSubtree(new Entity(rootId, scene), result);
+        return result;
+    }
+
+    private static void AppendSubtree(Entity entity, List<Entity> into)
+    {
+        into.Add(entity);
+        foreach (Entity child in entity.Children)
+            AppendSubtree(child, into);
+    }
+
+    // The selected entities that have no selected ancestor. Operations like delete/reparent act on these so a
+    // selected child isn't handled twice (it moves or is destroyed together with its selected parent).
+    private List<Entity> TopLevelSelected()
+    {
+        var selected = _context.SelectedEntities;
+        var ids = new HashSet<int>();
+        foreach (Entity e in selected) ids.Add(e.Id);
+
+        var result = new List<Entity>();
+        foreach (Entity e in selected)
+        {
+            bool hasSelectedAncestor = false;
+            Entity? p = e.Parent;
+            while (p != null)
+            {
+                if (ids.Contains(p.Value.Id)) { hasSelectedAncestor = true; break; }
+                p = p.Value.Parent;
+            }
+            if (!hasSelectedAncestor) result.Add(e);
+        }
+        return result;
+    }
+
+    private void DeleteSelected()
+    {
+        var scene = _context.ActiveScene;
+        if (scene == null) return;
+        foreach (Entity e in TopLevelSelected())
+            scene.Destroy(e);
+        _context.Selection = null;
+        _selectionAnchorId = -1;
+    }
+
+    // Duplicates every top-level selected entity as a sibling and selects the copies. Falls back to the
+    // single-entity path (which also handles inline naming) when only one entity is selected.
+    private void DuplicateSelected()
+    {
+        if (_context.SelectedEntities.Count <= 1)
+        {
+            if (_context.Selection != null) DuplicateEntity(_context.Selection.Value);
+            return;
+        }
+
+        var scene = _context.ActiveScene;
+        if (scene == null) return;
+
+        var copies = new List<Entity>();
+        foreach (Entity e in TopLevelSelected())
+        {
+            try
+            {
+                Entity? copy = Prefab.InstantiateInto(scene, Prefab.Serialize(e), e.Parent);
+                if (copy != null)
+                {
+                    Entity c = copy.Value;
+                    c.Name = MakeUniqueSiblingName(scene, e.Parent, e.Name);
+                    copies.Add(c);
+                }
+            }
+            catch (Exception ex)
+            {
+                Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+            }
+        }
+
+        if (copies.Count > 0) _context.SetSelectedEntities(copies);
+    }
+
+    // Moves the whole selection one step up or down within each entity's own sibling list. A single selection
+    // keeps the richer single-entity behavior (first child bubbles up to the grandparent).
+    private void MoveSelected(bool up)
+    {
+        var selected = _context.SelectedEntities;
+        if (selected.Count == 0) return;
+        if (selected.Count == 1)
+        {
+            if (up) MoveEntityUp(selected[0]); else MoveEntityDown(selected[0]);
+            return;
+        }
+
+        var ids = new HashSet<int>();
+        foreach (Entity e in selected) ids.Add(e.Id);
+
+        // Root-level entities reorder within _rootOrder; children reorder within their parent's child list.
+        ReorderBlock(_rootOrder, static id => id, ids, up);
+
+        var visitedParents = new HashSet<int>();
+        foreach (Entity e in selected)
+        {
+            Entity? parent = e.Parent;
+            if (parent == null) continue;
+            if (!visitedParents.Add(parent.Value.Id)) continue;
+            var children = parent.Value.GetComponent<RelationshipComponent>().Children;
+            ReorderBlock(children, static ch => ch.Id, ids, up);
+        }
+    }
+
+    // Shifts every selected item one slot toward the top (or bottom) of the list, swapping only with an
+    // unselected neighbor so a contiguous block stays together and stops at the list boundary.
+    private static void ReorderBlock<T>(List<T> list, Func<T, int> idOf, HashSet<int> selected, bool up)
+    {
+        if (up)
+        {
+            for (int i = 1; i < list.Count; i++)
+                if (selected.Contains(idOf(list[i])) && !selected.Contains(idOf(list[i - 1])))
+                    (list[i], list[i - 1]) = (list[i - 1], list[i]);
+        }
+        else
+        {
+            for (int i = list.Count - 2; i >= 0; i--)
+                if (selected.Contains(idOf(list[i])) && !selected.Contains(idOf(list[i + 1])))
+                    (list[i], list[i + 1]) = (list[i + 1], list[i]);
+        }
+    }
+
+    // Reparents a dragged entity to newParent (null = scene root). When the dragged entity is part of a
+    // multi-selection, the whole (top-level) selection moves together; a drop onto self or a descendant is
+    // skipped so the hierarchy can't be knotted.
+    private void ReparentDragged(int draggedId, Entity? newParent)
+    {
+        var scene = _context.ActiveScene;
+        if (scene == null) return;
+
+        Entity dragged = new Entity(draggedId, scene);
+        IEnumerable<Entity> toMove = IsSelected(dragged) && _context.SelectedEntities.Count > 1
+            ? TopLevelSelected()
+            : new[] { dragged };
+
+        foreach (Entity e in toMove)
+        {
+            if (newParent != null && IsSelfOrDescendant(newParent.Value, e)) continue;
+            e.SetParent(newParent);
         }
     }
 }
