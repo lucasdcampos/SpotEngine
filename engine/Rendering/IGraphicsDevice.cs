@@ -45,6 +45,9 @@ public enum BufferKind
 
     /// <summary>A buffer of element indices for indexed drawing.</summary>
     Index,
+
+    /// <summary>A uniform buffer object (UBO): a block of shader-visible constants shared across draws.</summary>
+    Uniform,
 }
 
 /// <summary>
@@ -306,6 +309,36 @@ public interface IGraphicsDevice
     /// <summary>Deletes a GPU buffer.</summary>
     /// <param name="handle">The buffer to delete.</param>
     void DeleteBuffer(BufferHandle handle);
+
+    /// <summary>
+    /// Gets whether the backend supports uniform buffer objects (UBOs). True on both the desktop OpenGL and
+    /// WebGL2 backends; callers gate UBO-backed features on it and fall back rather than crash where absent.
+    /// </summary>
+    bool SupportsUniformBuffers { get; }
+
+    /// <summary>
+    /// The value <see cref="GetUniformBlockIndex"/> returns for a block that is absent (matches OpenGL's
+    /// <c>GL_INVALID_INDEX</c> / WebGL2's <c>INVALID_INDEX</c>).
+    /// </summary>
+    const uint InvalidUniformBlockIndex = 0xFFFFFFFFu;
+
+    /// <summary>Binds a buffer to an indexed binding point — for UBOs, the binding a uniform block reads from.</summary>
+    /// <param name="kind">The buffer's role (typically <see cref="BufferKind.Uniform"/>).</param>
+    /// <param name="bindingPoint">The indexed binding point.</param>
+    /// <param name="handle">The buffer to bind.</param>
+    void BindBufferBase(BufferKind kind, uint bindingPoint, BufferHandle handle);
+
+    /// <summary>Looks up a named uniform block within a program.</summary>
+    /// <param name="program">The program.</param>
+    /// <param name="blockName">The uniform block name.</param>
+    /// <returns>The block index, or <see cref="InvalidUniformBlockIndex"/> when the block is absent.</returns>
+    uint GetUniformBlockIndex(ProgramHandle program, string blockName);
+
+    /// <summary>Assigns a program's uniform block to a binding point, so it reads the buffer bound there.</summary>
+    /// <param name="program">The program.</param>
+    /// <param name="blockIndex">The block index (from <see cref="GetUniformBlockIndex"/>).</param>
+    /// <param name="bindingPoint">The binding point to associate the block with.</param>
+    void UniformBlockBinding(ProgramHandle program, uint blockIndex, uint bindingPoint);
 
     /// <summary>Creates a new vertex array object.</summary>
     /// <returns>A handle to the new vertex array.</returns>

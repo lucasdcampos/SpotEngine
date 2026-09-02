@@ -130,6 +130,12 @@ are reused frame to frame, so the path is allocation-free once warmed up. Skinne
 their own per-draw paths. This flows through `IGraphicsDevice` (a `DrawElementsInstanced` /
 `VertexAttribDivisor` seam), so it runs on both the desktop and WebGL2 backends.
 
+**Many lights.** Point lights are uploaded once per frame into a shared **uniform buffer** (UBO) — a
+`std140` block of up to 256 lights — instead of a fixed handful of individual uniforms, so a scene can be
+lit by many point lights at once. The UBO seam (`BindBufferBase`, uniform-block binding) is part of
+`IGraphicsDevice` and works on both backends; where uniform buffers are somehow unavailable, point lights
+are disabled rather than crashing (the directional light still renders).
+
 ## Measuring performance
 
 `RenderSettings.VSync` (on by default) gates whether the buffer swap waits for the monitor's vertical

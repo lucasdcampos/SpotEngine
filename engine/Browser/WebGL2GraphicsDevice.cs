@@ -111,6 +111,21 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     public void DeleteBuffer(BufferHandle handle) => JsDeleteBuffer((int)handle.Id);
 
     /// <inheritdoc />
+    public bool SupportsUniformBuffers => true;
+
+    /// <inheritdoc />
+    public void BindBufferBase(BufferKind kind, uint bindingPoint, BufferHandle handle) =>
+        JsBindBufferBase(MapBuffer(kind), (int)bindingPoint, (int)handle.Id);
+
+    /// <inheritdoc />
+    public uint GetUniformBlockIndex(ProgramHandle program, string blockName) =>
+        (uint)JsGetUniformBlockIndex((int)program.Id, blockName);
+
+    /// <inheritdoc />
+    public void UniformBlockBinding(ProgramHandle program, uint blockIndex, uint bindingPoint) =>
+        JsUniformBlockBinding((int)program.Id, (int)blockIndex, (int)bindingPoint);
+
+    /// <inheritdoc />
     public VertexArrayHandle CreateVertexArray() => new((uint)JsCreateVertexArray());
 
     /// <inheritdoc />
@@ -324,6 +339,7 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
     {
         BufferKind.Vertex => GLc.ArrayBuffer,
         BufferKind.Index => GLc.ElementArrayBuffer,
+        BufferKind.Uniform => GLc.UniformBuffer,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown buffer kind."),
     };
 
@@ -400,6 +416,7 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
         public const int DepthBufferBit = 0x0100;
         public const int ArrayBuffer = 0x8892;
         public const int ElementArrayBuffer = 0x8893;
+        public const int UniformBuffer = 0x8A11;
         public const int StaticDraw = 0x88E4;
         public const int DynamicDraw = 0x88E8;
         public const int Float = 0x1406;
@@ -485,6 +502,17 @@ internal sealed partial class WebGL2GraphicsDevice : IGraphicsDevice
 
     [JSImport("gl.deleteBuffer", Module)]
     private static partial void JsDeleteBuffer(int buffer);
+
+    [JSImport("gl.bindBufferBase", Module)]
+    private static partial void JsBindBufferBase(int target, int bindingPoint, int buffer);
+
+    // Returns -1 for an absent block (the JS host maps WebGL2's INVALID_INDEX to -1 so it fits an int32);
+    // the caller reinterprets that as IGraphicsDevice.InvalidUniformBlockIndex.
+    [JSImport("gl.getUniformBlockIndex", Module)]
+    private static partial int JsGetUniformBlockIndex(int program, string blockName);
+
+    [JSImport("gl.uniformBlockBinding", Module)]
+    private static partial void JsUniformBlockBinding(int program, int blockIndex, int bindingPoint);
 
     [JSImport("gl.createVertexArray", Module)]
     private static partial int JsCreateVertexArray();

@@ -13,6 +13,7 @@ will be finalized when 0.2 is tagged.
 ### Performance
 - Frustum culling: off-screen 3D meshes are skipped in both the main and shadow passes
 - GPU instancing: repeated rigid meshes sharing a material draw in one instanced call each
+- Point lights now scale to many per scene (UBO-backed, up from a fixed four)
 - Fixed a severe editor stall from per-frame framebuffer reallocation
 - Editor secondary views render only when visible
 - VSync is now a runtime setting, plus frame-time instrumentation

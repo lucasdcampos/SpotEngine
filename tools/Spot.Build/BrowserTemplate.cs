@@ -104,6 +104,12 @@ const glImports = {
     bufferDataSize: (target, size, usage) => gl.bufferData(target, size, usage),
     bufferSubData: (target, offset, data) => gl.bufferSubData(target, offset, data.slice()),
     deleteBuffer: (b) => gl.deleteBuffer(objs[b]),
+    bindBufferBase: (target, index, b) => gl.bindBufferBase(target, index, objs[b]),
+    getUniformBlockIndex: (p, name) => {
+        const i = gl.getUniformBlockIndex(objs[p], name);
+        return i === gl.INVALID_INDEX ? -1 : i;
+    },
+    uniformBlockBinding: (p, blockIndex, binding) => gl.uniformBlockBinding(objs[p], blockIndex, binding),
 
     createVertexArray: () => reg(gl.createVertexArray()),
     bindVertexArray: (v) => gl.bindVertexArray(objs[v]),

@@ -39,6 +39,10 @@ public static class RenderSystem
     private static readonly Dictionary<BatchKey, List<Renderer3D.InstanceData>> s_batches = new();
     private static readonly Stack<List<Renderer3D.InstanceData>> s_batchPool = new();
 
+    // Reused each frame to gather the scene's point lights before handing them to Renderer3D — sized to the
+    // renderer's cap so a heavily-lit scene never reallocates (and never overflows a stackalloc).
+    private static readonly Renderer3D.PointLightData[] s_pointLightScratch = new Renderer3D.PointLightData[Renderer3D.MaxPointLights];
+
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
     /// </summary>
@@ -102,7 +106,7 @@ public static class RenderSystem
         bool castShadows = false;
         Matrix4x4 lightSpaceMatrix = Matrix4x4.Identity;
         
-        Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[4];
+        Renderer3D.PointLightData[] pointLights = s_pointLightScratch;
         int pointLightCount = 0;
 
         foreach (Entity entity in scene.View<TransformComponent, LightComponent>())
@@ -132,7 +136,7 @@ public static class RenderSystem
             }
             else if (light.Type == LightType.Point)
             {
-                if (pointLightCount < 4)
+                if (pointLightCount < pointLights.Length)
                 {
                     pointLights[pointLightCount] = new Renderer3D.PointLightData
                     {
@@ -199,7 +203,7 @@ public static class RenderSystem
             Renderer.Device.SetWireframe(true);
         }
 
-        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.Slice(0, pointLightCount), cameraPos);
+        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos);
         
         foreach (Entity entity in scene.View<SkyboxComponent>())
         {

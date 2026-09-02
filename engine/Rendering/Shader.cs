@@ -112,6 +112,25 @@ public sealed class Shader : IDisposable
         _device.SetUniformMatrix4(GetUniformLocation(name), values);
     }
 
+    /// <summary>
+    /// Associates a uniform block in this program with an indexed binding point, so it reads from whatever
+    /// buffer is bound there (see <see cref="IGraphicsDevice.BindBufferBase"/>). A no-op — logged once — when
+    /// the program has no such block (for example after the block was optimized away as unused).
+    /// </summary>
+    /// <param name="blockName">The uniform block name.</param>
+    /// <param name="bindingPoint">The binding point to associate the block with.</param>
+    public void BindUniformBlock(string blockName, uint bindingPoint)
+    {
+        uint index = _device.GetUniformBlockIndex(_handle, blockName);
+        if (index == IGraphicsDevice.InvalidUniformBlockIndex)
+        {
+            Log.CoreWarn("Uniform block '{0}' not found in shader program.", blockName);
+            return;
+        }
+
+        _device.UniformBlockBinding(_handle, index, bindingPoint);
+    }
+
     /// <inheritdoc />
     public void Dispose() => _device.DeleteProgram(_handle);
 

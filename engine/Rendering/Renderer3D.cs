@@ -69,13 +69,34 @@ public static partial class Renderer3D
         public float Range;
     }
 
+    /// <summary>
+    /// The maximum number of point lights a scene can submit. Lights are uploaded in a std140 uniform
+    /// block (two vec4s each), so this bound must match <c>MAX_LIGHTS</c> in the lit shader sources.
+    /// </summary>
+    public const int MaxPointLights = 256;
+
+    // The GPU-side (std140) layout of one point light: position+range and color+intensity, each a vec4 to
+    // avoid std140's vec3 padding. Matches the shader's PointLight struct exactly.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GpuPointLight
+    {
+        public Vector4 PositionRange;
+        public Vector4 ColorIntensity;
+    }
+
+    // Binding point shared by every lit program's "Lights" uniform block and the light UBO.
+    private const uint LightsBinding = 0;
+
+    private static readonly GpuPointLight[] s_gpuLights = new GpuPointLight[MaxPointLights];
+    private static BufferHandle s_lightUbo;
+    private static bool s_lightsSupported;
+
     private static int s_hasDirLight = 0;
     private static int s_castShadows = 0;
     private static Vector3 s_lightDir = Vector3.UnitY;
     private static Vector3 s_lightColor = Vector3.One;
     private static float s_ambientIntensity = 0.3f;
     
-    private static PointLightData[] s_pointLights = new PointLightData[4];
     private static int s_pointLightCount = 0;
 
     // Sky colours of the active skybox, captured by DrawSkybox and fed to the water shader so water
@@ -83,13 +104,6 @@ public static partial class Renderer3D
     private static Vector3 s_skyColor = new Vector3(0.55f, 0.75f, 1.0f);
     private static Vector3 s_groundColor = new Vector3(0.35f, 0.37f, 0.4f);
     private static int s_hasSkybox = 0;
-
-    // Pre-built uniform-name strings for the point-light array (max 4 slots), so ApplyLighting never
-    // interpolates a string — and so never allocates — on the render path.
-    private static readonly string[] s_pointLightPosNames = { "uPointLights[0].position", "uPointLights[1].position", "uPointLights[2].position", "uPointLights[3].position" };
-    private static readonly string[] s_pointLightColorNames = { "uPointLights[0].color", "uPointLights[1].color", "uPointLights[2].color", "uPointLights[3].color" };
-    private static readonly string[] s_pointLightIntensityNames = { "uPointLights[0].intensity", "uPointLights[1].intensity", "uPointLights[2].intensity", "uPointLights[3].intensity" };
-    private static readonly string[] s_pointLightRangeNames = { "uPointLights[0].range", "uPointLights[1].range", "uPointLights[2].range", "uPointLights[3].range" };
 
     // Per-scene stamp: BeginScene bumps it, and each lit shader records the stamp at which it last had the
     // scene-constant uniforms (camera + all lights) uploaded. That turns ~15 redundant uniform uploads per
@@ -141,6 +155,32 @@ public static partial class Renderer3D
         // A 1x1 white texture lets untextured (solid-color) meshes reuse the textured path: texture * color == color.
         ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
         s_whiteTexture = new Texture2D(1, 1, white);
+
+        InitLightUbo();
+    }
+
+    // Sets up the shared point-light uniform buffer and points every lit program's "Lights" block at it. On
+    // a backend without UBOs (none today), point lights are simply disabled rather than crashing.
+    private static void InitLightUbo()
+    {
+        IGraphicsDevice device = Renderer.Device;
+        s_lightsSupported = device.SupportsUniformBuffers;
+        if (!s_lightsSupported)
+        {
+            Spot.Core.Log.CoreWarn("Uniform buffers unavailable; point lights are disabled on this backend.");
+            return;
+        }
+
+        s_lightUbo = device.CreateBuffer();
+        device.BindBuffer(BufferKind.Uniform, s_lightUbo);
+        device.BufferData(BufferKind.Uniform, (nuint)(MaxPointLights * Marshal.SizeOf<GpuPointLight>()), BufferUsageKind.DynamicDraw);
+        // The binding point persists, so wire the buffer to it once here rather than every scene.
+        device.BindBufferBase(BufferKind.Uniform, LightsBinding, s_lightUbo);
+
+        s_shader!.BindUniformBlock("Lights", LightsBinding);
+        s_instancedShader!.BindUniformBlock("Lights", LightsBinding);
+        s_skinnedShader!.BindUniformBlock("Lights", LightsBinding);
+        s_waterShader!.BindUniformBlock("Lights", LightsBinding);
     }
 
     /// <summary>
@@ -170,10 +210,19 @@ public static partial class Renderer3D
         // No skybox until DrawSkybox says otherwise this frame; water then falls back to a default sky.
         s_hasSkybox = 0;
 
-        s_pointLightCount = System.Math.Min(pointLights.Length, 4);
+        s_pointLightCount = s_lightsSupported ? System.Math.Min(pointLights.Length, MaxPointLights) : 0;
         for (int i = 0; i < s_pointLightCount; i++)
         {
-            s_pointLights[i] = pointLights[i];
+            s_gpuLights[i].PositionRange = new Vector4(pointLights[i].Position, pointLights[i].Range);
+            s_gpuLights[i].ColorIntensity = new Vector4(pointLights[i].Color, pointLights[i].Intensity);
+        }
+
+        // Upload the frame's lights to the shared UBO once (all lit shaders read the same block).
+        if (s_pointLightCount > 0)
+        {
+            IGraphicsDevice device = Renderer.Device;
+            device.BindBuffer(BufferKind.Uniform, s_lightUbo);
+            device.BufferSubData<GpuPointLight>(BufferKind.Uniform, 0, s_gpuLights.AsSpan(0, s_pointLightCount));
         }
     }
 
@@ -539,14 +588,9 @@ public static partial class Renderer3D
             shader.SetUniform("uCastShadows", 0);
         }
 
+        // The lights themselves live in the shared "Lights" UBO (uploaded once per scene in BeginScene);
+        // only the per-program count uniform is set here.
         shader.SetUniform("uPointLightCount", s_pointLightCount);
-        for (int i = 0; i < s_pointLightCount; i++)
-        {
-            shader.SetUniform(s_pointLightPosNames[i], s_pointLights[i].Position);
-            shader.SetUniform(s_pointLightColorNames[i], s_pointLights[i].Color);
-            shader.SetUniform(s_pointLightIntensityNames[i], s_pointLights[i].Intensity);
-            shader.SetUniform(s_pointLightRangeNames[i], s_pointLights[i].Range);
-        }
     }
 
     /// <summary>
