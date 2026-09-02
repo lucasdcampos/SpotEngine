@@ -193,27 +193,6 @@ public class InspectorPanel : IDisposable
 
     // ----- Material editor -------------------------------------------------------------------------
 
-    // A cheap fingerprint of the material's preview-relevant properties, so the inspector re-renders the
-    // (expensive) offscreen preview only when one of them changes rather than every frame.
-    private static int ComputeMaterialPreviewSignature(Material material)
-    {
-        var hash = new HashCode();
-        hash.Add(material.Color);
-        hash.Add(material.ShaderType);
-        hash.Add(material.Metallic);
-        hash.Add(material.EmissiveColor);
-        hash.Add(material.EmissiveIntensity);
-        hash.Add(material.Tiling);
-        hash.Add(material.AutoTile);
-        hash.Add(material.TexturePath);
-        hash.Add(material.NormalMapPath);
-        hash.Add(material.WaveSpeed);
-        hash.Add(material.WaveScale);
-        hash.Add(material.WaveStrength);
-        hash.Add(material.SpecularPower);
-        return hash.ToHashCode();
-    }
-
     private void DrawMaterialEditor(string path)
     {
         // Material.Load caches by path and never throws (it logs and returns a default on failure),
@@ -233,7 +212,7 @@ public class InspectorPanel : IDisposable
         // Rendering the preview is a full offscreen draw, so only do it when the selected material or one of
         // its preview-relevant properties actually changed — not every frame the inspector is open. Edits
         // below mutate the material this frame and are picked up on the next (an imperceptible one-frame lag).
-        int previewSig = ComputeMaterialPreviewSignature(material);
+        int previewSig = MaterialPreviewHelper.Signature(material);
         if (_materialPreviewPath != path || _materialPreviewSig != previewSig)
         {
             // A faulty material/shader must not throw out of the panel. Render defensively; on failure keep

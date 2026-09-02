@@ -54,6 +54,7 @@ will be finalized when 0.2 is tagged.
 - Setup scripts
 
 ### Changed
+- Inspector asset picker now shows preview tiles for every entry (image thumbnails and live material sphere previews) and a cleaner row layout; material reference slots render a preview instead of a flat glyph
 - Application Startup factory method initialization
 - Standardized the codebase: added an `.editorconfig` and a CI workflow (build + test on push/PR), centralized common build settings, and brought the Sandbox under warnings-as-errors
 - Decomposed two oversized files with no behaviour change: the `Renderer3D` shaders moved to a partial, and `Scene` split into entity-store, hierarchy-cache, and physics collaborators
