@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <RootNamespace>Spot.Net</RootNamespace>
+    <AssemblyName>Spot.Net</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- The engine core. Spot.Net layers networking on top of it (Entity, Scene, ISystem, Component,
+       Log, Time) and multi-targets to match, so the client transport and the whole replication layer
+       compile and run under wasm just as they do on desktop. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
+  </ItemGroup>
+
+  <!-- Desktop-only source: the WebSocket server (HttpListener) and the developer-console commands.
+       A browser build can only ever be a client (it cannot listen on a port), and the engine's
+       DevConsole is itself compiled out of the wasm target, so both are removed there. The client
+       transport (ClientWebSocket), replication, serialization and settings stay platform-neutral. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
+    <Compile Remove="Transport\WebSocketServerTransport.cs" />
+    <Compile Remove="NetworkManager.Server.cs" />
+    <Compile Remove="NetworkConsole.cs" />
+  </ItemGroup>
+
+</Project>
