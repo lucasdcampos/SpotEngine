@@ -1,4 +1,5 @@
 using Spot.Core;
+using Spot.Scenes;
 
 namespace Spot.Net;
 
@@ -17,13 +18,38 @@ public sealed partial class NetworkManager
 {
     private const int LocalClientId = 0;
 
+    // Maps an active scene to the manager driving it, so networked scripts resolve their own manager even
+    // when several run in one process (tests, split-screen tooling). The app's shared Instance is the fallback.
+    private static readonly Dictionary<Scene, NetworkManager> s_byScene = new();
+
     private readonly Dictionary<int, Connection> _connections = new();
     private ITransport? _transport;
+    private ISystem? _receiveSystem;
+    private ISystem? _sendSystem;
     private float _tickAccumulator;
 
-    private NetworkManager()
+    // Internal so tests can spin up independent host/client managers in one process (the app uses the
+    // shared Instance). Nothing forces a single instance; the singleton is just the convenient entry point.
+    internal NetworkManager()
     {
+        Replication = new NetworkReplication(this);
+        ReplicationMessage += Replication.HandleMessage;
+        ClientConnected += Replication.OnClientConnected;
+        ClientDisconnected += Replication.OnClientDisconnected;
+        NetworkTick += Replication.OnTick;
     }
+
+    /// <summary>The scene networked objects live in. Defaults to the active scene when a session starts.</summary>
+    public Scene? Scene { get; set; }
+
+    /// <summary>
+    /// When set on the server/host, the prefab spawned as each connecting client's own object (and
+    /// despawned when they leave). Leave null to spawn players yourself from <see cref="ClientConnected"/>.
+    /// </summary>
+    public string? PlayerPrefab { get; set; }
+
+    // The replication engine: the live-object registry, spawn/despawn, and transform snapshots.
+    internal NetworkReplication Replication { get; }
 
     /// <summary>The active network manager, created on first access.</summary>
     public static NetworkManager Instance { get; } = new NetworkManager();
@@ -72,8 +98,9 @@ public sealed partial class NetworkManager
     // reader is positioned right after the message-type byte. Kept internal so games use the typed API.
     internal event Action<int, MessageType, NetReader>? ReplicationMessage;
 
-    // Raised each server tick (at NetworkSettings.TickRate). The replication layer sends snapshots here.
-    internal event Action? ServerTick;
+    // Raised each network tick (at NetworkSettings.TickRate) while in a session. The replication layer
+    // sends outbound state here: the server broadcasts snapshots; a client sends its owned transforms.
+    internal event Action? NetworkTick;
 
     /// <summary>Starts a listen server: authoritative server plus a local client. Desktop only.</summary>
     /// <param name="port">The port to listen on; defaults to <see cref="NetworkSettings.Port"/>.</param>
@@ -87,6 +114,14 @@ public sealed partial class NetworkManager
         Role = NetworkRole.Host;
         LocalConnectionId = LocalClientId;
         _connections[LocalClientId] = new Connection(LocalClientId);
+        AttachSession();
+
+        // The host's own player, if one is configured (remote clients get theirs on connect).
+        if (PlayerPrefab is not null)
+        {
+            Replication.ServerSpawn(PlayerPrefab, LocalClientId);
+        }
+
         Log.CoreInfo("Spot.Net: started host.");
     }
 
@@ -101,6 +136,7 @@ public sealed partial class NetworkManager
 
         Role = NetworkRole.Server;
         LocalConnectionId = -1;
+        AttachSession();
         Log.CoreInfo("Spot.Net: started dedicated server.");
     }
 
@@ -119,18 +155,72 @@ public sealed partial class NetworkManager
         _transport = transport;
         Role = NetworkRole.Client;
         LocalConnectionId = -1;
+        AttachSession();
         transport.StartClient(address ?? NetworkSettings.DefaultAddress, port ?? NetworkSettings.Port);
     }
 
     /// <summary>Ends the session, closing the transport and clearing all connections.</summary>
     public void Stop()
     {
+        DetachSession();
         _transport?.Stop();
         _transport = null;
         _connections.Clear();
+        Replication.Reset();
         Role = NetworkRole.None;
         LocalConnectionId = -1;
         _tickAccumulator = 0f;
+    }
+
+    // Binds the session to a scene and installs the networking systems that pump it each frame: NetworkReceive
+    // (poll + apply inbound) before the built-ins, NetworkSend (tick outbound) after scripts. Runs on desktop
+    // and browser alike because scene systems tick on both. Falls back to the active scene when none is set.
+    private void AttachSession()
+    {
+        Scene ??= SceneManager.Current;
+        if (Scene is null)
+        {
+            Log.CoreWarn("Spot.Net: no active scene when starting a session; set NetworkManager.Scene so replication can run.");
+            return;
+        }
+
+        s_byScene[Scene] = this;
+        _receiveSystem = new DelegateSystem(NetworkSystemOrder.Receive, (_, dt) =>
+        {
+            Poll();
+            Replication.ApplyInterpolation(dt);
+        });
+        _sendSystem = new DelegateSystem(NetworkSystemOrder.Send, (_, dt) => Tick(dt));
+        Scene.RegisterSystem(_receiveSystem);
+        Scene.RegisterSystem(_sendSystem);
+    }
+
+    // Resolves the manager driving a given scene, used by networked scripts to route RPCs to the right session.
+    internal static bool TryGetForScene(Scene scene, out NetworkManager manager) => s_byScene.TryGetValue(scene, out manager!);
+
+    private void DetachSession()
+    {
+        if (Scene is not null)
+        {
+            if (s_byScene.TryGetValue(Scene, out NetworkManager? owner) && ReferenceEquals(owner, this))
+            {
+                s_byScene.Remove(Scene);
+            }
+
+            if (_receiveSystem is not null)
+            {
+                Scene.Systems.Remove(_receiveSystem);
+            }
+
+            if (_sendSystem is not null)
+            {
+                Scene.Systems.Remove(_sendSystem);
+            }
+        }
+
+        _receiveSystem = null;
+        _sendSystem = null;
+        Scene = null;
     }
 
     // Creates and starts the server transport for host/server. The concrete server type is desktop-only, so
@@ -159,22 +249,27 @@ public sealed partial class NetworkManager
     // the browser target, leaving _transport null so hosting is cleanly reported as unsupported.
     partial void InstallServerTransport();
 
-    /// <summary>Pumps the transport and advances the server tick. Runs Poll then Tick.</summary>
+    /// <summary>
+    /// Runs the full networking pipeline in one call: poll inbound, apply client interpolation, then tick
+    /// outbound. The app splits these across ordered scene systems (see <see cref="NetworkSystems"/>); this
+    /// convenience is for headless drivers and tests.
+    /// </summary>
     /// <param name="deltaTime">Elapsed seconds since the last update.</param>
     public void Update(float deltaTime)
     {
         Poll();
+        Replication.ApplyInterpolation(deltaTime);
         Tick(deltaTime);
     }
 
     /// <summary>Drains inbound transport events and dispatches messages. Called early in the frame.</summary>
     public void Poll() => _transport?.Poll(HandleTransportEvent);
 
-    /// <summary>Advances the server-tick accumulator, firing outbound state at the configured rate.</summary>
+    /// <summary>Advances the network-tick accumulator, firing outbound state at the configured rate.</summary>
     /// <param name="deltaTime">Elapsed seconds since the last update.</param>
     public void Tick(float deltaTime)
     {
-        if (!IsServer || ServerTick is null)
+        if (Role == NetworkRole.None || NetworkTick is null)
         {
             return;
         }
@@ -191,9 +286,22 @@ public sealed partial class NetworkManager
         while (_tickAccumulator >= interval)
         {
             _tickAccumulator -= interval;
-            ServerTick.Invoke();
+            NetworkTick.Invoke();
         }
     }
+
+    /// <summary>
+    /// Server-only: spawns a registered prefab as a networked object owned by <paramref name="ownerId"/>
+    /// (<c>-1</c> = the server), replicating it to every client. Returns the spawned entity, or <c>null</c>
+    /// if not the server or the prefab/scene is missing.
+    /// </summary>
+    /// <param name="prefabKey">The key the prefab was registered under (see <see cref="NetworkPrefabs"/>).</param>
+    /// <param name="ownerId">The owning connection id, or <c>-1</c> for the server.</param>
+    public Entity? ServerSpawn(string prefabKey, int ownerId = -1) => Replication.ServerSpawn(prefabKey, ownerId);
+
+    /// <summary>Server-only: despawns a networked object everywhere. A no-op if not the server.</summary>
+    /// <param name="entity">The networked entity to despawn.</param>
+    public void ServerDespawn(Entity entity) => Replication.ServerDespawn(entity);
 
     /// <summary>Sends an application message to the server (client role), or loops back locally (host).</summary>
     /// <param name="data">The payload bytes.</param>
@@ -282,6 +390,16 @@ public sealed partial class NetworkManager
         if (IsServer)
         {
             _transport?.Broadcast(data, method);
+        }
+    }
+
+    // Sends an already-framed engine message from a client up to the server. Used by the replication layer
+    // (e.g. an owning client's transform snapshot). A no-op unless we are a pure client.
+    internal void SendToServerInternal(ReadOnlySpan<byte> data, DeliveryMethod method = DeliveryMethod.Unreliable)
+    {
+        if (Role == NetworkRole.Client)
+        {
+            _transport?.Send(0, data, method);
         }
     }
 

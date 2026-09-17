@@ -43,6 +43,7 @@ public static class ProjectGenerator
         Directory.CreateDirectory(engineBin);
 
         CopyBrowserEngineDll(engineBin);
+        CopyBrowserNetDll(engineBin);
         CopyScriptGenDll(engineBin);
 
         string name = project.Config.Name;
@@ -96,6 +97,15 @@ public static class ProjectGenerator
     </Reference>
   </ItemGroup>
 
+  <!-- Optional networking (the browser build of Spot.Net). Present when the editor/CLI bundled it into
+       EngineBin. Its transport uses ClientWebSocket, which the browser runtime maps onto the page's native
+       WebSocket, so a browser build is a full networking client with no extra dependencies. -->
+  <ItemGroup Condition=""Exists('EngineBin\Spot.Net.dll')"">
+    <Reference Include=""Spot.Net"">
+      <HintPath>EngineBin\Spot.Net.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <!-- The engine's managed dependencies are referenced directly by the app, since a HintPath reference does
        not carry transitive NuGet packages. These mirror the engine's browser-target dependency set (no
        Silk.NET, no ImGui — the browser build ships neither). -->
@@ -142,6 +152,18 @@ System.Console.WriteLine(""Spot browser runtime started."");
         return File.Exists(target) ? target : null;
     }
 
+    // Copies the browser (net10.0-browser) build of Spot.Net next to the generated browser project, so the
+    // WASM app is a full networking client. Optional and best-effort, mirroring the engine copy: when no
+    // browser build is found the reference simply drops out (the game ships without networking).
+    private static void CopyBrowserNetDll(string engineBinDir)
+    {
+        string? netDll = FindBrowserSibling(typeof(Project).Assembly.Location, "Spot.Net", "Spot.Net.dll");
+        if (netDll is not null)
+        {
+            CopyIfPresent(netDll, Path.Combine(engineBinDir, "Spot.Net.dll"));
+        }
+    }
+
     // Locates the engine's net10.0-browser Spot.Engine.dll relative to the loaded (desktop) engine assembly.
     // Two layouts are tried: the browser TFM folder sitting beside the loaded one (a host that copied both
     // targets), and the engine's own build output under the shared bin root (the repo layout, where each
@@ -168,6 +190,48 @@ System.Console.WriteLine(""Spot browser runtime started."");
             {
                 string config = Path.GetFileName(configDir);
                 string candidate = Path.Combine(binRoot, "Spot.Engine", config, "net10.0-browser", "Spot.Engine.dll");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+        catch
+        {
+            // Path probing is best-effort; fall through to "not found".
+        }
+
+        return null;
+    }
+
+    // Locates a project's net10.0-browser assembly relative to the loaded (desktop) engine assembly, mirroring
+    // FindBrowserEngineDll but for a sibling project (e.g. Spot.Net). Tries a browser TFM folder beside the
+    // loaded one (a host that copied both targets), then the shared bin root layout
+    // (<binRoot>/<projectFolder>/<Config>/net10.0-browser/<fileName>).
+    private static string? FindBrowserSibling(string desktopEngineDll, string projectFolder, string fileName)
+    {
+        char sep = Path.DirectorySeparatorChar;
+
+        string browserTfmDir = desktopEngineDll.Replace($"{sep}net10.0{sep}", $"{sep}net10.0-browser{sep}");
+        if (browserTfmDir != desktopEngineDll)
+        {
+            string beside = Path.Combine(Path.GetDirectoryName(browserTfmDir) ?? string.Empty, fileName);
+            if (File.Exists(beside))
+            {
+                return beside;
+            }
+        }
+
+        try
+        {
+            string? tfmDir = Path.GetDirectoryName(desktopEngineDll);
+            string? configDir = Path.GetDirectoryName(tfmDir);
+            string? projectDir = Path.GetDirectoryName(configDir);
+            string? binRoot = Path.GetDirectoryName(projectDir);
+            if (configDir is not null && binRoot is not null)
+            {
+                string config = Path.GetFileName(configDir);
+                string candidate = Path.Combine(binRoot, projectFolder, config, "net10.0-browser", fileName);
                 if (File.Exists(candidate))
                 {
                     return candidate;
@@ -252,6 +316,10 @@ System.Console.WriteLine(""Spot browser runtime started."");
         // optional, so a host without it simply produces a game without the overlay.
         CopyIfPresent(sourceDllPath, Path.Combine(engineBinDir, "Spot.Engine.dll"));
         CopyIfPresent(Path.Combine(engineDir, "Spot.DebugUI.dll"), Path.Combine(engineBinDir, "Spot.DebugUI.dll"));
+
+        // Also bundle Spot.Net when it ships beside the engine, so the built game can use networking; like the
+        // debug overlay it is optional, and a host without it simply produces a game without networking.
+        CopyIfPresent(Path.Combine(engineDir, "Spot.Net.dll"), Path.Combine(engineBinDir, "Spot.Net.dll"));
     }
 
     private static void CopyIfPresent(string source, string target)
@@ -293,6 +361,14 @@ System.Console.WriteLine(""Spot browser runtime started."");
   <ItemGroup Condition=""Exists('EngineBin\Spot.DebugUI.dll')"">
     <Reference Include=""Spot.DebugUI"">
       <HintPath>EngineBin\Spot.DebugUI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Optional networking (Spot.Net). Present when the editor/CLI bundled it into EngineBin. Skipped cleanly
+       when it was not bundled, in which case the game simply has no networking. -->
+  <ItemGroup Condition=""Exists('EngineBin\Spot.Net.dll')"">
+    <Reference Include=""Spot.Net"">
+      <HintPath>EngineBin\Spot.Net.dll</HintPath>
     </Reference>
   </ItemGroup>
 
