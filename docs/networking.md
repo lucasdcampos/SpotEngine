@@ -145,6 +145,19 @@ RPC/SyncVar dispatch uses reflection over your behaviour's methods and fields. T
 on a normal browser build; an aggressively trimmed/AOT wasm *publish* should preserve those members. (A
 source generator is the intended future hardening for that case.)
 
+## Connection health and limits
+
+Each peer sends a periodic heartbeat, so a connection that is alive but quiet (a player standing still)
+is not confused with one that died. A connection that goes silent past a timeout is dropped and surfaces
+as a normal disconnect (`ClientDisconnected` / `DisconnectedFromServer`), so half-open connections don't
+linger as "ghost" players. The transport also caps the size of a single inbound message and drops a peer
+that exceeds it, bounding what a hostile or buggy client can make the server buffer. Tune all of these on
+`NetworkSettings` (`HeartbeatIntervalSeconds`, `TimeoutSeconds` — 0 disables timeouts — and
+`MaxMessageBytes`).
+
+This is basic hardening, not a security boundary: there is no encryption, authentication, or anti-cheat.
+Treat every client as untrusted and keep authority on the server.
+
 ## What it does not do (yet)
 
 Out of scope for this foundation, left for you or a later version to build on top:
@@ -161,3 +174,21 @@ Run two instances of your game: `net_host` in one, `net_connect 127.0.0.1` in th
 each peer's player replicated. For same-machine LAN or a browser client, the server binds `localhost` by
 default (no OS permission needed); to accept clients from other machines set `NetworkSettings.BindAddress`
 to a routable address, which on Windows may require a URL reservation.
+
+### Smoke-testing a browser client
+
+A browser build is a networking client, so verify it against a native host:
+
+1. **Start a host** in a desktop build of your game (or the editor's play mode) and `net_host`. The server
+   must bind an address the browser can reach — `localhost` for a browser tab on the same machine (the
+   default), or a routable address for another device.
+2. **Build the browser client**: `dotnet run --project tools/Spot.Cli -- build browser --project <your>.sptproj`.
+   This publishes a static site under `Build/browser` and bundles `Spot.Net` into the WASM app.
+3. **Serve the site** over HTTP (a browser won't load WASM from `file://`), for example
+   `dotnet serve -d Build/browser/wwwroot` or any static file server, and open it.
+4. **Connect** from the page by calling `NetworkManager.Instance.StartClient("<host address>")` from your
+   game code (the browser has no developer console). You should see the browser client join and the
+   players replicate both ways.
+
+Because the browser client uses `ClientWebSocket`, the same networking code paths run as on desktop; only
+the underlying socket differs (the browser's native WebSocket).
