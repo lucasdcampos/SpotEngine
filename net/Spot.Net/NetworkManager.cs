@@ -23,6 +23,14 @@ public sealed partial class NetworkManager
     private static readonly Dictionary<Scene, NetworkManager> s_byScene = new();
 
     private readonly Dictionary<int, Connection> _connections = new();
+
+    // The session clock (accumulated real delta) and, per connection, the time its last message arrived —
+    // together they drive heartbeat sending and dead-connection timeouts.
+    private readonly Dictionary<int, float> _lastActivity = new();
+    private readonly List<int> _timedOut = new();
+    private float _sessionTime;
+    private float _heartbeatAccumulator;
+
     private ITransport? _transport;
     private ISystem? _receiveSystem;
     private ISystem? _sendSystem;
@@ -166,10 +174,13 @@ public sealed partial class NetworkManager
         _transport?.Stop();
         _transport = null;
         _connections.Clear();
+        _lastActivity.Clear();
         Replication.Reset();
         Role = NetworkRole.None;
         LocalConnectionId = -1;
         _tickAccumulator = 0f;
+        _sessionTime = 0f;
+        _heartbeatAccumulator = 0f;
     }
 
     // Binds the session to a scene and installs the networking systems that pump it each frame: NetworkReceive
@@ -269,7 +280,23 @@ public sealed partial class NetworkManager
     /// <param name="deltaTime">Elapsed seconds since the last update.</param>
     public void Tick(float deltaTime)
     {
-        if (Role == NetworkRole.None || NetworkTick is null)
+        if (Role == NetworkRole.None)
+        {
+            return;
+        }
+
+        // Keep-alive and dead-connection detection run every frame while a session is live.
+        _sessionTime += deltaTime;
+        _heartbeatAccumulator += deltaTime;
+        if (_heartbeatAccumulator >= NetworkSettings.HeartbeatIntervalSeconds)
+        {
+            _heartbeatAccumulator = 0f;
+            SendHeartbeat();
+        }
+
+        CheckTimeouts();
+
+        if (NetworkTick is null)
         {
             return;
         }
@@ -408,14 +435,71 @@ public sealed partial class NetworkManager
         switch (e.Kind)
         {
             case TransportEventKind.Connected:
+                _lastActivity[e.ConnectionId] = _sessionTime;
                 OnConnected(e.ConnectionId);
                 break;
             case TransportEventKind.Disconnected:
+                _lastActivity.Remove(e.ConnectionId);
                 OnDisconnected(e.ConnectionId);
                 break;
             case TransportEventKind.Data:
+                // Any inbound message — a heartbeat or real traffic — proves the connection is alive.
+                _lastActivity[e.ConnectionId] = _sessionTime;
                 DispatchMessage(e.ConnectionId, e.Payload);
                 break;
+        }
+    }
+
+    // Sends a keep-alive to the peers: the server to every client, a client to the server. Its arrival keeps
+    // the other end from timing this connection out even when there is no gameplay traffic.
+    private void SendHeartbeat()
+    {
+        if (_transport is null)
+        {
+            return;
+        }
+
+        var writer = new NetWriter(1);
+        writer.WriteMessageType(MessageType.Ping);
+        if (IsServer)
+        {
+            _transport.Broadcast(writer.Written, DeliveryMethod.Reliable);
+        }
+        else if (Role == NetworkRole.Client)
+        {
+            _transport.Send(0, writer.Written, DeliveryMethod.Reliable);
+        }
+    }
+
+    // Drops connections that have gone silent past the timeout. The host's local client (id 0) is not a
+    // transport peer and is never timed out.
+    private void CheckTimeouts()
+    {
+        float timeout = NetworkSettings.TimeoutSeconds;
+        if (timeout <= 0f || _transport is null)
+        {
+            return;
+        }
+
+        _timedOut.Clear();
+        foreach (KeyValuePair<int, float> entry in _lastActivity)
+        {
+            if (entry.Key > 0 && _sessionTime - entry.Value > timeout)
+            {
+                _timedOut.Add(entry.Key);
+            }
+        }
+
+        // A client watches its single connection to the server (id 0).
+        if (Role == NetworkRole.Client && _lastActivity.TryGetValue(0, out float last) && _sessionTime - last > timeout)
+        {
+            _timedOut.Add(0);
+        }
+
+        foreach (int connectionId in _timedOut)
+        {
+            Log.CoreWarn("Spot.Net: connection {0} timed out after {1:0.0}s of silence; dropping.", connectionId, timeout);
+            _transport.Disconnect(connectionId);
         }
     }
 
@@ -477,6 +561,9 @@ public sealed partial class NetworkManager
                     LocalConnectionId = assignedId;
                 }
 
+                break;
+            case MessageType.Ping:
+                // Nothing to do: recording the inbound activity (done by the caller) is the whole point.
                 break;
             default:
                 ReplicationMessage?.Invoke(fromConnectionId, type, reader);

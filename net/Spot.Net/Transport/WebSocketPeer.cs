@@ -111,6 +111,15 @@ internal sealed class WebSocketPeer
                         return;
                     }
 
+                    // Bound how much a single message can make us buffer, so a hostile or buggy peer can't
+                    // exhaust memory. Over the cap, drop the peer rather than keep assembling.
+                    if (message.Length + result.Count > NetworkSettings.MaxMessageBytes)
+                    {
+                        Log.CoreWarn("Spot.Net: peer {0} exceeded the max message size ({1} bytes); disconnecting.", Id, NetworkSettings.MaxMessageBytes);
+                        Close();
+                        return;
+                    }
+
                     message.Write(buffer, 0, result.Count);
                 }
                 while (!result.EndOfMessage);

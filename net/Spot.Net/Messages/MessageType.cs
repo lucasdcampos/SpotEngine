@@ -27,4 +27,7 @@ public enum MessageType : byte
 
     /// <summary>A synchronized-variable update for a networked object's behaviour.</summary>
     SyncVar = 6,
+
+    /// <summary>A keep-alive heartbeat; its arrival is proof the connection is still live.</summary>
+    Ping = 7,
 }

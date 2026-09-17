@@ -14,6 +14,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
 - `NetworkTransform` replicates position/rotation with client-side interpolation
 - `NetworkBehaviour` with `[ServerRpc]`/`[ClientRpc]` RPCs and `SyncVar<T>` synchronized variables
+- Connection health: heartbeats keep quiet connections alive and silent peers time out; an inbound message-size cap bounds untrusted buffering
 - Developer-console commands `net_host`, `net_connect`, `net_stop`, `net_status` (desktop)
 
 ## [v0.2.0] - 2026-09-02
