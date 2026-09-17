@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
+### Added
+- Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser
+- Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
+- `NetworkTransform` replicates position/rotation with client-side interpolation
+- `NetworkBehaviour` with `[ServerRpc]`/`[ClientRpc]` RPCs and `SyncVar<T>` synchronized variables
+- Developer-console commands `net_host`, `net_connect`, `net_stop`, `net_status` (desktop)
+
 ## [v0.2.0] - 2026-09-02
 
 **Gameplay & Shipping.**

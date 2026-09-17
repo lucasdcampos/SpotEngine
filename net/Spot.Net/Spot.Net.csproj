@@ -14,6 +14,10 @@
     <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spot.Net.Tests" />
+  </ItemGroup>
+
   <!-- Desktop-only source: the WebSocket server (HttpListener) and the developer-console commands.
        A browser build can only ever be a client (it cannot listen on a port), and the engine's
        DevConsole is itself compiled out of the wasm target, so both are removed there. The client

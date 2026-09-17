@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Spot.Build\Spot.Build.csproj" />
+    <!-- Referenced so Spot.Net.dll ships beside the engine in the CLI's output; the project generator then
+         bundles it into a game's EngineBin (see ProjectGenerator.CopyEngineDll). -->
+    <ProjectReference Include="..\..\net\Spot.Net\Spot.Net.csproj" />
   </ItemGroup>
 
 </Project>
