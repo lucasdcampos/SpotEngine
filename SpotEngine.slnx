@@ -3,6 +3,9 @@
     <Project Path="engine/Spot.Engine.csproj" />
     <Project Path="debugui/Spot.DebugUI.csproj" />
   </Folder>
+  <Folder Name="/net/">
+    <Project Path="net/Spot.Net/Spot.Net.csproj" />
+  </Folder>
   <Folder Name="/sandbox/" />
   <Folder Name="/editor/">
     <Project Path="editor/Spot.Editor.csproj" />
@@ -15,5 +18,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Spot.Engine.Tests/Spot.Engine.Tests.csproj" />
     <Project Path="tests/Spot.Build.Tests/Spot.Build.Tests.csproj" />
+    <Project Path="tests/Spot.Net.Tests/Spot.Net.Tests.csproj" />
   </Folder>
 </Solution>

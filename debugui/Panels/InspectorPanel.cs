@@ -108,6 +108,10 @@ public class InspectorPanel : IDisposable
 
         if (ImGui.BeginPopup("AddComponent"))
         {
+            // InputText captures keyboard focus and swallows Escape, so close explicitly.
+            if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+                ImGui.CloseCurrentPopup();
+
             ImGui.SetNextItemWidth(250f);
             if (ImGui.IsWindowAppearing())
                 ImGui.SetKeyboardFocusHere();
