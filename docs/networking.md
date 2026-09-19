@@ -9,6 +9,30 @@ compensation. Think of it as the base you build a game on, not a finished netcod
 `Spot.Net` is a separate project so the runtime stays lean; reference it from your game (the sandbox and
 editor already do).
 
+## Quick start (5 steps)
+
+1. **Reference** `Spot.Net` from your game project.
+2. **Register a prefab** that has a `NetworkObject` component so the server can spawn it by name:
+   ```csharp
+   NetworkPrefabs.Register("Player", "Assets/Prefabs/Player.sptprefab");
+   ```
+3. **Set the player prefab** on the manager so it auto-spawns one per connecting client:
+   ```csharp
+   NetworkManager.Instance.PlayerPrefab = "Player";
+   ```
+4. **Start a host** (one process acts as server + local player) or a **client** (connect to an existing
+   server). From code:
+   ```csharp
+   NetworkManager.Instance.StartHost();   // server + local client on port 7777
+   NetworkManager.Instance.StartClient("192.168.1.10");  // pure client
+   ```
+   Or via the developer console: `net_host` / `net_connect <address>`.
+5. **Add `NetworkTransform`** to any entity you want to replicate position/rotation automatically, and
+   **`NetworkBehaviour`** subclasses for custom RPCs and synchronized variables.
+
+> **Remote clients:** `NetworkSettings.BindAddress` defaults to `"localhost"` (same machine only). Set it
+> to `"+"` before calling `StartHost` to accept connections from other machines.
+
 ## Topology
 
 Networking is **server-authoritative** with one of the peers acting as the server:
@@ -61,7 +85,10 @@ Connection lifecycle is exposed as events: `ClientConnected`/`ClientDisconnected
 `ConnectedToServer`/`DisconnectedFromServer` on a client.
 
 Defaults (port, address, tick rate, interpolation delay, max connections) live on the static
-`NetworkSettings`. On desktop you can also drive a session from the developer console after calling
+`NetworkSettings`. Set `NetworkSettings.UseSsl = true` before calling `StartClient` when your game is
+served over HTTPS (e.g. a deployed WASM build) — this switches the transport from `ws://` to `wss://`,
+which browsers require to avoid blocking the connection as mixed content. On desktop you can also drive a
+session from the developer console after calling
 `NetworkConsole.Install()`: `net_host [port]`, `net_connect [address] [port]`, `net_stop`, `net_status`.
 
 ## Networked objects and spawning
@@ -189,6 +216,10 @@ A browser build is a networking client, so verify it against a native host:
 4. **Connect** from the page by calling `NetworkManager.Instance.StartClient("<host address>")` from your
    game code (the browser has no developer console). You should see the browser client join and the
    players replicate both ways.
+
+> **Deployed over HTTPS?** Set `NetworkSettings.UseSsl = true` before `StartClient`. Browsers block
+> `ws://` connections from HTTPS pages (mixed-content policy); `wss://` requires your server to be behind
+> TLS (a reverse proxy such as nginx or Caddy works well for this).
 
 Because the browser client uses `ClientWebSocket`, the same networking code paths run as on desktop; only
 the underlying socket differs (the browser's native WebSocket).

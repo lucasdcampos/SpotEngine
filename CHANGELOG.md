@@ -16,6 +16,15 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - `NetworkBehaviour` with `[ServerRpc]`/`[ClientRpc]` RPCs and `SyncVar<T>` synchronized variables
 - Connection health: heartbeats keep quiet connections alive and silent peers time out; an inbound message-size cap bounds untrusted buffering
 - Developer-console commands `net_host`, `net_connect`, `net_stop`, `net_status` (desktop)
+- `NetworkSettings.UseSsl`: switches the client transport to `wss://` for WASM builds served over HTTPS
+- `NetworkBehaviour.OnNetworkConnected` / `OnNetworkDisconnected` virtual lifecycle hooks for client scripts
+- `net_status` now reports the count of live networked objects
+- `net_host` prints a hint when `BindAddress` is `localhost` so remote-connection failures are obvious
+- Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
+
+### Fixed
+- Editor "Add Component" popup now closes reliably on Escape (InputText was swallowing the key)
+- "Show Colliders" viewport checkbox now draws colliders for all scene entities, not only the selected one
 
 ## [v0.2.0] - 2026-09-02
 
