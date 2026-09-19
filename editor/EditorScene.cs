@@ -775,11 +775,30 @@ public class EditorScene : Scene
             }
 
             // Debug Physics Rendering
-            if (_context.Selection.HasValue && sceneData == _activeSceneData)
-            {
-                Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+            bool showAll = Spot.Physics.PhysicsDebug.ShowColliders && sceneData == _activeSceneData;
+            bool showSelected = _context.Selection.HasValue && sceneData == _activeSceneData;
 
-                void DrawColliders(Entity entity)
+            if (showAll || showSelected)
+            {
+                static void DrawBox3DWire(Vector3 min, Vector3 max)
+                {
+                    Vector4 c = new(0.0f, 1.0f, 0.0f, 1.0f);
+                    float t = 0.02f;
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(max.X, min.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, min.Y, max.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(min.X, min.Y, max.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, min.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, max.Y, min.Z), new Vector3(max.X, max.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, max.Y, min.Z), new Vector3(max.X, max.Y, max.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, max.Y, max.Z), new Vector3(min.X, max.Y, max.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, max.Y, max.Z), new Vector3(min.X, max.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(min.X, max.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, max.Y, min.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(max.X, max.Y, max.Z), c, t);
+                    Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, max.Y, max.Z), c, t);
+                }
+
+                void DrawEntityColliders(Entity entity)
                 {
                     if (entity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
                     {
@@ -794,41 +813,45 @@ public class EditorScene : Scene
                         var transform = entity.GetComponent<TransformComponent>();
                         var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
-
-                        Vector3 min = bounds.Min;
-                        Vector3 max = bounds.Max;
-                        Vector4 color = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
-                        float t = 0.02f;
-
-                        // Bottom rect
-                        Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(max.X, min.Y, min.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, min.Y, max.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(min.X, min.Y, max.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, min.Y, min.Z), color, t);
-
-                        // Top rect
-                        Renderer2D.DrawLine(new Vector3(min.X, max.Y, min.Z), new Vector3(max.X, max.Y, min.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, max.Y, min.Z), new Vector3(max.X, max.Y, max.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, max.Y, max.Z), new Vector3(min.X, max.Y, max.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(min.X, max.Y, max.Z), new Vector3(min.X, max.Y, min.Z), color, t);
-
-                        // Connecting lines
-                        Renderer2D.DrawLine(new Vector3(min.X, min.Y, min.Z), new Vector3(min.X, max.Y, min.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, min.Y, min.Z), new Vector3(max.X, max.Y, min.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(max.X, min.Y, max.Z), new Vector3(max.X, max.Y, max.Z), color, t);
-                        Renderer2D.DrawLine(new Vector3(min.X, min.Y, max.Z), new Vector3(min.X, max.Y, max.Z), color, t);
+                        DrawBox3DWire(bounds.Min, bounds.Max);
                     }
 
                     if (entity.TryGetComponent(out Spot.Scenes.RelationshipComponent? rel))
                     {
                         foreach (var child in rel.Children)
-                        {
-                            DrawColliders(child);
-                        }
+                            DrawEntityColliders(child);
                     }
                 }
 
-                DrawColliders(_context.Selection.Value);
+                Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+
+                if (showAll)
+                {
+                    // ShowColliders is on: draw every entity in the scene, not just the selection.
+                    foreach (var entity in sceneData.Scene.View<Spot.Physics.BoxCollider2DComponent, TransformComponent>())
+                    {
+                        if (!entity.IsActiveInHierarchy()) continue;
+                        var transform = entity.GetComponent<TransformComponent>();
+                        var collider = entity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
+                        var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
+                        Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
+                    }
+
+                    foreach (var entity in sceneData.Scene.View<Spot.Physics.BoxCollider3DComponent, TransformComponent>())
+                    {
+                        if (!entity.IsActiveInHierarchy()) continue;
+                        var transform = entity.GetComponent<TransformComponent>();
+                        var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
+                        var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
+                        DrawBox3DWire(bounds.Min, bounds.Max);
+                    }
+                }
+                else
+                {
+                    // ShowColliders is off: draw only the selected entity's colliders as a selection gizmo.
+                    DrawEntityColliders(_context.Selection!.Value);
+                }
+
                 Renderer2D.EndScene();
             }
 

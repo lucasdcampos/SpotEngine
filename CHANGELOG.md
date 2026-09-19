@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Work in progress toward **v0.2** ("Gameplay & Shipping"). The list below is provisional and
-will be finalized when 0.2 is tagged.
+Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
+
+### Added
+- Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser
+- Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
+- `NetworkTransform` replicates position/rotation with client-side interpolation
+- `NetworkBehaviour` with `[ServerRpc]`/`[ClientRpc]` RPCs and `SyncVar<T>` synchronized variables
+- Connection health: heartbeats keep quiet connections alive and silent peers time out; an inbound message-size cap bounds untrusted buffering
+- Developer-console commands `net_host`, `net_connect`, `net_stop`, `net_status` (desktop)
+- `NetworkSettings.UseSsl`: switches the client transport to `wss://` for WASM builds served over HTTPS
+- `NetworkBehaviour.OnNetworkConnected` / `OnNetworkDisconnected` virtual lifecycle hooks for client scripts
+- `net_status` now reports the count of live networked objects
+- `net_host` prints a hint when `BindAddress` is `localhost` so remote-connection failures are obvious
+- Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
+
+### Fixed
+- Editor "Add Component" popup now closes reliably on Escape (InputText was swallowing the key)
+- "Show Colliders" viewport checkbox now draws colliders for all scene entities, not only the selected one
+
+## [v0.2.0] - 2026-09-02
+
+**Gameplay & Shipping.**
 
 ### Performance
 - Frustum culling: off-screen 3D meshes are skipped in both the main and shadow passes
