@@ -94,7 +94,8 @@ public class HierarchyPanel
                 Entity? sel = _context.Selection;
                 if (ImGui.GetIO().KeyCtrl)
                 {
-                    if (sel != null && ImGui.IsKeyPressed(ImGuiKey.C)) CopyEntity(sel.Value);
+                    if (ImGui.GetIO().KeyShift && ImGui.IsKeyPressed(ImGuiKey.N)) CreateEmpty();
+                    else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.C)) CopyEntity(sel.Value);
                     else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.X)) CutEntity(sel.Value);
                     else if (sel != null && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateSelected();
                     else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteEntity(sel);
@@ -147,7 +148,7 @@ public class HierarchyPanel
 
             if (ImGui.BeginPopupContextWindow("SceneContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
             {
-                if (ImGui.MenuItem("Create Empty Entity"))
+                if (ImGui.MenuItem("Create Empty Entity", "Ctrl+Shift+N"))
                 {
                     CreateEmpty();
                 }
