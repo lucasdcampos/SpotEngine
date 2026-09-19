@@ -22,6 +22,8 @@ public static class NetworkConsole
             int port = ParsePort(args, 0) ?? NetworkSettings.Port;
             NetworkManager.Instance.StartHost(port);
             console.Print($"Hosting on port {port} (role: {NetworkManager.Instance.Role}).");
+            if (NetworkSettings.BindAddress.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+                console.Print("Hint: bound to localhost — only same-machine clients can connect. Set NetworkSettings.BindAddress = \"+\" to accept remote clients.");
         }, "Starts a listen server: 'net_host [port]'");
 
         console.Register("net_connect", args =>
@@ -43,10 +45,9 @@ public static class NetworkConsole
             NetworkManager net = NetworkManager.Instance;
             console.Print($"Role: {net.Role}  LocalId: {net.LocalConnectionId}  Tick: {NetworkSettings.TickRate} Hz");
             if (net.IsServer)
-            {
                 console.Print($"Clients connected: {net.Connections.Count}");
-            }
-        }, "Prints the current networking role, id and connection count");
+            console.Print($"Networked objects: {net.Replication.Objects.Count}");
+        }, "Prints the current networking role, id, connection count and object count");
     }
 
     private static int? ParsePort(IReadOnlyList<string> args, int index)
