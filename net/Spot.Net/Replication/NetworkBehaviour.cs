@@ -13,6 +13,8 @@ namespace Spot.Net;
 public abstract class NetworkBehaviour : EntityBehaviour
 {
     private List<ISyncVar>? _syncVars;
+    private Action? _onConnectedHandler;
+    private Action? _onDisconnectedHandler;
 
     /// <summary>Whether the local peer is the authoritative server (or host).</summary>
     protected bool IsServer => Net.IsServer;
@@ -78,6 +80,34 @@ public abstract class NetworkBehaviour : EntityBehaviour
         }
 
         Net.Replication.SendClientRpc(obj, method, args);
+    }
+
+    /// <summary>
+    /// Called on a client when its connection to the server is established. Override to initialize
+    /// client-side state that depends on the session being live.
+    /// </summary>
+    protected virtual void OnNetworkConnected() { }
+
+    /// <summary>
+    /// Called on a client when its connection to the server is closed or lost. Override to clean up
+    /// state that was set up in <see cref="OnNetworkConnected"/>.
+    /// </summary>
+    protected virtual void OnNetworkDisconnected() { }
+
+    public override void OnCreate()
+    {
+        base.OnCreate();
+        _onConnectedHandler = OnNetworkConnected;
+        _onDisconnectedHandler = OnNetworkDisconnected;
+        Net.ConnectedToServer += _onConnectedHandler;
+        Net.DisconnectedFromServer += _onDisconnectedHandler;
+    }
+
+    public override void OnDestroy()
+    {
+        Net.ConnectedToServer -= _onConnectedHandler;
+        Net.DisconnectedFromServer -= _onDisconnectedHandler;
+        base.OnDestroy();
     }
 
     // The synchronized variables declared on this behaviour, in declaration order (their wire index).
