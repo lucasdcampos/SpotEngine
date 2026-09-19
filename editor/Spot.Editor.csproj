@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\engine\Spot.Engine.csproj" />
     <ProjectReference Include="..\debugui\Spot.DebugUI.csproj" />
+    <ProjectReference Include="..\net\Spot.Net\Spot.Net.csproj" />
     <ProjectReference Include="..\tools\Spot.Build\Spot.Build.csproj" />
   </ItemGroup>
 
