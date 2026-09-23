@@ -35,7 +35,7 @@ Check an item off when it ships.
 
 **Physics**
 - [ ] **Physics joints / constraints** — no hinge, fixed, or spring joint for 3D; doors, ragdolls, and chains require custom script workarounds
-- [ ] **Physics materials** — no per-surface friction or restitution; all colliders share the same implicit defaults
+- [x] **Physics materials** — no per-surface friction or restitution; all colliders share the same implicit defaults
 - [x] **2D trigger callbacks** — `BoxCollider2DComponent` exists but there are no `OnTriggerEnter2D` / `OnTriggerExit2D` script hooks
 
 **Animation**

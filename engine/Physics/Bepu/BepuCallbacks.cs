@@ -18,6 +18,8 @@ internal sealed class BepuMaterials
 {
     public float[] Friction = new float[128];
     public float[] Restitution = new float[128];
+    public float[] StaticFriction = new float[128];
+    public float[] StaticRestitution = new float[128];
     public float DefaultFriction = 1f;
 
     public void Ensure(int index)
@@ -28,16 +30,32 @@ internal sealed class BepuMaterials
         Array.Resize(ref Restitution, n);
     }
 
+    public void EnsureStatic(int index)
+    {
+        if (index < StaticFriction.Length) return;
+        int n = Math.Max(index + 1, StaticFriction.Length * 2);
+        Array.Resize(ref StaticFriction, n);
+        Array.Resize(ref StaticRestitution, n);
+    }
+
     public float FrictionOf(CollidableReference r)
     {
-        if (r.Mobility == CollidableMobility.Static) return DefaultFriction;
+        if (r.Mobility == CollidableMobility.Static)
+        {
+            int sv = r.StaticHandle.Value;
+            return sv >= 0 && sv < StaticFriction.Length ? StaticFriction[sv] : DefaultFriction;
+        }
         int v = r.BodyHandle.Value;
         return v >= 0 && v < Friction.Length ? Friction[v] : DefaultFriction;
     }
 
     public float RestitutionOf(CollidableReference r)
     {
-        if (r.Mobility == CollidableMobility.Static) return 0f;
+        if (r.Mobility == CollidableMobility.Static)
+        {
+            int sv = r.StaticHandle.Value;
+            return sv >= 0 && sv < StaticRestitution.Length ? StaticRestitution[sv] : 0f;
+        }
         int v = r.BodyHandle.Value;
         return v >= 0 && v < Restitution.Length ? Restitution[v] : 0f;
     }

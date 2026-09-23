@@ -11,6 +11,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 
 ### Added
 - Color grading LUT support in `PostProcessingComponent`: assign a 2D horizontal-strip LUT texture (e.g. 256×16 for a 16³ grade) and blend it with `LutIntensity`
+- Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 
 ### Changed
 - Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders
