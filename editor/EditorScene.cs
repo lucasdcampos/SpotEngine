@@ -1141,9 +1141,7 @@ public class EditorScene : Scene
 
             if (open)
             {
-                // Disable gizmo and drag-drop edits while the simulation is running for this scene.
-                bool editingAllowed = _state == EditorState.Edit || sceneData != _activeSceneData;
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: editingAllowed && (isFocused || isHovered));
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
             }
             ImGui.End();
         }
@@ -1979,14 +1977,14 @@ public class EditorScene : Scene
             drawList.AddRectFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad + bw, pad + bh), pauseCol, 1.0f);
             drawList.AddRectFilled(p1 + new Vector2(size - pad - bw, pad), p1 + new Vector2(size - pad, pad + bh), pauseCol, 1.0f);
             if (c1 && playing) OnPause();
-            if (h1) ImGui.SetTooltip(playing ? "Pause" : "Pause (not playing)");
+            if (h1) ImGui.SetTooltip(playing ? "Pause (Ctrl+P)" : "Pause (not playing)");
         }
         else
         {
             // Right-pointing triangle (resume icon).
             drawList.AddTriangleFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad, size - pad), p1 + new Vector2(size - pad, size * 0.5f), pauseCol);
             if (c1 && playing) OnResume();
-            if (h1) ImGui.SetTooltip("Resume");
+            if (h1) ImGui.SetTooltip("Resume (Ctrl+P)");
         }
 
         ImGui.SameLine(0, gap);
@@ -2050,10 +2048,11 @@ public class EditorScene : Scene
             ReloadScripts();
         }
 
-        // Play-mode controls: Space toggles pause/resume; Ctrl+Right steps one frame while paused.
+        // Play-mode controls: Ctrl+P toggles pause/resume; Ctrl+Right steps one frame while paused.
+        // (Space is intentionally NOT used here — it's commonly bound to game actions like jump.)
         if (_state == EditorState.Play)
         {
-            if (!ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Space))
+            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.P))
             {
                 if (_isPlayPaused) OnResume(); else OnPause();
             }

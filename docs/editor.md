@@ -119,7 +119,7 @@ Three controls sit centered in the menu bar:
 | Button | Keyboard | Effect |
 |--------|----------|--------|
 | Play / Stop | — | Enters or exits play mode. On stop the scene is fully restored. |
-| Pause / Resume | `Space` | Freezes the simulation without discarding state; resume to continue. |
+| Pause / Resume | `Ctrl`+`P` | Freezes the simulation without discarding state; resume to continue. |
 | Step | `Ctrl`+`Right` | Advances the simulation exactly one frame (only works while paused). |
 
 While the simulation is running the scene-view gizmos and drag-drop are locked — edits belong in
