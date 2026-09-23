@@ -1911,53 +1911,112 @@ public class EditorScene : Scene
 
 
 
-    // Draws the centered play/stop icon button inside the main menu bar.
+    // Draws the centered play / pause / step toolbar inside the main menu bar.
     private void DrawPlayControl()
     {
         var palette = EditorThemeManager.Current.Palette;
         float size = ImGui.GetFrameHeight();
+        const float gap = 2.0f;
+        float totalWidth = size * 3 + gap * 2;
 
-        // Center the control horizontally in the menu bar (unless the menus already reach past it).
-        float centerX = (ImGui.GetWindowWidth() - size) * 0.5f;
+        // Center the three-button group; clamp so we never overlap existing menu items.
+        float centerX = (ImGui.GetWindowWidth() - totalWidth) * 0.5f;
         if (centerX > ImGui.GetCursorPosX())
-        {
             ImGui.SetCursorPosX(centerX);
-        }
 
         var drawList = ImGui.GetWindowDrawList();
-        Vector2 p0 = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton("##playstop", new Vector2(size, size));
-        bool hovered = ImGui.IsItemHovered();
-        bool clicked = ImGui.IsItemClicked(ImGuiMouseButton.Left);
+        bool playing = _state != EditorState.Edit;
 
-        if (hovered)
+        // ── button helper ──────────────────────────────────────────────
+        // Returns (hovered, clicked) for one icon button at current cursor.
+        static (bool hovered, bool clicked) IconButton(string id, float sz)
         {
-            drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+            ImGui.InvisibleButton(id, new Vector2(sz, sz));
+            return (ImGui.IsItemHovered(), ImGui.IsItemClicked(ImGuiMouseButton.Left));
         }
 
         float pad = size * 0.22f;
-        if (_state == EditorState.Edit)
+
+        // ── 1. Play / Stop ─────────────────────────────────────────────
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        var (h0, c0) = IconButton("##play", size);
+        if (h0) drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        if (!playing)
         {
-            // Play: right-pointing triangle.
-            uint color = ImGui.GetColorU32(palette.Text);
-            Vector2 a = p0 + new Vector2(pad, pad);
-            Vector2 b = p0 + new Vector2(pad, size - pad);
-            Vector2 c = p0 + new Vector2(size - pad, size * 0.5f);
-            drawList.AddTriangleFilled(a, b, c, color);
-            if (clicked) OnPlay();
+            // Green triangle: Play
+            uint col = ImGui.GetColorU32(new Vector4(0.35f, 0.85f, 0.45f, 1.0f));
+            drawList.AddTriangleFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(pad, size - pad), p0 + new Vector2(size - pad, size * 0.5f), col);
+            if (c0) OnPlay();
+            if (h0) ImGui.SetTooltip("Play");
         }
         else
         {
-            // Stop: filled square.
-            uint color = ImGui.GetColorU32(palette.LogError);
-            drawList.AddRectFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(size - pad, size - pad), color, 2.0f);
-            if (clicked) OnStop();
+            // Red square: Stop
+            uint col = ImGui.GetColorU32(palette.LogError);
+            drawList.AddRectFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(size - pad, size - pad), col, 2.0f);
+            if (c0) OnStop();
+            if (h0) ImGui.SetTooltip("Stop");
         }
 
-        if (hovered)
+        ImGui.SameLine(0, gap);
+
+        // ── 2. Pause / Resume ──────────────────────────────────────────
+        Vector2 p1 = ImGui.GetCursorScreenPos();
+        var (h1, c1) = IconButton("##pause", size);
+        uint pauseCol = playing
+            ? ImGui.GetColorU32(palette.Text)
+            : ImGui.GetColorU32(palette.TextDisabled);
+        if (h1 && playing) drawList.AddRectFilled(p1, p1 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        if (!_isPlayPaused)
         {
-            ImGui.SetTooltip(_state == EditorState.Edit ? "Play" : "Stop");
+            // Two vertical bars (pause icon).
+            float bw = size * 0.18f;
+            float bh = size - pad * 2;
+            drawList.AddRectFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad + bw, pad + bh), pauseCol, 1.0f);
+            drawList.AddRectFilled(p1 + new Vector2(size - pad - bw, pad), p1 + new Vector2(size - pad, pad + bh), pauseCol, 1.0f);
+            if (c1 && playing) OnPause();
+            if (h1) ImGui.SetTooltip(playing ? "Pause" : "Pause (not playing)");
         }
+        else
+        {
+            // Right-pointing triangle (resume icon).
+            drawList.AddTriangleFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad, size - pad), p1 + new Vector2(size - pad, size * 0.5f), pauseCol);
+            if (c1 && playing) OnResume();
+            if (h1) ImGui.SetTooltip("Resume");
+        }
+
+        ImGui.SameLine(0, gap);
+
+        // ── 3. Step ────────────────────────────────────────────────────
+        Vector2 p2 = ImGui.GetCursorScreenPos();
+        bool stepEnabled = playing && _isPlayPaused;
+        var (h2, c2) = IconButton("##step", size);
+        uint stepCol = stepEnabled ? ImGui.GetColorU32(palette.Text) : ImGui.GetColorU32(palette.TextDisabled);
+        if (h2 && stepEnabled) drawList.AddRectFilled(p2, p2 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        // Step icon: small triangle + vertical bar (>|)
+        float sw = size * 0.18f;
+        drawList.AddTriangleFilled(p2 + new Vector2(pad, pad), p2 + new Vector2(pad, size - pad), p2 + new Vector2(size - pad - sw - gap, size * 0.5f), stepCol);
+        drawList.AddRectFilled(p2 + new Vector2(size - pad - sw, pad), p2 + new Vector2(size - pad, size - pad), stepCol, 1.0f);
+        if (c2 && stepEnabled) OnStep();
+        if (h2) ImGui.SetTooltip(stepEnabled ? "Step (advance one frame)" : "Step (pause first)");
+    }
+
+    private void OnPause()
+    {
+        if (_state == EditorState.Play) _isPlayPaused = true;
+    }
+
+    private void OnResume()
+    {
+        if (_state == EditorState.Play) _isPlayPaused = false;
+    }
+
+    private void OnStep()
+    {
+        if (_state == EditorState.Play && _isPlayPaused) _playStep = true;
     }
 
     // Keyboard shortcuts handled once per frame (editor/edit mode only).
@@ -1987,6 +2046,17 @@ public class EditorScene : Scene
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
         {
             ReloadScripts();
+        }
+
+        // Play-mode controls: Space toggles pause/resume; Ctrl+Right steps one frame while paused.
+        if (_state == EditorState.Play)
+        {
+            if (!ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Space))
+            {
+                if (_isPlayPaused) OnResume(); else OnPause();
+            }
+            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Right))
+                OnStep();
         }
 
         // Auto-reload: once script edits have settled (a short debounce past the last file event) and the user
@@ -2113,7 +2183,7 @@ public class EditorScene : Scene
         string title = $"Spot {Spot.Core.Application.Instance.EngineVersion} - {projectName}";
         if (_state == EditorState.Play)
         {
-            title += " (Playing)";
+            title += _isPlayPaused ? " (Paused)" : " (Playing)";
         }
 
         if (title != _lastWindowTitle)
