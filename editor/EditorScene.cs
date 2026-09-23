@@ -1141,7 +1141,9 @@ public class EditorScene : Scene
 
             if (open)
             {
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
+                // Disable gizmo and drag-drop edits while the simulation is running for this scene.
+                bool editingAllowed = _state == EditorState.Edit || sceneData != _activeSceneData;
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: editingAllowed && (isFocused || isHovered));
             }
             ImGui.End();
         }
@@ -2023,7 +2025,7 @@ public class EditorScene : Scene
     private void HandleShortcuts()
     {
         bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
+        if ((_state == EditorState.Edit || _state == EditorState.Play) && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
         {
             // Save what you're working in: a focused UI document tab, otherwise the active scene.
             if (_context.HierarchyTarget == HierarchyTarget.UI && _activeUIDocument != null)
