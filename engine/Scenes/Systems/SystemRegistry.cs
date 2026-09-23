@@ -44,6 +44,7 @@ public sealed class SystemRegistry
     {
         foreach (ISystem system in Ordered)
         {
+            Profiler.BeginSample(system.Name);
             try
             {
                 system.Update(scene, deltaTime);
@@ -54,6 +55,10 @@ public sealed class SystemRegistry
                 {
                     Log.CoreError("System '{0}' threw during update and will be skipped when it faults. {1}", system.GetType().Name, ex);
                 }
+            }
+            finally
+            {
+                Profiler.EndSample(system.Name);
             }
         }
     }

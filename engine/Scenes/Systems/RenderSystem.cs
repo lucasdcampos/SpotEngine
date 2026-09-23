@@ -55,6 +55,13 @@ public static class RenderSystem
     /// </param>
     public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
     {
+        Spot.Core.Profiler.BeginSample("Render");
+        RenderInternal(scene, viewProjection, cameraPosition);
+        Spot.Core.Profiler.EndSample("Render");
+    }
+
+    private static void RenderInternal(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
+    {
         Vector3 cameraPos;
         if (cameraPosition.HasValue)
         {

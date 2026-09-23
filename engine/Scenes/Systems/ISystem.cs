@@ -22,6 +22,11 @@ public interface ISystem
     int Order => 0;
 
     /// <summary>
+    /// A display name used by the profiler. Defaults to the implementing class name.
+    /// </summary>
+    string Name => GetType().Name;
+
+    /// <summary>
     /// Advances this system by one play-mode frame.
     /// </summary>
     /// <param name="scene">The scene being updated.</param>

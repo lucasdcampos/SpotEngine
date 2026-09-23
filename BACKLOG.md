@@ -49,7 +49,7 @@ Check an item off when it ships.
 > Engine works fine without these; address when the above is clear.
 
 **Editor**
-- [ ] **Profiler window** — no per-system frame-time visualization; only raw log output
+- [x] **Profiler window** — no per-system frame-time visualization; only raw log output
 
 **Rendering**
 - [ ] **Color grading / LUT** — no LUT texture slot in `PostProcessingComponent`; stylistic grading requires a custom shader
