@@ -150,7 +150,8 @@ public static class RenderSystem
                         Position = transform.WorldPosition,
                         Color = light.Color,
                         Intensity = light.Intensity,
-                        Range = light.Range
+                        Range = light.Range,
+                        CastShadows = light.CastShadows
                     };
                     pointLightCount++;
                 }
@@ -174,7 +175,8 @@ public static class RenderSystem
                         IsSpot = true,
                         SpotDirection = spotDir,
                         SpotInnerCos = innerCos,
-                        SpotOuterCos = outerCos
+                        SpotOuterCos = outerCos,
+                        CastShadows = light.CastShadows
                     };
                     pointLightCount++;
                 }
@@ -189,6 +191,13 @@ public static class RenderSystem
         }
 
         bool cull = !Spot.Rendering.RendererDebug.DisableFrustumCulling;
+
+        // Find the first shadow-casting point/spot light (only one cubemap per scene).
+        int pointShadowIdx = -1;
+        for (int i = 0; i < pointLightCount; i++)
+        {
+            if (pointLights[i].CastShadows) { pointShadowIdx = i; break; }
+        }
 
         if (castShadows)
         {
@@ -229,12 +238,65 @@ public static class RenderSystem
             Renderer3D.EndShadowPass();
         }
 
+        // Point/spot light cubemap shadow pass — 6 faces, one depth render each.
+        bool hasPointShadow = false;
+        if (pointShadowIdx >= 0 && Renderer3D.SupportsPointShadows && Spot.Rendering.RenderSettings.PointShadows)
+        {
+            Renderer3D.EnsurePointShadowMapResolution();
+            ref readonly Renderer3D.PointLightData caster = ref pointLights[pointShadowIdx];
+            hasPointShadow = true;
+
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(
+                MathF.PI / 2f, 1.0f, 0.05f, caster.Range);
+
+            Renderer3D.BeginPointShadowPass(caster.Range);
+
+            for (uint face = 0; face < 6; face++)
+            {
+                Matrix4x4 view = ComputePointShadowFaceView(caster.Position, face);
+                Matrix4x4 lightSpace = view * proj;
+                Renderer3D.BeginPointShadowFace(face, lightSpace, caster.Position);
+
+                foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+                {
+                    if (!entity.IsActiveInHierarchy()) continue;
+                    MeshComponent mc = entity.GetComponent<MeshComponent>();
+                    var tf = entity.GetComponent<TransformComponent>();
+                    if (!mc.Enabled || !tf.Enabled) continue;
+
+                    ResolveAssets(mc);
+                    if (mc.Model is null) continue;
+
+                    // Simple sphere cull: skip meshes whose centre is more than 2× the light range away.
+                    float distSq = Vector3.DistanceSquared(tf.WorldPosition, caster.Position);
+                    if (cull && distSq > caster.Range * caster.Range * 4.0f) continue;
+
+                    Matrix4x4[]? palette = null;
+                    bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                        skinned.TryBuildPalette(entity, out palette);
+
+                    if (isSkinned)
+                    {
+                        DrawSkinnedShadowMeshes(mc, palette!);
+                        continue;
+                    }
+
+                    DrawShadowMeshes(mc, tf.Matrix);
+                }
+            }
+
+            Renderer3D.EndPointShadowPass();
+        }
+
         if (Spot.Rendering.RendererDebug.Wireframe)
         {
             Renderer.Device.SetWireframe(true);
         }
 
-        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity, lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos);
+        float pointShadowFar = pointShadowIdx >= 0 ? pointLights[pointShadowIdx].Range : 1.0f;
+        Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity,
+            lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos,
+            hasPointShadow, pointShadowIdx, pointShadowFar);
         
         foreach (Entity entity in scene.View<SkyboxComponent>())
         {
@@ -418,6 +480,25 @@ public static class RenderSystem
         int height = (int)Renderer.ViewportHeight;
         if (width <= 0 || height <= 0) return;
         ui.Render(width, height);
+    }
+
+    /// <summary>
+    /// Returns the view matrix for one face of a point-light cubemap shadow pass.
+    /// Face order: 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z (OpenGL cubemap convention).
+    /// </summary>
+    private static Matrix4x4 ComputePointShadowFaceView(Vector3 lightPos, uint face)
+    {
+        (Vector3 dir, Vector3 up) = face switch
+        {
+            0 => (new Vector3( 1,  0,  0), new Vector3(0, -1,  0)),
+            1 => (new Vector3(-1,  0,  0), new Vector3(0, -1,  0)),
+            2 => (new Vector3( 0,  1,  0), new Vector3(0,  0,  1)),
+            3 => (new Vector3( 0, -1,  0), new Vector3(0,  0, -1)),
+            4 => (new Vector3( 0,  0,  1), new Vector3(0, -1,  0)),
+            5 => (new Vector3( 0,  0, -1), new Vector3(0, -1,  0)),
+            _ => throw new ArgumentOutOfRangeException(nameof(face))
+        };
+        return Matrix4x4.CreateLookAt(lightPos, lightPos + dir, up);
     }
 
     /// <summary>

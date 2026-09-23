@@ -362,6 +362,53 @@ internal sealed class OpenGLGraphicsDevice : IGraphicsDevice
     public void SetWireframe(bool enabled) =>
         _gl.PolygonMode(TriangleFace.FrontAndBack, enabled ? PolygonMode.Line : PolygonMode.Fill);
 
+    // ---- Cubemap textures ----
+
+    /// <inheritdoc />
+    public bool SupportsCubemapTextures => true;
+
+    /// <inheritdoc />
+    public TextureHandle CreateCubemapTexture() => new(_gl.GenTexture());
+
+    /// <inheritdoc />
+    public void BindCubemapTexture(uint unit, TextureHandle handle)
+    {
+        _gl.ActiveTexture(TextureUnit.Texture0 + (int)unit);
+        _gl.BindTexture(TextureTarget.TextureCubeMap, handle.Id);
+    }
+
+    /// <inheritdoc />
+    public unsafe void CubemapFaceImage(uint face, TextureInternalFormat format, uint size)
+    {
+        (InternalFormat internalFmt, PixelFormat pixelFmt, PixelType pixelType) = Map(format);
+        _gl.TexImage2D(TextureTarget.TextureCubeMapPositiveX + (int)face,
+            0, internalFmt, size, size, 0, pixelFmt, pixelType, (void*)null);
+    }
+
+    /// <inheritdoc />
+    public void SetCubemapFilter(TextureFilter minFilter, TextureFilter magFilter)
+    {
+        _gl.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMinFilter, (int)Map(minFilter));
+        _gl.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMagFilter, (int)Map(magFilter));
+    }
+
+    /// <inheritdoc />
+    public void SetCubemapWrap(TextureWrap wrap)
+    {
+        int v = (int)Map(wrap);
+        _gl.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapS, v);
+        _gl.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapT, v);
+        _gl.TexParameter(TextureTarget.TextureCubeMap, (GLEnum)0x8072 /* GL_TEXTURE_WRAP_R */, v);
+    }
+
+    /// <inheritdoc />
+    public void FramebufferCubeFace(RenderTargetAttachment attachment, TextureHandle texture, uint face) =>
+        _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, Map(attachment),
+            TextureTarget.TextureCubeMapPositiveX + (int)face, texture.Id, 0);
+
+    /// <inheritdoc />
+    public void DeleteCubemapTexture(TextureHandle handle) => _gl.DeleteTexture(handle.Id);
+
     private static PrimitiveType Map(PrimitiveKind primitive) => primitive switch
     {
         PrimitiveKind.Triangles => PrimitiveType.Triangles,

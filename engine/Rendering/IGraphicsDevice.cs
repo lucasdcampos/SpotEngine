@@ -581,4 +581,39 @@ public interface IGraphicsDevice
     /// </summary>
     /// <param name="enabled">Whether polygons render as wireframe.</param>
     void SetWireframe(bool enabled);
+
+    // ---- Cubemap textures (point-light shadow maps) ----
+    // These default to no-ops / false so backends that haven't implemented cubemap support (the browser
+    // WebGL2 backend) compile without changes. Check SupportsCubemapTextures before using any of them.
+
+    /// <summary>Whether this backend supports cubemap depth textures needed for point-light shadow maps.</summary>
+    bool SupportsCubemapTextures => false;
+
+    /// <summary>Creates a new cubemap texture (six faces, same size).</summary>
+    TextureHandle CreateCubemapTexture() =>
+        throw new NotSupportedException("Cubemap textures are not supported on this backend.");
+
+    /// <summary>Binds a cubemap texture to a texture unit.</summary>
+    void BindCubemapTexture(uint unit, TextureHandle handle) { }
+
+    /// <summary>
+    /// Allocates one face of the currently bound cubemap texture in the given internal format.
+    /// <paramref name="face"/> is 0–5 mapping to +X, -X, +Y, -Y, +Z, -Z.
+    /// </summary>
+    void CubemapFaceImage(uint face, TextureInternalFormat format, uint size) { }
+
+    /// <summary>Sets the min/mag filter of the currently bound cubemap texture.</summary>
+    void SetCubemapFilter(TextureFilter minFilter, TextureFilter magFilter) { }
+
+    /// <summary>Sets the S/T/R wrap mode of the currently bound cubemap texture.</summary>
+    void SetCubemapWrap(TextureWrap wrap) { }
+
+    /// <summary>
+    /// Attaches a single face of a cubemap texture to the currently bound framebuffer's
+    /// <paramref name="attachment"/> point. <paramref name="face"/> is 0–5 (+X … -Z).
+    /// </summary>
+    void FramebufferCubeFace(RenderTargetAttachment attachment, TextureHandle texture, uint face) { }
+
+    /// <summary>Deletes a cubemap texture.</summary>
+    void DeleteCubemapTexture(TextureHandle handle) { }
 }

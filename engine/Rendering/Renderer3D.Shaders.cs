@@ -95,6 +95,11 @@ public static partial class Renderer3D
         uniform mat4 uLightSpaceMatrix;
         uniform float uShadowTexelSize;
 
+        uniform samplerCube uPointShadowMap;
+        uniform float uPointShadowFar;
+        uniform int uHasPointShadow;
+        uniform int uPointShadowLightIndex;
+
         uniform int uHasNormalMap;
         uniform float uMetallic;
         uniform vec3 uEmissiveColor;
@@ -207,6 +212,15 @@ public static partial class Renderer3D
             vec3 toFrag = vFragPos - lightPos;
             float distance = length(toFrag);
             if (distance >= lightRange) return vec3(0.0);
+
+            // Cubemap shadow: compare the fragment's linear distance (normalised by range) against the
+            // closest depth stored in the shadow cubemap. toFrag is the direction from light to fragment,
+            // which is exactly the lookup vector for a depth cubemap centred at the light.
+            if (uHasPointShadow == 1 && i == uPointShadowLightIndex) {
+                float currentDepth = distance / uPointShadowFar;
+                float closestDepth = texture(uPointShadowMap, toFrag).r;
+                if (currentDepth - 0.05 > closestDepth) return vec3(0.0);
+            }
 
             vec3 lightDir = -toFrag / distance;  // points from fragment toward light
 
@@ -1050,6 +1064,38 @@ public static partial class Renderer3D
             vColor = uColor;
             vModelScale = vec3(1.0); // skinning replaces the model matrix, so auto-tile is off
             gl_Position = uViewProjection * worldPos;
+        }
+        """;
+
+    // Point/spot light shadow shaders. Unlike the directional shadow pass (which writes hardware depth
+    // via a projection matrix), these write LINEAR DEPTH — the fragment's actual world-space distance from
+    // the light, normalised by the light's range. This is stored in the depth buffer and sampled as a plain
+    // float in the lit shader, which computes the same linear distance and compares them. No samplerCubeShadow
+    // or special hardware compare modes are needed, keeping the implementation backend-neutral.
+    private const string PointShadowVertexShaderSource =
+        """
+        #version 330 core
+        layout(location = 0) in vec3 aPosition;
+        uniform mat4 uModel;
+        uniform mat4 uLightSpaceMatrix;
+        out vec3 vFragPos;
+        void main()
+        {
+            vec4 worldPos = uModel * vec4(aPosition, 1.0);
+            vFragPos = worldPos.xyz;
+            gl_Position = uLightSpaceMatrix * worldPos;
+        }
+        """;
+
+    private const string PointShadowFragmentShaderSource =
+        """
+        #version 330 core
+        in vec3 vFragPos;
+        uniform vec3 uLightPos;
+        uniform float uFarPlane;
+        void main()
+        {
+            gl_FragDepth = length(vFragPos - uLightPos) / uFarPlane;
         }
         """;
 

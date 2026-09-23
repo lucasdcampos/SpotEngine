@@ -55,6 +55,19 @@ public static class RenderSettings
     public static bool Shadows { get; set; } = true;
 
     /// <summary>
+    /// Whether point and spot lights cast real-time cubemap shadows. A global kill switch; individual
+    /// lights also need their own <c>CastShadows</c> flag set. Only the first shadow-casting point/spot
+    /// light in the scene produces a shadow map; additional casters are rendered unshadowed.
+    /// </summary>
+    public static bool PointShadows { get; set; } = true;
+
+    /// <summary>
+    /// The resolution (per face) of the point light cubemap shadow map. Higher is sharper at a memory
+    /// and fill-rate cost. Changing it rebuilds the shadow map on the next frame.
+    /// </summary>
+    public static int PointShadowResolution { get; set; } = 512;
+
+    /// <summary>
     /// Whether point lights are assigned to a view-frustum cluster grid (froxels) each frame so a fragment
     /// only shades the lights whose volume reaches its cluster, instead of testing every light. This scales
     /// the point-light cost with lights-per-cluster rather than total lights. When off, every lit fragment

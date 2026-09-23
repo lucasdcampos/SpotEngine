@@ -26,7 +26,6 @@ public sealed class LightComponent : Component
     [ShowIf(nameof(Type), LightType.Directional)]
     public float AmbientIntensity { get; set; } = 0.3f;
 
-    [ShowIf(nameof(Type), LightType.Directional)]
     public bool CastShadows { get; set; } = true;
 
     // Point + Spot light specific
