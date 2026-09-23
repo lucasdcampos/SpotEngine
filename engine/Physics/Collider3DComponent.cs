@@ -24,4 +24,18 @@ public abstract class Collider3DComponent : Component
     /// <see cref="PhysicsSettings.SetLayerCollision"/>. Bepu backend only.
     /// </summary>
     public int Layer { get; set; }
+
+    /// <summary>
+    /// Coefficient of friction for this surface. For static bodies this is the collider value; for dynamic
+    /// bodies the <see cref="PhysicsBody3DComponent.Friction"/> takes precedence. Bepu backend only.
+    /// </summary>
+    [InspectorRange(0.0f, 2.0f, 0.01f)]
+    public float Friction { get; set; } = 0.8f;
+
+    /// <summary>
+    /// Bounciness: 0 = no bounce, 1 = fully elastic. For static bodies this is the collider value; for
+    /// dynamic bodies the <see cref="PhysicsBody3DComponent.Restitution"/> takes precedence. Bepu backend only.
+    /// </summary>
+    [InspectorRange(0.0f, 1.0f, 0.01f)]
+    public float Restitution { get; set; } = 0.0f;
 }

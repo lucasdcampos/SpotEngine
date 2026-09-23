@@ -149,6 +149,10 @@ internal sealed class BepuPhysics3D : IPhysics3D
                 _contacts.EnsureStatic(tracked.Static.Value);
                 _contacts.StaticTrigger[tracked.Static.Value] = desc.IsTrigger;
                 _contacts.StaticLayer[tracked.Static.Value] = layer;
+                int sv = tracked.Static.Value;
+                _materials.EnsureStatic(sv);
+                _materials.StaticFriction[sv] = desc.Friction;
+                _materials.StaticRestitution[sv] = desc.Restitution;
             }
             else
             {
@@ -332,20 +336,20 @@ internal sealed class BepuPhysics3D : IPhysics3D
         if (entity.TryGetComponent(out BoxCollider3DComponent? box) && box!.Enabled)
         {
             Vector3 s = box.Size * scale;
-            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger, box.Layer);
+            desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger, box.Layer, box.Friction, box.Restitution);
             return true;
         }
         if (entity.TryGetComponent(out SphereCollider3DComponent? sphere) && sphere!.Enabled)
         {
             float r = sphere.Radius * scale.X;
-            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger, sphere.Layer);
+            desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger, sphere.Layer, sphere.Friction, sphere.Restitution);
             return true;
         }
         if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule) && capsule!.Enabled)
         {
             float r = capsule.Radius * scale.X;
             float len = capsule.Length * scale.Y;
-            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r, capsule.IsTrigger, capsule.Layer);
+            desc = new ColliderDesc(2, r, len, 0f, capsule.Offset * scale, len * 0.5f + r, capsule.IsTrigger, capsule.Layer, capsule.Friction, capsule.Restitution);
             return true;
         }
         desc = default;
@@ -414,5 +418,5 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
     private readonly record struct ShapeKey(int Kind, int Type, float A, float B, float C, bool Freeze, float Mass);
 
-    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY, bool IsTrigger, int Layer);
+    private readonly record struct ColliderDesc(int Type, float A, float B, float C, Vector3 Offset, float HalfHeightY, bool IsTrigger, int Layer, float Friction, float Restitution);
 }
