@@ -66,7 +66,7 @@ Check an item off when it ships.
 - [ ] **Large audio streaming** — long tracks (music) are decoded entirely into memory; no progressive streaming
 
 **Architecture / Tech Debt**
-- [ ] **GLSL `#include` dedup** — `ShadowCalculation` and `hash` utility functions are copy-pasted across multiple shaders
+- [x] **GLSL `#include` dedup** — `ShadowCalculation` and `hash` utility functions are copy-pasted across multiple shaders
 - [ ] **Incremental asset cook** — `spot cook` reprocesses all assets on every run; no timestamp/hash change detection
 - [ ] **Component serialization via source-gen** — `ComponentSerialization.cs` uses a reflective switch; a source generator would make it trim-safe and AOT-friendly
 - [ ] **RPC source-gen (networking)** — `RpcRegistry` dispatches via reflection; a source generator would remove the trimming caveat documented in `docs/networking.md`
