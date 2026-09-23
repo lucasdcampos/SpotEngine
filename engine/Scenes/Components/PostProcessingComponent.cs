@@ -1,4 +1,5 @@
 using System;
+using Spot.Rendering;
 
 namespace Spot.Scenes;
 
@@ -53,4 +54,22 @@ public class PostProcessingComponent : Component
     [InspectorRange(0.0f, 5.0f, 0.05f)]
     [ShowIf(nameof(EnableBloom), true)]
     public float BloomIntensity { get; set; } = 1.0f;
+
+    /// <summary>Enables color grading via a LUT texture. Requires a LUT texture to be assigned.</summary>
+    public bool EnableLut { get; set; } = false;
+
+    /// <summary>
+    /// A 2D color LUT in horizontal-strip format (e.g. 256×16 for a 16³ LUT).
+    /// Applied after tone-mapping and gamma correction.
+    /// </summary>
+    [ShowIf(nameof(EnableLut), true)]
+    [AssetReference(nameof(LutTexturePath))]
+    public Texture2D? LutTexture { get; set; }
+
+    [HideInInspector]
+    public string? LutTexturePath { get; set; }
+
+    [InspectorRange(0.0f, 1.0f, 0.01f)]
+    [ShowIf(nameof(EnableLut), true)]
+    public float LutIntensity { get; set; } = 1.0f;
 }
