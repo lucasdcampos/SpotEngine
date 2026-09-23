@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
 ### Added
+- **Point light shadows**: point and spot lights now cast real-time cubemap shadows; enable per-light via `CastShadows` (the first shadow-casting light in the scene gets a depth cubemap, sampled as linear distance); `RenderSettings.PointShadows` and `PointShadowResolution` are global controls
 - **Spotlight**: new `LightType.Spot` with `SpotAngle` (inner half-angle) and `SpotOuterAngle` (outer half-angle) properties; smooth cone attenuation applied in all lit shaders (standard + water)
 - **Profiler window**: `View > Panels > Profiler` opens an ImGui panel with a scrolling frame-time graph and a per-system ms/frame table; systems expose their name via `ISystem.Name`
 - Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser

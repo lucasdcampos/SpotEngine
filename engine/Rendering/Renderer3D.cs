@@ -53,9 +53,11 @@ public static partial class Renderer3D
     private static Shader? s_shadowShader;
     private static Shader? s_skinnedShader;
     private static Shader? s_skinnedShadowShader;
+    private static Shader? s_pointShadowShader;
     private static VertexArray? s_emptyVao;
     private static Texture2D? s_whiteTexture;
     private static DepthFramebuffer? s_shadowMap;
+    private static PointShadowMap? s_pointShadowMap;
     private static Matrix4x4 s_viewProjection = Matrix4x4.Identity;
     private static Matrix4x4 s_inverseViewProjection = Matrix4x4.Identity;
     private static Vector3 s_cameraPosition = Vector3.Zero;
@@ -71,6 +73,7 @@ public static partial class Renderer3D
         public Vector3 SpotDirection;
         public float SpotInnerCos;
         public float SpotOuterCos;
+        public bool CastShadows;
     }
 
     /// <summary>
@@ -111,8 +114,13 @@ public static partial class Renderer3D
     private static Vector3 s_lightDir = Vector3.UnitY;
     private static Vector3 s_lightColor = Vector3.One;
     private static float s_ambientIntensity = 0.3f;
-    
+
     private static int s_pointLightCount = 0;
+
+    // Point/spot light shadow state (one shadow-casting light per scene).
+    private static int s_hasPointShadow = 0;
+    private static int s_pointShadowLightIndex = -1;
+    private static float s_pointShadowFar = 1.0f;
 
     // Sky colours of the active skybox, captured by DrawSkybox and fed to the water shader so water
     // reflects the same sky the scene renders. Reset each BeginScene; s_hasSkybox stays 0 with no skybox.
@@ -153,6 +161,7 @@ public static partial class Renderer3D
         s_shadowShader = new Shader(ShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_skinnedShader = new Shader(SkinnedVertexShaderSource, FragmentShaderSource);
         s_skinnedShadowShader = new Shader(SkinnedShadowVertexShaderSource, ShadowFragmentShaderSource);
+        s_pointShadowShader = new Shader(PointShadowVertexShaderSource, PointShadowFragmentShaderSource);
         s_emptyVao = new VertexArray();
 
         // One fixed-capacity, dynamically-updated buffer feeds every instanced batch. Its handle stays put
@@ -166,6 +175,11 @@ public static partial class Renderer3D
             ShaderDataType.Float4); // color (location 7)
 
         s_shadowMap = new DepthFramebuffer(2048, 2048);
+
+        if (Renderer.Device.SupportsCubemapTextures)
+        {
+            s_pointShadowMap = new PointShadowMap((uint)System.Math.Clamp(RenderSettings.PointShadowResolution, 64, 4096));
+        }
 
         // A 1x1 white texture lets untextured (solid-color) meshes reuse the textured path: texture * color == color.
         ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
@@ -200,10 +214,74 @@ public static partial class Renderer3D
         s_clusters = new LightClusters();
     }
 
+    /// <summary>Whether the active backend supports point/spot light cubemap shadows.</summary>
+    public static bool SupportsPointShadows => s_pointShadowMap is not null;
+
+    /// <summary>
+    /// Ensures the point light cubemap shadow map exists at the current <see cref="RenderSettings.PointShadowResolution"/>,
+    /// rebuilding it if the resolution changed. Call before <see cref="BeginPointShadowPass"/>.
+    /// </summary>
+    public static void EnsurePointShadowMapResolution()
+    {
+        if (!Renderer.Device.SupportsCubemapTextures) return;
+        int res = System.Math.Clamp(RenderSettings.PointShadowResolution, 64, 4096);
+        if (s_pointShadowMap is null || s_pointShadowMap.Size != (uint)res)
+        {
+            s_pointShadowMap?.Dispose();
+            s_pointShadowMap = new PointShadowMap((uint)res);
+        }
+    }
+
+    /// <summary>
+    /// Begins the six-face point/spot light shadow pass. Call <see cref="BeginPointShadowFace"/> for each
+    /// face, then <see cref="EndPointShadowPass"/> once all six faces are rendered.
+    /// </summary>
+    public static void BeginPointShadowPass(float range)
+    {
+        s_pointShadowFar = range;
+        s_prevRenderTarget = Renderer.CurrentRenderTarget;
+        s_prevViewportX = Renderer.ViewportX;
+        s_prevViewportY = Renderer.ViewportY;
+        s_prevViewportW = Renderer.ViewportWidth;
+        s_prevViewportH = Renderer.ViewportHeight;
+    }
+
+    /// <summary>
+    /// Binds <paramref name="face"/> (0–5) of the point shadow cubemap and sets up the shadow shader for
+    /// that face. Must be called between <see cref="BeginPointShadowPass"/> and <see cref="EndPointShadowPass"/>.
+    /// </summary>
+    public static void BeginPointShadowFace(uint face, Matrix4x4 lightSpaceMatrix, Vector3 lightPos)
+    {
+        if (s_pointShadowMap is null || s_pointShadowShader is null) return;
+        s_pointShadowMap.BeginFace(face);
+        s_pointShadowShader.Use();
+        s_pointShadowShader.SetUniform("uLightSpaceMatrix", lightSpaceMatrix);
+        s_pointShadowShader.SetUniform("uLightPos", lightPos);
+        s_pointShadowShader.SetUniform("uFarPlane", s_pointShadowFar);
+    }
+
+    /// <summary>
+    /// Draws a mesh into the current point shadow map face. Must be called after
+    /// <see cref="BeginPointShadowFace"/> and before the next face or <see cref="EndPointShadowPass"/>.
+    /// </summary>
+    public static void DrawPointShadowMesh(Matrix4x4 model, Mesh mesh)
+    {
+        if (s_pointShadowShader is null) return;
+        s_pointShadowShader.SetUniform("uModel", model);
+        Renderer.DrawIndexed(mesh.VertexArray, mesh.IndexCount);
+    }
+
+    // DrawSkinnedPointShadowMesh is intentionally omitted for now; RenderSystem falls back to the
+    // rigid path for the point shadow pass (skinned shadow depth is correct enough at short range).
+
+    /// <summary>Ends the point shadow pass and restores the previous render target.</summary>
+    public static void EndPointShadowPass() =>
+        Renderer.BindRenderTarget(s_prevRenderTarget, s_prevViewportX, s_prevViewportY, s_prevViewportW, s_prevViewportH);
+
     /// <summary>
     /// Begins a 3D scene. Meshes drawn until <see cref="EndScene"/> use this view-projection.
     /// </summary>
-    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default, Vector3 cameraPosition = default)
+    public static void BeginScene(Matrix4x4 viewProjection, bool hasLight = false, Vector3 lightDir = default, Vector3 lightColor = default, float ambientIntensity = 0.3f, Matrix4x4 lightSpaceMatrix = default, bool castShadows = false, System.ReadOnlySpan<PointLightData> pointLights = default, Vector3 cameraPosition = default, bool hasPointShadow = false, int pointShadowLightIndex = -1, float pointShadowFar = 1.0f)
     {
         // New scene pass: bump the stamp so each lit shader re-uploads camera + lights once (on its first
         // draw this scene), and clear the mesh-pass bind tracker.
@@ -224,6 +302,9 @@ public static partial class Renderer3D
         s_ambientIntensity = ambientIntensity;
         s_lightSpaceMatrix = lightSpaceMatrix;
         s_castShadows = castShadows ? 1 : 0;
+        s_hasPointShadow = (hasPointShadow && s_pointShadowMap is not null) ? 1 : 0;
+        s_pointShadowLightIndex = pointShadowLightIndex;
+        s_pointShadowFar = pointShadowFar;
         // No skybox until DrawSkybox says otherwise this frame; water then falls back to a default sky.
         s_hasSkybox = 0;
 
@@ -641,6 +722,20 @@ public static partial class Renderer3D
         // The lights themselves live in the shared "Lights" UBO (uploaded once per scene in BeginScene);
         // only the per-program count uniform is set here.
         shader.SetUniform("uPointLightCount", s_pointLightCount);
+
+        // Point/spot light cubemap shadow — one caster per scene. The cubemap lives at texture unit 5.
+        shader.SetUniform("uPointShadowMap", 5);
+        if (s_hasPointShadow == 1 && s_pointShadowMap is not null)
+        {
+            s_pointShadowMap.BindTexture(5);
+            shader.SetUniform("uHasPointShadow", 1);
+            shader.SetUniform("uPointShadowLightIndex", s_pointShadowLightIndex);
+            shader.SetUniform("uPointShadowFar", s_pointShadowFar);
+        }
+        else
+        {
+            shader.SetUniform("uHasPointShadow", 0);
+        }
 
         // Clustered lighting: the grid/index lookup textures live at fixed units; uClustered gates whether
         // the shader reads them or falls back to looping all lights. Only the standard-family shaders carry

@@ -14,7 +14,7 @@ Check an item off when it ships.
 - [ ] **Mesh collider (3D)** — only Box/Sphere/Capsule shapes exist; non-trivial level geometry cannot be made solid
 - [ ] **Blend trees** — `AnimatorController` has a state machine but no blend-tree nodes; smooth locomotion blends (walk↔run by a float parameter) are not possible
 - [ ] **Audio mixer / bus routing** — no volume groups (Music, SFX, UI); every source is a flat, ungrouped emitter
-- [ ] **Point light shadows** — only the directional light casts real-time shadows; point lights are always shadowless
+- [x] **Point light shadows** — only the directional light casts real-time shadows; point lights are always shadowless
 
 ---
 

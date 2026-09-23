@@ -52,6 +52,7 @@ internal static class GlslTranspiler
         // them, and setting sampler2D to highp keeps sampling precise (the fragment default is only lowp).
         sb.Append("precision highp sampler2D;\n");
         sb.Append("precision highp sampler2DShadow;\n");
+        sb.Append("precision highp samplerCube;\n");
 
         for (int i = 0; i < lines.Length; i++)
         {
