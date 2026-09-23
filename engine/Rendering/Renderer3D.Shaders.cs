@@ -110,12 +110,18 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
-        // Point lights live in a std140 uniform block so the count scales far past the old fixed four.
-        // Each light is two vec4s (position+range, color+intensity) to sidestep std140's vec3 padding.
+        // Point and spot lights share this uniform block. Each entry is four vec4s:
+        //   positionRange: xyz position, w range
+        //   colorIntensity: xyz color, w intensity
+        //   direction: xyz spot direction (normalised), w type (0=point, 1=spot)
+        //   spotAngles: x cos(inner half-angle), y cos(outer half-angle)
+        // Point lights leave the last two vec4s unused; spots fill all four.
         const int MAX_LIGHTS = 256;
         struct PointLight {
             vec4 positionRange;
             vec4 colorIntensity;
+            vec4 direction;
+            vec4 spotAngles;
         };
         layout(std140) uniform Lights {
             PointLight uLights[MAX_LIGHTS];
@@ -189,19 +195,33 @@ public static partial class Renderer3D
             return normalize(TBN * tangentNormal);
         }
 
-        // One point light's Blinn-Phong contribution, shared by the brute-force and clustered loops.
+        // One point/spot light's Blinn-Phong contribution, shared by the brute-force and clustered loops.
         vec3 pointLightContribution(int i, vec3 normal, vec3 viewDir, vec3 F0)
         {
-            vec3 lightPos = uLights[i].positionRange.xyz;
-            float lightRange = uLights[i].positionRange.w;
-            vec3 lightCol = uLights[i].colorIntensity.rgb;
-            float lightInt = uLights[i].colorIntensity.a;
+            vec3 lightPos   = uLights[i].positionRange.xyz;
+            float lightRange= uLights[i].positionRange.w;
+            vec3 lightCol   = uLights[i].colorIntensity.rgb;
+            float lightInt  = uLights[i].colorIntensity.a;
+            int lightType   = int(uLights[i].direction.w);  // 0=point, 1=spot
 
-            vec3 lightDir = lightPos - vFragPos;
-            float distance = length(lightDir);
+            vec3 toFrag = vFragPos - lightPos;
+            float distance = length(toFrag);
             if (distance >= lightRange) return vec3(0.0);
 
-            lightDir = normalize(lightDir);
+            vec3 lightDir = -toFrag / distance;  // points from fragment toward light
+
+            // Spot cone attenuation: smoothly falls off between the inner and outer half-angles.
+            if (lightType == 1)
+            {
+                vec3 spotDir   = normalize(uLights[i].direction.xyz);
+                float cosTheta = dot(-lightDir, spotDir);  // angle between fragment direction and cone axis
+                float cosInner = uLights[i].spotAngles.x;
+                float cosOuter = uLights[i].spotAngles.y;
+                float coneAtten = clamp((cosTheta - cosOuter) / max(cosInner - cosOuter, 0.001), 0.0, 1.0);
+                if (coneAtten <= 0.0) return vec3(0.0);
+                lightInt *= coneAtten;
+            }
+
             vec3 halfVector = normalize(lightDir + viewDir);
             float diff = max(dot(normal, lightDir), 0.0);
             float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
@@ -381,11 +401,13 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
-        // Shared std140 point-light block (see the standard shader). Two vec4s per light.
+        // Shared std140 point/spot-light block (see the standard shader). Four vec4s per entry.
         const int MAX_LIGHTS = 256;
         struct PointLight {
             vec4 positionRange;
             vec4 colorIntensity;
+            vec4 direction;
+            vec4 spotAngles;
         };
         layout(std140) uniform Lights {
             PointLight uLights[MAX_LIGHTS];
@@ -569,16 +591,27 @@ public static partial class Renderer3D
 
             for (int i = 0; i < uPointLightCount; i++)
             {
-                vec3 lightPos = uLights[i].positionRange.xyz;
-                float lightRange = uLights[i].positionRange.w;
-                vec3 lightCol = uLights[i].colorIntensity.rgb;
-                float lightInt = uLights[i].colorIntensity.a;
+                vec3 lightPos   = uLights[i].positionRange.xyz;
+                float lightRange= uLights[i].positionRange.w;
+                vec3 lightCol   = uLights[i].colorIntensity.rgb;
+                float lightInt  = uLights[i].colorIntensity.a;
+                int lightType   = int(uLights[i].direction.w);
 
                 vec3 Lv = lightPos - vFragPos;
                 float dist = length(Lv);
                 if (dist < lightRange)
                 {
                     vec3 L = Lv / max(dist, 1e-4);
+                    if (lightType == 1)
+                    {
+                        vec3 spotDir = normalize(uLights[i].direction.xyz);
+                        float cosTheta = dot(-L, spotDir);
+                        float cosInner = uLights[i].spotAngles.x;
+                        float cosOuter = uLights[i].spotAngles.y;
+                        float cone = clamp((cosTheta - cosOuter) / max(cosInner - cosOuter, 0.001), 0.0, 1.0);
+                        if (cone <= 0.0) continue;
+                        lightInt *= cone;
+                    }
                     float atten = 1.0 - (dist / lightRange);
                     atten *= atten;
                     float diff = max(dot(N, L), 0.0);

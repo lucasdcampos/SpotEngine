@@ -67,6 +67,10 @@ public static partial class Renderer3D
         public Vector3 Color;
         public float Intensity;
         public float Range;
+        public bool IsSpot;
+        public Vector3 SpotDirection;
+        public float SpotInnerCos;
+        public float SpotOuterCos;
     }
 
     /// <summary>
@@ -75,13 +79,16 @@ public static partial class Renderer3D
     /// </summary>
     public const int MaxPointLights = 256;
 
-    // The GPU-side (std140) layout of one point light: position+range and color+intensity, each a vec4 to
-    // avoid std140's vec3 padding. Matches the shader's PointLight struct exactly.
+    // The GPU-side (std140) layout of one point light. Four vec4s to avoid std140 vec3 padding and to carry
+    // the extra data spotlights need (direction + cone angles). All four fields are always uploaded; point
+    // lights simply leave the last two unused. Matches the shader's PointLight struct exactly.
     [StructLayout(LayoutKind.Sequential)]
     private struct GpuPointLight
     {
-        public Vector4 PositionRange;
-        public Vector4 ColorIntensity;
+        public Vector4 PositionRange;   // xyz: position, w: range
+        public Vector4 ColorIntensity;  // xyz: color, w: intensity
+        public Vector4 Direction;       // xyz: spot direction (normalised), w: type (0=point, 1=spot)
+        public Vector4 SpotAngles;      // x: cos(inner half-angle), y: cos(outer half-angle)
     }
 
     // Binding point shared by every lit program's "Lights" uniform block and the light UBO.
@@ -223,8 +230,11 @@ public static partial class Renderer3D
         s_pointLightCount = s_lightsSupported ? System.Math.Min(pointLights.Length, MaxPointLights) : 0;
         for (int i = 0; i < s_pointLightCount; i++)
         {
-            s_gpuLights[i].PositionRange = new Vector4(pointLights[i].Position, pointLights[i].Range);
-            s_gpuLights[i].ColorIntensity = new Vector4(pointLights[i].Color, pointLights[i].Intensity);
+            ref readonly PointLightData src = ref pointLights[i];
+            s_gpuLights[i].PositionRange  = new Vector4(src.Position, src.Range);
+            s_gpuLights[i].ColorIntensity = new Vector4(src.Color, src.Intensity);
+            s_gpuLights[i].Direction      = new Vector4(src.SpotDirection, src.IsSpot ? 1f : 0f);
+            s_gpuLights[i].SpotAngles     = new Vector4(src.SpotInnerCos, src.SpotOuterCos, 0f, 0f);
         }
 
         // Upload the frame's lights to the shared UBO once (all lit shaders read the same block).

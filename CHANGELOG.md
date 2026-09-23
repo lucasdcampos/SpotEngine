@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
 ### Added
+- **Spotlight**: new `LightType.Spot` with `SpotAngle` (inner half-angle) and `SpotOuterAngle` (outer half-angle) properties; smooth cone attenuation applied in all lit shaders (standard + water)
 - Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser
 - Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
 - `NetworkTransform` replicates position/rotation with client-side interpolation

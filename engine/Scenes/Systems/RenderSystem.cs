@@ -148,6 +148,30 @@ public static class RenderSystem
                     pointLightCount++;
                 }
             }
+            else if (light.Type == LightType.Spot)
+            {
+                if (pointLightCount < pointLights.Length)
+                {
+                    // SpotAngle and SpotOuterAngle are half-angles in degrees.
+                    float innerCos = MathF.Cos(light.SpotAngle * MathF.PI / 180f);
+                    float outerCos = MathF.Cos(light.SpotOuterAngle * MathF.PI / 180f);
+                    // Clamp: outer half-angle must be >= inner (larger angle = smaller cos).
+                    if (outerCos > innerCos) outerCos = innerCos - 0.001f;
+                    Vector3 spotDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
+                    pointLights[pointLightCount] = new Renderer3D.PointLightData
+                    {
+                        Position = transform.WorldPosition,
+                        Color = light.Color,
+                        Intensity = light.Intensity,
+                        Range = light.Range,
+                        IsSpot = true,
+                        SpotDirection = spotDir,
+                        SpotInnerCos = innerCos,
+                        SpotOuterCos = outerCos
+                    };
+                    pointLightCount++;
+                }
+            }
         }
         
         if (Spot.Rendering.RendererDebug.Fullbright)
