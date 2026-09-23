@@ -11,6 +11,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 
 ### Added
 - **Spotlight**: new `LightType.Spot` with `SpotAngle` (inner half-angle) and `SpotOuterAngle` (outer half-angle) properties; smooth cone attenuation applied in all lit shaders (standard + water)
+- **Profiler window**: `View > Panels > Profiler` opens an ImGui panel with a scrolling frame-time graph and a per-system ms/frame table; systems expose their name via `ISystem.Name`
 - Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser
 - Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
 - `NetworkTransform` replicates position/rotation with client-side interpolation

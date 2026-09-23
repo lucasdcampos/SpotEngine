@@ -430,6 +430,7 @@ public class Application
         // Record the real (unclamped) frame time for profiling before the simulation clamp below, so a
         // stall surfaces in the stats instead of being hidden as a steady MaxDeltaTime.
         FrameStats.Record(realDelta);
+        Profiler.FlushFrame();
 
         // Clamp the frame delta so a hitch (window drag, GC pause, a heavy asset load) can't feed a
         // huge dt into physics/scripts and explode springs or tunnel bodies through colliders. A

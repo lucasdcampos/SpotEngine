@@ -106,6 +106,7 @@ public class EditorScene : Scene
     private readonly AssetBrowserPanel _assetBrowserPanel;
     private readonly ProjectSettingsPanel _projectSettingsPanel;
     private readonly UIHierarchyPanel _uiHierarchyPanel;
+    private readonly ProfilerPanel _profilerPanel = new();
 
     // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
     // Hierarchy/Inspector while it is focused.
@@ -138,6 +139,7 @@ public class EditorScene : Scene
     private bool _showConsole = true;
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
+    private bool _showProfiler = false;
 
     // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
     // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
@@ -1208,6 +1210,11 @@ public class EditorScene : Scene
 
         _projectSettingsPanel.OnImGuiRender(ref _showProjectSettings);
 
+        if (_showProfiler)
+        {
+            _profilerPanel.OnImGuiRender();
+        }
+
         if (_showAssetBrowser)
         {
             bool open = ImGui.Begin("Asset Browser", ref _showAssetBrowser, ImGuiWindowFlags.NoCollapse);
@@ -1917,6 +1924,7 @@ public class EditorScene : Scene
                 ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
+                ImGui.MenuItem("Profiler", "", ref _showProfiler);
                 ImGui.EndMenu();
             }
 

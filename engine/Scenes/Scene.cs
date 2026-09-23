@@ -51,15 +51,15 @@ public class Scene
         _registry = new EntityRegistry(this);
         _physics = new ScenePhysics(this);
 
-        Systems.Add(new DelegateSystem(SystemOrder.UICanvas, UICanvasSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
-        Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Particles, ParticleSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Audio, AudioSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Scripts, ScriptSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.UICanvas,           UICanvasSystem.Update,                              "UI Canvas"));
+        Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update,                 "Character Controller"));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ScriptSystem.FixedUpdate,                           "Fixed Update"));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics2D,           static (scene, dt) => scene.StepPhysics2D(dt),      "Physics 2D"));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics3D,           static (scene, dt) => scene.StepPhysics3D(dt),      "Physics 3D"));
+        Systems.Add(new DelegateSystem(SystemOrder.Animation,           AnimationSystem.Update,                             "Animation"));
+        Systems.Add(new DelegateSystem(SystemOrder.Particles,           ParticleSystem.Update,                              "Particles"));
+        Systems.Add(new DelegateSystem(SystemOrder.Audio,               AudioSystem.Update,                                 "Audio"));
+        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ScriptSystem.Update,                                "Scripts"));
     }
 
     /// <summary>
