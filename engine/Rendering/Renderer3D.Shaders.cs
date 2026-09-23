@@ -76,7 +76,7 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string FragmentShaderSource =
+    private static readonly string FragmentShaderSource =
         """
         #version 330 core
         in vec3 vFragPos;
@@ -149,40 +149,7 @@ public static partial class Renderer3D
         const int INDEX_TEX_W = 256;
 
         out vec4 fragColor;
-
-        // Normal-offset shadows: instead of a depth bias measured in the light's NDC z (which balloons
-        // into meters of "peter-panning" gap once the shadow frustum is deep), push the sampled point off
-        // the surface along its normal by a couple of shadow texels' worth of world space, widened at
-        // grazing light angles where acne is worst. This is scale-stable and keeps the shadow glued to
-        // the object's contact point. Sampling is hardware PCF (sampler2DShadow) over a 5x5 kernel.
-        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
-        {
-            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
-            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
-            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
-
-            vec3 projCoords = lp.xyz / lp.w;
-            projCoords = projCoords * 0.5 + 0.5;
-            if (projCoords.z > 1.0) return 0.0;
-            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
-            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
-            // on desktop too).
-            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
-
-            float depthRef = projCoords.z - 0.0015; // tiny residual constant bias
-
-            float shadow = 0.0;
-            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
-            for (int x = -2; x <= 2; ++x)
-            {
-                for (int y = -2; y <= 2; ++y)
-                {
-                    // sampler2DShadow returns filtered visibility in [0,1] (1 = lit); accumulate occlusion.
-                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
-                }
-            }
-            return shadow / 25.0;
-        }
+        """ + GlslSnippets.ShadowCalculation + """
 
         vec3 getNormalFromMap(vec2 uv) {
             vec3 tangentNormal = texture(uNormalMap, uv).xyz * 2.0 - 1.0;
@@ -384,7 +351,7 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string WaterFragmentShaderSource =
+    private static readonly string WaterFragmentShaderSource =
         """
         #version 330 core
         in vec3 vFragPos;
@@ -404,7 +371,7 @@ public static partial class Renderer3D
         uniform float uWaveScale;
         uniform float uWaveStrength;
         uniform float uSpecularPower;
-        
+
         uniform vec2 uTiling;
         uniform int uAutoTile;
         uniform vec3 uModelScale;
@@ -435,12 +402,7 @@ public static partial class Renderer3D
         uniform int uHasSkybox;
 
         out vec4 fragColor;
-
-        float hash(vec2 p) {
-            vec3 p3  = fract(vec3(p.xyx) * .1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         // Value noise carrying its analytic derivative: returns (value in [-1,1], d/dx, d/dy). The
         // derivative lets us build an exact surface normal from the summed height field instead of
@@ -484,34 +446,7 @@ public static partial class Renderer3D
             return col;
         }
 
-        // See the standard shader for the rationale: normal-offset receiver + hardware PCF (sampler2DShadow).
-        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
-        {
-            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
-            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
-            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
-
-            vec3 projCoords = lp.xyz / lp.w;
-            projCoords = projCoords * 0.5 + 0.5;
-            if (projCoords.z > 1.0) return 0.0;
-            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
-            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
-            // on desktop too).
-            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
-
-            float depthRef = projCoords.z - 0.0015;
-
-            float shadow = 0.0;
-            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
-            for (int x = -2; x <= 2; ++x)
-            {
-                for (int y = -2; y <= 2; ++y)
-                {
-                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
-                }
-            }
-            return shadow / 25.0;
-        }
+        """ + GlslSnippets.ShadowCalculation + """
 
         void main()
         {
@@ -667,29 +602,22 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string SkyboxFragmentShaderSource =
+    private static readonly string SkyboxFragmentShaderSource =
         """
         #version 330 core
-        
+
         in vec2 vUV;
         out vec4 fragColor;
-        
+
         uniform mat4 uInverseViewProjection;
-        
+
         uniform vec3 uSkyColor;
         uniform vec3 uGroundColor;
-        
+
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
         uniform int uHasDirLight;
-
-        // Cheap, sine-free per-pixel hash in [0,1). Used for dithering.
-        float hash12(vec2 p)
-        {
-            vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         void main()
         {
@@ -766,8 +694,8 @@ public static partial class Renderer3D
             // Dithering. This smooth gradient bands into concentric "onion rings" once quantized to an
             // 8-bit target (the direct, no-post-processing path — the HDR/post path dithers in its own
             // composite). Add ~1 LSB of triangular-PDF noise so each band edge dissolves into noise.
-            float d1 = hash12(gl_FragCoord.xy);
-            float d2 = hash12(gl_FragCoord.xy + 17.0);
+            float d1 = hash(gl_FragCoord.xy);
+            float d2 = hash(gl_FragCoord.xy + 17.0);
             color += (d1 + d2 - 1.0) / 255.0;
 
             fragColor = vec4(color, 1.0);
@@ -789,13 +717,13 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string CloudsFragmentShaderSource =
+    private static readonly string CloudsFragmentShaderSource =
         """
         #version 330 core
-        
+
         in vec2 vUV;
         out vec4 fragColor;
-        
+
         uniform mat4 uInverseViewProjection;
         uniform vec3 uColorTop;
         uniform vec3 uColorBottom;
@@ -805,13 +733,7 @@ public static partial class Renderer3D
         uniform float uTime;
         uniform float uOpacity;
         uniform float uVolume;
-        
-        // Better noise without high frequency floating point breakdown
-        float hash(vec2 p) {
-            vec3 p3  = fract(vec3(p.xyx) * .1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         float noise(vec2 x) {
             vec2 i = floor(x);
