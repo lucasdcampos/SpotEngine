@@ -9,7 +9,7 @@ Check an item off when it ships.
 
 > Blocks real game development today.
 
-- [ ] **Play-in-viewport** — editor launches an external process for Play mode; in-process play/pause/step is the single biggest workflow gap
+- [x] **Play-in-viewport** — editor launches an external process for Play mode; in-process play/pause/step is the single biggest workflow gap
 - [x] **Spotlight** — `LightComponent` only has Directional and Point types; cone angle and falloff are absent
 - [ ] **Mesh collider (3D)** — only Box/Sphere/Capsule shapes exist; non-trivial level geometry cannot be made solid
 - [ ] **Blend trees** — `AnimatorController` has a state machine but no blend-tree nodes; smooth locomotion blends (walk↔run by a float parameter) are not possible

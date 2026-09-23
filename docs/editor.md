@@ -107,11 +107,24 @@ embedded textures and materials out to the folder without adding anything to the
 The editor has two modes:
 
 - **Edit mode** is where you build. Changes you make are to the scene you're authoring.
-- **Play mode** runs your game inside the editor so you can test it — scripts, physics, and audio all
-  come alive. When you stop, the scene is restored exactly as it was before you pressed play, so
-  anything that happened during play is discarded and testing never disturbs your work. The **Game**
-  view shows what the scene's primary camera sees; if there isn't one, it says so instead of showing a
-  blank panel.
+- **Play mode** runs your game directly inside the editor — scripts, physics, audio, and animation all
+  tick in real time. Play starts instantly (no build step) and, when you stop, the scene is restored
+  exactly as it was before you pressed Play, so testing never disturbs your work.
+
+The **Game** view shows what the scene's primary camera sees during play. The Scene view stays open
+alongside it, so you can fly around and inspect the live runtime state.
+
+Three controls sit centered in the menu bar:
+
+| Button | Keyboard | Effect |
+|--------|----------|--------|
+| Play / Stop | — | Enters or exits play mode. On stop the scene is fully restored. |
+| Pause / Resume | `Space` | Freezes the simulation without discarding state; resume to continue. |
+| Step | `Ctrl`+`Right` | Advances the simulation exactly one frame (only works while paused). |
+
+While the simulation is running the scene-view gizmos and drag-drop are locked — edits belong in
+edit mode. You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
+pre-play (authored) version since any runtime changes are ephemeral.
 
 ## Managing projects
 
