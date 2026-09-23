@@ -52,7 +52,7 @@ Check an item off when it ships.
 - [x] **Profiler window** — no per-system frame-time visualization; only raw log output
 
 **Rendering**
-- [ ] **Color grading / LUT** — no LUT texture slot in `PostProcessingComponent`; stylistic grading requires a custom shader
+- [x] **Color grading / LUT** — no LUT texture slot in `PostProcessingComponent`; stylistic grading requires a custom shader
 - [ ] **Occlusion culling** — only frustum culling exists; objects behind walls are submitted to the GPU
 
 **Physics**

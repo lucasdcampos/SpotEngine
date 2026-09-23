@@ -80,8 +80,16 @@ Two surfaces control the final image, and they have different jobs:
   resolution. By default the engine renders in HDR with a full, tasteful default look (ACES tone
   mapping, FXAA, gated bloom, a faint vignette) even with no per-scene component present.
 - **A Post Processing component** is the *per-scene artistic* control: add it to a scene to customize
-  that look — tone mapping, bloom, vignette, and so on. Adding it is about *customizing* the look,
-  not switching quality on.
+  that look — tone mapping, bloom, vignette, color grading LUT, and so on. Adding it is about *customizing*
+  the look, not switching quality on.
+
+### Color grading LUT
+
+The Post Processing component accepts a **2D LUT texture** in horizontal-strip format (the standard
+Unity-style LUT: 256 × 16 pixels, encoding a 16³ grading cube). Enable **Enable Lut**, assign a `.png`
+or `.sptex` LUT asset to the **Lut Texture** slot, and dial **Lut Intensity** between 0 (no grading) and
+1 (full grade). The LUT is sampled after tone-mapping and gamma correction, so it operates in display
+space — the same domain LUT tools like Photoshop and DaVinci Resolve export to.
 
 This split follows the engine's convention that graphics are tuned through global settings and a few
 existing components rather than scattered ad-hoc knobs.
