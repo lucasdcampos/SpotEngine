@@ -23,7 +23,7 @@ Check an item off when it ships.
 > Workable today but noticeably missing.
 
 **Editor**
-- [ ] **Scale handles in the transform gizmo** — TransformGizmo has translation and rotation handles but no visual scale handles
+- [x] **Scale handles in the transform gizmo** — TransformGizmo has translation and rotation handles but no visual scale handles
 - [ ] **Prefab overrides (Apply / Revert)** — prefab instances exist but the editor has no Apply-to-prefab or Revert-to-prefab workflow
 - [ ] **Undo gaps** — undo/redo uses full-scene JSON snapshots so it only captures inspector edits; changes made by scripts or physics during play are not undoable
 
