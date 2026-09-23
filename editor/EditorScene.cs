@@ -75,7 +75,8 @@ public sealed class UIDocumentData
 public enum EditorState
 {
     Edit,
-    Play
+    Play,
+    Paused
 }
 
 public class EditorScene : Scene
@@ -671,12 +672,27 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        // The game now runs in an external process, so the editor's copy of the scene
-        // should never process physics or scripts (UpdateRuntime). It just stays in edit mode.
         foreach (var sceneData in _openScenes)
         {
-            sceneData.Scene.OnUpdate(deltaTime);
-            sceneData.Scene.FlushDestroyed();
+            bool isActiveSim = _state != EditorState.Edit && sceneData == _activeSceneData;
+            if (isActiveSim)
+            {
+                // In play mode: run the full system stack for the active scene.
+                if (!_isPlayPaused)
+                    sceneData.Scene.UpdateRuntime(deltaTime);
+                else if (_playStep)
+                {
+                    sceneData.Scene.UpdateRuntime(1f / 60f);
+                    _playStep = false;
+                }
+                // Paused with no step pending: freeze (do nothing).
+            }
+            else
+            {
+                // Edit mode (or non-active scene): lightweight tick — no scripts/physics.
+                sceneData.Scene.OnUpdate(deltaTime);
+                sceneData.Scene.FlushDestroyed();
+            }
         }
 
         if (_state == EditorState.Edit)
@@ -1125,14 +1141,7 @@ public class EditorScene : Scene
 
             if (open)
             {
-                // While the game runs in an external process the scene viewport is frozen: disable all
-                // camera/gizmo/selection input and paint a centered "running" notice over it.
-                bool playing = _state == EditorState.Play;
-                var viewportMin = ImGui.GetCursorScreenPos();
-                var viewportSize = ImGui.GetContentRegionAvail();
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: !playing && (isFocused || isHovered));
-                if (playing)
-                    DrawPlayingOverlay(viewportMin, viewportSize);
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
             }
             ImGui.End();
         }
@@ -1664,102 +1673,40 @@ public class EditorScene : Scene
         _context.ActiveScene?.OnExit();
     }
 
-    private System.Diagnostics.Process? _gameProcess;
+    // JSON snapshot of the active scene taken when Play is pressed; restored on Stop.
+    private string? _prePlaySnapshot;
+    private bool _isPlayPaused;
+    private bool _playStep;
 
     private void OnPlay()
     {
-        if (_state == EditorState.Edit && Spot.Core.Project.Active != null)
-        {
-            if (!SaveAllDirtyWithPrompts()) return;
+        if (_state != EditorState.Edit || Project.Active == null || _activeSceneData == null) return;
 
-            _state = EditorState.Play;
-            Spot.Core.Log.Info("Building project for Play...");
-
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
-                    onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
-                    onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
-                    fastDebug: true);
-
-                if (result.Success)
-                {
-                    Spot.Core.Log.Info("Build succeeded. Launching game...");
-                    var exePath = System.IO.Path.Combine(result.OutputDir, Spot.Core.Project.Active.Config.Name + ".exe");
-                    var processInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = exePath,
-                        // Run from the build output (Build/play): the cooked Content/ and game.manifest live
-                        // there, staged next to the exe, so nothing needs to sit in the project root.
-                        WorkingDirectory = result.OutputDir,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    };
-
-                    _gameProcess = new System.Diagnostics.Process { StartInfo = processInfo };
-                    _gameProcess.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Info($"[Game] {e.Data}"); };
-                    _gameProcess.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Error($"[Game] {e.Data}"); };
-
-                    _gameProcess.EnableRaisingEvents = true;
-                    _gameProcess.Exited += (sender, e) =>
-                    {
-                        Spot.Core.Log.Info("Game process exited.");
-                        _gameProcess = null;
-                        _state = EditorState.Edit;
-                    };
-
-                    _gameProcess.Start();
-                    _gameProcess.BeginOutputReadLine();
-                    _gameProcess.BeginErrorReadLine();
-                }
-                else
-                {
-                    Spot.Core.Log.Error("Build failed. Cannot play.");
-                    _state = EditorState.Edit;
-                }
-            });
-        }
+        _prePlaySnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
+        _isPlayPaused = false;
+        _playStep = false;
+        _state = EditorState.Play;
+        _showGame = true;
+        Spot.Core.Log.Info("Entering play mode.");
     }
 
     private void OnStop()
     {
-        if (_state == EditorState.Play)
+        if (_state == EditorState.Edit || _activeSceneData == null) return;
+
+        var scene = _activeSceneData.Scene;
+        ScriptSystem.DestroyAll(scene);
+        foreach (var e in scene.View<AudioSourceComponent>())
         {
-            if (_gameProcess != null && !_gameProcess.HasExited)
-            {
-                Spot.Core.Log.Info("Stopping game process...");
-                try { _gameProcess.Kill(); } catch { }
-            }
-            _state = EditorState.Edit;
+            var src = e.GetComponent<AudioSourceComponent>();
+            if (src.IsPlaying) src.Stop();
         }
-    }
-
-    // Dims a scene viewport and centers a "game is running" notice over it while the game runs in an
-    // external process, so it's obvious the frozen, non-interactive view is expected (not a hang).
-    private static void DrawPlayingOverlay(Vector2 min, Vector2 size)
-    {
-        if (size.X <= 0.0f || size.Y <= 0.0f)
-            return;
-
-        var palette = EditorThemeManager.Current.Palette;
-        var drawList = ImGui.GetWindowDrawList();
-        drawList.AddRectFilled(min, min + size, ImGui.GetColorU32(new Vector4(0.04f, 0.04f, 0.06f, 0.72f)));
-
-        Vector2 center = min + size * 0.5f;
-
-        var font = ImGui.GetFont();
-        const string title = "Game is running";
-        const float titleSize = 30.0f;
-        Vector2 titleDim = font.CalcTextSizeA(titleSize, float.MaxValue, 0.0f, title);
-        drawList.AddText(font, titleSize, new Vector2(center.X - titleDim.X * 0.5f, center.Y - titleDim.Y - 2.0f),
-            ImGui.GetColorU32(palette.Text), title);
-
-        const string subtitle = "Press Stop to return to the editor";
-        Vector2 subDim = ImGui.CalcTextSize(subtitle);
-        drawList.AddText(new Vector2(center.X - subDim.X * 0.5f, center.Y + 6.0f),
-            ImGui.GetColorU32(palette.TextDisabled), subtitle);
+        scene.TeardownPhysics();
+        RestoreSnapshot(_activeSceneData, _prePlaySnapshot!);
+        _prePlaySnapshot = null;
+        _isPlayPaused = false;
+        _state = EditorState.Edit;
+        Spot.Core.Log.Info("Exited play mode.");
     }
 
     // Rebuilds the default docked arrangement: Hierarchy and Inspector on the right,
