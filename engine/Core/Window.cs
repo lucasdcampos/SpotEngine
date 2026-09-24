@@ -354,7 +354,14 @@ public sealed class Window : IDisposable
                 mouse.Cursor.CursorMode = CursorMode.Hidden;
             }
 
-            System.Numerics.Vector2 center = _windowCenter();
+            // Round to the nearest integer pixel so the snap position is always pixel-exact.
+            // Without rounding, a window with an odd pixel dimension produces center.X = N.5f;
+            // the OS snaps that to an integer and the next frame sees a constant 0.5px delta
+            // that makes the camera drift even when the user is not moving the mouse.
+            System.Numerics.Vector2 rawCenter = _windowCenter();
+            System.Numerics.Vector2 center = new System.Numerics.Vector2(
+                MathF.Round(rawCenter.X), MathF.Round(rawCenter.Y));
+
             if (_justLocked)
             {
                 // First locked frame: just centre the cursor; the offset from the press point isn't motion.
