@@ -49,7 +49,9 @@
           0
         ],
         "IsTrigger": false,
-        "Layer": 0
+        "Layer": 0,
+        "Friction": 0.8,
+        "Restitution": 0
       }
     },
     {
@@ -126,7 +128,32 @@
         "Enabled": true,
         "Items": [
           {
-            "Type": "ThirdPersonController"
+            "Type": "ThirdPersonController",
+            "Fields": {
+              "MoveSpeed": 3.2,
+              "RunSpeed": 6,
+              "AimMoveSpeed": 2.2,
+              "TurnSpeed": 720,
+              "ModelYawOffset": 180,
+              "JumpSpeed": 5,
+              "Gravity": 14,
+              "CameraName": "Camera",
+              "CameraDistance": 4.5,
+              "MinDistance": 2,
+              "MaxDistance": 9,
+              "CameraHeight": 1.5,
+              "MouseSensitivity": 0.15,
+              "MinPitch": -35,
+              "MaxPitch": 70,
+              "AimDistance": 1.8,
+              "AimHeight": 1.55,
+              "AimShoulderOffset": 0.55,
+              "AimBlendSpeed": 10,
+              "CrosshairSize": 40,
+              "FireCooldown": 0.18,
+              "FireVolume": 0.9,
+              "FireSoundRef": "guid:05a1c12ad1864dadbde66c6e73113089"
+            }
           }
         ]
       },
@@ -1977,7 +2004,9 @@
         "Intensity": 1,
         "AmbientIntensity": 0.3,
         "CastShadows": true,
-        "Range": 10
+        "Range": 10,
+        "SpotAngle": 15,
+        "SpotOuterAngle": 30
       }
     },
     {

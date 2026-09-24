@@ -255,7 +255,11 @@ public class ViewportPanel
                     io.ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
                     _ownsCursorLock = true;
 
-                    Vector2 center = cursorPos + viewportSize * 0.5f;
+                    // Round to the nearest integer pixel so the snap and the read point match exactly.
+                    // A fractional centre (.5f from an odd viewport dimension) would produce a constant
+                    // sub-pixel delta every frame that makes the camera drift even when the mouse is still.
+                    Vector2 rawCenter = cursorPos + viewportSize * 0.5f;
+                    Vector2 center = new Vector2(MathF.Round(rawCenter.X), MathF.Round(rawCenter.Y));
                     Vector2 lookDelta = Vector2.Zero;
                     if (_flyFrame > 0)
                     {

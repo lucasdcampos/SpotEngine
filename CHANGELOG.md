@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
 ### Added
-- **Play-in-viewport**: pressing Play now runs the game simulation directly inside the editor — no build step, no external process. Scripts, physics, audio, and animation tick in real time. Press Pause (`Space`) to freeze the simulation, Step (`Ctrl+Right`) to advance one frame, and Stop to restore the scene to its exact pre-play state.
+- **Play-in-viewport**: pressing Play now runs the game simulation directly inside the editor — no build step, no external process. Scripts, physics, audio, and animation tick in real time. Press Pause (`Ctrl+P`) to freeze the simulation, Step (`Ctrl+Right`) to advance one frame, and Stop to restore the scene to its exact pre-play state.
 - Color grading LUT support in `PostProcessingComponent`: assign a 2D horizontal-strip LUT texture (e.g. 256×16 for a 16³ grade) and blend it with `LutIntensity`
 - Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 
@@ -34,6 +34,10 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
 
 ### Fixed
+- Play mode auto-builds project scripts on first Play when no compiled DLL exists yet (clean checkout or new project), so game scripts always run instead of silently doing nothing
+- Cursor lock (`Input.CursorLocked = true`) now correctly hides the hardware cursor during in-editor play; ImGui's backend no longer resets it to visible every frame
+- Pressing Stop now releases any cursor lock the game held, returning the cursor to the normal editor state
+- Game input (WASD, mouse-look, cursor lock) is now isolated to the Game panel: the game only receives input when the Game panel is active (click to focus, Escape to release); in the Scene view the editor camera works freely as expected
 - Editor "Add Component" popup now closes reliably on Escape (InputText was swallowing the key)
 - "Show Colliders" viewport checkbox now draws colliders for all scene entities, not only the selected one
 

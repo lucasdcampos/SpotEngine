@@ -348,15 +348,35 @@ public class EditorScene : Scene
     }
 
     // The newest built <Name>.dll under the project's bin tree, or null when the project hasn't been built.
+    // Checks two locations because a project inside a solution whose Directory.Build.props sets
+    // BaseOutputPath may redirect builds to a sibling repo-level bin/<ProjectName>/ folder rather
+    // than the project-local bin/.
     private static string? FindProjectAssembly(Project project)
     {
-        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
-        if (!System.IO.Directory.Exists(binDir))
+        string dllName = project.Config.Name + ".dll";
+
+        // 1. Project-local bin/ (standard layout for standalone projects).
+        string? found = FindNewestDll(System.IO.Path.Combine(project.ProjectDirectory, "bin"), dllName);
+        if (found != null) return found;
+
+        // 2. Sibling repo-level bin/<ProjectName>/ (Directory.Build.props with BaseOutputPath
+        //    = $(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\ redirects there).
+        string? parent = System.IO.Path.GetDirectoryName(
+            project.ProjectDirectory.TrimEnd(
+                System.IO.Path.DirectorySeparatorChar,
+                System.IO.Path.AltDirectorySeparatorChar));
+        if (parent != null)
         {
-            return null;
+            found = FindNewestDll(System.IO.Path.Combine(parent, "bin", project.Config.Name), dllName);
         }
 
-        var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
+        return found;
+    }
+
+    private static string? FindNewestDll(string dir, string dllName)
+    {
+        if (!System.IO.Directory.Exists(dir)) return null;
+        var dlls = System.IO.Directory.GetFiles(dir, dllName, System.IO.SearchOption.AllDirectories);
         return System.Linq.Enumerable.FirstOrDefault(
             System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
     }
@@ -677,6 +697,32 @@ public class EditorScene : Scene
             bool isActiveSim = _state != EditorState.Edit && sceneData == _activeSceneData;
             if (isActiveSim)
             {
+                // Gate game input to the Game panel. _gamePanelFocused is evaluated from the
+                // previous frame's ImGui pass (one-frame lag is imperceptible to the user).
+                // Handle focus transitions before setting suppression so cursor management runs
+                // while InputBlocked still matches the previous frame's state.
+                if (_gamePanelFocused != _prevGamePanelFocused)
+                {
+                    _prevGamePanelFocused = _gamePanelFocused;
+                    if (_gamePanelFocused)
+                    {
+                        // Gaining focus: unsuppress input first, then restore game's cursor lock.
+                        Spot.Core.Input.GameInputSuppressed = false;
+                        Spot.Core.Input.EditorRestoreCursor();
+                    }
+                    else
+                    {
+                        // Losing focus: release cursor while not yet suppressed, then suppress.
+                        Spot.Core.Input.EditorReleaseCursor();
+                        Spot.Core.Input.GameInputSuppressed = true;
+                    }
+                }
+                else
+                {
+                    // No transition: just maintain current suppression state.
+                    Spot.Core.Input.GameInputSuppressed = !_gamePanelFocused;
+                }
+
                 // In play mode: run the full system stack for the active scene.
                 if (!_isPlayPaused)
                     sceneData.Scene.UpdateRuntime(deltaTime);
@@ -1183,6 +1229,45 @@ public class EditorScene : Scene
                 var imageTopLeft = ImGui.GetCursorScreenPos();
                 _gamePanel.OnImGuiRender(handleInput: false);
 
+                bool playing = _state != EditorState.Edit;
+                var drawList = ImGui.GetWindowDrawList();
+
+                // Click-to-focus: while in play mode, clicking the Game panel gives it input focus.
+                // The cursor is free when the panel is not focused, so hover detection works normally.
+                bool gameWinHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.None);
+                if (playing && !_gamePanelFocused && gameWinHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    _gamePanelFocused = true;
+                }
+
+                // Overlay: "Click to control" when in play mode but the panel has no input focus.
+                if (playing && !_gamePanelFocused && size.X > 0 && size.Y > 0)
+                {
+                    const string clickMsg = "Click to control";
+                    var textSize = ImGui.CalcTextSize(clickMsg);
+                    var textPos = new Vector2(
+                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
+                        imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
+                    var pad = new Vector2(10.0f, 6.0f);
+                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
+                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), clickMsg);
+                }
+
+                // Overlay: subtle "Esc to release" hint at the bottom when the panel holds cursor lock.
+                if (playing && _gamePanelFocused && Spot.Core.Input.CursorLocked && size.X > 0 && size.Y > 0)
+                {
+                    const string escMsg = "Esc to release cursor";
+                    var textSize = ImGui.CalcTextSize(escMsg);
+                    var textPos = new Vector2(
+                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
+                        imageTopLeft.Y + size.Y - textSize.Y - 12.0f);
+                    var pad = new Vector2(8.0f, 4.0f);
+                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.40f)), 3.0f);
+                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.55f)), escMsg);
+                }
+
                 // Without an active primary camera nothing renders, leaving a blank Game view. Explain it
                 // instead of showing an unexplained black panel — a common first-time snag.
                 if (size.X > 0 && size.Y > 0 && gameScene != null && !gameScene.HasActivePrimaryCamera())
@@ -1193,7 +1278,6 @@ public class EditorScene : Scene
                         imageTopLeft.X + (size.X - textSize.X) * 0.5f,
                         imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
                     var pad = new Vector2(10.0f, 6.0f);
-                    var drawList = ImGui.GetWindowDrawList();
                     drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
                         ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
                     drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), msg);
@@ -1309,6 +1393,22 @@ public class EditorScene : Scene
             _warmupFrames--;
             string title = Project.Active?.Config.Name ?? "Loading";
             LoadingScreen.Present(EditorThemeManager.Current.Palette, title, "Loading project...");
+        }
+
+        // Prevent ImGui's backend from resetting the hardware cursor while the game holds a cursor
+        // lock. The fly-mode viewports manage this flag themselves (NoMouseCursorChange); here we
+        // apply the same guard for game-side cursor lock so the cursor stays hidden during play.
+        // Placed last so all viewport panels have already had their turn with the flag.
+        bool gameLocksCursor = _state != EditorState.Edit && _gamePanelFocused && Spot.Core.Input.CursorLocked;
+        if (gameLocksCursor)
+        {
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
+            _gameHeldImGuiLock = true;
+        }
+        else if (_gameHeldImGuiLock)
+        {
+            ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
+            _gameHeldImGuiLock = false;
         }
     }
 
@@ -1677,14 +1777,29 @@ public class EditorScene : Scene
     private string? _prePlaySnapshot;
     private bool _isPlayPaused;
     private bool _playStep;
+    private bool _gameHeldImGuiLock;
+    // Whether the Game panel currently has input focus (set by clicking into it).
+    // When false the game receives no keyboard/mouse input and the cursor is free.
+    private bool _gamePanelFocused;
+    private bool _prevGamePanelFocused;
 
     private void OnPlay()
     {
         if (_state != EditorState.Edit || Project.Active == null || _activeSceneData == null) return;
 
+        // If no game assembly is loaded yet (first Play after a clean checkout, or the project has
+        // never been built), compile it now so scripts actually run. This is synchronous and blocks
+        // the UI for a normal incremental build (~1-3 s); subsequent plays use the cached DLL.
+        if (s_scriptHost.Assembly == null)
+        {
+            EnsureScriptsBuilt(Project.Active);
+        }
+
         _prePlaySnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
         _isPlayPaused = false;
         _playStep = false;
+        _gamePanelFocused = false;
+        _prevGamePanelFocused = false;
         _state = EditorState.Play;
         _showGame = true;
         Spot.Core.Log.Info("Entering play mode.");
@@ -1705,8 +1820,114 @@ public class EditorScene : Scene
         RestoreSnapshot(_activeSceneData, _prePlaySnapshot!);
         _prePlaySnapshot = null;
         _isPlayPaused = false;
+        _gamePanelFocused = false;
+        _prevGamePanelFocused = false;
+        // Clear suppression first so CursorLocked can actually apply the cursor-free state.
+        Spot.Core.Input.GameInputSuppressed = false;
+        // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
+        Spot.Core.Input.CursorLocked = false;
         _state = EditorState.Edit;
         Spot.Core.Log.Info("Exited play mode.");
+    }
+
+    // Compiles the project scripts (dotnet build → bin/) and loads the resulting assembly so that
+    // ScriptResolver can instantiate game types. Called once on first Play when no assembly is loaded.
+    private void EnsureScriptsBuilt(Project project)
+    {
+        Spot.Core.Log.Info("Building project scripts for play mode...");
+
+        if (!BuildScriptsDll(project))
+        {
+            Spot.Core.Log.Error("Script build failed; game scripts will not run. See the console for build errors.");
+            return;
+        }
+
+        string? dll = FindProjectAssembly(project);
+        if (dll == null)
+        {
+            Spot.Core.Log.Error("Script build succeeded but the output DLL was not found under bin/. Cannot load scripts.");
+            return;
+        }
+
+        if (!s_scriptHost.Load(dll))
+        {
+            Spot.Core.Log.Error("Failed to load project scripts from '{0}'.", dll);
+            return;
+        }
+
+        // Re-resolve any ScriptInstance whose Instance is still null: the assembly is now available.
+        foreach (var sceneData in _openScenes)
+        {
+            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
+            {
+                var comp = entity.GetComponent<ScriptComponent>();
+                foreach (ScriptInstance item in comp.Items)
+                {
+                    if (item.Instance == null)
+                    {
+                        item.Instance = ScriptResolver.Create(item.Guid, item.ClassName, entity);
+                    }
+                }
+            }
+        }
+
+        Spot.Core.Log.Info("Project scripts loaded from '{0}'.", dll);
+    }
+
+    // Runs `dotnet build` on the project's .csproj so scripts compile into bin/. Returns true on
+    // success. Synchronous — the caller's frame loop freezes for the duration of the build.
+    private static bool BuildScriptsDll(Project project)
+    {
+        if (string.IsNullOrEmpty(project.ProjectDirectory))
+        {
+            return false;
+        }
+
+        // Keep EngineBin in sync with the running engine so scripts compile against the current API.
+        Spot.Build.ProjectGenerator.Generate(project);
+
+        string csprojFile = project.Config.Name + ".csproj";
+        var processInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"build \"{csprojFile}\" -c Debug --nologo",
+            WorkingDirectory = project.ProjectDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        try
+        {
+            using var process = new System.Diagnostics.Process { StartInfo = processInfo };
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    Spot.Core.Log.Info("[Build] {0}", e.Data);
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    Spot.Core.Log.Error("[Build] {0}", e.Data);
+            };
+
+            if (!process.Start())
+            {
+                Spot.Core.Log.Error("Failed to start dotnet build process.");
+                return false;
+            }
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            process.WaitForExit();
+            return process.ExitCode == 0;
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Error("Script build threw an exception: {0}", ex.Message);
+            return false;
+        }
     }
 
     // Rebuilds the default docked arrangement: Hierarchy and Inspector on the right,
@@ -2058,6 +2279,13 @@ public class EditorScene : Scene
             }
             if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Right))
                 OnStep();
+
+            // Escape releases the Game panel's input focus (frees the cursor back to the editor).
+            // Use ImGui's key check so it fires even while the game holds cursor lock.
+            if (_gamePanelFocused && ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+            {
+                _gamePanelFocused = false;
+            }
         }
 
         // Auto-reload: once script edits have settled (a short debounce past the last file event) and the user

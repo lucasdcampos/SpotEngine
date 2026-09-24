@@ -114,6 +114,13 @@ The editor has two modes:
 The **Game** view shows what the scene's primary camera sees during play. The Scene view stays open
 alongside it, so you can fly around and inspect the live runtime state.
 
+**Game panel input focus.** While in play mode the Game panel only receives keyboard and mouse input
+when it is focused. Click inside the Game view to give it focus (the "Click to control" hint
+disappears). From that point WASD, mouse-look, and any cursor lock the game requests all work as in
+a standalone build. Press `Escape` to release focus and return the cursor to the editor — after that
+you can fly the Scene camera or inspect entities without the game reacting to your input. The game's
+simulation continues in the background regardless of focus.
+
 Three controls sit centered in the menu bar:
 
 | Button | Keyboard | Effect |
