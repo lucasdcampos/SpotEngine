@@ -15,6 +15,8 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 
 ### Changed
+- Scene camera default look rate retuned (60% slower): the previous rate compensated for the dropped mouse motion described below, and felt far too fast once that was fixed
+- Scene camera **Look sensitivity** and **Fly speed** are now adjustable from the viewport's **Camera** toolbar button and persist with the window layout; `Shift` while flying is a 4x multiplier on the configured speed
 - Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders
 
 ### Added
@@ -34,6 +36,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
 
 ### Fixed
+- Scene view camera look is smooth again: the fly camera no longer recentres the cursor every frame (which discarded a variable slice of each frame's mouse motion, making the look feel sluggish and jittery); it now reads plain frame-to-frame movement and only warps back to the centre near a viewport border
 - Play mode auto-builds project scripts on first Play when no compiled DLL exists yet (clean checkout or new project), so game scripts always run instead of silently doing nothing
 - Cursor lock (`Input.CursorLocked = true`) now correctly hides the hardware cursor during in-editor play; ImGui's backend no longer resets it to visible every frame
 - Pressing Stop now releases any cursor lock the game held, returning the cursor to the normal editor state

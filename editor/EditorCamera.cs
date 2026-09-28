@@ -86,12 +86,21 @@ public class EditorCamera
         }
     }
     
+    /// <summary>
+    /// Base mouse-look rate in radians per pixel, before the user's sensitivity multiplier.
+    /// Tuned by feel: the old rate was measured against a fly camera that silently dropped part of
+    /// every frame's mouse motion, so once that loss was fixed the same number turned out far too
+    /// fast. 1x sensitivity is the corrected rate.
+    /// </summary>
+    private const float BaseLookRate = 0.002f;
+
     public void MouseLook(Vector2 delta)
     {
         if (!Is3D) return;
-        
-        Yaw += delta.X * 0.005f;
-        Pitch -= delta.Y * 0.005f;
+
+        float rate = BaseLookRate * Spot.Editor.Utils.EditorSettings.CameraLookSensitivity;
+        Yaw += delta.X * rate;
+        Pitch -= delta.Y * rate;
         
         // Clamp pitch to avoid gimbal lock
         Pitch = Math.Clamp(Pitch, -MathF.PI / 2.0f + 0.01f, MathF.PI / 2.0f - 0.01f);

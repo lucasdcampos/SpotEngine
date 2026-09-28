@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.Json;
 using Silk.NET.Maths;
@@ -13,6 +14,12 @@ public class EditorWindowSettings
     public int PosY { get; set; } = -1;
     public bool Maximized { get; set; } = false;
     public bool Is3DMode { get; set; } = true;
+
+    /// <summary>Multiplier on the scene camera's mouse-look rate (1.0 = the editor default).</summary>
+    public float CameraLookSensitivity { get; set; } = 1.0f;
+
+    /// <summary>Scene camera fly speed in world units per second (Shift flies 4x faster).</summary>
+    public float CameraMoveSpeed { get; set; } = 5.0f;
 }
 
 public static class EditorSettings
@@ -20,6 +27,29 @@ public static class EditorSettings
     private static readonly string SettingsFile = "editor_window.json";
     
     public static bool GlobalIs3DMode { get; set; } = true;
+
+    /// <summary>
+    /// Scene-camera feel, shared by every viewport and persisted with the window layout.
+    /// Sensitivity is a multiplier on the base look rate; the speed is in world units per second.
+    /// Clamped on assignment so a hand-edited settings file can't produce an unusable camera.
+    /// </summary>
+    public static float CameraLookSensitivity
+    {
+        get => _cameraLookSensitivity;
+        set => _cameraLookSensitivity = Math.Clamp(value, 0.1f, 5.0f);
+    }
+
+    public static float CameraMoveSpeed
+    {
+        get => _cameraMoveSpeed;
+        set => _cameraMoveSpeed = Math.Clamp(value, 0.5f, 100.0f);
+    }
+
+    public const float DefaultCameraLookSensitivity = 1.0f;
+    public const float DefaultCameraMoveSpeed = 5.0f;
+
+    private static float _cameraLookSensitivity = DefaultCameraLookSensitivity;
+    private static float _cameraMoveSpeed = DefaultCameraMoveSpeed;
 
     // A comfortable default editor size, larger than the compact launcher, used the first time the
     // editor is opened (before any window layout has been saved).
@@ -79,6 +109,8 @@ public static class EditorSettings
                         }
                     }
                     GlobalIs3DMode = settings.Is3DMode;
+                    CameraLookSensitivity = settings.CameraLookSensitivity;
+                    CameraMoveSpeed = settings.CameraMoveSpeed;
                 }
             }
             catch { }
@@ -96,7 +128,9 @@ public static class EditorSettings
                 PosX = window.Position.X,
                 PosY = window.Position.Y,
                 Maximized = window.WindowState == WindowState.Maximized,
-                Is3DMode = GlobalIs3DMode
+                Is3DMode = GlobalIs3DMode,
+                CameraLookSensitivity = CameraLookSensitivity,
+                CameraMoveSpeed = CameraMoveSpeed
             };
             
             // If the window is minimized or hidden when closing, we don't want to save that as normal size/pos

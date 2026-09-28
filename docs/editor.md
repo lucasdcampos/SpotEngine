@@ -69,6 +69,23 @@ skipped. The session is saved on exit to `Library/editor_session.json` inside th
 cache, safe to delete or leave out of version control); a brand-new project with no saved session opens on
 its start scene as before.
 
+## Navigating the Scene view
+
+In 3D mode, hold the **right mouse button** to fly: move the mouse to look around, `W`/`A`/`S`/`D` to move
+on the view plane, `Q`/`E` to drop and rise, and hold `Shift` for 4x speed. The mouse wheel moves the
+camera along its forward axis. In 2D mode, drag with the **middle** or **right** button to pan and use the
+wheel to zoom.
+
+While flying, the cursor is hidden and confined to the viewport: it is warped back to the centre whenever
+it approaches a border, so it can never escape into another panel. Between those warps the look is driven
+by the cursor's plain frame-to-frame movement, which is what keeps it smooth — recentring on *every* frame
+instead would discard the motion the mouse made during that frame's update and render, making the camera
+feel both sluggish and jittery.
+
+The **Camera** button in the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on the
+base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both are
+global to the editor and persist with the window layout in `editor_window.json`.
+
 ## The menu bar
 
 Along the top, the menu bar groups project, edit, view, and help actions, with the play/stop control
