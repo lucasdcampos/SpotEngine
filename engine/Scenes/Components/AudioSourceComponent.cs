@@ -5,7 +5,7 @@ namespace Spot.Scenes;
 
 /// <summary>
 /// Marks an entity as a sound emitter: it carries what to play (a clip) and how (volume, pitch, looping,
-/// 2D vs 3D spatial). It is the audio counterpart to <see cref="Sprite2DComponent"/> — data plus a small
+/// 2D vs 3D spatial, and which mixer bus it is grouped under). It is the audio counterpart to <see cref="Sprite2DComponent"/> — data plus a small
 /// control surface for scripts (<see cref="Play"/>/<see cref="Stop"/>). <c>AudioSystem</c> reads it each
 /// play-mode frame to honor <see cref="PlayOnAwake"/> and to keep a spatial voice positioned at the
 /// entity's transform.
@@ -36,6 +36,17 @@ public sealed class AudioSourceComponent : Component
     [InspectorRange(0.1f, 3.0f, 0.01f)]
     public float Pitch { get; set; } = 1.0f;
 
+    /// <summary>
+    /// Gets or sets the <see cref="AudioMixer"/> bus this source is routed through, by name — the volume group
+    /// (Music, SFX, UI) whose fader, mute, and solo apply on top of <see cref="Volume"/>. A name no bus matches
+    /// falls back to the master bus, so a renamed bus never silences a scene.
+    /// </summary>
+    [InspectorOptions(nameof(BusOptions))]
+    public string Bus { get; set; } = AudioMixer.SfxBus;
+
+    /// <summary>The bus names offered by the inspector's routing dropdown (the project's current mixer layout).</summary>
+    public static string[] BusOptions => AudioMixer.BusNames;
+
     /// <summary>Gets or sets whether playback loops until stopped.</summary>
     public bool Loop { get; set; }
 
@@ -65,7 +76,7 @@ public sealed class AudioSourceComponent : Component
     public void Play()
     {
         Stop();
-        CurrentVoice = AudioManager.Play(Clip, Volume, Pitch, Loop, Spatial, WorldPosition, MinDistance, MaxDistance);
+        CurrentVoice = AudioManager.Play(Clip, Volume, Pitch, Loop, Spatial, WorldPosition, MinDistance, MaxDistance, Bus);
     }
 
     /// <summary>Stops playback if the source is playing.</summary>

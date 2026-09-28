@@ -670,6 +670,92 @@ public sealed class DevConsole
             Input.ResetBindingsToDefaults();
             Print("Input bindings reset to defaults.");
         }, "Resets all input bindings to the project defaults");
+
+        Register("volume", args =>
+        {
+            // 'volume' alone lists the mix; 'volume 0.5' is shorthand for the master bus, since that is what a
+            // player reaching for the console almost always means.
+            if (args.Count == 0)
+            {
+                PrintBuses();
+                return;
+            }
+
+            string busName = args.Count >= 2 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
+            string value = args.Count >= 2 ? args[1] : args[0];
+
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
+                return;
+            }
+
+            if (!float.TryParse(value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float level))
+            {
+                Print($"[error] '{value}' is not a number. Usage: volume [bus] <0..1>");
+                return;
+            }
+
+            bus.Volume = level;
+            Print($"{bus.Name} volume set to {bus.Volume:0.00}");
+        }, "Sets a mixer bus volume, e.g. 'volume 0.5' (master) or 'volume music 0.2'; alone, lists the mix");
+
+        Register("mute", args =>
+        {
+            string busName = args.Count >= 1 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
+                return;
+            }
+
+            bus.Mute = args.Count >= 2 && bool.TryParse(args[1], out bool on) ? on : !bus.Mute;
+            Print($"{bus.Name} {(bus.Mute ? "muted" : "unmuted")}");
+        }, "Mutes or unmutes a mixer bus (e.g. 'mute', 'mute sfx', 'mute music true')");
+
+        Register("solo", args =>
+        {
+            if (args.Count == 0)
+            {
+                Spot.Audio.AudioMixer.ClearSolos();
+                Print("Cleared all solos.");
+                return;
+            }
+
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(args[0]);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{args[0]}' (try 'buses')");
+                return;
+            }
+
+            bus.Solo = !bus.Solo;
+            Print($"{bus.Name} solo {(bus.Solo ? "on" : "off")}");
+        }, "Solos a mixer bus in isolation, or clears every solo when called with no bus");
+
+        Register("buses", _ => PrintBuses(), "Lists the audio mixer buses with their levels and routing");
+    }
+
+    // Prints the mixer as an indented tree: each bus with its own fader, the gain that actually applies after
+    // its parents/mute/solo, and how many voices are sounding through it.
+    private void PrintBuses()
+    {
+        Print("Audio buses:");
+        foreach (Spot.Audio.AudioBus bus in Spot.Audio.AudioMixer.Buses)
+        {
+            int depth = 0;
+            for (Spot.Audio.AudioBus? p = Spot.Audio.AudioMixer.ParentOf(bus); p != null && depth < 8; p = Spot.Audio.AudioMixer.ParentOf(p))
+            {
+                depth++;
+            }
+
+            string flags = (bus.Mute ? " [muted]" : string.Empty) + (bus.Solo ? " [solo]" : string.Empty);
+            Print($"  {new string(' ', depth * 2)}{bus.Name}: {bus.Volume:0.00} " +
+                  $"(effective {Spot.Audio.AudioMixer.GetGain(bus.Name):0.00}, {bus.ActiveVoices} voice(s)){flags}");
+        }
     }
 
     private string GetInputText()

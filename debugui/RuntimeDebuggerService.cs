@@ -39,13 +39,18 @@ public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugO
     public string? EditingDocumentPath { get; set; }
     public Spot.UI.Widget? SelectedWidget { get; set; }
 
-    public bool IsOpen => _showHierarchy || _showInspector || _showTime;
+    public bool IsOpen => _showHierarchy || _showInspector || _showTime || _showAudioMixer;
 
     private bool _showHierarchy;
     private bool _showInspector;
     private bool _showTime;
+    private bool _showAudioMixer;
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
+
+    // The same mixer the editor uses. LayoutChanged stays null here: a level tweaked in a running game is a
+    // session change, not an edit to the project.
+    private readonly AudioMixerPanel _audioMixerPanel = new();
 
     public RuntimeDebuggerService()
     {
@@ -77,6 +82,8 @@ public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugO
                 if (ImGui.Button("Inspector")) _showInspector = !_showInspector;
                 ImGui.SameLine();
                 if (ImGui.Button("Time Controls")) _showTime = !_showTime;
+                ImGui.SameLine();
+                if (ImGui.Button("Audio Mixer")) _showAudioMixer = !_showAudioMixer;
                 
                 ImGui.End();
             }
@@ -105,5 +112,6 @@ public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugO
 
         if (_showHierarchy) _hierarchyPanel.OnImGuiRender(ref _showHierarchy);
         if (_showInspector) _inspectorPanel.OnImGuiRender(ref _showInspector);
+        _audioMixerPanel.OnImGuiRender(ref _showAudioMixer);
     }
 }
