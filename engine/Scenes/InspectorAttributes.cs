@@ -172,3 +172,23 @@ public sealed class AssetReferenceAttribute : Attribute
     /// <summary>Gets the name of the string property holding the asset's serialized path.</summary>
     public string PathPropertyName { get; }
 }
+
+/// <summary>
+/// Draws a <see cref="string"/> property as a dropdown over a set of options the engine only knows at runtime,
+/// rather than a free-text box. The named member — a static property or method on the same type returning a
+/// string sequence — supplies the choices (e.g. the audio mixer's current bus names). A value that is not among
+/// them is still listed and kept, so an edit elsewhere never silently rewrites authored data.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class InspectorOptionsAttribute : Attribute
+{
+    /// <summary>Initializes the attribute with the name of the member providing the options.</summary>
+    /// <param name="optionsMemberName">A static property or parameterless method returning <c>IEnumerable&lt;string&gt;</c>.</param>
+    public InspectorOptionsAttribute(string optionsMemberName)
+    {
+        OptionsMemberName = optionsMemberName;
+    }
+
+    /// <summary>Gets the name of the static member that supplies the dropdown options.</summary>
+    public string OptionsMemberName { get; }
+}

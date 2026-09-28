@@ -108,6 +108,7 @@ public class EditorScene : Scene
     private readonly ProjectSettingsPanel _projectSettingsPanel;
     private readonly UIHierarchyPanel _uiHierarchyPanel;
     private readonly ProfilerPanel _profilerPanel = new();
+    private readonly Spot.DebugUI.Panels.AudioMixerPanel _audioMixerPanel = new();
 
     // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
     // Hierarchy/Inspector while it is focused.
@@ -141,6 +142,7 @@ public class EditorScene : Scene
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
     private bool _showProfiler = false;
+    private bool _showAudioMixer = false;
 
     // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
     // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
@@ -166,6 +168,10 @@ public class EditorScene : Scene
         _projectSettingsPanel = new ProjectSettingsPanel();
         _uiHierarchyPanel = new UIHierarchyPanel(_context);
         _assetBrowserPanel.OnAssetOpened += OpenAsset;
+
+        // The mixer edits AudioMixer live; the bus layout is project data, so an edit writes it straight to the
+        // .sptproj (there is no manual "Save Project" action, matching Project Settings).
+        _audioMixerPanel.LayoutChanged = SaveAudioMixerLayout;
         Spot.DebugUI.UI.WidgetInspector.OpenDocumentRequested = OpenUIDocument;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
@@ -643,6 +649,7 @@ public class EditorScene : Scene
         _showConsole = session.ShowConsole;
         _showAssetBrowser = session.ShowAssetBrowser;
         _showProjectSettings = session.ShowProjectSettings;
+        _showAudioMixer = session.ShowAudioMixer;
 
         return true;
     }
@@ -664,6 +671,7 @@ public class EditorScene : Scene
             ShowConsole = _showConsole,
             ShowAssetBrowser = _showAssetBrowser,
             ShowProjectSettings = _showProjectSettings,
+            ShowAudioMixer = _showAudioMixer,
         };
 
         foreach (var sceneData in _openScenes)
@@ -1307,6 +1315,8 @@ public class EditorScene : Scene
         {
             _profilerPanel.OnImGuiRender();
         }
+
+        _audioMixerPanel.OnImGuiRender(ref _showAudioMixer);
 
         if (_showAssetBrowser)
         {
@@ -2093,6 +2103,7 @@ public class EditorScene : Scene
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
                 ImGui.MenuItem("Profiler", "", ref _showProfiler);
+                ImGui.MenuItem("Audio Mixer", "Ctrl+M", ref _showAudioMixer);
                 ImGui.EndMenu();
             }
 
@@ -2267,6 +2278,13 @@ public class EditorScene : Scene
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
         {
             ReloadScripts();
+        }
+
+        // Ctrl+M toggles the Audio Mixer in both edit and play mode: hearing the mix while the game runs is
+        // most of the point of having it.
+        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.M))
+        {
+            _showAudioMixer = !_showAudioMixer;
         }
 
         // Play-mode controls: Ctrl+P toggles pause/resume; Ctrl+Right steps one frame while paused.
@@ -2611,6 +2629,27 @@ public class EditorScene : Scene
 
         Project.SaveActive(sptprojPath);
         Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
+    }
+
+    // Persists the mixer's bus layout into the active project. Project.SaveActive captures the live layout, so
+    // this only has to decide where the .sptproj lives.
+    private void SaveAudioMixerLayout()
+    {
+        var project = Project.Active;
+        if (project == null || string.IsNullOrEmpty(project.ProjectDirectory)) return;
+
+        string sptprojPath = project.FilePath;
+        if (string.IsNullOrEmpty(sptprojPath))
+            sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
+
+        try
+        {
+            Project.SaveActive(sptprojPath);
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Warn("Could not save the audio mixer layout: {0}", ex.Message);
+        }
     }
 
     private void OpenProject()

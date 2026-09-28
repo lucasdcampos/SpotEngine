@@ -15,14 +15,21 @@ public static class Audio
     /// <param name="clip">The clip to play; a null clip is ignored.</param>
     /// <param name="volume">Linear gain, where 1 is the clip's authored level.</param>
     /// <param name="pitch">Playback pitch/speed multiplier, where 1 is the original.</param>
-    public static Voice Play(AudioClip? clip, float volume = 1.0f, float pitch = 1.0f)
-        => AudioManager.Play(clip, volume, pitch, loop: false, spatial: false);
+    /// <param name="bus">
+    /// The <see cref="AudioMixer"/> bus to route through; null uses <see cref="AudioMixer.SfxBus"/>. Pass
+    /// <see cref="AudioMixer.UiBus"/> or <see cref="AudioMixer.MusicBus"/> so the player's group volumes apply.
+    /// </param>
+    public static Voice Play(AudioClip? clip, float volume = 1.0f, float pitch = 1.0f, string? bus = null)
+        => AudioManager.Play(clip, volume, pitch, loop: false, spatial: false, bus: bus ?? AudioMixer.SfxBus);
 
     /// <summary>Plays a clip at a world position (3D), attenuating with distance to the listener.</summary>
     /// <param name="clip">The clip to play; a null clip is ignored.</param>
     /// <param name="worldPosition">The world-space position to emit the sound from.</param>
     /// <param name="volume">Linear gain, where 1 is the clip's authored level.</param>
     /// <param name="pitch">Playback pitch/speed multiplier, where 1 is the original.</param>
-    public static Voice PlayAt(AudioClip? clip, Vector3 worldPosition, float volume = 1.0f, float pitch = 1.0f)
-        => AudioManager.Play(clip, volume, pitch, loop: false, spatial: true, position: worldPosition);
+    /// <param name="bus">The <see cref="AudioMixer"/> bus to route through; null uses <see cref="AudioMixer.SfxBus"/>.</param>
+    public static Voice PlayAt(AudioClip? clip, Vector3 worldPosition, float volume = 1.0f, float pitch = 1.0f,
+        string? bus = null)
+        => AudioManager.Play(clip, volume, pitch, loop: false, spatial: true, position: worldPosition,
+            bus: bus ?? AudioMixer.SfxBus);
 }

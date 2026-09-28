@@ -463,7 +463,11 @@ EndGlobal
             Name = project.Config.Name,
             ContentDirectory = Spot.Core.ProjectStructure.ContentFolder,
             ManifestPath = "manifest.json",
-            StartScene = project.Config.StartScene.Replace("\\", "/")
+            StartScene = project.Config.StartScene.Replace("\\", "/"),
+
+            // The authored mixer layout ships with the game so its volume groups (and the levels they were
+            // mixed at) exist before the first scene plays a sound.
+            AudioBuses = project.Config.AudioBuses,
         };
         spec.Window.Title = project.Config.Name;
         spec.Window.Width = 1280;

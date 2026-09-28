@@ -59,6 +59,12 @@ The editor is organized into dockable panels you can rearrange and save into a l
 - **UI Canvas** — a screen-space surface for authoring a game UI (`.sptui`) document, separate from the
   scene viewport; the shared **Hierarchy** panel shows its widgets while it is focused. See
   [Runtime UI](ui.md#authoring-in-the-editor).
+- **Audio Mixer** (`Ctrl`+`M`) — the project's volume groups as a row of channel strips, one per bus:
+  a fader with a live level meter, mute (**M**) and solo (**S**), and the bus it feeds. Drag a fader while
+  the game is playing and you hear it immediately. Add a bus with **Ctrl**+**N** (or the toolbar), rename
+  with **F2** or a double-click, remove with **Delete**, move between strips with **←**/**→**, nudge a level
+  with **↑**/**↓**, and reset one to unity with **0**. Levels and routing are saved into the project; solo is
+  an audition tool and is not. See [Audio](audio.md#the-mixer-buses-and-volume-groups).
 - **Project settings** — project-wide configuration such as the start scene.
 
 The editor remembers your working session **per project**. When you reopen a project it restores the

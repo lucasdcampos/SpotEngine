@@ -162,6 +162,11 @@ internal static class ComponentInspector
         public PropertyInfo? AssetPathProp { get; set; }
         public string[]? EnumNames { get; set; }
         public object[]? EnumValues { get; set; }
+
+        // A static member (property or parameterless method) yielding the dropdown options for a string
+        // property tagged with [InspectorOptions]; resolved once and queried each frame, since the option set
+        // can change while the editor runs (mixer buses, for instance).
+        public MemberInfo? OptionsMember { get; set; }
     }
 
     private static readonly Dictionary<Type, PropertyMeta[]> _metaCache = new();
@@ -221,6 +226,14 @@ internal static class ComponentInspector
 
             if (assetRef != null)
                 meta.AssetPathProp = type.GetProperty(assetRef.PathPropertyName, BindingFlags.Public | BindingFlags.Instance);
+
+            var options = prop.GetCustomAttribute<InspectorOptionsAttribute>();
+            if (options != null && prop.PropertyType == typeof(string))
+            {
+                const BindingFlags staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+                meta.OptionsMember = (MemberInfo?)type.GetProperty(options.OptionsMemberName, staticFlags)
+                    ?? type.GetMethod(options.OptionsMemberName, staticFlags, Type.EmptyTypes);
+            }
 
             if (prop.PropertyType.IsEnum)
             {
@@ -313,10 +326,64 @@ internal static class ComponentInspector
         else if (pt == typeof(string))
         {
             string v = (string?)prop.GetValue(component) ?? string.Empty;
-            if (EditorGui.InputText(label, ref v))
+            if (meta.OptionsMember != null)
+            {
+                if (DrawOptionsCombo(label, meta, ref v))
+                    prop.SetValue(component, v);
+            }
+            else if (EditorGui.InputText(label, ref v))
+            {
                 prop.SetValue(component, v);
+            }
         }
         // Unknown/unsupported types are silently skipped.
+    }
+
+    /// <summary>
+    /// Draws a string property as a dropdown over the options its [InspectorOptions] member supplies. A current
+    /// value that is not among them is appended and marked, so a stale reference (a renamed audio bus, say) is
+    /// visible and preserved rather than quietly replaced by whatever happens to be first in the list.
+    /// </summary>
+    private static bool DrawOptionsCombo(string label, PropertyMeta meta, ref string value)
+    {
+        string[] options = ResolveOptions(meta.OptionsMember);
+        string current = value;
+        int index = Array.FindIndex(options, o => string.Equals(o, current, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            var withCurrent = new string[options.Length + 1];
+            options.CopyTo(withCurrent, 0);
+            withCurrent[^1] = string.IsNullOrEmpty(current) ? "(none)" : $"{current}  (missing)";
+            options = withCurrent;
+            index = options.Length - 1;
+        }
+
+        int picked = index;
+        if (!EditorGui.Combo(label, ref picked, options) || picked == index || picked >= options.Length)
+            return false;
+
+        value = options[picked];
+        return true;
+    }
+
+    /// <summary>Reads the option list from a static property or method, tolerating a member that misbehaves.</summary>
+    private static string[] ResolveOptions(MemberInfo? member)
+    {
+        try
+        {
+            object? raw = member switch
+            {
+                PropertyInfo p => p.GetValue(null),
+                MethodInfo m => m.Invoke(null, null),
+                _ => null,
+            };
+            return raw is IEnumerable<string> values ? values.ToArray() : Array.Empty<string>();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Inspector option list failed to resolve: {0}", ex.Message);
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>Turns a PascalCase property name into spaced words ("FieldOfView" → "Field Of View").</summary>
