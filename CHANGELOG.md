@@ -14,6 +14,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - **Audio Mixer panel** (`Ctrl+M`, editor and runtime overlay): channel strips with faders, live level meters, mute/solo, and re-routing, fully keyboard-driven
 - `volume`, `mute`, `solo`, and `buses` console commands for changing the mix live
 - **Play-in-viewport**: pressing Play now runs the game simulation directly inside the editor — no build step, no external process. Scripts, physics, audio, and animation tick in real time. Press Pause (`Ctrl+P`) to freeze the simulation, Step (`Ctrl+Right`) to advance one frame, and Stop to restore the scene to its exact pre-play state.
+- **Occlusion culling**: tick *Occluder* on a mesh renderer and geometry hidden behind it is dropped before it is drawn; occluders are rasterized into a small CPU depth buffer each frame, so it needs no baking, no GPU queries, and runs the same on desktop and WebGL2. Global knobs `RenderSettings.OcclusionCulling` (on by default) and `OcclusionBufferWidth`; `occlusion` console command, counters in `RendererDebug`, and a culling section in the Profiler panel
 - Color grading LUT support in `PostProcessingComponent`: assign a 2D horizontal-strip LUT texture (e.g. 256×16 for a 16³ grade) and blend it with `LutIntensity`
 - Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 

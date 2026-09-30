@@ -68,6 +68,24 @@ public static class RenderSettings
     public static int PointShadowResolution { get; set; } = 512;
 
     /// <summary>
+    /// Whether geometry hidden behind an <c>Occluder</c> mesh is dropped before it is drawn. Frustum
+    /// culling only removes what is off screen; this removes what is on screen but blocked by a wall,
+    /// floor or building. It costs one small software depth buffer per frame on the CPU and does nothing
+    /// at all in a scene whose meshes are not marked as occluders, so it is on by default: flag a wall
+    /// and it starts paying off. Turn it off to rule it out when diagnosing missing geometry — though
+    /// the test is conservative and never drops something actually visible.
+    /// </summary>
+    public static bool OcclusionCulling { get; set; } = true;
+
+    /// <summary>
+    /// The width, in pixels, of the software occlusion depth buffer (its height follows at 9/16 of it).
+    /// Coarse is the point: a small buffer is cheap to fill and still resolves a wall, and its coarseness
+    /// only ever means culling slightly less, never culling something visible. Raise it for scenes whose
+    /// occluders are thin or distant; lower it to cut the CPU cost.
+    /// </summary>
+    public static int OcclusionBufferWidth { get; set; } = 256;
+
+    /// <summary>
     /// Whether point lights are assigned to a view-frustum cluster grid (froxels) each frame so a fragment
     /// only shades the lights whose volume reaches its cluster, instead of testing every light. This scales
     /// the point-light cost with lights-per-cluster rather than total lights. When off, every lit fragment

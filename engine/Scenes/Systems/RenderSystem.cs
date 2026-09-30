@@ -43,6 +43,23 @@ public static class RenderSystem
     // renderer's cap so a heavily-lit scene never reallocates (and never overflows a stackalloc).
     private static readonly Renderer3D.PointLightData[] s_pointLightScratch = new Renderer3D.PointLightData[Renderer3D.MaxPointLights];
 
+    // The software occlusion buffer, rebuilt each frame from the scene's occluder meshes. One instance is
+    // reused so its depth buffer is allocated once rather than per frame.
+    private static readonly Spot.Rendering.OcclusionCuller s_occlusion = new();
+
+    // Occluders gathered before rasterizing, so a frame's budget goes to the ones that block the most.
+    private readonly record struct OccluderCandidate(Spot.Physics.Aabb3d LocalBounds, Matrix4x4 World, float ScreenArea);
+    private static readonly List<OccluderCandidate> s_occluderScratch = new();
+    private static readonly Comparison<OccluderCandidate> s_byScreenAreaDescending =
+        static (a, b) => b.ScreenArea.CompareTo(a.ScreenArea);
+
+    // How many occluders may be rasterized in a frame. Each costs twelve triangles, so the cap is about
+    // bounding the pixels they cover rather than the geometry; the largest on screen are the ones kept.
+    private const int MaxOccluders = 32;
+
+    // An occluder covering less of the screen than this hides too little to be worth rasterizing.
+    private const float MinOccluderScreenFraction = 0.0015f;
+
     /// <summary>
     /// Draws all mesh and sprite entities in the scene through the given camera.
     /// </summary>
@@ -323,8 +340,10 @@ public static class RenderSystem
         }
 
         var frustum = new Spot.Rendering.Frustum(viewProjection);
+        Spot.Rendering.OcclusionCuller? occlusion = BuildOcclusionBuffer(scene, viewProjection, frustum, cull);
         int visible = 0;
         int culled = 0;
+        int occluded = 0;
 
         foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
         {
@@ -344,11 +363,23 @@ public static class RenderSystem
             bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
                 skinned.TryBuildPalette(entity, out palette);
 
-            if (cull && !IsVisible(frustum, meshRenderer.Model, transform.Matrix, isSkinned))
+            if (cull)
             {
-                culled++;
-                continue;
+                // One box serves both tests: outside the view, or inside it but behind a wall.
+                Spot.Physics.Aabb3d worldBounds = WorldBounds(meshRenderer.Model, transform.Matrix, isSkinned);
+                if (!frustum.Intersects(worldBounds))
+                {
+                    culled++;
+                    continue;
+                }
+
+                if (occlusion is not null && occlusion.IsOccluded(worldBounds))
+                {
+                    occluded++;
+                    continue;
+                }
             }
+
             visible++;
 
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
@@ -379,6 +410,7 @@ public static class RenderSystem
 
         Spot.Rendering.RendererDebug.VisibleMeshCount = visible;
         Spot.Rendering.RendererDebug.CulledMeshCount = culled;
+        Spot.Rendering.RendererDebug.OccludedMeshCount = occluded;
 
         Renderer3D.EndScene();
 
@@ -558,9 +590,108 @@ public static class RenderSystem
     /// </summary>
     private static bool IsVisible(in Spot.Rendering.Frustum frustum, Model model, in Matrix4x4 world, bool isSkinned)
     {
+        return frustum.Intersects(WorldBounds(model, world, isSkinned));
+    }
+
+    /// <summary>
+    /// The world-space box a mesh entity is culled by: its model's local bounds through the entity's world
+    /// matrix, padded first when skinned (see <see cref="IsVisible"/>).
+    /// </summary>
+    private static Spot.Physics.Aabb3d WorldBounds(Model model, in Matrix4x4 world, bool isSkinned)
+    {
         Spot.Physics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
-        Spot.Physics.Aabb3d worldBounds = local.Transform(world);
-        return frustum.Intersects(worldBounds);
+        return local.Transform(world);
+    }
+
+    /// <summary>
+    /// Fills the software occlusion buffer from the scene's occluder meshes so the main pass can skip the
+    /// geometry they hide. Returns <see langword="null"/> — meaning "cull nothing by occlusion" — when the
+    /// feature is off, the scene declares no usable occluder, or none of them ended up covering a pixel;
+    /// the caller then simply never asks.
+    /// </summary>
+    private static Spot.Rendering.OcclusionCuller? BuildOcclusionBuffer(
+        Scene scene, in Matrix4x4 viewProjection, in Spot.Rendering.Frustum frustum, bool cull)
+    {
+        Spot.Rendering.RendererDebug.OccluderCount = 0;
+
+        if (!cull
+            || !Spot.Rendering.RenderSettings.OcclusionCulling
+            || Spot.Rendering.RendererDebug.DisableOcclusionCulling)
+        {
+            return null;
+        }
+
+        List<OccluderCandidate> candidates = s_occluderScratch;
+        candidates.Clear();
+
+        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+        {
+            if (!entity.IsActiveInHierarchy()) continue;
+            MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
+            var transform = entity.GetComponent<TransformComponent>();
+            if (!meshRenderer.Occluder || !meshRenderer.Enabled || !transform.Enabled) continue;
+
+            ResolveAssets(meshRenderer);
+            if (meshRenderer.Model is null) continue;
+
+            // Skinned geometry leaves its bind pose, and a see-through surface shows what is behind it:
+            // neither can be trusted to block, whatever the flag says.
+            if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled) continue;
+            Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
+            if (color.W < 0.999f) continue;
+            if ((meshRenderer.Material?.ShaderType ?? MaterialShaderType.Standard) != MaterialShaderType.Standard) continue;
+
+            Spot.Physics.Aabb3d localBounds = OccluderLocalBounds(meshRenderer);
+            Spot.Physics.Aabb3d worldBounds = localBounds.Transform(transform.Matrix);
+            if (!frustum.Intersects(worldBounds)) continue;
+
+            float area = Spot.Rendering.OcclusionCuller.ScreenAreaFraction(viewProjection, worldBounds);
+            if (area < MinOccluderScreenFraction) continue;
+
+            candidates.Add(new OccluderCandidate(localBounds, transform.Matrix, area));
+        }
+
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        if (!s_occlusion.Begin(viewProjection, Spot.Rendering.RenderSettings.OcclusionBufferWidth))
+        {
+            return null;
+        }
+
+        if (candidates.Count > MaxOccluders)
+        {
+            candidates.Sort(s_byScreenAreaDescending);
+        }
+
+        int count = Math.Min(candidates.Count, MaxOccluders);
+        for (int i = 0; i < count; i++)
+        {
+            OccluderCandidate candidate = candidates[i];
+            s_occlusion.AddOccluder(candidate.LocalBounds, candidate.World);
+        }
+
+        Spot.Rendering.RendererDebug.OccluderCount = s_occlusion.OccluderCount;
+        return s_occlusion.OccluderCount > 0 ? s_occlusion : null;
+    }
+
+    /// <summary>
+    /// The local-space box to use as a mesh's occluder proxy: the single submesh it draws when it draws
+    /// one, otherwise the whole model. Taking the model's box for a one-submesh renderer would claim the
+    /// other parts of the volume as solid too, which could hide geometry that is actually visible.
+    /// </summary>
+    private static Spot.Physics.Aabb3d OccluderLocalBounds(MeshComponent meshRenderer)
+    {
+        Model model = meshRenderer.Model!;
+        int index = meshRenderer.SubmeshIndex;
+        if (index >= 0 && index < model.Meshes.Count)
+        {
+            return model.Meshes[index].Bounds;
+        }
+
+        return model.LocalBounds;
     }
 
     /// <summary>

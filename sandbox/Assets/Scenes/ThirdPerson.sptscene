@@ -34,7 +34,8 @@
           1,
           1,
           1
-        ]
+        ],
+        "Occluder": true
       },
       "BoxCollider3D": {
         "Enabled": true,
