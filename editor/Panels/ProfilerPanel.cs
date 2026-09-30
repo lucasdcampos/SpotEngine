@@ -4,6 +4,7 @@ using ImGuiNET;
 using System.Numerics;
 using Spot.Core;
 using Spot.DebugUI.UI;
+using Spot.Rendering;
 
 namespace Spot.Editor.Panels;
 
@@ -131,7 +132,74 @@ public sealed class ProfilerPanel
             ImGui.EndTable();
         }
 
+        ImGui.Separator();
+
+        // ---- Culling ----
+        // What the frame actually submitted, and what the two culling stages saved it from submitting.
+        // Both stages are toggleable right here so their effect can be A/B'd against the graph above.
+        ImGui.TextDisabled("Culling (last 3D pass)");
+        ImGui.Spacing();
+
+        int drawn = RendererDebug.VisibleMeshCount;
+        int frustumCulled = RendererDebug.CulledMeshCount;
+        int occluded = RendererDebug.OccludedMeshCount;
+        int considered = drawn + frustumCulled + occluded;
+
+        if (ImGui.BeginTable("##profiler_culling", 2,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+        {
+            ImGui.TableSetupColumn("Meshes", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Count", ImGuiTableColumnFlags.WidthFixed, 90f);
+            ImGui.TableHeadersRow();
+
+            CullingRow("Drawn", drawn, considered, new Vector4(0.5f, 0.9f, 0.5f, 1f));
+            CullingRow("Culled: off screen", frustumCulled, considered, new Vector4(0.6f, 0.75f, 0.95f, 1f));
+            CullingRow("Culled: behind an occluder", occluded, considered, new Vector4(0.85f, 0.7f, 0.95f, 1f));
+            CullingRow("Occluders rasterized", RendererDebug.OccluderCount, 0, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+
+            ImGui.EndTable();
+        }
+
+        ImGui.Spacing();
+
+        bool frustumOn = !RendererDebug.DisableFrustumCulling;
+        if (ImGui.Checkbox("Frustum culling", ref frustumOn))
+        {
+            RendererDebug.DisableFrustumCulling = !frustumOn;
+        }
+
+        ImGui.SameLine();
+        bool occlusionOn = RenderSettings.OcclusionCulling && !RendererDebug.DisableOcclusionCulling;
+        if (ImGui.Checkbox("Occlusion culling", ref occlusionOn))
+        {
+            RenderSettings.OcclusionCulling = occlusionOn;
+            RendererDebug.DisableOcclusionCulling = false;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Skips meshes hidden behind meshes marked as Occluder in the inspector.");
+        }
+
         ImGui.End();
+    }
+
+    // One culling row: the count, plus its share of the meshes considered this frame when that is
+    // meaningful (it is not, for the occluder count — occluders are not candidates).
+    private static void CullingRow(string label, int count, int considered, Vector4 color)
+    {
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        ImGui.TextUnformatted(label);
+        ImGui.TableSetColumnIndex(1);
+        if (considered > 0)
+        {
+            ImGui.TextColored(color, $"{count}  ({100f * count / considered:0}%)");
+        }
+        else
+        {
+            ImGui.TextColored(color, $"{count}");
+        }
     }
 
     private static void DrawBudgetLine(ImDrawListPtr dl, Vector2 min, Vector2 max,

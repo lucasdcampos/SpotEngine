@@ -59,4 +59,19 @@ public sealed class MeshComponent : Component
     /// </summary>
     [InspectorColor]
     public Vector4 Color { get; set; } = Vector4.One;
+
+    /// <summary>
+    /// Gets or sets whether this mesh blocks the view of what is behind it, so occlusion culling can skip
+    /// the geometry it hides. Off by default: marking a mesh an occluder is a promise about its shape, and
+    /// only the scene's author can make it.
+    /// </summary>
+    /// <remarks>
+    /// The occluder used is the mesh's <b>bounding box</b>, not its triangles — that is what keeps the cost
+    /// flat no matter how detailed the model is. So mark geometry whose box is solid all the way through: a
+    /// wall, a floor slab, a closed crate, a cliff. Do <b>not</b> mark something you can see into or past,
+    /// like a hollow building shell, a doorway frame, a fence or a tree — its box would cover the opening
+    /// and hide what should show through. Skinned and see-through (alpha or water) meshes are ignored as
+    /// occluders even when flagged. The global switch is <c>RenderSettings.OcclusionCulling</c>.
+    /// </remarks>
+    public bool Occluder { get; set; }
 }

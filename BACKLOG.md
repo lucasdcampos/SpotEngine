@@ -53,7 +53,7 @@ Check an item off when it ships.
 
 **Rendering**
 - [x] **Color grading / LUT** — no LUT texture slot in `PostProcessingComponent`; stylistic grading requires a custom shader
-- [ ] **Occlusion culling** — only frustum culling exists; objects behind walls are submitted to the GPU
+- [x] **Occlusion culling** — only frustum culling exists; objects behind walls are submitted to the GPU
 
 **Physics**
 - [ ] **Mesh collider (2D)** — 2D physics only has Box and Circle; polygon/compound shapes are absent

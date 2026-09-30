@@ -581,6 +581,24 @@ public sealed class DevConsole
             }
         }, "Toggles wireframe rendering for 3D meshes");
 
+        Register("occlusion", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RenderSettings.OcclusionCulling = val;
+            }
+            else
+            {
+                Spot.Rendering.RenderSettings.OcclusionCulling = !Spot.Rendering.RenderSettings.OcclusionCulling;
+            }
+
+            Spot.Rendering.RendererDebug.DisableOcclusionCulling = false;
+            Print($"Occlusion culling {(Spot.Rendering.RenderSettings.OcclusionCulling ? "on" : "off")}");
+            Print($"Last pass: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} behind {Spot.Rendering.RendererDebug.OccluderCount} occluder(s)");
+        }, "Toggles occlusion culling and prints what the last 3D pass culled (e.g., 'occlusion', 'occlusion off')");
+
         Register("vsync", args =>
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
@@ -599,7 +617,10 @@ public sealed class DevConsole
         {
             Print($"Frame: {Spot.Core.FrameStats.FrameTimeMs:0.00} ms ({Spot.Core.FrameStats.Fps:0} FPS); last {Spot.Core.FrameStats.LastFrameMs:0.00} ms");
             Print($"VSync: {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")}");
-        }, "Prints the current smoothed frame time / FPS and VSync state");
+            Print($"Meshes: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} occluded");
+        }, "Prints the current smoothed frame time / FPS, VSync state, and what the last 3D pass culled");
 
         Register("bind", args =>
         {
