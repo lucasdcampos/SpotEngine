@@ -101,6 +101,12 @@ back, so neither the console nor the editor's Game-panel focus switching can jol
 keys, buttons and actions all read as idle, and a `CursorLocked = true` set while captured is
 remembered and applied when the console closes.
 
+In the **editor** the console is a docked panel rather than an overlay, so the editor takes ownership of
+its window (`Console.SetHost`) and the engine stops drawing its own. Engine-level capture is not used
+there either: the editor already gates game input on its Game panel's focus, which `'` releases. A host
+that owns the console window must claim it this way — two ImGui windows sharing a name merge into one,
+which would draw the console body, prompt included, twice.
+
 ## Not yet
 
 - **Gamepads and analog axes** aren't supported — input is keyboard and mouse, digital.
