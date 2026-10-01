@@ -124,7 +124,7 @@ public sealed class Shader : IDisposable
         uint index = _device.GetUniformBlockIndex(_handle, blockName);
         if (index == IGraphicsDevice.InvalidUniformBlockIndex)
         {
-            Log.CoreWarn("Uniform block '{0}' not found in shader program.", blockName);
+            Log.CoreTrace("Uniform block '{0}' not found in shader program.", blockName);
             return;
         }
 
@@ -138,7 +138,7 @@ public sealed class Shader : IDisposable
     {
         // Uniform locations are fixed for the life of a linked program, so look each one up once and
         // cache it. This turns a per-draw uniform lookup (dozens per mesh per frame) into a
-        // dictionary hit, and — because the miss is cached too — warns at most once per missing name
+        // dictionary hit, and — because the miss is cached too — traces at most once per missing name
         // instead of every frame.
         if (_uniformLocations.TryGetValue(name, out UniformLocation cached))
         {
@@ -148,7 +148,7 @@ public sealed class Shader : IDisposable
         UniformLocation location = _device.GetUniformLocation(_handle, name);
         if (location.Location == -1)
         {
-            Log.CoreWarn("Uniform '{0}' not found in shader program.", name);
+            Log.CoreTrace("Uniform '{0}' not found in shader program.", name);
         }
 
         _uniformLocations[name] = location;

@@ -647,10 +647,6 @@ public class Application
         {
             var win = _window!.NativeWindow;
             var size = win.Size;
-            Log.CoreInfo(
-                "Startup drawable: window {0}x{1}, framebuffer {2}x{3}",
-                size.X, size.Y, win.FramebufferSize.X, win.FramebufferSize.Y);
-
             if (size.X > 0 && size.Y > 0 && (win.FramebufferSize.X == 0 || win.FramebufferSize.Y == 0))
             {
                 win.Size = new Silk.NET.Maths.Vector2D<int>(size.X, size.Y + 1);

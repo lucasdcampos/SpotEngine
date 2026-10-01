@@ -53,7 +53,6 @@ public class ProjectSettingsPanel
                     if (string.IsNullOrEmpty(sptprojPath))
                         sptprojPath = System.IO.Path.Combine(Project.Active.ProjectDirectory, $"{config.Name}.sptproj");
 
-                    Spot.Core.Log.Info("Saving project to: {0}, StartScene: {1}", sptprojPath, config.StartScene);
                     Project.SaveActive(sptprojPath);
                 }
             }

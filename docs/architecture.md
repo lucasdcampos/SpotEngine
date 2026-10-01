@@ -78,6 +78,12 @@ diagnose after the process is gone. The file lives in a `logs/` folder next to t
 (`logs/spot.log`, rolled daily, capped at 50 MB with the last 7 files kept). If the folder can't be
 created, file logging is skipped and the app keeps running — logging never takes the process down.
 
+The console is for things the user needs to know, so routine success is silent: starting up, creating the
+window, opening the audio device, importing dropped files and loading project scripts log nothing, and
+build output is filtered down to warnings and errors (msbuild's restore/timing narration is dropped).
+Reserve `Info` for events the user acted on or should react to, `Warn`/`Error` for things that went wrong,
+and `Trace` for authoring detail such as a uniform the shader compiler dropped.
+
 ## Related
 
 - [Scenes](scenes.md) — the lifecycle the loop drives
