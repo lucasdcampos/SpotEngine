@@ -105,6 +105,10 @@ public sealed class DevConsole
     // the console input stays "hot" like a real terminal.
     private bool _reclaimFocus;
 
+    // Set by a host that draws the console itself through DrawContents — the editor's docked Console
+    // panel. Null in a standalone game, where the engine owns the floating console window.
+    private Action? _hostFocusRequest;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DevConsole"/> class.
     /// </summary>
@@ -121,6 +125,19 @@ public sealed class DevConsole
     /// </summary>
     public bool IsOpen => _open;
 
+    /// <summary>
+    /// Gets whether the console's window belongs to the host application rather than the engine.
+    /// </summary>
+    /// <remarks>
+    /// The editor docks the console as a native panel, drawing the body itself via
+    /// <see cref="DrawContents"/>. The engine must then not draw its own floating window: ImGui merges
+    /// windows that share a name, so a second "Console" would append into the panel and draw the body —
+    /// command input included — twice. While hosted the console also never reports
+    /// <see cref="IsOpen"/>, so it never takes engine-level input capture: the host already decides who
+    /// owns input from its own panel focus.
+    /// </remarks>
+    public bool IsHosted => _hostFocusRequest is not null;
+
     /// <summary>Gets the most recently printed line, if any.</summary>
     public ConsoleLine? LastLine
     {
@@ -134,15 +151,50 @@ public sealed class DevConsole
     }
 
     /// <summary>
-    /// Toggles the visibility of the console.
+    /// Hands ownership of the console's window to the host application (see <see cref="IsHosted"/>).
+    /// </summary>
+    /// <param name="focusRequest">
+    /// Called when something asks for the console (the <c>'</c> key); the host should reveal its console
+    /// panel and give it keyboard focus. Pass <see langword="null"/> to return ownership to the engine.
+    /// </param>
+    public void SetHost(Action? focusRequest)
+    {
+        _hostFocusRequest = focusRequest;
+        if (focusRequest is not null)
+        {
+            // The engine's own window is going away; don't leave the open flag (and the input capture
+            // the application derives from it) latched on.
+            _open = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the console's command input to take keyboard focus on the next frame it is drawn. Used by a
+    /// host that owns the window, so focusing its panel also puts the caret in the prompt.
+    /// </summary>
+    public void RequestInputFocus()
+    {
+        _justOpened = true;
+        _scrollToBottom = true;
+    }
+
+    /// <summary>
+    /// Toggles the visibility of the console. While a host owns the window (see <see cref="IsHosted"/>)
+    /// there is nothing to toggle, so this reveals and focuses the host's panel instead.
     /// </summary>
     public void Toggle()
     {
+        if (_hostFocusRequest is { } focusRequest)
+        {
+            RequestInputFocus();
+            focusRequest();
+            return;
+        }
+
         _open = !_open;
         if (_open)
         {
-            _justOpened = true;
-            _scrollToBottom = true;
+            RequestInputFocus();
         }
     }
 
@@ -231,7 +283,9 @@ public sealed class DevConsole
 
     public void OnImGuiRender()
     {
-        if (!_open)
+        // Nothing to draw when the host owns the window: it calls DrawContents from its own panel, and a
+        // same-named window here would merge into that panel and duplicate the body.
+        if (!_open || IsHosted)
         {
             return;
         }

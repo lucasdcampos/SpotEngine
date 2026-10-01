@@ -50,6 +50,10 @@ The editor is organized into dockable panels you can rearrange and save into a l
   clicked, so you can pick an asset without dragging.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
+  The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
+  including the Game panel during play, where it also hands the cursor and input back to the editor
+  (same as `Esc`), so what you type doesn't drive the game as well. Click the Game panel to take
+  control again. The editor owns this window, so the engine does not also draw its floating overlay.
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
   you import and organize assets. Textures show their image, materials render a live sphere preview, and
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell

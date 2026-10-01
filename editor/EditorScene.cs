@@ -149,6 +149,11 @@ public class EditorScene : Scene
     private bool _showInspector = true;
     private uint _lastGameDockId;
     private bool _showConsole = true;
+
+    // Set when something asks for the console (the ' key, routed here because the editor owns the
+    // console's window). Consumed by the next ImGui pass, which reveals the panel, raises its dock tab
+    // and puts the caret in the prompt.
+    private bool _focusConsoleRequested;
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
     private bool _showProfiler = false;
@@ -222,10 +227,28 @@ public class EditorScene : Scene
         // Intercept window-close requests so we can confirm unsaved changes first.
         Spot.Core.Application.Instance.CanClose = CanCloseApp;
 
+        // The editor docks the console as a native panel, so take ownership of its window: the engine
+        // then stops drawing its own floating "Console" (ImGui would merge the two by name and draw the
+        // body — prompt included — twice) and stops capturing input from the console's open state, which
+        // in the editor had no way to be dismissed and left the game's input dead. The ' key now reveals
+        // and focuses the docked panel instead.
+        Spot.Core.Application.Instance.Console.SetHost(FocusConsolePanel);
+
         _gameFramebuffer = new Framebuffer(1280, 720);
         _gamePanel.SetFramebuffer(_gameFramebuffer);
 
         LoadStartScene();
+    }
+
+    // Reveals the docked Console panel and hands it the keyboard, the editor's answer to the engine's
+    // "open the console" request (the ' key). Runs during event handling, before OnUpdate, so dropping the
+    // Game panel's input focus is picked up by the same frame's focus transition: the cursor is freed and
+    // game input suppressed, exactly as Escape does. Without that, keys typed into the prompt would also
+    // drive the game and the camera would stay on mouse-look.
+    private void FocusConsolePanel()
+    {
+        _focusConsoleRequested = true;
+        _gamePanelFocused = false;
     }
 
     // Routes a double-clicked asset to the right editor: scenes open as tabs, animator controllers open as
@@ -1349,6 +1372,16 @@ public class EditorScene : Scene
             _inspectorPanel.OnImGuiRender(ref _showInspector);
         }
 
+        if (_focusConsoleRequested)
+        {
+            // Reveal the panel before it is submitted this frame, so focusing it by name lands on a live
+            // window: it raises the dock tab, and the console puts the caret in its prompt.
+            _focusConsoleRequested = false;
+            _showConsole = true;
+            ImGui.SetWindowFocus("Console");
+            Spot.Core.Application.Instance.Console.RequestInputFocus();
+        }
+
         if (_showConsole)
         {
             bool open = ImGui.Begin("Console", ref _showConsole, ImGuiWindowFlags.NoCollapse);
@@ -1829,6 +1862,7 @@ public class EditorScene : Scene
     public override void OnExit()
     {
         Spot.Core.Application.Instance.CanClose = null;
+        Spot.Core.Application.Instance.Console.SetHost(null);
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
         SaveSession();
 
