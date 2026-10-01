@@ -217,10 +217,24 @@ public class SceneSerializer
     /// subtree — its entity ids are regenerated so repeated instances never collide, while references inside
     /// the subtree are remapped to the fresh instance. Component and script failures are logged and skipped.
     /// </summary>
-    internal static Entity ReadEntity(Scene scene, JsonObject entityObj, Entity? parent)
+    internal static Entity ReadEntity(Scene scene, JsonObject entityObj, Entity? parent) =>
+        ReadEntity(scene, entityObj, parent, preserveIds: false);
+
+    /// <summary>
+    /// Reads a single entity subtree, optionally keeping the stable ids stored in the JSON instead of
+    /// minting fresh ones. Prefab instancing wants fresh ids so repeated instances never collide; the
+    /// editor's undo wants the originals preserved, because restoring a deleted entity under a new
+    /// identity would orphan every history entry and every <see cref="Entity"/>-typed field that
+    /// referenced it.
+    /// </summary>
+    /// <param name="scene">The scene to read into.</param>
+    /// <param name="entityObj">The entity's JSON object.</param>
+    /// <param name="parent">The parent to attach under, or <see langword="null"/> for a root entity.</param>
+    /// <param name="preserveIds">Keep the stored stable ids rather than regenerating them.</param>
+    internal static Entity ReadEntity(Scene scene, JsonObject entityObj, Entity? parent, bool preserveIds)
     {
         var refs = new SceneReferences();
-        Entity entity = ReadEntitySubtree(scene, entityObj, parent, refs, freshIds: true);
+        Entity entity = ReadEntitySubtree(scene, entityObj, parent, refs, freshIds: !preserveIds);
         refs.ResolveDeferred();
         return entity;
     }

@@ -11,11 +11,12 @@ using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 using Spot.Events;
+using Spot.DebugUI.Undo;
 
 namespace Spot.Editor;
 
 
-public class OpenSceneData
+public class OpenSceneData : IUndoDocument
 {
     public Scene Scene = new();
     public string? FilePath;
@@ -23,12 +24,13 @@ public class OpenSceneData
     public bool IsDirty = true;
     public int DirtyCheckCounter = 0;
 
-    // Undo/redo history for this scene tab. Snapshots are full-scene JSON (the same serialization the
-    // dirty-check uses). UndoBaseline is the last "settled" state; edits push the previous baseline onto
-    // UndoStack. Lists (not Stack) so the oldest entry can be dropped once MaxUndo is exceeded.
-    public string? UndoBaseline;
-    public readonly List<string> UndoStack = new();
-    public readonly List<string> RedoStack = new();
+    /// <inheritdoc />
+    public long CleanStamp { get; set; }
+
+    // The scene as it stood after the last change the undo history knows about. The periodic check
+    // compares the scene against this, so anything that moved without going through the history is
+    // caught and recorded as a coarse entry rather than silently becoming un-undoable.
+    public string? LastPushSnapshot;
     public ViewportPanel ViewportPanel;
     public Framebuffer Framebuffer;
     public Framebuffer CameraPreviewFramebuffer;
@@ -60,7 +62,7 @@ public class OpenSceneData
 
 // One open UI document (a .sptui asset), shown as its own dockable tab. Mirrors OpenSceneData: the panel owns
 // the offscreen framebuffer it renders into, and the tab closes via its title-bar 'x'.
-public sealed class UIDocumentData
+public sealed class UIDocumentData : IUndoDocument
 {
     public required Spot.UI.UIRoot Document;
     public required string Path;
@@ -68,6 +70,9 @@ public sealed class UIDocumentData
     public bool IsOpen = true;
     public bool FirstFrame = true;
     public bool FocusNextFrame = true;
+
+    /// <inheritdoc />
+    public long CleanStamp { get; set; }
 
     public void Dispose() => Panel.Dispose();
 }
@@ -100,6 +105,10 @@ public class EditorScene : Scene
 
     private readonly EditorContext _context = new();
 
+    // The editor's single undo history. One history for the whole editor (not one per scene tab) so
+    // Ctrl+Z always takes back the last thing the user did, whichever panel they did it in.
+    private readonly UndoHistory _history = EditorHistory.Current;
+
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
     private readonly ViewportPanel _gamePanel;
@@ -108,6 +117,7 @@ public class EditorScene : Scene
     private readonly ProjectSettingsPanel _projectSettingsPanel;
     private readonly UIHierarchyPanel _uiHierarchyPanel;
     private readonly ProfilerPanel _profilerPanel = new();
+    private readonly HistoryPanel _historyPanel;
     private readonly Spot.DebugUI.Panels.AudioMixerPanel _audioMixerPanel = new();
 
     // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
@@ -143,6 +153,7 @@ public class EditorScene : Scene
     private bool _showProjectSettings = false;
     private bool _showProfiler = false;
     private bool _showAudioMixer = false;
+    private bool _showHistory = false;
 
     // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
     // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
@@ -167,7 +178,25 @@ public class EditorScene : Scene
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
         _uiHierarchyPanel = new UIHierarchyPanel(_context);
+        _historyPanel = new HistoryPanel(_history);
         _assetBrowserPanel.OnAssetOpened += OpenAsset;
+
+        // Undo wiring: the history restores the selection around each action (so undoing a delete also
+        // re-selects what came back), and the tracker records field edits into this same history.
+        _history.Selection = new ContextSelectionStore(_context);
+        UndoTracker.History = _history;
+
+        // Panels record actions without knowing about scene tabs, so tell the history how to map a
+        // scene back to the tab that owns it — that is what puts the "*" on the right tab.
+        EditorHistory.SceneDocumentResolver =
+            scene => _openScenes.FirstOrDefault(s => ReferenceEquals(s.Scene, scene));
+
+        // Any history movement leaves the catch-all's baselines out of date. Without this, a precise
+        // action recorded by a panel would be followed moments later by the periodic check noticing the
+        // same change and recording a second, coarse entry for it — costing the user two undos for one
+        // edit. Flagged rather than recomputed here so a multi-step jump re-serializes once, not once
+        // per step, and so it can reuse the serialization the check already performs.
+        _history.Changed += () => _baselinesStale = true;
 
         // The mixer edits AudioMixer live; the bus layout is project data, so an edit writes it straight to the
         // .sptproj (there is no manual "Save Project" action, matching Project Settings).
@@ -650,6 +679,7 @@ public class EditorScene : Scene
         _showAssetBrowser = session.ShowAssetBrowser;
         _showProjectSettings = session.ShowProjectSettings;
         _showAudioMixer = session.ShowAudioMixer;
+        _showHistory = session.ShowHistory;
 
         return true;
     }
@@ -672,6 +702,7 @@ public class EditorScene : Scene
             ShowAssetBrowser = _showAssetBrowser,
             ShowProjectSettings = _showProjectSettings,
             ShowAudioMixer = _showAudioMixer,
+            ShowHistory = _showHistory,
         };
 
         foreach (var sceneData in _openScenes)
@@ -1099,6 +1130,11 @@ public class EditorScene : Scene
     }
     public override void OnImGuiRender()
     {
+        // Only edit-mode changes belong in the history. Panels still draw and still edit the live scene
+        // during play, but all of that is thrown away when play stops, so recording it would fill the
+        // history with entries that undo into state the user never authored.
+        _history.Enabled = _state == EditorState.Edit;
+
         HandleShortcuts();
 
         DrawMenuBar();
@@ -1200,7 +1236,21 @@ public class EditorScene : Scene
             ImGui.End();
         }
 
-        // Remove closed scenes
+        // Remove closed scenes. Their history entries go too: an entry cannot be plucked out of the
+        // middle of the list (the rest would no longer replay in order), so closing a document discards
+        // the oldest entry touching it and everything newer. Undoing into a scene that is gone would be
+        // a write into a dead object.
+        foreach (var closing in _openScenes.Where(s => !s.IsOpen))
+        {
+            int dropped = _history.DiscardDocument(closing);
+            if (dropped > 0)
+            {
+                Spot.Core.Log.Info(
+                    "Closed a scene with {0} undo {1} in the history; they were discarded.",
+                    dropped, dropped == 1 ? "entry" : "entries");
+            }
+        }
+
         _openScenes.RemoveAll(s => !s.IsOpen);
         if (_activeSceneData is null || !_openScenes.Contains(_activeSceneData))
         {
@@ -1318,6 +1368,9 @@ public class EditorScene : Scene
 
         _audioMixerPanel.OnImGuiRender(ref _showAudioMixer);
 
+        _historyPanel.UnattributedChanges = _unattributedChanges;
+        _historyPanel.OnImGuiRender(ref _showHistory);
+
         if (_showAssetBrowser)
         {
             bool open = ImGui.Begin("Asset Browser", ref _showAssetBrowser, ImGuiWindowFlags.NoCollapse);
@@ -1420,6 +1473,11 @@ public class EditorScene : Scene
             ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
             _gameHeldImGuiLock = false;
         }
+
+        // Last statement of the frame: commit a field edit whose interaction has finished, and otherwise
+        // refresh the selection baseline so the next recorded action knows what was selected when the
+        // user started it. Must come after every panel has drawn.
+        UndoTracker.EndFrame();
     }
 
     // ----- About dialog --------------------------------------------------------------------------
@@ -1805,6 +1863,9 @@ public class EditorScene : Scene
             EnsureScriptsBuilt(Project.Active);
         }
 
+        // Drop any in-flight edit rather than recording it: play mode is about to replace this state.
+        UndoTracker.Abandon();
+
         _prePlaySnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
         _isPlayPaused = false;
         _playStep = false;
@@ -1828,6 +1889,7 @@ public class EditorScene : Scene
         }
         scene.TeardownPhysics();
         RestoreSnapshot(_activeSceneData, _prePlaySnapshot!);
+        SyncSnapshotBaselines();
         _prePlaySnapshot = null;
         _isPlayPaused = false;
         _gamePanelFocused = false;
@@ -1956,6 +2018,8 @@ public class EditorScene : Scene
 
         ImGuiDock.igDockBuilderDockWindow("Hierarchy", rightTop);
         ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
+        // Tabbed behind Properties: it is a reference view, wanted on demand rather than always open.
+        ImGuiDock.igDockBuilderDockWindow($"{Spot.DebugUI.UI.EditorIcons.Rotate}  History", rightBottom);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
         ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
 
@@ -2086,10 +2150,17 @@ public class EditorScene : Scene
 
         if (ImGui.BeginMenu("Edit"))
         {
-            bool canUndo = _state == EditorState.Edit && (_activeSceneData?.UndoStack.Count ?? 0) > 0;
-            bool canRedo = _state == EditorState.Edit && (_activeSceneData?.RedoStack.Count ?? 0) > 0;
-            if (ImGui.MenuItem("Undo", "Ctrl+Z", false, canUndo)) Undo();
-            if (ImGui.MenuItem("Redo", "Ctrl+Y", false, canRedo)) Redo();
+            bool canUndo = _state == EditorState.Edit && _history.CanUndo;
+            bool canRedo = _state == EditorState.Edit && _history.CanRedo;
+
+            // Naming the action is most of what makes undo feel trustworthy: the user can see what
+            // Ctrl+Z is about to take back before pressing it.
+            string undoLabel = canUndo ? $"Undo {_history.UndoLabel}" : "Undo";
+            string redoLabel = canRedo ? $"Redo {_history.RedoLabel}" : "Redo";
+            if (ImGui.MenuItem(undoLabel, "Ctrl+Z", false, canUndo)) Undo();
+            if (ImGui.MenuItem(redoLabel, "Ctrl+Shift+Z", false, canRedo)) Redo();
+            ImGui.Separator();
+            ImGui.MenuItem("History", "Ctrl+H", ref _showHistory);
             ImGui.EndMenu();
         }
 
@@ -2104,6 +2175,7 @@ public class EditorScene : Scene
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
                 ImGui.MenuItem("Profiler", "", ref _showProfiler);
                 ImGui.MenuItem("Audio Mixer", "Ctrl+M", ref _showAudioMixer);
+                ImGui.MenuItem("History", "Ctrl+H", ref _showHistory);
                 ImGui.EndMenu();
             }
 
@@ -2267,13 +2339,24 @@ public class EditorScene : Scene
         {
             NewScene();
         }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Z))
+        // Undo/redo. Read through ImGui so a held Ctrl+Z repeats, and skip entirely while a text field
+        // has focus so the field keeps ImGui's own text undo instead of the scene rolling back under it.
+        // Shift is tested first, or Ctrl+Shift+Z would trigger both branches and cancel itself out.
+        var io = ImGui.GetIO();
+        if (_state == EditorState.Edit && io.KeyCtrl && !io.WantTextInput)
         {
-            Undo();
-        }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Y))
-        {
-            Redo();
+            if (io.KeyShift)
+            {
+                if (ImGui.IsKeyPressed(ImGuiKey.Z, true)) Redo();
+            }
+            else if (ImGui.IsKeyPressed(ImGuiKey.Z, true))
+            {
+                Undo();
+            }
+            else if (ImGui.IsKeyPressed(ImGuiKey.Y, true))
+            {
+                Redo();
+            }
         }
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
         {
@@ -2285,6 +2368,12 @@ public class EditorScene : Scene
         if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.M))
         {
             _showAudioMixer = !_showAudioMixer;
+        }
+
+        // Ctrl+H toggles the History panel.
+        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.H))
+        {
+            _showHistory = !_showHistory;
         }
 
         // Play-mode controls: Ctrl+P toggles pause/resume; Ctrl+Right steps one frame while paused.
@@ -2320,67 +2409,89 @@ public class EditorScene : Scene
     // (or an editor writing a temp file then renaming) collapses into a single rebuild.
     private const long ScriptReloadDebounceMs = 600;
 
-    // The most entries kept per scene's undo history.
-    private const int MaxUndo = 100;
-
     // True while the user is mid-interaction (dragging the gizmo, or editing an ImGui field), used to
     // coalesce a continuous edit into a single history entry: snapshots are only committed once the
     // interaction settles.
     private static bool EditorIsInteracting() =>
         ImGui.GetIO().MouseDown[0] || ImGui.IsAnyItemActive();
 
-    // Records a history entry when the scene has changed since the last settled baseline. Skipped while
-    // the user is still interacting, so a continuous edit (a gizmo drag, a slider) collapses into one entry.
-    private static void CaptureUndoState(OpenSceneData sceneData, string current)
+    // How many unattributed scene changes the catch-all has had to record. Shown in the History panel
+    // as the migration signal: every mutation site routed through a real action drops this toward zero,
+    // and a non-zero count in a normal editing session names a gap worth closing.
+    private int _unattributedChanges;
+
+    // The gap notice is told once per session and then stays quiet: it is a migration signal, not news
+    // the user needs repeated. The running count lives in the History panel's footer instead.
+    private bool _gapNoticeShown;
+
+    /// <summary>
+    /// Records any scene change that did not come through the undo history as a single coarse entry.
+    /// This is what makes Ctrl+Z complete even where a mutation site has not been migrated to a
+    /// precise action yet: the worst case is a whole-scene entry with a generic label, never a change
+    /// that cannot be undone at all.
+    /// </summary>
+    private void CaptureUnattributedChange(OpenSceneData sceneData, string current)
     {
-        if (sceneData.UndoBaseline == null)
+        // First look at this scene: adopt the current state as the baseline rather than inventing an
+        // entry for the act of opening it.
+        if (sceneData.LastPushSnapshot == null)
         {
-            sceneData.UndoBaseline = current;
+            sceneData.LastPushSnapshot = current;
             return;
         }
 
-        if (current == sceneData.UndoBaseline || EditorIsInteracting())
+        if (current == sceneData.LastPushSnapshot || EditorIsInteracting())
         {
             return;
         }
 
-        sceneData.UndoStack.Add(sceneData.UndoBaseline);
-        if (sceneData.UndoStack.Count > MaxUndo)
+        string before = sceneData.LastPushSnapshot;
+        _history.Push(new DocumentSnapshotAction(
+            "Scene Change", sceneData, before, current, json => RestoreSnapshot(sceneData, json)));
+        sceneData.LastPushSnapshot = current;
+
+        _unattributedChanges++;
+        if (!_gapNoticeShown)
         {
-            sceneData.UndoStack.RemoveAt(0);
+            _gapNoticeShown = true;
+            Spot.Core.Log.Info(
+                "Some edits are being undone as whole-scene 'Scene Change' steps rather than named ones. "
+                + "Everything is still undoable; the History panel (Ctrl+H) counts them.");
         }
-        sceneData.UndoBaseline = current;
-        sceneData.RedoStack.Clear();
     }
 
     private void Undo()
     {
-        var sd = _activeSceneData;
-        if (sd == null || sd.UndoStack.Count == 0 || sd.UndoBaseline == null)
-        {
-            return;
-        }
-
-        string target = sd.UndoStack[^1];
-        sd.UndoStack.RemoveAt(sd.UndoStack.Count - 1);
-        sd.RedoStack.Add(sd.UndoBaseline);
-        RestoreSnapshot(sd, target);
-        sd.UndoBaseline = target;
+        // Commit anything mid-edit first, so Ctrl+Z takes back the edit the user just made rather than
+        // the one before it.
+        UndoTracker.Flush();
+        _history.Undo();
     }
 
     private void Redo()
     {
-        var sd = _activeSceneData;
-        if (sd == null || sd.RedoStack.Count == 0 || sd.UndoBaseline == null)
-        {
-            return;
-        }
+        UndoTracker.Flush();
+        _history.Redo();
+    }
 
-        string target = sd.RedoStack[^1];
-        sd.RedoStack.RemoveAt(sd.RedoStack.Count - 1);
-        sd.UndoStack.Add(sd.UndoBaseline);
-        RestoreSnapshot(sd, target);
-        sd.UndoBaseline = target;
+    // Set whenever the history moves, so the next periodic check re-baselines the catch-all instead of
+    // mistaking the result of a recorded action for an unattributed change.
+    private bool _baselinesStale;
+
+    // Re-reads every open scene as the catch-all's baseline, and refreshes the unsaved-changes marker
+    // while the serialization is in hand so the tab's "*" updates immediately after an undo rather than
+    // lagging until the next periodic check.
+    private void SyncSnapshotBaselines()
+    {
+        foreach (var sceneData in _openScenes)
+        {
+            string current = new SceneSerializer(sceneData.Scene).SerializeToString();
+            sceneData.LastPushSnapshot = current;
+            sceneData.IsDirty = sceneData.FilePath == null
+                || sceneData.SavedSnapshot == null
+                || current != sceneData.SavedSnapshot;
+            sceneData.DirtyCheckCounter = 0;
+        }
     }
 
     // Re-hydrates a scene from a snapshot in place (same Scene instance, so framebuffer/viewport bindings
@@ -2407,6 +2518,15 @@ public class EditorScene : Scene
     {
         if (_state == EditorState.Edit)
         {
+            // A recorded action just moved a scene, so adopt the result as the catch-all's baseline
+            // before checking anything. Otherwise the check below would see the action's own effect as
+            // an unattributed change and record a second, coarse entry for it — two undos for one edit.
+            if (_baselinesStale)
+            {
+                _baselinesStale = false;
+                SyncSnapshotBaselines();
+            }
+
             foreach (var sceneData in _openScenes)
             {
                 if (++sceneData.DirtyCheckCounter < 15)
@@ -2415,14 +2535,14 @@ public class EditorScene : Scene
                 }
                 sceneData.DirtyCheckCounter = 0;
 
-                // Serialize once and reuse for both dirty-tracking and the undo history. Unsaved scenes
-                // (no file yet) are always considered dirty, but still get history captured.
+                // Serialize once and reuse for both dirty-tracking and the undo catch-all. Unsaved scenes
+                // (no file yet) are always considered dirty.
                 string current = new SceneSerializer(sceneData.Scene).SerializeToString();
                 sceneData.IsDirty = sceneData.FilePath == null
                     || sceneData.SavedSnapshot == null
                     || current != sceneData.SavedSnapshot;
 
-                CaptureUndoState(sceneData, current);
+                CaptureUnattributedChange(sceneData, current);
             }
         }
 
@@ -2478,11 +2598,16 @@ public class EditorScene : Scene
             if (sceneData.FilePath == null) return false;
         }
 
+        // Commit a half-finished edit before writing, so what lands on disk is what the history says.
+        UndoTracker.Flush();
+
         new SceneSerializer(sceneData.Scene).Serialize(sceneData.FilePath);
         EnsureStartScene(sceneData.FilePath);
         sceneData.SavedSnapshot = new SceneSerializer(sceneData.Scene).SerializeToString();
+        sceneData.LastPushSnapshot = sceneData.SavedSnapshot;
         sceneData.IsDirty = false;
         sceneData.DirtyCheckCounter = 0;
+        _history.MarkSaved(sceneData);
         return true;
     }
 

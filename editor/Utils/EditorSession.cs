@@ -42,6 +42,7 @@ public sealed class EditorSessionState
     public bool ShowAssetBrowser { get; set; } = true;
     public bool ShowProjectSettings { get; set; }
     public bool ShowAudioMixer { get; set; }
+    public bool ShowHistory { get; set; }
 }
 
 /// <summary>

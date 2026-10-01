@@ -309,6 +309,34 @@ public class Scene
         id is int value && _registry.Contains(value) ? new Entity(value, this) : null;
 
     /// <summary>
+    /// Returns a handle to the entity carrying the given <see cref="Entity.PersistentId"/>, or
+    /// <see langword="null"/> when no live entity has it. Unlike <see cref="EntityById"/>, the stable id
+    /// survives a re-hydration of the scene (<see cref="Clear"/> plus a deserialize re-mints every runtime
+    /// id but preserves the stored one), which is what lets the editor's undo history keep targeting the
+    /// same entity across a snapshot restore or a play/stop cycle.
+    /// </summary>
+    /// <param name="persistentId">The stable id to look for. Empty or null never matches.</param>
+    internal Entity? EntityByPersistentId(string? persistentId)
+    {
+        if (string.IsNullOrEmpty(persistentId))
+        {
+            return null;
+        }
+
+        // A linear scan is deliberate: lookups happen at user pace (an undo, a selection restore), so a
+        // cache would be another thing to keep coherent with every create, destroy and re-hydration.
+        foreach (Entity entity in View<LabelComponent>())
+        {
+            if (entity.GetComponent<LabelComponent>().EntityGuid == persistentId)
+            {
+                return entity;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the
     /// engine at the end of each frame.
     /// </summary>
