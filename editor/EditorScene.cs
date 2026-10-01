@@ -487,7 +487,7 @@ public class EditorScene : Scene
         var result = Spot.Build.ProjectBuilder.Build(
             project,
             Spot.Build.BuildPlatform.Windows,
-            onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
+            onOutput: LogBuildOutput,
             onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
             fastDebug: true);
 
@@ -1811,7 +1811,6 @@ public class EditorScene : Scene
                 {
                     string destFile = System.IO.Path.Combine(targetDir, System.IO.Path.GetFileName(file));
                     System.IO.File.Copy(file, destFile, overwrite: true);
-                    Spot.Core.Log.CoreInfo($"Copied '{file}' to '{destFile}'");
                 }
                 else if (System.IO.Directory.Exists(file))
                 {
@@ -1942,8 +1941,30 @@ public class EditorScene : Scene
                 }
             }
         }
+    }
 
-        Spot.Core.Log.Info("Project scripts loaded from '{0}'.", dll);
+    // Matches msbuild's trailing "    0 Warning(s)" / "    1 Error(s)" count lines, which carry the words
+    // "warning"/"error" without being diagnostics themselves.
+    private static readonly System.Text.RegularExpressions.Regex s_buildSummaryLine = new(
+        @"^\s*\d+\s+(Warning|Error)\(s\)\s*$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Mirrors a build line into the console, but only when it carries a diagnostic. msbuild narrates every
+    // build ("Determining projects to restore...", "<project> -> <path>", "Build succeeded.", the
+    // "0 Warning(s)" summary, "Time Elapsed ..."), which buries the console on every Play and every script
+    // reload while telling the user nothing: the editor already reports whether the build worked.
+    private static void LogBuildOutput(string line)
+    {
+        bool diagnostic =
+            (line.Contains("error", StringComparison.OrdinalIgnoreCase)
+             || line.Contains("warning", StringComparison.OrdinalIgnoreCase))
+            && !s_buildSummaryLine.IsMatch(line);
+
+        if (diagnostic)
+        {
+            Spot.Core.Log.Info("[Build] {0}", line);
+        }
     }
 
     // Runs `dotnet build` on the project's .csproj so scripts compile into bin/. Returns true on
@@ -1976,7 +1997,7 @@ public class EditorScene : Scene
             process.OutputDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(e.Data))
-                    Spot.Core.Log.Info("[Build] {0}", e.Data);
+                    LogBuildOutput(e.Data);
             };
             process.ErrorDataReceived += (_, e) =>
             {

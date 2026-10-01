@@ -21,6 +21,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 
 ### Changed
+- Quieter console: routine success chatter is gone (startup banners for the log file, window and audio device, one line per file dropped into the project, project-scripts load, a project save on every keystroke in Project Settings), build output is filtered to warnings and errors instead of mirroring msbuild's restore/timing narration, and a uniform the shader compiler dropped is now a trace rather than a warning
 - Scene camera default look rate retuned (60% slower): the previous rate compensated for the dropped mouse motion described below, and felt far too fast once that was fixed
 - Scene camera **Look sensitivity** and **Fly speed** are now adjustable from the viewport's **Camera** toolbar button and persist with the window layout; `Shift` while flying is a 4x multiplier on the configured speed
 - Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders

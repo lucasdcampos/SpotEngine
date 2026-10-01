@@ -53,7 +53,6 @@ internal static unsafe class AudioDevice
             al.GetError(); // clear any startup error latch
             Al = al;
             Available = true;
-            Log.CoreInfo("OpenAL audio device initialized.");
         }
         catch (Exception ex)
         {

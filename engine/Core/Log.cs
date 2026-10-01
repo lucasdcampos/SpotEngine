@@ -40,11 +40,6 @@ public static class Log
 
         s_coreLogger = CreateLogger("SPOT", extraSink, logFile);
         s_clientLogger = CreateLogger("APP", extraSink, logFile);
-
-        if (logFile is not null)
-        {
-            s_coreLogger.Information("Logging to '{LogFile}'", logFile);
-        }
     }
 
     /// <summary>

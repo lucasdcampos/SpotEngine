@@ -107,8 +107,6 @@ public sealed class Window : IDisposable
         // toggle, or a game turning it off to profile). Unsubscribed on Dispose so the static event never
         // pins a disposed window.
         Spot.Rendering.RenderSettings.VSyncChanged += OnVSyncChanged;
-
-        Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
     }
 
     /// <summary>
