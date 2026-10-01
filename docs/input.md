@@ -93,6 +93,14 @@ While the developer console (opened with the `'` key) is on screen, the **engine
 cursor is forced free and both direct and action queries report nothing to the game, so a scene never
 reacts to keys you type into the console. Control returns to the game the moment the console closes.
 
+`MousePosition` is **frozen** for the duration, and resumes from the frozen value when capture ends.
+That matters for mouse-look: the hardware cursor is released so you can click in the console, and a
+live position would feed that roaming into the camera as delta — the camera would spin while you type.
+Freezing keeps a `position - lastPosition` delta at zero while captured and zero on the first frame
+back, so neither the console nor the editor's Game-panel focus switching can jolt the view. Scroll,
+keys, buttons and actions all read as idle, and a `CursorLocked = true` set while captured is
+remembered and applied when the console closes.
+
 ## Not yet
 
 - **Gamepads and analog axes** aren't supported — input is keyboard and mouse, digital.

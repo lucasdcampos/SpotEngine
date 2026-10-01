@@ -331,11 +331,25 @@ public sealed class Window : IDisposable
                 else if (mouse != null)
                 {
                     mouse.Cursor.CursorMode = CursorMode.Normal;
-                    mouse.Position = _unlockPosition; // reappear where the lock began, not parked at centre
+                    mouse.Position = UnlockPosition();
                 }
 
                 global::Spot.Core.Input.RelativeMouseMode = value;
             }
+        }
+
+        // Where the cursor reappears on unlock: back where the lock began, so it does not jump to the
+        // centre mid-session. Falls back to the centre when that point is no longer inside the window — a
+        // game that locks the cursor on startup saves whatever stale position the backend first reported,
+        // which can sit off-window and leave the freed cursor (and the clicks meant for the dev console)
+        // outside the game entirely.
+        private System.Numerics.Vector2 UnlockPosition()
+        {
+            System.Numerics.Vector2 center = _windowCenter();
+            System.Numerics.Vector2 size = center * 2.0f;
+            bool inside = _unlockPosition.X > 0.0f && _unlockPosition.Y > 0.0f
+                && _unlockPosition.X < size.X && _unlockPosition.Y < size.Y;
+            return inside ? _unlockPosition : center;
         }
 
         public void Tick()
