@@ -76,7 +76,7 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string FragmentShaderSource =
+    private static readonly string FragmentShaderSource =
         """
         #version 330 core
         in vec3 vFragPos;
@@ -95,6 +95,11 @@ public static partial class Renderer3D
         uniform mat4 uLightSpaceMatrix;
         uniform float uShadowTexelSize;
 
+        uniform samplerCube uPointShadowMap;
+        uniform float uPointShadowFar;
+        uniform int uHasPointShadow;
+        uniform int uPointShadowLightIndex;
+
         uniform int uHasNormalMap;
         uniform float uMetallic;
         uniform vec3 uEmissiveColor;
@@ -110,12 +115,18 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
-        // Point lights live in a std140 uniform block so the count scales far past the old fixed four.
-        // Each light is two vec4s (position+range, color+intensity) to sidestep std140's vec3 padding.
+        // Point and spot lights share this uniform block. Each entry is four vec4s:
+        //   positionRange: xyz position, w range
+        //   colorIntensity: xyz color, w intensity
+        //   direction: xyz spot direction (normalised), w type (0=point, 1=spot)
+        //   spotAngles: x cos(inner half-angle), y cos(outer half-angle)
+        // Point lights leave the last two vec4s unused; spots fill all four.
         const int MAX_LIGHTS = 256;
         struct PointLight {
             vec4 positionRange;
             vec4 colorIntensity;
+            vec4 direction;
+            vec4 spotAngles;
         };
         layout(std140) uniform Lights {
             PointLight uLights[MAX_LIGHTS];
@@ -138,40 +149,7 @@ public static partial class Renderer3D
         const int INDEX_TEX_W = 256;
 
         out vec4 fragColor;
-
-        // Normal-offset shadows: instead of a depth bias measured in the light's NDC z (which balloons
-        // into meters of "peter-panning" gap once the shadow frustum is deep), push the sampled point off
-        // the surface along its normal by a couple of shadow texels' worth of world space, widened at
-        // grazing light angles where acne is worst. This is scale-stable and keeps the shadow glued to
-        // the object's contact point. Sampling is hardware PCF (sampler2DShadow) over a 5x5 kernel.
-        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
-        {
-            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
-            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
-            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
-
-            vec3 projCoords = lp.xyz / lp.w;
-            projCoords = projCoords * 0.5 + 0.5;
-            if (projCoords.z > 1.0) return 0.0;
-            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
-            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
-            // on desktop too).
-            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
-
-            float depthRef = projCoords.z - 0.0015; // tiny residual constant bias
-
-            float shadow = 0.0;
-            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
-            for (int x = -2; x <= 2; ++x)
-            {
-                for (int y = -2; y <= 2; ++y)
-                {
-                    // sampler2DShadow returns filtered visibility in [0,1] (1 = lit); accumulate occlusion.
-                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
-                }
-            }
-            return shadow / 25.0;
-        }
+        """ + GlslSnippets.ShadowCalculation + """
 
         vec3 getNormalFromMap(vec2 uv) {
             vec3 tangentNormal = texture(uNormalMap, uv).xyz * 2.0 - 1.0;
@@ -189,19 +167,42 @@ public static partial class Renderer3D
             return normalize(TBN * tangentNormal);
         }
 
-        // One point light's Blinn-Phong contribution, shared by the brute-force and clustered loops.
+        // One point/spot light's Blinn-Phong contribution, shared by the brute-force and clustered loops.
         vec3 pointLightContribution(int i, vec3 normal, vec3 viewDir, vec3 F0)
         {
-            vec3 lightPos = uLights[i].positionRange.xyz;
-            float lightRange = uLights[i].positionRange.w;
-            vec3 lightCol = uLights[i].colorIntensity.rgb;
-            float lightInt = uLights[i].colorIntensity.a;
+            vec3 lightPos   = uLights[i].positionRange.xyz;
+            float lightRange= uLights[i].positionRange.w;
+            vec3 lightCol   = uLights[i].colorIntensity.rgb;
+            float lightInt  = uLights[i].colorIntensity.a;
+            int lightType   = int(uLights[i].direction.w);  // 0=point, 1=spot
 
-            vec3 lightDir = lightPos - vFragPos;
-            float distance = length(lightDir);
+            vec3 toFrag = vFragPos - lightPos;
+            float distance = length(toFrag);
             if (distance >= lightRange) return vec3(0.0);
 
-            lightDir = normalize(lightDir);
+            // Cubemap shadow: compare the fragment's linear distance (normalised by range) against the
+            // closest depth stored in the shadow cubemap. toFrag is the direction from light to fragment,
+            // which is exactly the lookup vector for a depth cubemap centred at the light.
+            if (uHasPointShadow == 1 && i == uPointShadowLightIndex) {
+                float currentDepth = distance / uPointShadowFar;
+                float closestDepth = texture(uPointShadowMap, toFrag).r;
+                if (currentDepth - 0.05 > closestDepth) return vec3(0.0);
+            }
+
+            vec3 lightDir = -toFrag / distance;  // points from fragment toward light
+
+            // Spot cone attenuation: smoothly falls off between the inner and outer half-angles.
+            if (lightType == 1)
+            {
+                vec3 spotDir   = normalize(uLights[i].direction.xyz);
+                float cosTheta = dot(-lightDir, spotDir);  // angle between fragment direction and cone axis
+                float cosInner = uLights[i].spotAngles.x;
+                float cosOuter = uLights[i].spotAngles.y;
+                float coneAtten = clamp((cosTheta - cosOuter) / max(cosInner - cosOuter, 0.001), 0.0, 1.0);
+                if (coneAtten <= 0.0) return vec3(0.0);
+                lightInt *= coneAtten;
+            }
+
             vec3 halfVector = normalize(lightDir + viewDir);
             float diff = max(dot(normal, lightDir), 0.0);
             float spec = pow(max(dot(normal, halfVector), 0.0), mix(16.0, 128.0, uMetallic));
@@ -350,7 +351,7 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string WaterFragmentShaderSource =
+    private static readonly string WaterFragmentShaderSource =
         """
         #version 330 core
         in vec3 vFragPos;
@@ -370,7 +371,7 @@ public static partial class Renderer3D
         uniform float uWaveScale;
         uniform float uWaveStrength;
         uniform float uSpecularPower;
-        
+
         uniform vec2 uTiling;
         uniform int uAutoTile;
         uniform vec3 uModelScale;
@@ -381,11 +382,13 @@ public static partial class Renderer3D
         uniform vec3 uLightColor;
         uniform float uAmbientIntensity;
 
-        // Shared std140 point-light block (see the standard shader). Two vec4s per light.
+        // Shared std140 point/spot-light block (see the standard shader). Four vec4s per entry.
         const int MAX_LIGHTS = 256;
         struct PointLight {
             vec4 positionRange;
             vec4 colorIntensity;
+            vec4 direction;
+            vec4 spotAngles;
         };
         layout(std140) uniform Lights {
             PointLight uLights[MAX_LIGHTS];
@@ -399,12 +402,7 @@ public static partial class Renderer3D
         uniform int uHasSkybox;
 
         out vec4 fragColor;
-
-        float hash(vec2 p) {
-            vec3 p3  = fract(vec3(p.xyx) * .1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         // Value noise carrying its analytic derivative: returns (value in [-1,1], d/dx, d/dy). The
         // derivative lets us build an exact surface normal from the summed height field instead of
@@ -448,34 +446,7 @@ public static partial class Renderer3D
             return col;
         }
 
-        // See the standard shader for the rationale: normal-offset receiver + hardware PCF (sampler2DShadow).
-        float ShadowCalculation(vec3 worldPos, vec3 N, vec3 L)
-        {
-            float slope = clamp(1.0 - dot(N, L), 0.0, 1.0);
-            vec3 offsetPos = worldPos + N * uShadowTexelSize * (1.5 + 3.0 * slope);
-            vec4 lp = uLightSpaceMatrix * vec4(offsetPos, 1.0);
-
-            vec3 projCoords = lp.xyz / lp.w;
-            projCoords = projCoords * 0.5 + 0.5;
-            if (projCoords.z > 1.0) return 0.0;
-            // Outside the shadow map's xy extent reads as fully lit. On desktop the depth texture's
-            // clamp-to-border handled this; WebGL2 has no border, so test the bounds explicitly (harmless
-            // on desktop too).
-            if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) return 0.0;
-
-            float depthRef = projCoords.z - 0.0015;
-
-            float shadow = 0.0;
-            vec2 texelSize = 1.0 / vec2(textureSize(uShadowMap, 0));
-            for (int x = -2; x <= 2; ++x)
-            {
-                for (int y = -2; y <= 2; ++y)
-                {
-                    shadow += 1.0 - texture(uShadowMap, vec3(projCoords.xy + vec2(x, y) * texelSize, depthRef));
-                }
-            }
-            return shadow / 25.0;
-        }
+        """ + GlslSnippets.ShadowCalculation + """
 
         void main()
         {
@@ -569,16 +540,27 @@ public static partial class Renderer3D
 
             for (int i = 0; i < uPointLightCount; i++)
             {
-                vec3 lightPos = uLights[i].positionRange.xyz;
-                float lightRange = uLights[i].positionRange.w;
-                vec3 lightCol = uLights[i].colorIntensity.rgb;
-                float lightInt = uLights[i].colorIntensity.a;
+                vec3 lightPos   = uLights[i].positionRange.xyz;
+                float lightRange= uLights[i].positionRange.w;
+                vec3 lightCol   = uLights[i].colorIntensity.rgb;
+                float lightInt  = uLights[i].colorIntensity.a;
+                int lightType   = int(uLights[i].direction.w);
 
                 vec3 Lv = lightPos - vFragPos;
                 float dist = length(Lv);
                 if (dist < lightRange)
                 {
                     vec3 L = Lv / max(dist, 1e-4);
+                    if (lightType == 1)
+                    {
+                        vec3 spotDir = normalize(uLights[i].direction.xyz);
+                        float cosTheta = dot(-L, spotDir);
+                        float cosInner = uLights[i].spotAngles.x;
+                        float cosOuter = uLights[i].spotAngles.y;
+                        float cone = clamp((cosTheta - cosOuter) / max(cosInner - cosOuter, 0.001), 0.0, 1.0);
+                        if (cone <= 0.0) continue;
+                        lightInt *= cone;
+                    }
                     float atten = 1.0 - (dist / lightRange);
                     atten *= atten;
                     float diff = max(dot(N, L), 0.0);
@@ -620,29 +602,22 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string SkyboxFragmentShaderSource =
+    private static readonly string SkyboxFragmentShaderSource =
         """
         #version 330 core
-        
+
         in vec2 vUV;
         out vec4 fragColor;
-        
+
         uniform mat4 uInverseViewProjection;
-        
+
         uniform vec3 uSkyColor;
         uniform vec3 uGroundColor;
-        
+
         uniform vec3 uLightDir;
         uniform vec3 uLightColor;
         uniform int uHasDirLight;
-
-        // Cheap, sine-free per-pixel hash in [0,1). Used for dithering.
-        float hash12(vec2 p)
-        {
-            vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         void main()
         {
@@ -719,8 +694,8 @@ public static partial class Renderer3D
             // Dithering. This smooth gradient bands into concentric "onion rings" once quantized to an
             // 8-bit target (the direct, no-post-processing path — the HDR/post path dithers in its own
             // composite). Add ~1 LSB of triangular-PDF noise so each band edge dissolves into noise.
-            float d1 = hash12(gl_FragCoord.xy);
-            float d2 = hash12(gl_FragCoord.xy + 17.0);
+            float d1 = hash(gl_FragCoord.xy);
+            float d2 = hash(gl_FragCoord.xy + 17.0);
             color += (d1 + d2 - 1.0) / 255.0;
 
             fragColor = vec4(color, 1.0);
@@ -742,13 +717,13 @@ public static partial class Renderer3D
         }
         """;
 
-    private const string CloudsFragmentShaderSource =
+    private static readonly string CloudsFragmentShaderSource =
         """
         #version 330 core
-        
+
         in vec2 vUV;
         out vec4 fragColor;
-        
+
         uniform mat4 uInverseViewProjection;
         uniform vec3 uColorTop;
         uniform vec3 uColorBottom;
@@ -758,13 +733,7 @@ public static partial class Renderer3D
         uniform float uTime;
         uniform float uOpacity;
         uniform float uVolume;
-        
-        // Better noise without high frequency floating point breakdown
-        float hash(vec2 p) {
-            vec3 p3  = fract(vec3(p.xyx) * .1031);
-            p3 += dot(p3, p3.yzx + 33.33);
-            return fract((p3.x + p3.y) * p3.z);
-        }
+        """ + GlslSnippets.Hash + """
 
         float noise(vec2 x) {
             vec2 i = floor(x);
@@ -1017,6 +986,38 @@ public static partial class Renderer3D
             vColor = uColor;
             vModelScale = vec3(1.0); // skinning replaces the model matrix, so auto-tile is off
             gl_Position = uViewProjection * worldPos;
+        }
+        """;
+
+    // Point/spot light shadow shaders. Unlike the directional shadow pass (which writes hardware depth
+    // via a projection matrix), these write LINEAR DEPTH — the fragment's actual world-space distance from
+    // the light, normalised by the light's range. This is stored in the depth buffer and sampled as a plain
+    // float in the lit shader, which computes the same linear distance and compares them. No samplerCubeShadow
+    // or special hardware compare modes are needed, keeping the implementation backend-neutral.
+    private const string PointShadowVertexShaderSource =
+        """
+        #version 330 core
+        layout(location = 0) in vec3 aPosition;
+        uniform mat4 uModel;
+        uniform mat4 uLightSpaceMatrix;
+        out vec3 vFragPos;
+        void main()
+        {
+            vec4 worldPos = uModel * vec4(aPosition, 1.0);
+            vFragPos = worldPos.xyz;
+            gl_Position = uLightSpaceMatrix * worldPos;
+        }
+        """;
+
+    private const string PointShadowFragmentShaderSource =
+        """
+        #version 330 core
+        in vec3 vFragPos;
+        uniform vec3 uLightPos;
+        uniform float uFarPlane;
+        void main()
+        {
+            gl_FragDepth = length(vFragPos - uLightPos) / uFarPlane;
         }
         """;
 

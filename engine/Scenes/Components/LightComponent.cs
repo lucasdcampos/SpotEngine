@@ -5,7 +5,8 @@ namespace Spot.Scenes;
 public enum LightType
 {
     Directional,
-    Point
+    Point,
+    Spot
 }
 
 [ComponentMenu("Light", Order = 80)]
@@ -25,11 +26,19 @@ public sealed class LightComponent : Component
     [ShowIf(nameof(Type), LightType.Directional)]
     public float AmbientIntensity { get; set; } = 0.3f;
 
-    [ShowIf(nameof(Type), LightType.Directional)]
     public bool CastShadows { get; set; } = true;
 
-    // Point light specific
+    // Point + Spot light specific
     [InspectorRange(0.0f, 100.0f, 0.1f)]
-    [ShowIf(nameof(Type), LightType.Point)]
+    [ShowIf(nameof(Type), LightType.Point, LightType.Spot)]
     public float Range { get; set; } = 10.0f;
+
+    // Spot light specific
+    [InspectorRange(1.0f, 89.0f, 0.5f)]
+    [ShowIf(nameof(Type), LightType.Spot)]
+    public float SpotAngle { get; set; } = 15.0f;
+
+    [InspectorRange(1.0f, 89.0f, 0.5f)]
+    [ShowIf(nameof(Type), LightType.Spot)]
+    public float SpotOuterAngle { get; set; } = 30.0f;
 }

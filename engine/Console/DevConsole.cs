@@ -105,6 +105,10 @@ public sealed class DevConsole
     // the console input stays "hot" like a real terminal.
     private bool _reclaimFocus;
 
+    // Set by a host that draws the console itself through DrawContents — the editor's docked Console
+    // panel. Null in a standalone game, where the engine owns the floating console window.
+    private Action? _hostFocusRequest;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DevConsole"/> class.
     /// </summary>
@@ -121,6 +125,19 @@ public sealed class DevConsole
     /// </summary>
     public bool IsOpen => _open;
 
+    /// <summary>
+    /// Gets whether the console's window belongs to the host application rather than the engine.
+    /// </summary>
+    /// <remarks>
+    /// The editor docks the console as a native panel, drawing the body itself via
+    /// <see cref="DrawContents"/>. The engine must then not draw its own floating window: ImGui merges
+    /// windows that share a name, so a second "Console" would append into the panel and draw the body —
+    /// command input included — twice. While hosted the console also never reports
+    /// <see cref="IsOpen"/>, so it never takes engine-level input capture: the host already decides who
+    /// owns input from its own panel focus.
+    /// </remarks>
+    public bool IsHosted => _hostFocusRequest is not null;
+
     /// <summary>Gets the most recently printed line, if any.</summary>
     public ConsoleLine? LastLine
     {
@@ -134,15 +151,50 @@ public sealed class DevConsole
     }
 
     /// <summary>
-    /// Toggles the visibility of the console.
+    /// Hands ownership of the console's window to the host application (see <see cref="IsHosted"/>).
+    /// </summary>
+    /// <param name="focusRequest">
+    /// Called when something asks for the console (the <c>'</c> key); the host should reveal its console
+    /// panel and give it keyboard focus. Pass <see langword="null"/> to return ownership to the engine.
+    /// </param>
+    public void SetHost(Action? focusRequest)
+    {
+        _hostFocusRequest = focusRequest;
+        if (focusRequest is not null)
+        {
+            // The engine's own window is going away; don't leave the open flag (and the input capture
+            // the application derives from it) latched on.
+            _open = false;
+        }
+    }
+
+    /// <summary>
+    /// Asks the console's command input to take keyboard focus on the next frame it is drawn. Used by a
+    /// host that owns the window, so focusing its panel also puts the caret in the prompt.
+    /// </summary>
+    public void RequestInputFocus()
+    {
+        _justOpened = true;
+        _scrollToBottom = true;
+    }
+
+    /// <summary>
+    /// Toggles the visibility of the console. While a host owns the window (see <see cref="IsHosted"/>)
+    /// there is nothing to toggle, so this reveals and focuses the host's panel instead.
     /// </summary>
     public void Toggle()
     {
+        if (_hostFocusRequest is { } focusRequest)
+        {
+            RequestInputFocus();
+            focusRequest();
+            return;
+        }
+
         _open = !_open;
         if (_open)
         {
-            _justOpened = true;
-            _scrollToBottom = true;
+            RequestInputFocus();
         }
     }
 
@@ -231,7 +283,9 @@ public sealed class DevConsole
 
     public void OnImGuiRender()
     {
-        if (!_open)
+        // Nothing to draw when the host owns the window: it calls DrawContents from its own panel, and a
+        // same-named window here would merge into that panel and duplicate the body.
+        if (!_open || IsHosted)
         {
             return;
         }
@@ -581,6 +635,24 @@ public sealed class DevConsole
             }
         }, "Toggles wireframe rendering for 3D meshes");
 
+        Register("occlusion", args =>
+        {
+            if (args.Count > 0 && bool.TryParse(args[0], out bool val))
+            {
+                Spot.Rendering.RenderSettings.OcclusionCulling = val;
+            }
+            else
+            {
+                Spot.Rendering.RenderSettings.OcclusionCulling = !Spot.Rendering.RenderSettings.OcclusionCulling;
+            }
+
+            Spot.Rendering.RendererDebug.DisableOcclusionCulling = false;
+            Print($"Occlusion culling {(Spot.Rendering.RenderSettings.OcclusionCulling ? "on" : "off")}");
+            Print($"Last pass: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} behind {Spot.Rendering.RendererDebug.OccluderCount} occluder(s)");
+        }, "Toggles occlusion culling and prints what the last 3D pass culled (e.g., 'occlusion', 'occlusion off')");
+
         Register("vsync", args =>
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
@@ -599,7 +671,10 @@ public sealed class DevConsole
         {
             Print($"Frame: {Spot.Core.FrameStats.FrameTimeMs:0.00} ms ({Spot.Core.FrameStats.Fps:0} FPS); last {Spot.Core.FrameStats.LastFrameMs:0.00} ms");
             Print($"VSync: {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")}");
-        }, "Prints the current smoothed frame time / FPS and VSync state");
+            Print($"Meshes: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} occluded");
+        }, "Prints the current smoothed frame time / FPS, VSync state, and what the last 3D pass culled");
 
         Register("bind", args =>
         {
@@ -670,6 +745,92 @@ public sealed class DevConsole
             Input.ResetBindingsToDefaults();
             Print("Input bindings reset to defaults.");
         }, "Resets all input bindings to the project defaults");
+
+        Register("volume", args =>
+        {
+            // 'volume' alone lists the mix; 'volume 0.5' is shorthand for the master bus, since that is what a
+            // player reaching for the console almost always means.
+            if (args.Count == 0)
+            {
+                PrintBuses();
+                return;
+            }
+
+            string busName = args.Count >= 2 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
+            string value = args.Count >= 2 ? args[1] : args[0];
+
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
+                return;
+            }
+
+            if (!float.TryParse(value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float level))
+            {
+                Print($"[error] '{value}' is not a number. Usage: volume [bus] <0..1>");
+                return;
+            }
+
+            bus.Volume = level;
+            Print($"{bus.Name} volume set to {bus.Volume:0.00}");
+        }, "Sets a mixer bus volume, e.g. 'volume 0.5' (master) or 'volume music 0.2'; alone, lists the mix");
+
+        Register("mute", args =>
+        {
+            string busName = args.Count >= 1 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
+                return;
+            }
+
+            bus.Mute = args.Count >= 2 && bool.TryParse(args[1], out bool on) ? on : !bus.Mute;
+            Print($"{bus.Name} {(bus.Mute ? "muted" : "unmuted")}");
+        }, "Mutes or unmutes a mixer bus (e.g. 'mute', 'mute sfx', 'mute music true')");
+
+        Register("solo", args =>
+        {
+            if (args.Count == 0)
+            {
+                Spot.Audio.AudioMixer.ClearSolos();
+                Print("Cleared all solos.");
+                return;
+            }
+
+            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(args[0]);
+            if (bus == null)
+            {
+                Print($"[error] Unknown audio bus: '{args[0]}' (try 'buses')");
+                return;
+            }
+
+            bus.Solo = !bus.Solo;
+            Print($"{bus.Name} solo {(bus.Solo ? "on" : "off")}");
+        }, "Solos a mixer bus in isolation, or clears every solo when called with no bus");
+
+        Register("buses", _ => PrintBuses(), "Lists the audio mixer buses with their levels and routing");
+    }
+
+    // Prints the mixer as an indented tree: each bus with its own fader, the gain that actually applies after
+    // its parents/mute/solo, and how many voices are sounding through it.
+    private void PrintBuses()
+    {
+        Print("Audio buses:");
+        foreach (Spot.Audio.AudioBus bus in Spot.Audio.AudioMixer.Buses)
+        {
+            int depth = 0;
+            for (Spot.Audio.AudioBus? p = Spot.Audio.AudioMixer.ParentOf(bus); p != null && depth < 8; p = Spot.Audio.AudioMixer.ParentOf(p))
+            {
+                depth++;
+            }
+
+            string flags = (bus.Mute ? " [muted]" : string.Empty) + (bus.Solo ? " [solo]" : string.Empty);
+            Print($"  {new string(' ', depth * 2)}{bus.Name}: {bus.Volume:0.00} " +
+                  $"(effective {Spot.Audio.AudioMixer.GetGain(bus.Name):0.00}, {bus.ActiveVoices} voice(s)){flags}");
+        }
     }
 
     private string GetInputText()

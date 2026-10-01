@@ -89,6 +89,11 @@ internal sealed class AetherPhysics2D : IPhysics2D
             fixture.IsSensor = desc.IsTrigger;
             fixture.CollisionCategories = CategoryForLayer(desc.Layer);
             fixture.CollidesWith = MaskForLayer(desc.Layer);
+            if (hasBody)
+            {
+                fixture.Friction = body!.Friction;
+                fixture.Restitution = body.Restitution;
+            }
 
             Body b = tracked.Body;
             b.BodyType = type;

@@ -42,6 +42,14 @@ public class ViewportPanel
     // from the press point, which isn't a real movement delta).
     private int _flyFrame;
 
+    // Cursor position the current look delta is measured from — last frame's position, or the viewport
+    // centre on the frames where the edge guard warped the cursor back.
+    private Vector2 _lastLookPos;
+
+    // Set for the frame right after a warp: the recentring may not be visible to the next poll yet, so
+    // that frame's reading is ignored instead of being fed in as a jump.
+    private bool _skipLookFrame = true;
+
     public ViewportPanel(EditorContext context)
     {
         _context = context;
@@ -151,6 +159,48 @@ public class ViewportPanel
                     Spot.Rendering.RendererDebug.Wireframe = wireframe;
                 }
 
+                // Camera feel (look sensitivity / fly speed). Tucked behind a gear so the toolbar stays
+                // uncluttered; the values are global and persist with the window layout.
+                ImGui.SameLine();
+                ImGui.Dummy(new Vector2(8, 0));
+                ImGui.SameLine();
+                if (ImGui.Button(EditorIcons.Gear + " Camera"))
+                {
+                    ImGui.OpenPopup("ViewportCameraSettings");
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Scene camera sensitivity and fly speed");
+                }
+                if (ImGui.BeginPopup("ViewportCameraSettings"))
+                {
+                    ImGui.TextUnformatted("Scene Camera");
+                    ImGui.Separator();
+
+                    float sensitivity = Utils.EditorSettings.CameraLookSensitivity;
+                    ImGui.SetNextItemWidth(160.0f);
+                    if (ImGui.SliderFloat("Look sensitivity", ref sensitivity, 0.1f, 5.0f, "%.2fx"))
+                    {
+                        Utils.EditorSettings.CameraLookSensitivity = sensitivity;
+                    }
+
+                    float moveSpeed = Utils.EditorSettings.CameraMoveSpeed;
+                    ImGui.SetNextItemWidth(160.0f);
+                    if (ImGui.SliderFloat("Fly speed", ref moveSpeed, 0.5f, 100.0f, "%.1f u/s"))
+                    {
+                        Utils.EditorSettings.CameraMoveSpeed = moveSpeed;
+                    }
+
+                    ImGui.Separator();
+                    if (ImGui.Button("Reset to defaults"))
+                    {
+                        Utils.EditorSettings.CameraLookSensitivity = Utils.EditorSettings.DefaultCameraLookSensitivity;
+                        Utils.EditorSettings.CameraMoveSpeed = Utils.EditorSettings.DefaultCameraMoveSpeed;
+                    }
+                    ImGui.TextDisabled("Right-drag to look, WASD/QE to fly, Shift for 4x");
+                    ImGui.EndPopup();
+                }
+
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
                 {
                     // Render Camera Preview in bottom right
@@ -189,6 +239,8 @@ public class ViewportPanel
                     _isFlyingCamera = true;
                     _flyFrame = 0;
                     _flyAnchor = io.MousePos;
+                    _lastLookPos = io.MousePos;
+                    _skipLookFrame = true;
                 }
                 bool isFlyingCamera = _isFlyingCamera;
 
@@ -242,10 +294,15 @@ public class ViewportPanel
 
                 if (isFlyingCamera)
                 {
-                    // Hide the cursor and confine it ourselves: every frame we read how far it drifted
-                    // from the viewport centre, feed that as the look delta, then warp it straight back
-                    // to the centre. Because it can never reach an edge, it can never leave the
-                    // viewport — regardless of whether GLFW's own confine modes work on this machine.
+                    // Hide the cursor and confine it to the viewport ourselves. The look delta is the
+                    // plain frame-to-frame cursor movement; the cursor is only warped back to the centre
+                    // when it nears a viewport border (see the edge guard below).
+                    //
+                    // Do NOT warp every frame and read the offset from centre as the delta: the warp
+                    // happens during the ImGui pass, which runs a whole frame of update+render after the
+                    // position was polled, so every motion the mouse made in between is thrown away by
+                    // the snap. That loses a variable slice of each frame's movement — the camera feels
+                    // both sluggish and jittery because the amount lost changes with frame time.
                     var mice = Spot.Core.Application.Instance.Window.Input.Mice;
                     var mouse = mice.Count > 0 ? mice[0] : null;
                     if (mouse != null && mouse.Cursor.CursorMode != LockMode)
@@ -255,18 +312,34 @@ public class ViewportPanel
                     io.ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
                     _ownsCursorLock = true;
 
-                    Vector2 center = cursorPos + viewportSize * 0.5f;
-                    Vector2 lookDelta = Vector2.Zero;
-                    if (_flyFrame > 0)
-                    {
-                        // Offset from centre == this frame's movement, since we recentre every frame.
-                        lookDelta = io.MousePos - center;
-                    }
-                    if (mouse != null)
-                    {
-                        mouse.Position = center;   // snap back so the next frame's offset is pure movement
-                    }
+                    Vector2 mousePos = io.MousePos;
+                    Vector2 lookDelta = _skipLookFrame ? Vector2.Zero : mousePos - _lastLookPos;
+                    _skipLookFrame = false;
+                    _lastLookPos = mousePos;
                     _flyFrame++;
+
+                    // Edge guard: recentre only once the cursor gets close to a border, so it can never
+                    // walk out of the viewport while staying free to accumulate real motion in between.
+                    // Round to the nearest integer pixel: the OS stores an integer cursor position, so a
+                    // fractional centre (.5f from an odd viewport dimension) would read back shifted and
+                    // inject a constant sub-pixel delta that drifts the camera on its own.
+                    Vector2 rawCenter = cursorPos + viewportSize * 0.5f;
+                    Vector2 center = new Vector2(MathF.Round(rawCenter.X), MathF.Round(rawCenter.Y));
+                    float margin = Math.Clamp(MathF.Min(viewportSize.X, viewportSize.Y) * 0.2f, 32.0f, 160.0f);
+                    bool nearEdge = mousePos.X < cursorPos.X + margin
+                        || mousePos.X > cursorPos.X + viewportSize.X - margin
+                        || mousePos.Y < cursorPos.Y + margin
+                        || mousePos.Y > cursorPos.Y + viewportSize.Y - margin;
+
+                    if (mouse != null && (_flyFrame == 1 || nearEdge))
+                    {
+                        mouse.Position = center;
+                        _lastLookPos = center;
+                        // The warp's own position event may not land before the next poll, so the next
+                        // frame could still report the pre-warp position. Skip one frame of look rather
+                        // than turn that stale reading into a large bogus jump.
+                        _skipLookFrame = true;
+                    }
 
                     // 3D Mouselook
                     _camera.MouseLook(lookDelta);
@@ -282,8 +355,8 @@ public class ViewportPanel
 
                     if (moveDir != Vector3.Zero)
                     {
-                        float speed = 5.0f; // units per second
-                        if (ImGui.IsKeyDown(ImGuiKey.LeftShift)) speed = 20.0f;
+                        float speed = Utils.EditorSettings.CameraMoveSpeed; // units per second
+                        if (ImGui.IsKeyDown(ImGuiKey.LeftShift)) speed *= 4.0f;
                         _camera.Move(moveDir, speed * io.DeltaTime);
                     }
                 }

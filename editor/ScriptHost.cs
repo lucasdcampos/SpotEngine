@@ -108,7 +108,6 @@ internal sealed class ScriptHost
             _context = context;
             Assembly = asm;
             LoadedPath = dllPath;
-            Log.CoreInfo("Loaded project scripts: {0}", dllPath);
             return true;
         }
         catch (Exception ex)

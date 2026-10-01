@@ -175,9 +175,17 @@ public class InspectorPanel : IDisposable
         }
 
         Entity root = _prefabRoot.Value;
-        DrawComponents(root);
-        ImGui.Spacing();
-        DrawAddComponentButton(root);
+
+        // The prefab is inspected inside a throwaway Scene, so the generic property editing below must
+        // not record undo entries: they would target entities that vanish the moment this panel
+        // reloads the prefab. The file write underneath is the prefab's own persistence.
+        Entity prefabRootEntity = root;
+        using (Spot.DebugUI.Undo.EditorHistory.Current.Suspend())
+        {
+            DrawComponents(prefabRootEntity);
+            ImGui.Spacing();
+            DrawAddComponentButton(prefabRootEntity);
+        }
 
         // Persist edits when the user releases a control, so we don't write to disk every frame while dragging.
         string current = Prefab.Serialize(root);

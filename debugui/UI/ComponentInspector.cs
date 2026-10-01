@@ -9,6 +9,7 @@ using Spot.Animation;
 using Spot.Assets;
 using Spot.Audio;
 using Spot.Core;
+using Spot.DebugUI.Undo;
 using Spot.Rendering;
 using Spot.Scenes;
 
@@ -162,6 +163,11 @@ internal static class ComponentInspector
         public PropertyInfo? AssetPathProp { get; set; }
         public string[]? EnumNames { get; set; }
         public object[]? EnumValues { get; set; }
+
+        // A static member (property or parameterless method) yielding the dropdown options for a string
+        // property tagged with [InspectorOptions]; resolved once and queried each frame, since the option set
+        // can change while the editor runs (mixer buses, for instance).
+        public MemberInfo? OptionsMember { get; set; }
     }
 
     private static readonly Dictionary<Type, PropertyMeta[]> _metaCache = new();
@@ -222,6 +228,14 @@ internal static class ComponentInspector
             if (assetRef != null)
                 meta.AssetPathProp = type.GetProperty(assetRef.PathPropertyName, BindingFlags.Public | BindingFlags.Instance);
 
+            var options = prop.GetCustomAttribute<InspectorOptionsAttribute>();
+            if (options != null && prop.PropertyType == typeof(string))
+            {
+                const BindingFlags staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+                meta.OptionsMember = (MemberInfo?)type.GetProperty(options.OptionsMemberName, staticFlags)
+                    ?? type.GetMethod(options.OptionsMemberName, staticFlags, Type.EmptyTypes);
+            }
+
             if (prop.PropertyType.IsEnum)
             {
                 meta.EnumNames = Enum.GetNames(prop.PropertyType);
@@ -265,58 +279,164 @@ internal static class ComponentInspector
 
         string label = meta.Label;
 
+        // Each branch keeps the pre-widget value and reports whether the widget changed it, so the
+        // tracker can collapse a whole interaction (a drag, a typing session, a color-picker visit) into
+        // one named undo entry. See UndoTracker for why the boundary is taken from the change flag
+        // rather than from ImGui's per-item activate/deactivate state.
         if (pt == typeof(float))
         {
             float v = (float)prop.GetValue(component)!;
+            float before = v;
             float speed = meta.HasRange ? meta.Speed : 0.1f;
             float min = meta.HasRange ? meta.Min : 0.0f;
             float max = meta.HasRange ? meta.Max : 0.0f;
-            if (EditorGui.DragFloat(label, ref v, speed, min, max))
+            bool changed = EditorGui.DragFloat(label, ref v, speed, min, max);
+            if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt == typeof(bool))
         {
             bool v = (bool)prop.GetValue(component)!;
-            if (EditorGui.Checkbox(label, ref v))
+            bool before = v;
+            bool changed = EditorGui.Checkbox(label, ref v);
+            if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt.IsEnum)
         {
             object cur = prop.GetValue(component)!;
+            object before = cur;
             int idx = Array.IndexOf(meta.EnumValues!, cur);
             if (idx < 0) idx = 0;
-            if (EditorGui.Combo(label, ref idx, meta.EnumNames!))
+            bool changed = EditorGui.Combo(label, ref idx, meta.EnumNames!);
+            if (changed)
                 prop.SetValue(component, meta.EnumValues![idx]);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt == typeof(Vector2))
         {
             var v = (Vector2)prop.GetValue(component)!;
-            if (EditorGui.Vector2Control(label, ref v, meta.HasReset ? meta.Reset : 0.0f))
+            Vector2 before = v;
+            bool changed = EditorGui.Vector2Control(label, ref v, meta.HasReset ? meta.Reset : 0.0f);
+            if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt == typeof(Vector3))
         {
             var v = (Vector3)prop.GetValue(component)!;
+            Vector3 before = v;
             bool changed = meta.IsColor
                 ? EditorGui.Color3(label, ref v)
                 : EditorGui.Vector3Control(label, ref v, meta.HasReset ? meta.Reset : 0.0f);
             if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt == typeof(Vector4))
         {
             // Every Vector4 the inspector shows is a color; there is no plain 4-axis control.
             var v = (Vector4)prop.GetValue(component)!;
-            if (EditorGui.Color4(label, ref v))
+            Vector4 before = v;
+            bool changed = EditorGui.Color4(label, ref v);
+            if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         else if (pt == typeof(string))
         {
             string v = (string?)prop.GetValue(component) ?? string.Empty;
-            if (EditorGui.InputText(label, ref v))
+            string before = v;
+            bool changed = meta.OptionsMember != null
+                ? DrawOptionsCombo(label, meta, ref v)
+                : EditorGui.InputText(label, ref v);
+            if (changed)
                 prop.SetValue(component, v);
+            TrackEdit(entity, component, meta, before, changed);
         }
         // Unknown/unsupported types are silently skipped.
+    }
+
+    /// <summary>
+    /// Hands one inspector field edit to the undo tracker. The resulting action targets the entity by
+    /// its stable id and re-resolves the component when applied, so it stays valid across everything
+    /// that replaces component instances wholesale — undoing a delete, reloading scripts, leaving play
+    /// mode.
+    /// </summary>
+    private static void TrackEdit<T>(
+        Entity entity, object component, PropertyMeta meta, T before, bool changed)
+    {
+        // Cheap exit on the overwhelmingly common frame: nothing changed and no edit is in flight.
+        if ((!changed && !UndoTracker.HasPending) || !entity.IsValid)
+        {
+            return;
+        }
+
+        PropertyInfo prop = meta.Prop;
+        var accessor = MemberAccessor.FromProperty(prop);
+        Type componentType = component.GetType();
+        Scene scene = entity.Scene;
+        string entityId = entity.EnsurePersistentId();
+        object? document = EditorHistory.DocumentFor(scene);
+        string label = $"Set {meta.Label}";
+
+        UndoTracker.Track(
+            UndoKey.For(component, prop.Name),
+            label,
+            before,
+            () => (T)accessor.Get(component)!,
+            (b, a) => new ComponentValueAction(
+                label, scene, entityId, componentType, accessor, b, a, document),
+            changed);
+    }
+
+    /// <summary>
+    /// Draws a string property as a dropdown over the options its [InspectorOptions] member supplies. A current
+    /// value that is not among them is appended and marked, so a stale reference (a renamed audio bus, say) is
+    /// visible and preserved rather than quietly replaced by whatever happens to be first in the list.
+    /// </summary>
+    private static bool DrawOptionsCombo(string label, PropertyMeta meta, ref string value)
+    {
+        string[] options = ResolveOptions(meta.OptionsMember);
+        string current = value;
+        int index = Array.FindIndex(options, o => string.Equals(o, current, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            var withCurrent = new string[options.Length + 1];
+            options.CopyTo(withCurrent, 0);
+            withCurrent[^1] = string.IsNullOrEmpty(current) ? "(none)" : $"{current}  (missing)";
+            options = withCurrent;
+            index = options.Length - 1;
+        }
+
+        int picked = index;
+        if (!EditorGui.Combo(label, ref picked, options) || picked == index || picked >= options.Length)
+            return false;
+
+        value = options[picked];
+        return true;
+    }
+
+    /// <summary>Reads the option list from a static property or method, tolerating a member that misbehaves.</summary>
+    private static string[] ResolveOptions(MemberInfo? member)
+    {
+        try
+        {
+            object? raw = member switch
+            {
+                PropertyInfo p => p.GetValue(null),
+                MethodInfo m => m.Invoke(null, null),
+                _ => null,
+            };
+            return raw is IEnumerable<string> values ? values.ToArray() : Array.Empty<string>();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Inspector option list failed to resolve: {0}", ex.Message);
+            return Array.Empty<string>();
+        }
     }
 
     /// <summary>Turns a PascalCase property name into spaced words ("FieldOfView" → "Field Of View").</summary>

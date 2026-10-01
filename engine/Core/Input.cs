@@ -62,6 +62,16 @@ public static class Input
     // withheld from the game. Driven by Application from the console's open state.
     private static bool _engineCaptured;
 
+    // True while the editor suppresses game input because the Game panel is not focused.
+    // Unlike _engineCaptured, this does NOT touch the cursor lock state — cursor management
+    // is handled separately by the editor when the Game panel gains or loses focus.
+    private static bool _gameFocusCapture;
+
+    // MousePosition is frozen at this value while input is blocked (engine console/debugger open, or
+    // the editor's Game panel unfocused), so the game's _lastMouse delta tracking stays in sync and
+    // there is no camera spin while the cursor roams free, nor a jump when the block ends.
+    private static Vector2 _frozenMousePosition;
+
     private static Vector2 _mousePosition;
     private static Vector2 _mouseScrollDelta;
 
@@ -80,15 +90,18 @@ public static class Input
     /// Gets the mouse position in window pixels, with the origin at the top-left.
     /// </summary>
     /// <remarks>
-    /// Stays live even while the engine has captured input, so consumers that track a previous
-    /// position (e.g. mouse-look) don't jump when capture ends.
+    /// Returns the frozen position while input is blocked — the engine owns input (dev console or
+    /// debugger open) or the editor suppresses it (Game panel not focused). Freezing is what keeps a
+    /// game's mouse-look still while the console has the cursor: the hardware cursor is released and
+    /// roams free, and a live position would feed that roaming straight into the camera as delta. The
+    /// position is restored on release, so the first frame back sees a zero delta and no jump.
     /// </remarks>
-    public static Vector2 MousePosition => _mousePosition;
+    public static Vector2 MousePosition => InputBlocked ? _frozenMousePosition : _mousePosition;
 
     /// <summary>
     /// Gets the mouse wheel movement accumulated during the current frame.
     /// </summary>
-    public static Vector2 MouseScrollDelta => _engineCaptured ? Vector2.Zero : _mouseScrollDelta;
+    public static Vector2 MouseScrollDelta => InputBlocked ? Vector2.Zero : _mouseScrollDelta;
 
     /// <summary>
     /// Gets or sets whether the cursor is locked and hidden.
@@ -105,7 +118,9 @@ public static class Input
         set
         {
             _desiredCursorLocked = value;
-            if (!_engineCaptured)
+            // Don't apply cursor lock while input is blocked (engine console or editor Game panel
+            // not focused). The editor restores the desired state when the Game panel gains focus.
+            if (!InputBlocked)
             {
                 ApplyCursorMode(value);
             }
@@ -116,6 +131,64 @@ public static class Input
     /// Gets whether the engine currently owns input (cursor forced free, game input withheld).
     /// </summary>
     internal static bool EngineCaptured => _engineCaptured;
+
+    /// <summary>
+    /// Suppresses all game input reads without touching the cursor lock state. Used by the editor
+    /// when the Game panel does not have focus, so WASD / mouse-look do not affect the game while
+    /// the user is working in the Scene view or other panels. Idempotent; freezes MousePosition on
+    /// the transition to suppressed so the game's delta tracking stays in sync.
+    /// </summary>
+    internal static bool GameInputSuppressed
+    {
+        get => _gameFocusCapture;
+        set
+        {
+            if (_gameFocusCapture == value) return;
+            bool wasBlocked = InputBlocked;
+            _gameFocusCapture = value;
+            UpdateMouseFreeze(wasBlocked);
+        }
+    }
+
+    // Combined gate: any form of capture blocks all input reads.
+    private static bool InputBlocked => _engineCaptured || _gameFocusCapture;
+
+    // Freezes MousePosition when a block begins and restores it when the last block ends. Called after
+    // either capture flag changes, with the blocked state as it was before the change.
+    //
+    // Freezing on entry keeps the game's delta tracking in sync: while blocked the cursor is free, so
+    // _mousePosition keeps absorbing absolute OS move events that have nothing to do with mouse-look.
+    // Restoring on exit makes the first unblocked delta zero — without it, _mousePosition holds a stale
+    // absolute screen coordinate and the camera snaps.
+    private static void UpdateMouseFreeze(bool wasBlocked)
+    {
+        bool blocked = InputBlocked;
+        if (blocked == wasBlocked)
+        {
+            return;
+        }
+
+        if (blocked)
+        {
+            _frozenMousePosition = _mousePosition;
+        }
+        else
+        {
+            _mousePosition = _frozenMousePosition;
+        }
+    }
+
+    /// <summary>
+    /// Forces the cursor free without altering the game's <see cref="CursorLocked"/> request.
+    /// Used by the editor when the Game panel loses input focus.
+    /// </summary>
+    internal static void EditorReleaseCursor() => ApplyCursorMode(false);
+
+    /// <summary>
+    /// Re-applies the game's last cursor-lock request.
+    /// Used by the editor when the Game panel regains input focus.
+    /// </summary>
+    internal static void EditorRestoreCursor() => ApplyCursorMode(_desiredCursorLocked);
 
     /// <summary>
     /// Sets whether the engine owns input. While captured the cursor is forced free/visible and the
@@ -130,7 +203,9 @@ public static class Input
             return;
         }
 
+        bool wasBlocked = InputBlocked;
         _engineCaptured = captured;
+        UpdateMouseFreeze(wasBlocked);
         ApplyCursorMode(captured ? false : _desiredCursorLocked);
     }
 
@@ -156,76 +231,82 @@ public static class Input
     /// is pinned in place.
     /// </summary>
     /// <param name="delta">The relative motion since the last frame, in pixels.</param>
-    internal static void AddMouseMotion(Vector2 delta) => _mousePosition += delta;
+    internal static void AddMouseMotion(Vector2 delta)
+    {
+        // Skip accumulation while input is blocked (console/debugger open, or the editor's Game panel
+        // unfocused): the cursor is unlocked and free, so there is no meaningful locked-cursor motion to
+        // track. Keeping _mousePosition frozen ensures the game's _lastMouse delta stays in sync.
+        if (!InputBlocked) _mousePosition += delta;
+    }
 
     /// <summary>
     /// Returns whether the key is currently held down.
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> while the key is down.</returns>
-    public static bool GetKey(Key key) => !_engineCaptured && DownKeys.Contains(key);
+    public static bool GetKey(Key key) => !InputBlocked && DownKeys.Contains(key);
 
     /// <summary>
     /// Returns whether the key was pressed during this frame.
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> on the frame the key goes down.</returns>
-    public static bool GetKeyDown(Key key) => !_engineCaptured && PressedThisFrame.Contains(key);
+    public static bool GetKeyDown(Key key) => !InputBlocked && PressedThisFrame.Contains(key);
 
     /// <summary>
     /// Returns whether the key was released during this frame.
     /// </summary>
     /// <param name="key">The key to test.</param>
     /// <returns><see langword="true"/> on the frame the key goes up.</returns>
-    public static bool GetKeyUp(Key key) => !_engineCaptured && ReleasedThisFrame.Contains(key);
+    public static bool GetKeyUp(Key key) => !InputBlocked && ReleasedThisFrame.Contains(key);
 
     /// <summary>
     /// Returns whether the mouse button is currently held down.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> while the button is down.</returns>
-    public static bool GetMouseButton(MouseButton button) => !_engineCaptured && DownButtons.Contains(button);
+    public static bool GetMouseButton(MouseButton button) => !InputBlocked && DownButtons.Contains(button);
 
     /// <summary>
     /// Returns whether the mouse button was pressed during this frame.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> on the frame the button goes down.</returns>
-    public static bool GetMouseButtonDown(MouseButton button) => !_engineCaptured && ButtonsPressedThisFrame.Contains(button);
+    public static bool GetMouseButtonDown(MouseButton button) => !InputBlocked && ButtonsPressedThisFrame.Contains(button);
 
     /// <summary>
     /// Returns whether the mouse button was released during this frame.
     /// </summary>
     /// <param name="button">The button to test.</param>
     /// <returns><see langword="true"/> on the frame the button goes up.</returns>
-    public static bool GetMouseButtonUp(MouseButton button) => !_engineCaptured && ButtonsReleasedThisFrame.Contains(button);
+    public static bool GetMouseButtonUp(MouseButton button) => !InputBlocked && ButtonsReleasedThisFrame.Contains(button);
 
     /// <summary>
     /// Returns whether the gamepad button is currently held down on any connected gamepad.
     /// </summary>
-    public static bool GetGamepadButton(GamepadButton button) => !_engineCaptured && DownGamepadButtons.Contains(button);
+    public static bool GetGamepadButton(GamepadButton button) => !InputBlocked && DownGamepadButtons.Contains(button);
 
     /// <summary>
     /// Returns whether the gamepad button was pressed during this frame on any connected gamepad.
     /// </summary>
-    public static bool GetGamepadButtonDown(GamepadButton button) => !_engineCaptured && GamepadButtonsPressedThisFrame.Contains(button);
+    public static bool GetGamepadButtonDown(GamepadButton button) => !InputBlocked && GamepadButtonsPressedThisFrame.Contains(button);
 
     /// <summary>
     /// Returns whether the gamepad button was released during this frame on any connected gamepad.
     /// </summary>
-    public static bool GetGamepadButtonUp(GamepadButton button) => !_engineCaptured && GamepadButtonsReleasedThisFrame.Contains(button);
+    public static bool GetGamepadButtonUp(GamepadButton button) => !InputBlocked && GamepadButtonsReleasedThisFrame.Contains(button);
 
     /// <summary>
     /// Returns whether the gamepad button is currently held down on a specific gamepad.
     /// </summary>
     public static bool GetGamepadButton(int gamepadIndex, GamepadButton button) 
-        => !_engineCaptured && _gamepadButtonsByIndex.TryGetValue((gamepadIndex, button), out bool down) && down;
+        => !InputBlocked && _gamepadButtonsByIndex.TryGetValue((gamepadIndex, button), out bool down) && down;
 
     /// <summary>
     /// Gets the current value of a gamepad axis for a specific gamepad. Returns 0 if disconnected or centered.
     /// </summary>
     public static float GetGamepadAxis(int gamepadIndex, GamepadAxis axis)
-        => _engineCaptured ? 0f : (_gamepadAxes.TryGetValue((gamepadIndex, axis), out float val) ? val : 0f);
+        => InputBlocked ? 0f : (_gamepadAxes.TryGetValue((gamepadIndex, axis), out float val) ? val : 0f);
 
     private static float GetGamepadAxisAnyIndex(GamepadAxis axis)
     {
@@ -260,7 +341,7 @@ public static class Input
     /// <returns><see langword="true"/> while any bound key/button is down.</returns>
     public static bool GetAction(string action)
     {
-        if (_engineCaptured)
+        if (InputBlocked)
         {
             return false;
         }
@@ -297,7 +378,7 @@ public static class Input
     /// <returns><see langword="true"/> on the frame the action goes active.</returns>
     public static bool GetActionDown(string action)
     {
-        if (_engineCaptured)
+        if (InputBlocked)
         {
             return false;
         }
@@ -338,7 +419,7 @@ public static class Input
     /// <returns><see langword="true"/> on the frame the action goes inactive.</returns>
     public static bool GetActionUp(string action)
     {
-        if (_engineCaptured)
+        if (InputBlocked)
         {
             return false;
         }
@@ -588,6 +669,8 @@ public static class Input
         _customActionsReleasedThisFrame.Clear();
         _mousePosition = Vector2.Zero;
         _mouseScrollDelta = Vector2.Zero;
+        _frozenMousePosition = Vector2.Zero;
+        _gameFocusCapture = false;
         _actions.Clear();
         _defaults.Clear();
         _engineCaptured = false;

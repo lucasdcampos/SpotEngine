@@ -80,8 +80,16 @@ Two surfaces control the final image, and they have different jobs:
   resolution. By default the engine renders in HDR with a full, tasteful default look (ACES tone
   mapping, FXAA, gated bloom, a faint vignette) even with no per-scene component present.
 - **A Post Processing component** is the *per-scene artistic* control: add it to a scene to customize
-  that look — tone mapping, bloom, vignette, and so on. Adding it is about *customizing* the look,
-  not switching quality on.
+  that look — tone mapping, bloom, vignette, color grading LUT, and so on. Adding it is about *customizing*
+  the look, not switching quality on.
+
+### Color grading LUT
+
+The Post Processing component accepts a **2D LUT texture** in horizontal-strip format (the standard
+Unity-style LUT: 256 × 16 pixels, encoding a 16³ grading cube). Enable **Enable Lut**, assign a `.png`
+or `.sptex` LUT asset to the **Lut Texture** slot, and dial **Lut Intensity** between 0 (no grading) and
+1 (full grade). The LUT is sampled after tone-mapping and gamma correction, so it operates in display
+space — the same domain LUT tools like Photoshop and DaVinci Resolve export to.
 
 This split follows the engine's convention that graphics are tuned through global settings and a few
 existing components rather than scattered ad-hoc knobs.
@@ -120,7 +128,39 @@ the directional shadow pass (there tested against the light's frustum, so off-ma
 too). Culling is conservative — it never drops something actually on screen. Skinned meshes have their
 bind-pose bounds padded first, so animation can never pop a limb out of view. The `RendererDebug`
 surface exposes `VisibleMeshCount` / `CulledMeshCount` (updated each frame) and a
-`DisableFrustumCulling` toggle for A/B comparison.
+`DisableFrustumCulling` toggle for A/B comparison. What survives this test then faces occlusion culling
+below.
+
+**Occlusion culling.** Frustum culling only removes what is off screen; a wall's worth of geometry can
+still sit in view and be drawn for nothing. Tick **Occluder** on a mesh renderer and the engine starts
+dropping what that mesh hides. Each frame the occluders on screen are rasterized into a small **software
+depth buffer** on the CPU (256 px wide by default), and every other mesh is then culled when the box it
+covers is entirely behind what that buffer already holds. It is pure CPU work through and through — no
+GPU queries, no frame of latency, nothing to bake — so it behaves identically on the desktop and WebGL2
+backends, and it is covered by ordinary unit tests.
+
+The test is **conservative in both directions**: a pixel is written only when an occluder covers it
+whole, at that occluder's farthest depth within the pixel, while a candidate is measured by its nearest
+depth over a screen rectangle rounded outward, and is dropped only when *every* pixel of that rectangle
+is already blocked. A coarse buffer therefore means culling slightly less, never culling something
+visible. Whole faces are rasterized at once rather than as triangle pairs, since a conservative test
+would otherwise leave a one-pixel seam along each shared diagonal — and one unwritten pixel keeps a
+candidate alive.
+
+What an occluder contributes is its **bounding box**, not its triangles, which is what keeps the cost
+flat (twelve triangles apiece) no matter how detailed the model is. That makes the flag an assertion
+about shape: mark geometry whose box is solid all the way through — a wall, a floor slab, a closed
+crate, a cliff — and not something you can see into or past, like a hollow building shell, a doorway
+frame, a fence or a tree, whose box would cover the opening and hide what should show through it.
+Skinned meshes (they leave their bind pose) and see-through ones (alpha or water) are ignored as
+occluders even when flagged. Up to 32 occluders are rasterized per frame, the largest on screen first;
+ones covering less than about 0.15% of the screen are skipped as not worth the fill.
+
+Global knobs are `RenderSettings.OcclusionCulling` (**on by default** — it costs nothing in a scene that
+marks no occluders) and `RenderSettings.OcclusionBufferWidth`. The `occlusion` console command toggles it
+and prints what the last pass culled, `stats` includes the same counts, and the editor's Profiler panel
+shows drawn / off-screen / occluded meshes with a checkbox per stage for A/B'ing. `RendererDebug` carries
+the counters (`OccludedMeshCount`, `OccluderCount`) and a `DisableOcclusionCulling` debug override.
 
 **GPU instancing.** After culling, standard (non-water) rigid meshes are grouped by mesh + material and
 drawn with **instanced draw calls** — one call per group, however many copies it holds — instead of one

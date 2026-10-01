@@ -11,11 +11,12 @@ using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 using Spot.Events;
+using Spot.DebugUI.Undo;
 
 namespace Spot.Editor;
 
 
-public class OpenSceneData
+public class OpenSceneData : IUndoDocument
 {
     public Scene Scene = new();
     public string? FilePath;
@@ -23,12 +24,13 @@ public class OpenSceneData
     public bool IsDirty = true;
     public int DirtyCheckCounter = 0;
 
-    // Undo/redo history for this scene tab. Snapshots are full-scene JSON (the same serialization the
-    // dirty-check uses). UndoBaseline is the last "settled" state; edits push the previous baseline onto
-    // UndoStack. Lists (not Stack) so the oldest entry can be dropped once MaxUndo is exceeded.
-    public string? UndoBaseline;
-    public readonly List<string> UndoStack = new();
-    public readonly List<string> RedoStack = new();
+    /// <inheritdoc />
+    public long CleanStamp { get; set; }
+
+    // The scene as it stood after the last change the undo history knows about. The periodic check
+    // compares the scene against this, so anything that moved without going through the history is
+    // caught and recorded as a coarse entry rather than silently becoming un-undoable.
+    public string? LastPushSnapshot;
     public ViewportPanel ViewportPanel;
     public Framebuffer Framebuffer;
     public Framebuffer CameraPreviewFramebuffer;
@@ -60,7 +62,7 @@ public class OpenSceneData
 
 // One open UI document (a .sptui asset), shown as its own dockable tab. Mirrors OpenSceneData: the panel owns
 // the offscreen framebuffer it renders into, and the tab closes via its title-bar 'x'.
-public sealed class UIDocumentData
+public sealed class UIDocumentData : IUndoDocument
 {
     public required Spot.UI.UIRoot Document;
     public required string Path;
@@ -69,13 +71,17 @@ public sealed class UIDocumentData
     public bool FirstFrame = true;
     public bool FocusNextFrame = true;
 
+    /// <inheritdoc />
+    public long CleanStamp { get; set; }
+
     public void Dispose() => Panel.Dispose();
 }
 
 public enum EditorState
 {
     Edit,
-    Play
+    Play,
+    Paused
 }
 
 public class EditorScene : Scene
@@ -99,6 +105,10 @@ public class EditorScene : Scene
 
     private readonly EditorContext _context = new();
 
+    // The editor's single undo history. One history for the whole editor (not one per scene tab) so
+    // Ctrl+Z always takes back the last thing the user did, whichever panel they did it in.
+    private readonly UndoHistory _history = EditorHistory.Current;
+
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
     private readonly ViewportPanel _gamePanel;
@@ -106,6 +116,9 @@ public class EditorScene : Scene
     private readonly AssetBrowserPanel _assetBrowserPanel;
     private readonly ProjectSettingsPanel _projectSettingsPanel;
     private readonly UIHierarchyPanel _uiHierarchyPanel;
+    private readonly ProfilerPanel _profilerPanel = new();
+    private readonly HistoryPanel _historyPanel;
+    private readonly Spot.DebugUI.Panels.AudioMixerPanel _audioMixerPanel = new();
 
     // Open UI documents, each shown as its own dockable tab (like scenes). The active one drives the shared
     // Hierarchy/Inspector while it is focused.
@@ -136,8 +149,16 @@ public class EditorScene : Scene
     private bool _showInspector = true;
     private uint _lastGameDockId;
     private bool _showConsole = true;
+
+    // Set when something asks for the console (the ' key, routed here because the editor owns the
+    // console's window). Consumed by the next ImGui pass, which reveals the panel, raises its dock tab
+    // and puts the caret in the prompt.
+    private bool _focusConsoleRequested;
     private bool _showAssetBrowser = true;
     private bool _showProjectSettings = false;
+    private bool _showProfiler = false;
+    private bool _showAudioMixer = false;
+    private bool _showHistory = false;
 
     // When on, a detected script edit triggers a rebuild+reload automatically once edits settle; otherwise the
     // user reloads from Project > Reload Scripts (Ctrl+R). The settle timestamp debounces bursts of file events.
@@ -162,7 +183,29 @@ public class EditorScene : Scene
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
         _uiHierarchyPanel = new UIHierarchyPanel(_context);
+        _historyPanel = new HistoryPanel(_history);
         _assetBrowserPanel.OnAssetOpened += OpenAsset;
+
+        // Undo wiring: the history restores the selection around each action (so undoing a delete also
+        // re-selects what came back), and the tracker records field edits into this same history.
+        _history.Selection = new ContextSelectionStore(_context);
+        UndoTracker.History = _history;
+
+        // Panels record actions without knowing about scene tabs, so tell the history how to map a
+        // scene back to the tab that owns it — that is what puts the "*" on the right tab.
+        EditorHistory.SceneDocumentResolver =
+            scene => _openScenes.FirstOrDefault(s => ReferenceEquals(s.Scene, scene));
+
+        // Any history movement leaves the catch-all's baselines out of date. Without this, a precise
+        // action recorded by a panel would be followed moments later by the periodic check noticing the
+        // same change and recording a second, coarse entry for it — costing the user two undos for one
+        // edit. Flagged rather than recomputed here so a multi-step jump re-serializes once, not once
+        // per step, and so it can reuse the serialization the check already performs.
+        _history.Changed += () => _baselinesStale = true;
+
+        // The mixer edits AudioMixer live; the bus layout is project data, so an edit writes it straight to the
+        // .sptproj (there is no manual "Save Project" action, matching Project Settings).
+        _audioMixerPanel.LayoutChanged = SaveAudioMixerLayout;
         Spot.DebugUI.UI.WidgetInspector.OpenDocumentRequested = OpenUIDocument;
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
@@ -184,10 +227,28 @@ public class EditorScene : Scene
         // Intercept window-close requests so we can confirm unsaved changes first.
         Spot.Core.Application.Instance.CanClose = CanCloseApp;
 
+        // The editor docks the console as a native panel, so take ownership of its window: the engine
+        // then stops drawing its own floating "Console" (ImGui would merge the two by name and draw the
+        // body — prompt included — twice) and stops capturing input from the console's open state, which
+        // in the editor had no way to be dismissed and left the game's input dead. The ' key now reveals
+        // and focuses the docked panel instead.
+        Spot.Core.Application.Instance.Console.SetHost(FocusConsolePanel);
+
         _gameFramebuffer = new Framebuffer(1280, 720);
         _gamePanel.SetFramebuffer(_gameFramebuffer);
 
         LoadStartScene();
+    }
+
+    // Reveals the docked Console panel and hands it the keyboard, the editor's answer to the engine's
+    // "open the console" request (the ' key). Runs during event handling, before OnUpdate, so dropping the
+    // Game panel's input focus is picked up by the same frame's focus transition: the cursor is freed and
+    // game input suppressed, exactly as Escape does. Without that, keys typed into the prompt would also
+    // drive the game and the camera would stay on mouse-look.
+    private void FocusConsolePanel()
+    {
+        _focusConsoleRequested = true;
+        _gamePanelFocused = false;
     }
 
     // Routes a double-clicked asset to the right editor: scenes open as tabs, animator controllers open as
@@ -345,15 +406,35 @@ public class EditorScene : Scene
     }
 
     // The newest built <Name>.dll under the project's bin tree, or null when the project hasn't been built.
+    // Checks two locations because a project inside a solution whose Directory.Build.props sets
+    // BaseOutputPath may redirect builds to a sibling repo-level bin/<ProjectName>/ folder rather
+    // than the project-local bin/.
     private static string? FindProjectAssembly(Project project)
     {
-        string binDir = System.IO.Path.Combine(project.ProjectDirectory, "bin");
-        if (!System.IO.Directory.Exists(binDir))
+        string dllName = project.Config.Name + ".dll";
+
+        // 1. Project-local bin/ (standard layout for standalone projects).
+        string? found = FindNewestDll(System.IO.Path.Combine(project.ProjectDirectory, "bin"), dllName);
+        if (found != null) return found;
+
+        // 2. Sibling repo-level bin/<ProjectName>/ (Directory.Build.props with BaseOutputPath
+        //    = $(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\ redirects there).
+        string? parent = System.IO.Path.GetDirectoryName(
+            project.ProjectDirectory.TrimEnd(
+                System.IO.Path.DirectorySeparatorChar,
+                System.IO.Path.AltDirectorySeparatorChar));
+        if (parent != null)
         {
-            return null;
+            found = FindNewestDll(System.IO.Path.Combine(parent, "bin", project.Config.Name), dllName);
         }
 
-        var dlls = System.IO.Directory.GetFiles(binDir, project.Config.Name + ".dll", System.IO.SearchOption.AllDirectories);
+        return found;
+    }
+
+    private static string? FindNewestDll(string dir, string dllName)
+    {
+        if (!System.IO.Directory.Exists(dir)) return null;
+        var dlls = System.IO.Directory.GetFiles(dir, dllName, System.IO.SearchOption.AllDirectories);
         return System.Linq.Enumerable.FirstOrDefault(
             System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
     }
@@ -429,7 +510,7 @@ public class EditorScene : Scene
         var result = Spot.Build.ProjectBuilder.Build(
             project,
             Spot.Build.BuildPlatform.Windows,
-            onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
+            onOutput: LogBuildOutput,
             onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
             fastDebug: true);
 
@@ -620,6 +701,8 @@ public class EditorScene : Scene
         _showConsole = session.ShowConsole;
         _showAssetBrowser = session.ShowAssetBrowser;
         _showProjectSettings = session.ShowProjectSettings;
+        _showAudioMixer = session.ShowAudioMixer;
+        _showHistory = session.ShowHistory;
 
         return true;
     }
@@ -641,6 +724,8 @@ public class EditorScene : Scene
             ShowConsole = _showConsole,
             ShowAssetBrowser = _showAssetBrowser,
             ShowProjectSettings = _showProjectSettings,
+            ShowAudioMixer = _showAudioMixer,
+            ShowHistory = _showHistory,
         };
 
         foreach (var sceneData in _openScenes)
@@ -669,12 +754,53 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
-        // The game now runs in an external process, so the editor's copy of the scene
-        // should never process physics or scripts (UpdateRuntime). It just stays in edit mode.
         foreach (var sceneData in _openScenes)
         {
-            sceneData.Scene.OnUpdate(deltaTime);
-            sceneData.Scene.FlushDestroyed();
+            bool isActiveSim = _state != EditorState.Edit && sceneData == _activeSceneData;
+            if (isActiveSim)
+            {
+                // Gate game input to the Game panel. _gamePanelFocused is evaluated from the
+                // previous frame's ImGui pass (one-frame lag is imperceptible to the user).
+                // Handle focus transitions before setting suppression so cursor management runs
+                // while InputBlocked still matches the previous frame's state.
+                if (_gamePanelFocused != _prevGamePanelFocused)
+                {
+                    _prevGamePanelFocused = _gamePanelFocused;
+                    if (_gamePanelFocused)
+                    {
+                        // Gaining focus: unsuppress input first, then restore game's cursor lock.
+                        Spot.Core.Input.GameInputSuppressed = false;
+                        Spot.Core.Input.EditorRestoreCursor();
+                    }
+                    else
+                    {
+                        // Losing focus: release cursor while not yet suppressed, then suppress.
+                        Spot.Core.Input.EditorReleaseCursor();
+                        Spot.Core.Input.GameInputSuppressed = true;
+                    }
+                }
+                else
+                {
+                    // No transition: just maintain current suppression state.
+                    Spot.Core.Input.GameInputSuppressed = !_gamePanelFocused;
+                }
+
+                // In play mode: run the full system stack for the active scene.
+                if (!_isPlayPaused)
+                    sceneData.Scene.UpdateRuntime(deltaTime);
+                else if (_playStep)
+                {
+                    sceneData.Scene.UpdateRuntime(1f / 60f);
+                    _playStep = false;
+                }
+                // Paused with no step pending: freeze (do nothing).
+            }
+            else
+            {
+                // Edit mode (or non-active scene): lightweight tick — no scripts/physics.
+                sceneData.Scene.OnUpdate(deltaTime);
+                sceneData.Scene.FlushDestroyed();
+            }
         }
 
         if (_state == EditorState.Edit)
@@ -1027,6 +1153,11 @@ public class EditorScene : Scene
     }
     public override void OnImGuiRender()
     {
+        // Only edit-mode changes belong in the history. Panels still draw and still edit the live scene
+        // during play, but all of that is thrown away when play stops, so recording it would fill the
+        // history with entries that undo into state the user never authored.
+        _history.Enabled = _state == EditorState.Edit;
+
         HandleShortcuts();
 
         DrawMenuBar();
@@ -1123,19 +1254,26 @@ public class EditorScene : Scene
 
             if (open)
             {
-                // While the game runs in an external process the scene viewport is frozen: disable all
-                // camera/gizmo/selection input and paint a centered "running" notice over it.
-                bool playing = _state == EditorState.Play;
-                var viewportMin = ImGui.GetCursorScreenPos();
-                var viewportSize = ImGui.GetContentRegionAvail();
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: !playing && (isFocused || isHovered));
-                if (playing)
-                    DrawPlayingOverlay(viewportMin, viewportSize);
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
             }
             ImGui.End();
         }
 
-        // Remove closed scenes
+        // Remove closed scenes. Their history entries go too: an entry cannot be plucked out of the
+        // middle of the list (the rest would no longer replay in order), so closing a document discards
+        // the oldest entry touching it and everything newer. Undoing into a scene that is gone would be
+        // a write into a dead object.
+        foreach (var closing in _openScenes.Where(s => !s.IsOpen))
+        {
+            int dropped = _history.DiscardDocument(closing);
+            if (dropped > 0)
+            {
+                Spot.Core.Log.Info(
+                    "Closed a scene with {0} undo {1} in the history; they were discarded.",
+                    dropped, dropped == 1 ? "entry" : "entries");
+            }
+        }
+
         _openScenes.RemoveAll(s => !s.IsOpen);
         if (_activeSceneData is null || !_openScenes.Contains(_activeSceneData))
         {
@@ -1172,6 +1310,45 @@ public class EditorScene : Scene
                 var imageTopLeft = ImGui.GetCursorScreenPos();
                 _gamePanel.OnImGuiRender(handleInput: false);
 
+                bool playing = _state != EditorState.Edit;
+                var drawList = ImGui.GetWindowDrawList();
+
+                // Click-to-focus: while in play mode, clicking the Game panel gives it input focus.
+                // The cursor is free when the panel is not focused, so hover detection works normally.
+                bool gameWinHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.None);
+                if (playing && !_gamePanelFocused && gameWinHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    _gamePanelFocused = true;
+                }
+
+                // Overlay: "Click to control" when in play mode but the panel has no input focus.
+                if (playing && !_gamePanelFocused && size.X > 0 && size.Y > 0)
+                {
+                    const string clickMsg = "Click to control";
+                    var textSize = ImGui.CalcTextSize(clickMsg);
+                    var textPos = new Vector2(
+                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
+                        imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
+                    var pad = new Vector2(10.0f, 6.0f);
+                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
+                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), clickMsg);
+                }
+
+                // Overlay: subtle "Esc to release" hint at the bottom when the panel holds cursor lock.
+                if (playing && _gamePanelFocused && Spot.Core.Input.CursorLocked && size.X > 0 && size.Y > 0)
+                {
+                    const string escMsg = "Esc to release cursor";
+                    var textSize = ImGui.CalcTextSize(escMsg);
+                    var textPos = new Vector2(
+                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
+                        imageTopLeft.Y + size.Y - textSize.Y - 12.0f);
+                    var pad = new Vector2(8.0f, 4.0f);
+                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.40f)), 3.0f);
+                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.55f)), escMsg);
+                }
+
                 // Without an active primary camera nothing renders, leaving a blank Game view. Explain it
                 // instead of showing an unexplained black panel — a common first-time snag.
                 if (size.X > 0 && size.Y > 0 && gameScene != null && !gameScene.HasActivePrimaryCamera())
@@ -1182,7 +1359,6 @@ public class EditorScene : Scene
                         imageTopLeft.X + (size.X - textSize.X) * 0.5f,
                         imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
                     var pad = new Vector2(10.0f, 6.0f);
-                    var drawList = ImGui.GetWindowDrawList();
                     drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
                         ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
                     drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), msg);
@@ -1196,6 +1372,16 @@ public class EditorScene : Scene
             _inspectorPanel.OnImGuiRender(ref _showInspector);
         }
 
+        if (_focusConsoleRequested)
+        {
+            // Reveal the panel before it is submitted this frame, so focusing it by name lands on a live
+            // window: it raises the dock tab, and the console puts the caret in its prompt.
+            _focusConsoleRequested = false;
+            _showConsole = true;
+            ImGui.SetWindowFocus("Console");
+            Spot.Core.Application.Instance.Console.RequestInputFocus();
+        }
+
         if (_showConsole)
         {
             bool open = ImGui.Begin("Console", ref _showConsole, ImGuiWindowFlags.NoCollapse);
@@ -1207,6 +1393,16 @@ public class EditorScene : Scene
         }
 
         _projectSettingsPanel.OnImGuiRender(ref _showProjectSettings);
+
+        if (_showProfiler)
+        {
+            _profilerPanel.OnImGuiRender();
+        }
+
+        _audioMixerPanel.OnImGuiRender(ref _showAudioMixer);
+
+        _historyPanel.UnattributedChanges = _unattributedChanges;
+        _historyPanel.OnImGuiRender(ref _showHistory);
 
         if (_showAssetBrowser)
         {
@@ -1294,6 +1490,27 @@ public class EditorScene : Scene
             string title = Project.Active?.Config.Name ?? "Loading";
             LoadingScreen.Present(EditorThemeManager.Current.Palette, title, "Loading project...");
         }
+
+        // Prevent ImGui's backend from resetting the hardware cursor while the game holds a cursor
+        // lock. The fly-mode viewports manage this flag themselves (NoMouseCursorChange); here we
+        // apply the same guard for game-side cursor lock so the cursor stays hidden during play.
+        // Placed last so all viewport panels have already had their turn with the flag.
+        bool gameLocksCursor = _state != EditorState.Edit && _gamePanelFocused && Spot.Core.Input.CursorLocked;
+        if (gameLocksCursor)
+        {
+            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
+            _gameHeldImGuiLock = true;
+        }
+        else if (_gameHeldImGuiLock)
+        {
+            ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
+            _gameHeldImGuiLock = false;
+        }
+
+        // Last statement of the frame: commit a field edit whose interaction has finished, and otherwise
+        // refresh the selection baseline so the next recorded action knows what was selected when the
+        // user started it. Must come after every panel has drawn.
+        UndoTracker.EndFrame();
     }
 
     // ----- About dialog --------------------------------------------------------------------------
@@ -1627,7 +1844,6 @@ public class EditorScene : Scene
                 {
                     string destFile = System.IO.Path.Combine(targetDir, System.IO.Path.GetFileName(file));
                     System.IO.File.Copy(file, destFile, overwrite: true);
-                    Spot.Core.Log.CoreInfo($"Copied '{file}' to '{destFile}'");
                 }
                 else if (System.IO.Directory.Exists(file))
                 {
@@ -1646,6 +1862,7 @@ public class EditorScene : Scene
     public override void OnExit()
     {
         Spot.Core.Application.Instance.CanClose = null;
+        Spot.Core.Application.Instance.Console.SetHost(null);
         Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
         SaveSession();
 
@@ -1657,102 +1874,187 @@ public class EditorScene : Scene
         _context.ActiveScene?.OnExit();
     }
 
-    private System.Diagnostics.Process? _gameProcess;
+    // JSON snapshot of the active scene taken when Play is pressed; restored on Stop.
+    private string? _prePlaySnapshot;
+    private bool _isPlayPaused;
+    private bool _playStep;
+    private bool _gameHeldImGuiLock;
+    // Whether the Game panel currently has input focus (set by clicking into it).
+    // When false the game receives no keyboard/mouse input and the cursor is free.
+    private bool _gamePanelFocused;
+    private bool _prevGamePanelFocused;
 
     private void OnPlay()
     {
-        if (_state == EditorState.Edit && Spot.Core.Project.Active != null)
+        if (_state != EditorState.Edit || Project.Active == null || _activeSceneData == null) return;
+
+        // If no game assembly is loaded yet (first Play after a clean checkout, or the project has
+        // never been built), compile it now so scripts actually run. This is synchronous and blocks
+        // the UI for a normal incremental build (~1-3 s); subsequent plays use the cached DLL.
+        if (s_scriptHost.Assembly == null)
         {
-            if (!SaveAllDirtyWithPrompts()) return;
-
-            _state = EditorState.Play;
-            Spot.Core.Log.Info("Building project for Play...");
-
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                var result = Spot.Build.ProjectBuilder.Build(Spot.Core.Project.Active, Spot.Build.BuildPlatform.Windows,
-                    onOutput: msg => Spot.Core.Log.Info($"[Build] {msg}"),
-                    onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
-                    fastDebug: true);
-
-                if (result.Success)
-                {
-                    Spot.Core.Log.Info("Build succeeded. Launching game...");
-                    var exePath = System.IO.Path.Combine(result.OutputDir, Spot.Core.Project.Active.Config.Name + ".exe");
-                    var processInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = exePath,
-                        // Run from the build output (Build/play): the cooked Content/ and game.manifest live
-                        // there, staged next to the exe, so nothing needs to sit in the project root.
-                        WorkingDirectory = result.OutputDir,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    };
-
-                    _gameProcess = new System.Diagnostics.Process { StartInfo = processInfo };
-                    _gameProcess.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Info($"[Game] {e.Data}"); };
-                    _gameProcess.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Spot.Core.Log.Error($"[Game] {e.Data}"); };
-
-                    _gameProcess.EnableRaisingEvents = true;
-                    _gameProcess.Exited += (sender, e) =>
-                    {
-                        Spot.Core.Log.Info("Game process exited.");
-                        _gameProcess = null;
-                        _state = EditorState.Edit;
-                    };
-
-                    _gameProcess.Start();
-                    _gameProcess.BeginOutputReadLine();
-                    _gameProcess.BeginErrorReadLine();
-                }
-                else
-                {
-                    Spot.Core.Log.Error("Build failed. Cannot play.");
-                    _state = EditorState.Edit;
-                }
-            });
+            EnsureScriptsBuilt(Project.Active);
         }
+
+        // Drop any in-flight edit rather than recording it: play mode is about to replace this state.
+        UndoTracker.Abandon();
+
+        _prePlaySnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
+        _isPlayPaused = false;
+        _playStep = false;
+        _gamePanelFocused = false;
+        _prevGamePanelFocused = false;
+        _state = EditorState.Play;
+        _showGame = true;
+        Spot.Core.Log.Info("Entering play mode.");
     }
 
     private void OnStop()
     {
-        if (_state == EditorState.Play)
+        if (_state == EditorState.Edit || _activeSceneData == null) return;
+
+        var scene = _activeSceneData.Scene;
+        ScriptSystem.DestroyAll(scene);
+        foreach (var e in scene.View<AudioSourceComponent>())
         {
-            if (_gameProcess != null && !_gameProcess.HasExited)
+            var src = e.GetComponent<AudioSourceComponent>();
+            if (src.IsPlaying) src.Stop();
+        }
+        scene.TeardownPhysics();
+        RestoreSnapshot(_activeSceneData, _prePlaySnapshot!);
+        SyncSnapshotBaselines();
+        _prePlaySnapshot = null;
+        _isPlayPaused = false;
+        _gamePanelFocused = false;
+        _prevGamePanelFocused = false;
+        // Clear suppression first so CursorLocked can actually apply the cursor-free state.
+        Spot.Core.Input.GameInputSuppressed = false;
+        // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
+        Spot.Core.Input.CursorLocked = false;
+        _state = EditorState.Edit;
+        Spot.Core.Log.Info("Exited play mode.");
+    }
+
+    // Compiles the project scripts (dotnet build → bin/) and loads the resulting assembly so that
+    // ScriptResolver can instantiate game types. Called once on first Play when no assembly is loaded.
+    private void EnsureScriptsBuilt(Project project)
+    {
+        Spot.Core.Log.Info("Building project scripts for play mode...");
+
+        if (!BuildScriptsDll(project))
+        {
+            Spot.Core.Log.Error("Script build failed; game scripts will not run. See the console for build errors.");
+            return;
+        }
+
+        string? dll = FindProjectAssembly(project);
+        if (dll == null)
+        {
+            Spot.Core.Log.Error("Script build succeeded but the output DLL was not found under bin/. Cannot load scripts.");
+            return;
+        }
+
+        if (!s_scriptHost.Load(dll))
+        {
+            Spot.Core.Log.Error("Failed to load project scripts from '{0}'.", dll);
+            return;
+        }
+
+        // Re-resolve any ScriptInstance whose Instance is still null: the assembly is now available.
+        foreach (var sceneData in _openScenes)
+        {
+            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
             {
-                Spot.Core.Log.Info("Stopping game process...");
-                try { _gameProcess.Kill(); } catch { }
+                var comp = entity.GetComponent<ScriptComponent>();
+                foreach (ScriptInstance item in comp.Items)
+                {
+                    if (item.Instance == null)
+                    {
+                        item.Instance = ScriptResolver.Create(item.Guid, item.ClassName, entity);
+                    }
+                }
             }
-            _state = EditorState.Edit;
         }
     }
 
-    // Dims a scene viewport and centers a "game is running" notice over it while the game runs in an
-    // external process, so it's obvious the frozen, non-interactive view is expected (not a hang).
-    private static void DrawPlayingOverlay(Vector2 min, Vector2 size)
+    // Matches msbuild's trailing "    0 Warning(s)" / "    1 Error(s)" count lines, which carry the words
+    // "warning"/"error" without being diagnostics themselves.
+    private static readonly System.Text.RegularExpressions.Regex s_buildSummaryLine = new(
+        @"^\s*\d+\s+(Warning|Error)\(s\)\s*$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Mirrors a build line into the console, but only when it carries a diagnostic. msbuild narrates every
+    // build ("Determining projects to restore...", "<project> -> <path>", "Build succeeded.", the
+    // "0 Warning(s)" summary, "Time Elapsed ..."), which buries the console on every Play and every script
+    // reload while telling the user nothing: the editor already reports whether the build worked.
+    private static void LogBuildOutput(string line)
     {
-        if (size.X <= 0.0f || size.Y <= 0.0f)
-            return;
+        bool diagnostic =
+            (line.Contains("error", StringComparison.OrdinalIgnoreCase)
+             || line.Contains("warning", StringComparison.OrdinalIgnoreCase))
+            && !s_buildSummaryLine.IsMatch(line);
 
-        var palette = EditorThemeManager.Current.Palette;
-        var drawList = ImGui.GetWindowDrawList();
-        drawList.AddRectFilled(min, min + size, ImGui.GetColorU32(new Vector4(0.04f, 0.04f, 0.06f, 0.72f)));
+        if (diagnostic)
+        {
+            Spot.Core.Log.Info("[Build] {0}", line);
+        }
+    }
 
-        Vector2 center = min + size * 0.5f;
+    // Runs `dotnet build` on the project's .csproj so scripts compile into bin/. Returns true on
+    // success. Synchronous — the caller's frame loop freezes for the duration of the build.
+    private static bool BuildScriptsDll(Project project)
+    {
+        if (string.IsNullOrEmpty(project.ProjectDirectory))
+        {
+            return false;
+        }
 
-        var font = ImGui.GetFont();
-        const string title = "Game is running";
-        const float titleSize = 30.0f;
-        Vector2 titleDim = font.CalcTextSizeA(titleSize, float.MaxValue, 0.0f, title);
-        drawList.AddText(font, titleSize, new Vector2(center.X - titleDim.X * 0.5f, center.Y - titleDim.Y - 2.0f),
-            ImGui.GetColorU32(palette.Text), title);
+        // Keep EngineBin in sync with the running engine so scripts compile against the current API.
+        Spot.Build.ProjectGenerator.Generate(project);
 
-        const string subtitle = "Press Stop to return to the editor";
-        Vector2 subDim = ImGui.CalcTextSize(subtitle);
-        drawList.AddText(new Vector2(center.X - subDim.X * 0.5f, center.Y + 6.0f),
-            ImGui.GetColorU32(palette.TextDisabled), subtitle);
+        string csprojFile = project.Config.Name + ".csproj";
+        var processInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"build \"{csprojFile}\" -c Debug --nologo",
+            WorkingDirectory = project.ProjectDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        try
+        {
+            using var process = new System.Diagnostics.Process { StartInfo = processInfo };
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    LogBuildOutput(e.Data);
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    Spot.Core.Log.Error("[Build] {0}", e.Data);
+            };
+
+            if (!process.Start())
+            {
+                Spot.Core.Log.Error("Failed to start dotnet build process.");
+                return false;
+            }
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            process.WaitForExit();
+            return process.ExitCode == 0;
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Error("Script build threw an exception: {0}", ex.Message);
+            return false;
+        }
     }
 
     // Rebuilds the default docked arrangement: Hierarchy and Inspector on the right,
@@ -1771,6 +2073,8 @@ public class EditorScene : Scene
 
         ImGuiDock.igDockBuilderDockWindow("Hierarchy", rightTop);
         ImGuiDock.igDockBuilderDockWindow("Properties", rightBottom);
+        // Tabbed behind Properties: it is a reference view, wanted on demand rather than always open.
+        ImGuiDock.igDockBuilderDockWindow($"{Spot.DebugUI.UI.EditorIcons.Rotate}  History", rightBottom);
         ImGuiDock.igDockBuilderDockWindow("Asset Browser", bottomLeft);
         ImGuiDock.igDockBuilderDockWindow("Console", bottomRight);
 
@@ -1901,10 +2205,17 @@ public class EditorScene : Scene
 
         if (ImGui.BeginMenu("Edit"))
         {
-            bool canUndo = _state == EditorState.Edit && (_activeSceneData?.UndoStack.Count ?? 0) > 0;
-            bool canRedo = _state == EditorState.Edit && (_activeSceneData?.RedoStack.Count ?? 0) > 0;
-            if (ImGui.MenuItem("Undo", "Ctrl+Z", false, canUndo)) Undo();
-            if (ImGui.MenuItem("Redo", "Ctrl+Y", false, canRedo)) Redo();
+            bool canUndo = _state == EditorState.Edit && _history.CanUndo;
+            bool canRedo = _state == EditorState.Edit && _history.CanRedo;
+
+            // Naming the action is most of what makes undo feel trustworthy: the user can see what
+            // Ctrl+Z is about to take back before pressing it.
+            string undoLabel = canUndo ? $"Undo {_history.UndoLabel}" : "Undo";
+            string redoLabel = canRedo ? $"Redo {_history.RedoLabel}" : "Redo";
+            if (ImGui.MenuItem(undoLabel, "Ctrl+Z", false, canUndo)) Undo();
+            if (ImGui.MenuItem(redoLabel, "Ctrl+Shift+Z", false, canRedo)) Redo();
+            ImGui.Separator();
+            ImGui.MenuItem("History", "Ctrl+H", ref _showHistory);
             ImGui.EndMenu();
         }
 
@@ -1917,6 +2228,9 @@ public class EditorScene : Scene
                 ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
                 ImGui.MenuItem("Asset Browser", "", ref _showAssetBrowser);
+                ImGui.MenuItem("Profiler", "", ref _showProfiler);
+                ImGui.MenuItem("Audio Mixer", "Ctrl+M", ref _showAudioMixer);
+                ImGui.MenuItem("History", "Ctrl+H", ref _showHistory);
                 ImGui.EndMenu();
             }
 
@@ -1956,60 +2270,119 @@ public class EditorScene : Scene
 
 
 
-    // Draws the centered play/stop icon button inside the main menu bar.
+    // Draws the centered play / pause / step toolbar inside the main menu bar.
     private void DrawPlayControl()
     {
         var palette = EditorThemeManager.Current.Palette;
         float size = ImGui.GetFrameHeight();
+        const float gap = 2.0f;
+        float totalWidth = size * 3 + gap * 2;
 
-        // Center the control horizontally in the menu bar (unless the menus already reach past it).
-        float centerX = (ImGui.GetWindowWidth() - size) * 0.5f;
+        // Center the three-button group; clamp so we never overlap existing menu items.
+        float centerX = (ImGui.GetWindowWidth() - totalWidth) * 0.5f;
         if (centerX > ImGui.GetCursorPosX())
-        {
             ImGui.SetCursorPosX(centerX);
-        }
 
         var drawList = ImGui.GetWindowDrawList();
-        Vector2 p0 = ImGui.GetCursorScreenPos();
-        ImGui.InvisibleButton("##playstop", new Vector2(size, size));
-        bool hovered = ImGui.IsItemHovered();
-        bool clicked = ImGui.IsItemClicked(ImGuiMouseButton.Left);
+        bool playing = _state != EditorState.Edit;
 
-        if (hovered)
+        // ── button helper ──────────────────────────────────────────────
+        // Returns (hovered, clicked) for one icon button at current cursor.
+        static (bool hovered, bool clicked) IconButton(string id, float sz)
         {
-            drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+            ImGui.InvisibleButton(id, new Vector2(sz, sz));
+            return (ImGui.IsItemHovered(), ImGui.IsItemClicked(ImGuiMouseButton.Left));
         }
 
         float pad = size * 0.22f;
-        if (_state == EditorState.Edit)
+
+        // ── 1. Play / Stop ─────────────────────────────────────────────
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        var (h0, c0) = IconButton("##play", size);
+        if (h0) drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        if (!playing)
         {
-            // Play: right-pointing triangle.
-            uint color = ImGui.GetColorU32(palette.Text);
-            Vector2 a = p0 + new Vector2(pad, pad);
-            Vector2 b = p0 + new Vector2(pad, size - pad);
-            Vector2 c = p0 + new Vector2(size - pad, size * 0.5f);
-            drawList.AddTriangleFilled(a, b, c, color);
-            if (clicked) OnPlay();
+            // Green triangle: Play
+            uint col = ImGui.GetColorU32(new Vector4(0.35f, 0.85f, 0.45f, 1.0f));
+            drawList.AddTriangleFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(pad, size - pad), p0 + new Vector2(size - pad, size * 0.5f), col);
+            if (c0) OnPlay();
+            if (h0) ImGui.SetTooltip("Play");
         }
         else
         {
-            // Stop: filled square.
-            uint color = ImGui.GetColorU32(palette.LogError);
-            drawList.AddRectFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(size - pad, size - pad), color, 2.0f);
-            if (clicked) OnStop();
+            // Red square: Stop
+            uint col = ImGui.GetColorU32(palette.LogError);
+            drawList.AddRectFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(size - pad, size - pad), col, 2.0f);
+            if (c0) OnStop();
+            if (h0) ImGui.SetTooltip("Stop");
         }
 
-        if (hovered)
+        ImGui.SameLine(0, gap);
+
+        // ── 2. Pause / Resume ──────────────────────────────────────────
+        Vector2 p1 = ImGui.GetCursorScreenPos();
+        var (h1, c1) = IconButton("##pause", size);
+        uint pauseCol = playing
+            ? ImGui.GetColorU32(palette.Text)
+            : ImGui.GetColorU32(palette.TextDisabled);
+        if (h1 && playing) drawList.AddRectFilled(p1, p1 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        if (!_isPlayPaused)
         {
-            ImGui.SetTooltip(_state == EditorState.Edit ? "Play" : "Stop");
+            // Two vertical bars (pause icon).
+            float bw = size * 0.18f;
+            float bh = size - pad * 2;
+            drawList.AddRectFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad + bw, pad + bh), pauseCol, 1.0f);
+            drawList.AddRectFilled(p1 + new Vector2(size - pad - bw, pad), p1 + new Vector2(size - pad, pad + bh), pauseCol, 1.0f);
+            if (c1 && playing) OnPause();
+            if (h1) ImGui.SetTooltip(playing ? "Pause (Ctrl+P)" : "Pause (not playing)");
         }
+        else
+        {
+            // Right-pointing triangle (resume icon).
+            drawList.AddTriangleFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad, size - pad), p1 + new Vector2(size - pad, size * 0.5f), pauseCol);
+            if (c1 && playing) OnResume();
+            if (h1) ImGui.SetTooltip("Resume (Ctrl+P)");
+        }
+
+        ImGui.SameLine(0, gap);
+
+        // ── 3. Step ────────────────────────────────────────────────────
+        Vector2 p2 = ImGui.GetCursorScreenPos();
+        bool stepEnabled = playing && _isPlayPaused;
+        var (h2, c2) = IconButton("##step", size);
+        uint stepCol = stepEnabled ? ImGui.GetColorU32(palette.Text) : ImGui.GetColorU32(palette.TextDisabled);
+        if (h2 && stepEnabled) drawList.AddRectFilled(p2, p2 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        // Step icon: small triangle + vertical bar (>|)
+        float sw = size * 0.18f;
+        drawList.AddTriangleFilled(p2 + new Vector2(pad, pad), p2 + new Vector2(pad, size - pad), p2 + new Vector2(size - pad - sw - gap, size * 0.5f), stepCol);
+        drawList.AddRectFilled(p2 + new Vector2(size - pad - sw, pad), p2 + new Vector2(size - pad, size - pad), stepCol, 1.0f);
+        if (c2 && stepEnabled) OnStep();
+        if (h2) ImGui.SetTooltip(stepEnabled ? "Step (advance one frame)" : "Step (pause first)");
+    }
+
+    private void OnPause()
+    {
+        if (_state == EditorState.Play) _isPlayPaused = true;
+    }
+
+    private void OnResume()
+    {
+        if (_state == EditorState.Play) _isPlayPaused = false;
+    }
+
+    private void OnStep()
+    {
+        if (_state == EditorState.Play && _isPlayPaused) _playStep = true;
     }
 
     // Keyboard shortcuts handled once per frame (editor/edit mode only).
     private void HandleShortcuts()
     {
         bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
+        if ((_state == EditorState.Edit || _state == EditorState.Play) && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
         {
             // Save what you're working in: a focused UI document tab, otherwise the active scene.
             if (_context.HierarchyTarget == HierarchyTarget.UI && _activeUIDocument != null)
@@ -2021,17 +2394,60 @@ public class EditorScene : Scene
         {
             NewScene();
         }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Z))
+        // Undo/redo. Read through ImGui so a held Ctrl+Z repeats, and skip entirely while a text field
+        // has focus so the field keeps ImGui's own text undo instead of the scene rolling back under it.
+        // Shift is tested first, or Ctrl+Shift+Z would trigger both branches and cancel itself out.
+        var io = ImGui.GetIO();
+        if (_state == EditorState.Edit && io.KeyCtrl && !io.WantTextInput)
         {
-            Undo();
-        }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Y))
-        {
-            Redo();
+            if (io.KeyShift)
+            {
+                if (ImGui.IsKeyPressed(ImGuiKey.Z, true)) Redo();
+            }
+            else if (ImGui.IsKeyPressed(ImGuiKey.Z, true))
+            {
+                Undo();
+            }
+            else if (ImGui.IsKeyPressed(ImGuiKey.Y, true))
+            {
+                Redo();
+            }
         }
         if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
         {
             ReloadScripts();
+        }
+
+        // Ctrl+M toggles the Audio Mixer in both edit and play mode: hearing the mix while the game runs is
+        // most of the point of having it.
+        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.M))
+        {
+            _showAudioMixer = !_showAudioMixer;
+        }
+
+        // Ctrl+H toggles the History panel.
+        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.H))
+        {
+            _showHistory = !_showHistory;
+        }
+
+        // Play-mode controls: Ctrl+P toggles pause/resume; Ctrl+Right steps one frame while paused.
+        // (Space is intentionally NOT used here — it's commonly bound to game actions like jump.)
+        if (_state == EditorState.Play)
+        {
+            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.P))
+            {
+                if (_isPlayPaused) OnResume(); else OnPause();
+            }
+            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Right))
+                OnStep();
+
+            // Escape releases the Game panel's input focus (frees the cursor back to the editor).
+            // Use ImGui's key check so it fires even while the game holds cursor lock.
+            if (_gamePanelFocused && ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+            {
+                _gamePanelFocused = false;
+            }
         }
 
         // Auto-reload: once script edits have settled (a short debounce past the last file event) and the user
@@ -2048,67 +2464,89 @@ public class EditorScene : Scene
     // (or an editor writing a temp file then renaming) collapses into a single rebuild.
     private const long ScriptReloadDebounceMs = 600;
 
-    // The most entries kept per scene's undo history.
-    private const int MaxUndo = 100;
-
     // True while the user is mid-interaction (dragging the gizmo, or editing an ImGui field), used to
     // coalesce a continuous edit into a single history entry: snapshots are only committed once the
     // interaction settles.
     private static bool EditorIsInteracting() =>
         ImGui.GetIO().MouseDown[0] || ImGui.IsAnyItemActive();
 
-    // Records a history entry when the scene has changed since the last settled baseline. Skipped while
-    // the user is still interacting, so a continuous edit (a gizmo drag, a slider) collapses into one entry.
-    private static void CaptureUndoState(OpenSceneData sceneData, string current)
+    // How many unattributed scene changes the catch-all has had to record. Shown in the History panel
+    // as the migration signal: every mutation site routed through a real action drops this toward zero,
+    // and a non-zero count in a normal editing session names a gap worth closing.
+    private int _unattributedChanges;
+
+    // The gap notice is told once per session and then stays quiet: it is a migration signal, not news
+    // the user needs repeated. The running count lives in the History panel's footer instead.
+    private bool _gapNoticeShown;
+
+    /// <summary>
+    /// Records any scene change that did not come through the undo history as a single coarse entry.
+    /// This is what makes Ctrl+Z complete even where a mutation site has not been migrated to a
+    /// precise action yet: the worst case is a whole-scene entry with a generic label, never a change
+    /// that cannot be undone at all.
+    /// </summary>
+    private void CaptureUnattributedChange(OpenSceneData sceneData, string current)
     {
-        if (sceneData.UndoBaseline == null)
+        // First look at this scene: adopt the current state as the baseline rather than inventing an
+        // entry for the act of opening it.
+        if (sceneData.LastPushSnapshot == null)
         {
-            sceneData.UndoBaseline = current;
+            sceneData.LastPushSnapshot = current;
             return;
         }
 
-        if (current == sceneData.UndoBaseline || EditorIsInteracting())
+        if (current == sceneData.LastPushSnapshot || EditorIsInteracting())
         {
             return;
         }
 
-        sceneData.UndoStack.Add(sceneData.UndoBaseline);
-        if (sceneData.UndoStack.Count > MaxUndo)
+        string before = sceneData.LastPushSnapshot;
+        _history.Push(new DocumentSnapshotAction(
+            "Scene Change", sceneData, before, current, json => RestoreSnapshot(sceneData, json)));
+        sceneData.LastPushSnapshot = current;
+
+        _unattributedChanges++;
+        if (!_gapNoticeShown)
         {
-            sceneData.UndoStack.RemoveAt(0);
+            _gapNoticeShown = true;
+            Spot.Core.Log.Info(
+                "Some edits are being undone as whole-scene 'Scene Change' steps rather than named ones. "
+                + "Everything is still undoable; the History panel (Ctrl+H) counts them.");
         }
-        sceneData.UndoBaseline = current;
-        sceneData.RedoStack.Clear();
     }
 
     private void Undo()
     {
-        var sd = _activeSceneData;
-        if (sd == null || sd.UndoStack.Count == 0 || sd.UndoBaseline == null)
-        {
-            return;
-        }
-
-        string target = sd.UndoStack[^1];
-        sd.UndoStack.RemoveAt(sd.UndoStack.Count - 1);
-        sd.RedoStack.Add(sd.UndoBaseline);
-        RestoreSnapshot(sd, target);
-        sd.UndoBaseline = target;
+        // Commit anything mid-edit first, so Ctrl+Z takes back the edit the user just made rather than
+        // the one before it.
+        UndoTracker.Flush();
+        _history.Undo();
     }
 
     private void Redo()
     {
-        var sd = _activeSceneData;
-        if (sd == null || sd.RedoStack.Count == 0 || sd.UndoBaseline == null)
-        {
-            return;
-        }
+        UndoTracker.Flush();
+        _history.Redo();
+    }
 
-        string target = sd.RedoStack[^1];
-        sd.RedoStack.RemoveAt(sd.RedoStack.Count - 1);
-        sd.UndoStack.Add(sd.UndoBaseline);
-        RestoreSnapshot(sd, target);
-        sd.UndoBaseline = target;
+    // Set whenever the history moves, so the next periodic check re-baselines the catch-all instead of
+    // mistaking the result of a recorded action for an unattributed change.
+    private bool _baselinesStale;
+
+    // Re-reads every open scene as the catch-all's baseline, and refreshes the unsaved-changes marker
+    // while the serialization is in hand so the tab's "*" updates immediately after an undo rather than
+    // lagging until the next periodic check.
+    private void SyncSnapshotBaselines()
+    {
+        foreach (var sceneData in _openScenes)
+        {
+            string current = new SceneSerializer(sceneData.Scene).SerializeToString();
+            sceneData.LastPushSnapshot = current;
+            sceneData.IsDirty = sceneData.FilePath == null
+                || sceneData.SavedSnapshot == null
+                || current != sceneData.SavedSnapshot;
+            sceneData.DirtyCheckCounter = 0;
+        }
     }
 
     // Re-hydrates a scene from a snapshot in place (same Scene instance, so framebuffer/viewport bindings
@@ -2135,6 +2573,15 @@ public class EditorScene : Scene
     {
         if (_state == EditorState.Edit)
         {
+            // A recorded action just moved a scene, so adopt the result as the catch-all's baseline
+            // before checking anything. Otherwise the check below would see the action's own effect as
+            // an unattributed change and record a second, coarse entry for it — two undos for one edit.
+            if (_baselinesStale)
+            {
+                _baselinesStale = false;
+                SyncSnapshotBaselines();
+            }
+
             foreach (var sceneData in _openScenes)
             {
                 if (++sceneData.DirtyCheckCounter < 15)
@@ -2143,14 +2590,14 @@ public class EditorScene : Scene
                 }
                 sceneData.DirtyCheckCounter = 0;
 
-                // Serialize once and reuse for both dirty-tracking and the undo history. Unsaved scenes
-                // (no file yet) are always considered dirty, but still get history captured.
+                // Serialize once and reuse for both dirty-tracking and the undo catch-all. Unsaved scenes
+                // (no file yet) are always considered dirty.
                 string current = new SceneSerializer(sceneData.Scene).SerializeToString();
                 sceneData.IsDirty = sceneData.FilePath == null
                     || sceneData.SavedSnapshot == null
                     || current != sceneData.SavedSnapshot;
 
-                CaptureUndoState(sceneData, current);
+                CaptureUnattributedChange(sceneData, current);
             }
         }
 
@@ -2158,7 +2605,7 @@ public class EditorScene : Scene
         string title = $"Spot {Spot.Core.Application.Instance.EngineVersion} - {projectName}";
         if (_state == EditorState.Play)
         {
-            title += " (Playing)";
+            title += _isPlayPaused ? " (Paused)" : " (Playing)";
         }
 
         if (title != _lastWindowTitle)
@@ -2206,11 +2653,16 @@ public class EditorScene : Scene
             if (sceneData.FilePath == null) return false;
         }
 
+        // Commit a half-finished edit before writing, so what lands on disk is what the history says.
+        UndoTracker.Flush();
+
         new SceneSerializer(sceneData.Scene).Serialize(sceneData.FilePath);
         EnsureStartScene(sceneData.FilePath);
         sceneData.SavedSnapshot = new SceneSerializer(sceneData.Scene).SerializeToString();
+        sceneData.LastPushSnapshot = sceneData.SavedSnapshot;
         sceneData.IsDirty = false;
         sceneData.DirtyCheckCounter = 0;
+        _history.MarkSaved(sceneData);
         return true;
     }
 
@@ -2357,6 +2809,27 @@ public class EditorScene : Scene
 
         Project.SaveActive(sptprojPath);
         Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
+    }
+
+    // Persists the mixer's bus layout into the active project. Project.SaveActive captures the live layout, so
+    // this only has to decide where the .sptproj lives.
+    private void SaveAudioMixerLayout()
+    {
+        var project = Project.Active;
+        if (project == null || string.IsNullOrEmpty(project.ProjectDirectory)) return;
+
+        string sptprojPath = project.FilePath;
+        if (string.IsNullOrEmpty(sptprojPath))
+            sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
+
+        try
+        {
+            Project.SaveActive(sptprojPath);
+        }
+        catch (System.Exception ex)
+        {
+            Spot.Core.Log.Warn("Could not save the audio mixer layout: {0}", ex.Message);
+        }
     }
 
     private void OpenProject()

@@ -50,6 +50,10 @@ The editor is organized into dockable panels you can rearrange and save into a l
   clicked, so you can pick an asset without dragging.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
+  The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
+  including the Game panel during play, where it also hands the cursor and input back to the editor
+  (same as `Esc`), so what you type doesn't drive the game as well. Click the Game panel to take
+  control again. The editor owns this window, so the engine does not also draw its floating overlay.
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
   you import and organize assets. Textures show their image, materials render a live sphere preview, and
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
@@ -59,6 +63,17 @@ The editor is organized into dockable panels you can rearrange and save into a l
 - **UI Canvas** — a screen-space surface for authoring a game UI (`.sptui`) document, separate from the
   scene viewport; the shared **Hierarchy** panel shows its widgets while it is focused. See
   [Runtime UI](ui.md#authoring-in-the-editor).
+- **Audio Mixer** (`Ctrl`+`M`) — the project's volume groups as a row of channel strips, one per bus:
+  a fader with a live level meter, mute (**M**) and solo (**S**), and the bus it feeds. Drag a fader while
+  the game is playing and you hear it immediately. Add a bus with **Ctrl**+**N** (or the toolbar), rename
+  with **F2** or a double-click, remove with **Delete**, move between strips with **←**/**→**, nudge a level
+  with **↑**/**↓**, and reset one to unity with **0**. Levels and routing are saved into the project; solo is
+  an audition tool and is not. See [Audio](audio.md#the-mixer-buses-and-volume-groups).
+- **History** (`Ctrl`+`H`) — the list of everything you have done, newest first, with a marker on the
+  current state. Click any entry to jump straight to that point (undoing or redoing however many steps
+  that takes); entries ahead of the marker are the redo branch and are dimmed rather than hidden. The
+  footer shows how many actions are held and how much memory they use. See
+  [Undo and history](#undo-and-history).
 - **Project settings** — project-wide configuration such as the start scene.
 
 The editor remembers your working session **per project**. When you reopen a project it restores the
@@ -68,6 +83,23 @@ rather than back at the project's start scene. Tabs whose files were deleted or 
 skipped. The session is saved on exit to `Library/editor_session.json` inside the project (an editor-only
 cache, safe to delete or leave out of version control); a brand-new project with no saved session opens on
 its start scene as before.
+
+## Navigating the Scene view
+
+In 3D mode, hold the **right mouse button** to fly: move the mouse to look around, `W`/`A`/`S`/`D` to move
+on the view plane, `Q`/`E` to drop and rise, and hold `Shift` for 4x speed. The mouse wheel moves the
+camera along its forward axis. In 2D mode, drag with the **middle** or **right** button to pan and use the
+wheel to zoom.
+
+While flying, the cursor is hidden and confined to the viewport: it is warped back to the centre whenever
+it approaches a border, so it can never escape into another panel. Between those warps the look is driven
+by the cursor's plain frame-to-frame movement, which is what keeps it smooth — recentring on *every* frame
+instead would discard the motion the mouse made during that frame's update and render, making the camera
+feel both sluggish and jittery.
+
+The **Camera** button in the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on the
+base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both are
+global to the editor and persist with the window layout in `editor_window.json`.
 
 ## The menu bar
 
@@ -102,16 +134,80 @@ The import does two things automatically:
 Right-clicking a model also still offers **Extract Materials (Embedded)**, which only writes the
 embedded textures and materials out to the folder without adding anything to the scene.
 
+## Undo and history
+
+Every change you make while authoring can be taken back. The editor keeps **one** history for the
+whole application, so `Ctrl`+`Z` always undoes the last thing you did, whichever panel you did it in —
+you never have to work out which tab "owns" the undo.
+
+| Action | Shortcut |
+|--------|----------|
+| Undo | `Ctrl`+`Z` |
+| Redo | `Ctrl`+`Shift`+`Z` or `Ctrl`+`Y` |
+| Show the History panel | `Ctrl`+`H` |
+
+The **Edit** menu names the operation rather than just saying "Undo", so you can see what is about to
+be taken back — *Undo Set Intensity*, *Undo Move Cube* — and the History panel shows the whole
+sequence.
+
+**One edit is one entry.** A history entry is recorded when an edit *finishes*, not while it is
+happening: dragging a slider for three seconds, scrubbing through a color picker, or dragging a gizmo
+across the viewport each produce a single entry, so one `Ctrl`+`Z` takes the whole gesture back rather
+than unwinding it a frame at a time. Bursts of arrow-key nudges collapse the same way.
+
+**Typing is left alone.** While a text field has focus, `Ctrl`+`Z` goes to the field and edits the text
+you are typing, exactly as you would expect; the scene is not rolled back under you. Pressing `Escape`
+to abandon a field records nothing, because the value ended where it started.
+
+**What is covered.** Entity and component edits, adding and removing components, creating, deleting,
+duplicating, renaming, reparenting and reordering entities, gizmo moves, and — as those sites are
+migrated — UI documents, materials, animator controllers, project settings and the mixer layout. The
+editor also watches the scene for changes that no specific operation claimed, and records those too as
+a single *Scene Change* entry. That means a change is never un-undoable: at worst the entry is coarse
+and generically named. The History panel's footer reports how many of these generic entries a session
+has produced, and the console logs a note when one happens.
+
+**What is not covered:**
+
+- **File operations in the Asset Browser.** Deleting, renaming, moving or importing an asset touches
+  the disk, and undo does not reach outside the editor's own data. Those actions confirm before they
+  destroy anything instead.
+- **Play mode.** Changes made while the game is running are not recorded, because stopping play
+  restores the scene to its pre-play state wholesale and discards them anyway. Your edit history from
+  before you pressed Play is untouched and still there when you stop.
+- **Closing a document.** Closing a scene or UI document discards its history entries (and any newer
+  ones), since there would be nothing left to undo them into. The console says how many were dropped.
+
 ## Edit mode and play mode
 
 The editor has two modes:
 
 - **Edit mode** is where you build. Changes you make are to the scene you're authoring.
-- **Play mode** runs your game inside the editor so you can test it — scripts, physics, and audio all
-  come alive. When you stop, the scene is restored exactly as it was before you pressed play, so
-  anything that happened during play is discarded and testing never disturbs your work. The **Game**
-  view shows what the scene's primary camera sees; if there isn't one, it says so instead of showing a
-  blank panel.
+- **Play mode** runs your game directly inside the editor — scripts, physics, audio, and animation all
+  tick in real time. Play starts instantly (no build step) and, when you stop, the scene is restored
+  exactly as it was before you pressed Play, so testing never disturbs your work.
+
+The **Game** view shows what the scene's primary camera sees during play. The Scene view stays open
+alongside it, so you can fly around and inspect the live runtime state.
+
+**Game panel input focus.** While in play mode the Game panel only receives keyboard and mouse input
+when it is focused. Click inside the Game view to give it focus (the "Click to control" hint
+disappears). From that point WASD, mouse-look, and any cursor lock the game requests all work as in
+a standalone build. Press `Escape` to release focus and return the cursor to the editor — after that
+you can fly the Scene camera or inspect entities without the game reacting to your input. The game's
+simulation continues in the background regardless of focus.
+
+Three controls sit centered in the menu bar:
+
+| Button | Keyboard | Effect |
+|--------|----------|--------|
+| Play / Stop | — | Enters or exits play mode. On stop the scene is fully restored. |
+| Pause / Resume | `Ctrl`+`P` | Freezes the simulation without discarding state; resume to continue. |
+| Step | `Ctrl`+`Right` | Advances the simulation exactly one frame (only works while paused). |
+
+While the simulation is running the scene-view gizmos and drag-drop are locked — edits belong in
+edit mode. You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
+pre-play (authored) version since any runtime changes are ephemeral.
 
 ## Managing projects
 

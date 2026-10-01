@@ -84,6 +84,14 @@ public class ApplicationSpec
     /// </summary>
     public Dictionary<string, InputBinding[]> DefaultBindings { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the project's audio mixer layout: the volume groups sounds are routed to (Music, SFX, UI, or
+    /// whatever the project defines) and their authored levels. Applied at startup via
+    /// <see cref="Spot.Audio.AudioMixer.SetLayout"/> so a shipped game mixes exactly as the editor did. Empty
+    /// falls back to the engine's default Master / Music / SFX / UI tree.
+    /// </summary>
+    public List<Spot.Audio.AudioBusDefinition> AudioBuses { get; set; } = new();
+
     /// <summary>Gets the effective asset root: the cooked <see cref="ContentDirectory"/> if set, else <see cref="AssetDirectory"/>.</summary>
     public string? AssetRoot =>
         !string.IsNullOrEmpty(ContentDirectory) ? ContentDirectory : AssetDirectory;
@@ -343,6 +351,7 @@ public class Application
         // may query actions in OnCreate. Works for editor play and shipped games alike, as both build
         // the spec in code.
         Input.SetDefaultBindings(_spec.DefaultBindings);
+        Spot.Audio.AudioMixer.SetLayout(_spec.AudioBuses);
 
         _running = true;
         if (startScene is not null)
@@ -430,6 +439,7 @@ public class Application
         // Record the real (unclamped) frame time for profiling before the simulation clamp below, so a
         // stall surfaces in the stats instead of being hidden as a steady MaxDeltaTime.
         FrameStats.Record(realDelta);
+        Profiler.FlushFrame();
 
         // Clamp the frame delta so a hitch (window drag, GC pause, a heavy asset load) can't feed a
         // huge dt into physics/scripts and explode springs or tunnel bodies through colliders. A
@@ -637,10 +647,6 @@ public class Application
         {
             var win = _window!.NativeWindow;
             var size = win.Size;
-            Log.CoreInfo(
-                "Startup drawable: window {0}x{1}, framebuffer {2}x{3}",
-                size.X, size.Y, win.FramebufferSize.X, win.FramebufferSize.Y);
-
             if (size.X > 0 && size.Y > 0 && (win.FramebufferSize.X == 0 || win.FramebufferSize.Y == 0))
             {
                 win.Size = new Silk.NET.Maths.Vector2D<int>(size.X, size.Y + 1);

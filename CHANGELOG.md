@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
 ### Added
+- **Rebuilt undo/redo**: one unified history for the whole editor (`Ctrl`+`Z` / `Ctrl`+`Shift`+`Z` / `Ctrl`+`Y`), recorded per *operation* instead of by polling full-scene snapshots. One edit is one entry (a slider drag, a color-picker session, a gizmo move, a burst of arrow nudges each collapse into a single step), entries are named in the **Edit** menu (*Undo Set Intensity*), and undo restores the selection — multi-selection included — alongside the state. Actions target entities by their stable id and re-resolve on apply, so they survive a scene re-hydration; the shortcut no longer fires while a text field has focus. Anything not yet routed through a specific action is still caught and recorded as a coarse *Scene Change* entry, so no change is un-undoable
+- **History panel** (`Ctrl`+`H`): the action list with a cursor on the current state, the redo branch dimmed rather than hidden, click or `↑`/`↓`+`Enter` to jump to any point, and a footer reporting entry count, memory use and how many changes were only caught generically
+- **Audio mixer / bus routing**: named volume groups (Master / Music / SFX / UI) in a bus tree; audio sources and `Audio.Play` pick a bus, and a bus's fader, mute, and solo apply to everything beneath it. The layout is project data — authored, saved to the `.sptproj`, and shipped in `game.manifest`
+- **Audio Mixer panel** (`Ctrl+M`, editor and runtime overlay): channel strips with faders, live level meters, mute/solo, and re-routing, fully keyboard-driven
+- `volume`, `mute`, `solo`, and `buses` console commands for changing the mix live
+- **Play-in-viewport**: pressing Play now runs the game simulation directly inside the editor — no build step, no external process. Scripts, physics, audio, and animation tick in real time. Press Pause (`Ctrl+P`) to freeze the simulation, Step (`Ctrl+Right`) to advance one frame, and Stop to restore the scene to its exact pre-play state.
+- **Occlusion culling**: tick *Occluder* on a mesh renderer and geometry hidden behind it is dropped before it is drawn; occluders are rasterized into a small CPU depth buffer each frame, so it needs no baking, no GPU queries, and runs the same on desktop and WebGL2. Global knobs `RenderSettings.OcclusionCulling` (on by default) and `OcclusionBufferWidth`; `occlusion` console command, counters in `RendererDebug`, and a culling section in the Profiler panel
+- Color grading LUT support in `PostProcessingComponent`: assign a 2D horizontal-strip LUT texture (e.g. 256×16 for a 16³ grade) and blend it with `LutIntensity`
+- Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
+
+### Changed
+- Quieter console: routine success chatter is gone (startup banners for the log file, window and audio device, one line per file dropped into the project, project-scripts load, a project save on every keystroke in Project Settings), build output is filtered to warnings and errors instead of mirroring msbuild's restore/timing narration, and a uniform the shader compiler dropped is now a trace rather than a warning
+- Scene camera default look rate retuned (60% slower): the previous rate compensated for the dropped mouse motion described below, and felt far too fast once that was fixed
+- Scene camera **Look sensitivity** and **Fly speed** are now adjustable from the viewport's **Camera** toolbar button and persist with the window layout; `Shift` while flying is a 4x multiplier on the configured speed
+- Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders
+
+### Added
+- **Point light shadows**: point and spot lights now cast real-time cubemap shadows; enable per-light via `CastShadows` (the first shadow-casting light in the scene gets a depth cubemap, sampled as linear distance); `RenderSettings.PointShadows` and `PointShadowResolution` are global controls
+- **Spotlight**: new `LightType.Spot` with `SpotAngle` (inner half-angle) and `SpotOuterAngle` (outer half-angle) properties; smooth cone attenuation applied in all lit shaders (standard + water)
+- **Profiler window**: `View > Panels > Profiler` opens an ImGui panel with a scrolling frame-time graph and a per-system ms/frame table; systems expose their name via `ISystem.Name`
 - Basic networking foundation in a new `Spot.Net` library: server-authoritative sessions (host/dedicated server/client) over a cross-platform WebSocket transport that runs on desktop and browser
 - Networked identity and server-authoritative spawn/despawn via a prefab registry (`NetworkObject`, `NetworkSpawner`)
 - `NetworkTransform` replicates position/rotation with client-side interpolation
@@ -23,6 +43,13 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
 
 ### Fixed
+- The `'` key in the editor no longer opens a duplicate console: the editor claims ownership of the console window (`DevConsole.SetHost`), so the engine stops drawing its floating overlay — ImGui merged the two by name and drew the whole console body, command prompt included, twice. `'` now reveals and focuses the docked **Console** panel from anywhere in the editor, and from the Game panel it also releases game input and the cursor (as `Esc` does) instead of leaving the game's input dead with no way to dismiss the capture
+- Opening the developer console no longer lets the game keep mouse-looking: `Input.MousePosition` freezes while the engine owns input (console or runtime debugger open), so a game that tracks frame-to-frame mouse delta stops rotating the camera instead of spinning as the freed cursor moves, and resumes without a jump on close. The freed cursor also falls back to the window centre when the position it was locked from no longer lies inside the window
+- Scene view camera look is smooth again: the fly camera no longer recentres the cursor every frame (which discarded a variable slice of each frame's mouse motion, making the look feel sluggish and jittery); it now reads plain frame-to-frame movement and only warps back to the centre near a viewport border
+- Play mode auto-builds project scripts on first Play when no compiled DLL exists yet (clean checkout or new project), so game scripts always run instead of silently doing nothing
+- Cursor lock (`Input.CursorLocked = true`) now correctly hides the hardware cursor during in-editor play; ImGui's backend no longer resets it to visible every frame
+- Pressing Stop now releases any cursor lock the game held, returning the cursor to the normal editor state
+- Game input (WASD, mouse-look, cursor lock) is now isolated to the Game panel: the game only receives input when the Game panel is active (click to focus, Escape to release); in the Scene view the editor camera works freely as expected
 - Editor "Add Component" popup now closes reliably on Escape (InputText was swallowing the key)
 - "Show Colliders" viewport checkbox now draws colliders for all scene entities, not only the selected one
 

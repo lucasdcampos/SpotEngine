@@ -12,15 +12,20 @@ public sealed class DelegateSystem : ISystem
     /// <summary>Creates a system that invokes <paramref name="update"/> at the given <paramref name="order"/>.</summary>
     /// <param name="order">The execution order; lower runs first. See <see cref="SystemOrder"/>.</param>
     /// <param name="update">The per-frame callback, receiving the scene and delta time.</param>
-    public DelegateSystem(int order, Action<Scene, float> update)
+    /// <param name="name">Optional display name shown in the profiler. Defaults to the order slot name.</param>
+    public DelegateSystem(int order, Action<Scene, float> update, string? name = null)
     {
         ArgumentNullException.ThrowIfNull(update);
         Order = order;
         _update = update;
+        Name = name ?? $"System({order})";
     }
 
     /// <inheritdoc />
     public int Order { get; }
+
+    /// <inheritdoc />
+    public string Name { get; }
 
     /// <inheritdoc />
     public void Update(Scene scene, float deltaTime) => _update(scene, deltaTime);

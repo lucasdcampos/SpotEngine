@@ -107,8 +107,6 @@ public sealed class Window : IDisposable
         // toggle, or a game turning it off to profile). Unsubscribed on Dispose so the static event never
         // pins a disposed window.
         Spot.Rendering.RenderSettings.VSyncChanged += OnVSyncChanged;
-
-        Log.CoreInfo("Window '{0}' created ({1}x{2})", spec.Title, spec.Width, spec.Height);
     }
 
     /// <summary>
@@ -333,11 +331,25 @@ public sealed class Window : IDisposable
                 else if (mouse != null)
                 {
                     mouse.Cursor.CursorMode = CursorMode.Normal;
-                    mouse.Position = _unlockPosition; // reappear where the lock began, not parked at centre
+                    mouse.Position = UnlockPosition();
                 }
 
                 global::Spot.Core.Input.RelativeMouseMode = value;
             }
+        }
+
+        // Where the cursor reappears on unlock: back where the lock began, so it does not jump to the
+        // centre mid-session. Falls back to the centre when that point is no longer inside the window — a
+        // game that locks the cursor on startup saves whatever stale position the backend first reported,
+        // which can sit off-window and leave the freed cursor (and the clicks meant for the dev console)
+        // outside the game entirely.
+        private System.Numerics.Vector2 UnlockPosition()
+        {
+            System.Numerics.Vector2 center = _windowCenter();
+            System.Numerics.Vector2 size = center * 2.0f;
+            bool inside = _unlockPosition.X > 0.0f && _unlockPosition.Y > 0.0f
+                && _unlockPosition.X < size.X && _unlockPosition.Y < size.Y;
+            return inside ? _unlockPosition : center;
         }
 
         public void Tick()
@@ -354,7 +366,14 @@ public sealed class Window : IDisposable
                 mouse.Cursor.CursorMode = CursorMode.Hidden;
             }
 
-            System.Numerics.Vector2 center = _windowCenter();
+            // Round to the nearest integer pixel so the snap position is always pixel-exact.
+            // Without rounding, a window with an odd pixel dimension produces center.X = N.5f;
+            // the OS snaps that to an integer and the next frame sees a constant 0.5px delta
+            // that makes the camera drift even when the user is not moving the mouse.
+            System.Numerics.Vector2 rawCenter = _windowCenter();
+            System.Numerics.Vector2 center = new System.Numerics.Vector2(
+                MathF.Round(rawCenter.X), MathF.Round(rawCenter.Y));
+
             if (_justLocked)
             {
                 // First locked frame: just centre the cursor; the offset from the press point isn't motion.

@@ -10,15 +10,19 @@ namespace Spot.Audio;
 /// </summary>
 public readonly struct Voice
 {
-    internal Voice(AudioSourceHandle source, int generation)
+    internal Voice(AudioSourceHandle source, int generation, string? bus)
     {
         Source = source;
         Generation = generation;
+        Bus = bus;
     }
 
     internal AudioSourceHandle Source { get; }
 
     internal int Generation { get; }
+
+    /// <summary>Gets the name of the <see cref="AudioMixer"/> bus this voice was routed to.</summary>
+    public string? Bus { get; }
 
     /// <summary>Gets whether this handle refers to a real source (as opposed to a dropped/failed play).</summary>
     public bool IsValid => Source.IsValid;
@@ -40,6 +44,14 @@ public static class AudioManager
     private static AudioSourceHandle[] s_sources = Array.Empty<AudioSourceHandle>();
     private static int[] s_generations = Array.Empty<int>();
 
+    // Per-slot mix state. The gain handed to the backend is the caller's authored volume scaled by its bus
+    // chain, so the two have to be tracked apart: a live inspector edit changes the authored volume, a fader
+    // move changes the bus gain, and Update recombines them. s_applied is the last value actually pushed to
+    // the backend, so a steady mix costs no backend calls at all.
+    private static string?[] s_buses = Array.Empty<string?>();
+    private static float[] s_volumes = Array.Empty<float>();
+    private static float[] s_applied = Array.Empty<float>();
+
     private static bool Available => s_backend.Available;
 
     /// <summary>
@@ -60,6 +72,9 @@ public static class AudioManager
         {
             s_sources = new AudioSourceHandle[SourceCount];
             s_generations = new int[SourceCount];
+            s_buses = new string?[SourceCount];
+            s_volumes = new float[SourceCount];
+            s_applied = new float[SourceCount];
             for (int i = 0; i < SourceCount; i++)
             {
                 s_sources[i] = s_backend.GenSource();
@@ -68,8 +83,7 @@ public static class AudioManager
         catch (Exception ex)
         {
             Log.CoreWarn("Failed to allocate audio sources ({0}); audio will run muted.", ex.Message);
-            s_sources = Array.Empty<AudioSourceHandle>();
-            s_generations = Array.Empty<int>();
+            ResetPool();
         }
     }
 
@@ -92,16 +106,17 @@ public static class AudioManager
             Log.CoreWarn("Error while releasing audio sources: {0}", ex.Message);
         }
 
-        s_sources = Array.Empty<AudioSourceHandle>();
-        s_generations = Array.Empty<int>();
+        ResetPool();
         s_backend.Close();
         s_backend = new SilentAudioBackend();
     }
 
-    /// <summary>Applies the global mix (master volume / mute) to the listener. Called once per frame.</summary>
+    /// <summary>
+    /// Re-applies the mix to every live voice and updates the bus meters. Called once per frame, so a fader
+    /// move, a mute, or a solo in the <see cref="AudioMixer"/> is heard on the sounds already playing.
+    /// </summary>
     public static void Update(float deltaTime)
     {
-        _ = deltaTime;
         if (!Available)
         {
             return;
@@ -109,13 +124,37 @@ public static class AudioManager
 
         try
         {
-            float master = AudioSettings.Muted ? 0.0f : Math.Clamp(AudioSettings.MasterVolume, 0.0f, 1.0f);
-            s_backend.SetListenerGain(master);
+            // Every bus level, master included, is folded into the per-source gain, so the listener stays at
+            // unity: one place computes a voice's level instead of two that could disagree.
+            s_backend.SetListenerGain(1.0f);
+
+            for (int i = 0; i < s_sources.Length; i++)
+            {
+                AudioSourceState state = s_backend.GetSourceState(s_sources[i]);
+                if (state != AudioSourceState.Playing && state != AudioSourceState.Paused)
+                {
+                    continue;
+                }
+
+                float gain = EffectiveGain(i);
+                if (MathF.Abs(gain - s_applied[i]) > 0.0001f)
+                {
+                    s_applied[i] = gain;
+                    s_backend.SetSourceGain(s_sources[i], gain);
+                }
+
+                if (state == AudioSourceState.Playing)
+                {
+                    AudioMixer.ReportVoice(s_buses[i], gain);
+                }
+            }
         }
         catch (Exception ex)
         {
             Log.CoreWarn("Audio mix update failed: {0}", ex.Message);
         }
+
+        AudioMixer.Tick(deltaTime);
     }
 
     /// <summary>Positions and orients the 3D listener (typically driven from the active camera transform).</summary>
@@ -139,11 +178,14 @@ public static class AudioManager
 
     /// <summary>
     /// Plays a clip on a free pooled source. A spatial voice is positioned in world space and attenuates with
-    /// distance to the listener; a non-spatial voice plays flat (UI, music). Returns an invalid <see cref="Voice"/>
-    /// when audio is unavailable, the clip is null, or every source is busy — never throwing.
+    /// distance to the listener; a non-spatial voice plays flat (UI, music). The voice's level is its
+    /// <paramref name="volume"/> scaled by its <see cref="AudioMixer"/> bus chain — a null or unknown
+    /// <paramref name="bus"/> routes to <see cref="AudioMixer.MasterBus"/>. Returns an invalid
+    /// <see cref="Voice"/> when audio is unavailable, the clip is null, or every source is busy — never throwing.
     /// </summary>
     public static Voice Play(AudioClip? clip, float volume = 1.0f, float pitch = 1.0f, bool loop = false,
-        bool spatial = false, Vector3 position = default, float minDistance = 1.0f, float maxDistance = 100.0f)
+        bool spatial = false, Vector3 position = default, float minDistance = 1.0f, float maxDistance = 100.0f,
+        string? bus = null)
     {
         if (!Available || clip is null)
         {
@@ -159,8 +201,12 @@ public static class AudioManager
             }
 
             AudioSourceHandle source = s_sources[slot];
+            s_buses[slot] = bus;
+            s_volumes[slot] = Math.Max(0.0f, volume);
+            s_applied[slot] = EffectiveGain(slot);
+
             s_backend.SetSourceBuffer(source, buffer);
-            s_backend.SetSourceGain(source, Math.Max(0.0f, volume));
+            s_backend.SetSourceGain(source, s_applied[slot]);
             s_backend.SetSourcePitch(source, Math.Max(0.01f, pitch));
             s_backend.SetSourceLooping(source, loop);
 
@@ -179,7 +225,7 @@ public static class AudioManager
             }
 
             s_backend.PlaySource(source);
-            return new Voice(source, s_generations[slot]);
+            return new Voice(source, s_generations[slot], bus);
         }
         catch (Exception ex)
         {
@@ -252,14 +298,29 @@ public static class AudioManager
         }
     }
 
-    /// <summary>Updates the gain (volume) of a voice while it plays.</summary>
+    /// <summary>
+    /// Updates the authored volume of a voice while it plays. The value is the voice's own level, before its
+    /// mixer bus is applied, so a script or inspector edit and a bus fader compose rather than overwrite.
+    /// </summary>
     public static void SetVoiceGain(Voice voice, float gain)
     {
-        if (IsCurrent(voice))
+        int slot = SlotOf(voice);
+        if (slot < 0)
         {
-            try { s_backend.SetSourceGain(voice.Source, Math.Max(0.0f, gain)); }
-            catch { /* never crash on audio */ }
+            return;
         }
+
+        s_volumes[slot] = Math.Max(0.0f, gain);
+        s_applied[slot] = EffectiveGain(slot);
+        try { s_backend.SetSourceGain(voice.Source, s_applied[slot]); }
+        catch { /* never crash on audio */ }
+    }
+
+    /// <summary>Gets the gain a voice is actually sounding at: its authored volume scaled by its bus chain.</summary>
+    public static float GetVoiceGain(Voice voice)
+    {
+        int slot = SlotOf(voice);
+        return slot < 0 ? 0.0f : EffectiveGain(slot);
     }
 
     /// <summary>Uploads a clip's PCM into a backend buffer the first time it is played, caching it on the clip.</summary>
@@ -341,14 +402,29 @@ public static class AudioManager
         return false;
     }
 
-    private static bool IsCurrent(Voice voice)
+    private static bool IsCurrent(Voice voice) => SlotOf(voice) >= 0;
+
+    /// <summary>Resolves a voice to its pool slot, or -1 if the handle is stale, invalid, or audio is off.</summary>
+    private static int SlotOf(Voice voice)
     {
         if (!Available || !voice.IsValid)
         {
-            return false;
+            return -1;
         }
 
         int slot = Array.IndexOf(s_sources, voice.Source);
-        return slot >= 0 && s_generations[slot] == voice.Generation;
+        return slot >= 0 && s_generations[slot] == voice.Generation ? slot : -1;
+    }
+
+    /// <summary>The level a slot should sound at: its authored volume through its mixer bus chain.</summary>
+    private static float EffectiveGain(int slot) => s_volumes[slot] * AudioMixer.GetGain(s_buses[slot]);
+
+    private static void ResetPool()
+    {
+        s_sources = Array.Empty<AudioSourceHandle>();
+        s_generations = Array.Empty<int>();
+        s_buses = Array.Empty<string?>();
+        s_volumes = Array.Empty<float>();
+        s_applied = Array.Empty<float>();
     }
 }

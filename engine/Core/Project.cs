@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using Spot.Assets;
+using Spot.Audio;
 
 namespace Spot.Core;
 
@@ -9,6 +10,14 @@ public class ProjectConfig
     public string Name { get; set; } = "New Project";
     public string StartScene { get; set; } = "Scenes/Main.sptscene";
     public string AssetDirectory { get; set; } = ProjectStructure.AssetsFolder;
+
+    /// <summary>
+    /// The project's audio mixer layout — the volume groups (Music, SFX, UI …) audio sources route to. Authored
+    /// in the editor's Audio Mixer panel, applied to <see cref="AudioMixer"/> when the project loads, and copied
+    /// into a build's <c>game.manifest</c> so a shipped game boots with the same mix. Empty means the engine
+    /// defaults.
+    /// </summary>
+    public List<AudioBusDefinition> AudioBuses { get; set; } = new();
 }
 
 public class Project
@@ -45,6 +54,7 @@ public class Project
             {
                 Active = new Project(config, Path.GetDirectoryName(filepath) ?? string.Empty, filepath);
                 AssetPath.Root = Active.GetAssetDirectory();
+                AudioMixer.SetLayout(config.AudioBuses);
                 return Active;
             }
         }
@@ -62,6 +72,10 @@ public class Project
     public static void SaveActive(string filepath)
     {
         if (Active == null) return;
+
+        // The mixer is the live source of truth for the bus layout while the editor runs, so it is captured
+        // here rather than mirrored into the config on every fader move.
+        Active.Config.AudioBuses = AudioMixer.GetLayout();
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         string json = JsonSerializer.Serialize(Active.Config, options);

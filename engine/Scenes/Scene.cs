@@ -51,15 +51,15 @@ public class Scene
         _registry = new EntityRegistry(this);
         _physics = new ScenePhysics(this);
 
-        Systems.Add(new DelegateSystem(SystemOrder.UICanvas, UICanvasSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate, ScriptSystem.FixedUpdate));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics2D, static (scene, dt) => scene.StepPhysics2D(dt)));
-        Systems.Add(new DelegateSystem(SystemOrder.Physics3D, static (scene, dt) => scene.StepPhysics3D(dt)));
-        Systems.Add(new DelegateSystem(SystemOrder.Animation, AnimationSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Particles, ParticleSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Audio, AudioSystem.Update));
-        Systems.Add(new DelegateSystem(SystemOrder.Scripts, ScriptSystem.Update));
+        Systems.Add(new DelegateSystem(SystemOrder.UICanvas,           UICanvasSystem.Update,                              "UI Canvas"));
+        Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update,                 "Character Controller"));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ScriptSystem.FixedUpdate,                           "Fixed Update"));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics2D,           static (scene, dt) => scene.StepPhysics2D(dt),      "Physics 2D"));
+        Systems.Add(new DelegateSystem(SystemOrder.Physics3D,           static (scene, dt) => scene.StepPhysics3D(dt),      "Physics 3D"));
+        Systems.Add(new DelegateSystem(SystemOrder.Animation,           AnimationSystem.Update,                             "Animation"));
+        Systems.Add(new DelegateSystem(SystemOrder.Particles,           ParticleSystem.Update,                              "Particles"));
+        Systems.Add(new DelegateSystem(SystemOrder.Audio,               AudioSystem.Update,                                 "Audio"));
+        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ScriptSystem.Update,                                "Scripts"));
     }
 
     /// <summary>
@@ -307,6 +307,34 @@ public class Scene
     /// </summary>
     internal Entity? EntityById(int? id) =>
         id is int value && _registry.Contains(value) ? new Entity(value, this) : null;
+
+    /// <summary>
+    /// Returns a handle to the entity carrying the given <see cref="Entity.PersistentId"/>, or
+    /// <see langword="null"/> when no live entity has it. Unlike <see cref="EntityById"/>, the stable id
+    /// survives a re-hydration of the scene (<see cref="Clear"/> plus a deserialize re-mints every runtime
+    /// id but preserves the stored one), which is what lets the editor's undo history keep targeting the
+    /// same entity across a snapshot restore or a play/stop cycle.
+    /// </summary>
+    /// <param name="persistentId">The stable id to look for. Empty or null never matches.</param>
+    internal Entity? EntityByPersistentId(string? persistentId)
+    {
+        if (string.IsNullOrEmpty(persistentId))
+        {
+            return null;
+        }
+
+        // A linear scan is deliberate: lookups happen at user pace (an undo, a selection restore), so a
+        // cache would be another thing to keep coherent with every create, destroy and re-hydration.
+        foreach (Entity entity in View<LabelComponent>())
+        {
+            if (entity.GetComponent<LabelComponent>().EntityGuid == persistentId)
+            {
+                return entity;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Destroys all entities marked with <see cref="Destroy"/> since the last flush. Called by the

@@ -27,7 +27,7 @@ void main()
     gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
 }";
 
-    private const string FragmentShaderSource = @"#version 330 core
+    private static readonly string FragmentShaderSource = @"#version 330 core
 out vec4 FragColor;
 
 in vec2 TexCoords;
@@ -41,14 +41,10 @@ uniform float uGamma;
 uniform int uTonemap;
 uniform int uEnableVignette;
 uniform float uVignetteIntensity;
-
-// Cheap, sine-free per-pixel hash in [0,1). Used for dithering.
-float hash12(vec2 p)
-{
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
+uniform sampler2D uLut;
+uniform int uEnableLut;
+uniform float uLutIntensity;
+" + GlslSnippets.Hash + @"
 
 // Narkowicz's ACES filmic approximation: a cheap fit of the ACES RRT+ODT that gives film-like
 // contrast and a graceful highlight roll-off. Operates on already-exposed linear color.
@@ -60,6 +56,29 @@ vec3 tonemapAces(vec3 x)
     const float d = 0.59;
     const float e = 0.14;
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+// Samples a horizontal-strip 3D LUT encoded as a 2D texture (e.g. 256x16 for a 16^3 LUT).
+// Each B-slice occupies one column-block of width LUT_SIZE; R maps along each block's X, G along Y.
+vec3 applyLut(vec3 color, float intensity)
+{
+    const float LUT_SIZE   = 16.0;
+    const float LUT_SCALE  = (LUT_SIZE - 1.0) / LUT_SIZE;
+    const float LUT_OFFSET = 0.5 / LUT_SIZE;
+
+    color = clamp(color, 0.0, 1.0);
+    float bSlice  = color.b * (LUT_SIZE - 1.0);
+    float bSlice0 = floor(bSlice);
+    float bSlice1 = min(bSlice0 + 1.0, LUT_SIZE - 1.0);
+    float bFrac   = bSlice - bSlice0;
+
+    vec2 uv0 = vec2((bSlice0 + color.r * LUT_SCALE + LUT_OFFSET) / LUT_SIZE,
+                     color.g * LUT_SCALE + LUT_OFFSET);
+    vec2 uv1 = vec2((bSlice1 + color.r * LUT_SCALE + LUT_OFFSET) / LUT_SIZE,
+                     color.g * LUT_SCALE + LUT_OFFSET);
+
+    vec3 lut = mix(texture(uLut, uv0).rgb, texture(uLut, uv1).rgb, bFrac);
+    return mix(color, lut, intensity);
 }
 
 void main()
@@ -94,12 +113,16 @@ void main()
         mapped *= vig;
     }
 
+    // Color LUT grading (applied in display-linear space, after gamma).
+    if (uEnableLut == 1)
+        mapped = applyLut(mapped, uLutIntensity);
+
     // Dithering. Smooth gradients (most visibly the sky) show onion-ring banding once quantized to the
     // 8-bit output. Add ~1 LSB of triangular-PDF noise in display space, right before quantization,
     // to spread each channel's rounding across the band edge so the steps read as imperceptible noise.
     // Two uniform hashes summed give a triangular distribution (flat noise variance, no visible pattern).
-    float d1 = hash12(gl_FragCoord.xy);
-    float d2 = hash12(gl_FragCoord.xy + 17.0);
+    float d1 = hash(gl_FragCoord.xy);
+    float d2 = hash(gl_FragCoord.xy + 17.0);
     mapped += (d1 + d2 - 1.0) / 255.0;
 
     FragColor = vec4(mapped, 1.0);
@@ -238,6 +261,14 @@ void main()
         s_shader.SetUniform("uBloom", 1);
         Renderer.Gl.ActiveTexture(TextureUnit.Texture1);
         Renderer.Gl.BindTexture(TextureTarget.Texture2D, bloomEnabled ? bloomTexture : 0u);
+
+        bool lutEnabled = config.EnableLut && config.LutTexture != null;
+        s_shader.SetUniform("uEnableLut", lutEnabled ? 1 : 0);
+        s_shader.SetUniform("uLutIntensity", config.LutIntensity);
+        s_shader.SetUniform("uLut", 2);
+        Renderer.Gl.ActiveTexture(TextureUnit.Texture2);
+        Renderer.Gl.BindTexture(TextureTarget.Texture2D, lutEnabled ? config.LutTexture!.Handle : 0u);
+
         Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
 
         s_quadVAO.Bind();
