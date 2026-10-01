@@ -67,8 +67,9 @@ public static class Input
     // is handled separately by the editor when the Game panel gains or loses focus.
     private static bool _gameFocusCapture;
 
-    // MousePosition is frozen at this value while _gameFocusCapture is true, so the game's
-    // _lastMouse delta tracking stays in sync and there is no camera jump on re-focus.
+    // MousePosition is frozen at this value while input is blocked (engine console/debugger open, or
+    // the editor's Game panel unfocused), so the game's _lastMouse delta tracking stays in sync and
+    // there is no camera spin while the cursor roams free, nor a jump when the block ends.
     private static Vector2 _frozenMousePosition;
 
     private static Vector2 _mousePosition;
@@ -89,12 +90,13 @@ public static class Input
     /// Gets the mouse position in window pixels, with the origin at the top-left.
     /// </summary>
     /// <remarks>
-    /// Returns the frozen position while game input is suppressed by the editor (Game panel not
-    /// focused), so the game's delta-tracking stays in sync and there is no camera jump on re-focus.
-    /// Stays live across engine-level capture (console/debugger) so consumers that track a previous
-    /// position don't jump when that override ends.
+    /// Returns the frozen position while input is blocked — the engine owns input (dev console or
+    /// debugger open) or the editor suppresses it (Game panel not focused). Freezing is what keeps a
+    /// game's mouse-look still while the console has the cursor: the hardware cursor is released and
+    /// roams free, and a live position would feed that roaming straight into the camera as delta. The
+    /// position is restored on release, so the first frame back sees a zero delta and no jump.
     /// </remarks>
-    public static Vector2 MousePosition => _gameFocusCapture ? _frozenMousePosition : _mousePosition;
+    public static Vector2 MousePosition => InputBlocked ? _frozenMousePosition : _mousePosition;
 
     /// <summary>
     /// Gets the mouse wheel movement accumulated during the current frame.
@@ -142,24 +144,39 @@ public static class Input
         set
         {
             if (_gameFocusCapture == value) return;
+            bool wasBlocked = InputBlocked;
             _gameFocusCapture = value;
-            if (value)
-            {
-                // Save the current position so the game's delta tracking stays in sync.
-                _frozenMousePosition = _mousePosition;
-            }
-            else
-            {
-                // Restore _mousePosition to the frozen value so the first delta after regaining
-                // focus is zero — without this, _mousePosition holds an absolute screen coordinate
-                // (from free-cursor OS events while unfocused) which produces a large jump.
-                _mousePosition = _frozenMousePosition;
-            }
+            UpdateMouseFreeze(wasBlocked);
         }
     }
 
     // Combined gate: any form of capture blocks all input reads.
     private static bool InputBlocked => _engineCaptured || _gameFocusCapture;
+
+    // Freezes MousePosition when a block begins and restores it when the last block ends. Called after
+    // either capture flag changes, with the blocked state as it was before the change.
+    //
+    // Freezing on entry keeps the game's delta tracking in sync: while blocked the cursor is free, so
+    // _mousePosition keeps absorbing absolute OS move events that have nothing to do with mouse-look.
+    // Restoring on exit makes the first unblocked delta zero — without it, _mousePosition holds a stale
+    // absolute screen coordinate and the camera snaps.
+    private static void UpdateMouseFreeze(bool wasBlocked)
+    {
+        bool blocked = InputBlocked;
+        if (blocked == wasBlocked)
+        {
+            return;
+        }
+
+        if (blocked)
+        {
+            _frozenMousePosition = _mousePosition;
+        }
+        else
+        {
+            _mousePosition = _frozenMousePosition;
+        }
+    }
 
     /// <summary>
     /// Forces the cursor free without altering the game's <see cref="CursorLocked"/> request.
@@ -186,7 +203,9 @@ public static class Input
             return;
         }
 
+        bool wasBlocked = InputBlocked;
         _engineCaptured = captured;
+        UpdateMouseFreeze(wasBlocked);
         ApplyCursorMode(captured ? false : _desiredCursorLocked);
     }
 
@@ -214,10 +233,10 @@ public static class Input
     /// <param name="delta">The relative motion since the last frame, in pixels.</param>
     internal static void AddMouseMotion(Vector2 delta)
     {
-        // Skip accumulation while the editor has suppressed game input: the cursor is unlocked and
-        // free, so there is no meaningful locked-cursor motion to track. Keeping _mousePosition
-        // frozen ensures the game's _lastMouse delta stays in sync on re-focus.
-        if (!_gameFocusCapture) _mousePosition += delta;
+        // Skip accumulation while input is blocked (console/debugger open, or the editor's Game panel
+        // unfocused): the cursor is unlocked and free, so there is no meaningful locked-cursor motion to
+        // track. Keeping _mousePosition frozen ensures the game's _lastMouse delta stays in sync.
+        if (!InputBlocked) _mousePosition += delta;
     }
 
     /// <summary>

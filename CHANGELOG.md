@@ -43,6 +43,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
 
 ### Fixed
+- Opening the developer console no longer lets the game keep mouse-looking: `Input.MousePosition` freezes while the engine owns input (console or runtime debugger open), so a game that tracks frame-to-frame mouse delta stops rotating the camera instead of spinning as the freed cursor moves, and resumes without a jump on close. The freed cursor also falls back to the window centre when the position it was locked from no longer lies inside the window
 - Scene view camera look is smooth again: the fly camera no longer recentres the cursor every frame (which discarded a variable slice of each frame's mouse motion, making the look feel sluggish and jittery); it now reads plain frame-to-frame movement and only warps back to the centre near a viewport border
 - Play mode auto-builds project scripts on first Play when no compiled DLL exists yet (clean checkout or new project), so game scripts always run instead of silently doing nothing
 - Cursor lock (`Input.CursorLocked = true`) now correctly hides the hardware cursor during in-editor play; ImGui's backend no longer resets it to visible every frame
