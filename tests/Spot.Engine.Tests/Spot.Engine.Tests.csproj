@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
+    <!-- The editor's undo core lives in Spot.DebugUI. It makes no ImGui call on any path a test
+         exercises (the one interaction probe sits behind an injectable delegate), so it is tested
+         here rather than in a separate project. -->
+    <ProjectReference Include="..\..\debugui\Spot.DebugUI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

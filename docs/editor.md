@@ -65,6 +65,11 @@ The editor is organized into dockable panels you can rearrange and save into a l
   with **F2** or a double-click, remove with **Delete**, move between strips with **←**/**→**, nudge a level
   with **↑**/**↓**, and reset one to unity with **0**. Levels and routing are saved into the project; solo is
   an audition tool and is not. See [Audio](audio.md#the-mixer-buses-and-volume-groups).
+- **History** (`Ctrl`+`H`) — the list of everything you have done, newest first, with a marker on the
+  current state. Click any entry to jump straight to that point (undoing or redoing however many steps
+  that takes); entries ahead of the marker are the redo branch and are dimmed rather than hidden. The
+  footer shows how many actions are held and how much memory they use. See
+  [Undo and history](#undo-and-history).
 - **Project settings** — project-wide configuration such as the start scene.
 
 The editor remembers your working session **per project**. When you reopen a project it restores the
@@ -124,6 +129,50 @@ The import does two things automatically:
 
 Right-clicking a model also still offers **Extract Materials (Embedded)**, which only writes the
 embedded textures and materials out to the folder without adding anything to the scene.
+
+## Undo and history
+
+Every change you make while authoring can be taken back. The editor keeps **one** history for the
+whole application, so `Ctrl`+`Z` always undoes the last thing you did, whichever panel you did it in —
+you never have to work out which tab "owns" the undo.
+
+| Action | Shortcut |
+|--------|----------|
+| Undo | `Ctrl`+`Z` |
+| Redo | `Ctrl`+`Shift`+`Z` or `Ctrl`+`Y` |
+| Show the History panel | `Ctrl`+`H` |
+
+The **Edit** menu names the operation rather than just saying "Undo", so you can see what is about to
+be taken back — *Undo Set Intensity*, *Undo Move Cube* — and the History panel shows the whole
+sequence.
+
+**One edit is one entry.** A history entry is recorded when an edit *finishes*, not while it is
+happening: dragging a slider for three seconds, scrubbing through a color picker, or dragging a gizmo
+across the viewport each produce a single entry, so one `Ctrl`+`Z` takes the whole gesture back rather
+than unwinding it a frame at a time. Bursts of arrow-key nudges collapse the same way.
+
+**Typing is left alone.** While a text field has focus, `Ctrl`+`Z` goes to the field and edits the text
+you are typing, exactly as you would expect; the scene is not rolled back under you. Pressing `Escape`
+to abandon a field records nothing, because the value ended where it started.
+
+**What is covered.** Entity and component edits, adding and removing components, creating, deleting,
+duplicating, renaming, reparenting and reordering entities, gizmo moves, and — as those sites are
+migrated — UI documents, materials, animator controllers, project settings and the mixer layout. The
+editor also watches the scene for changes that no specific operation claimed, and records those too as
+a single *Scene Change* entry. That means a change is never un-undoable: at worst the entry is coarse
+and generically named. The History panel's footer reports how many of these generic entries a session
+has produced, and the console logs a note when one happens.
+
+**What is not covered:**
+
+- **File operations in the Asset Browser.** Deleting, renaming, moving or importing an asset touches
+  the disk, and undo does not reach outside the editor's own data. Those actions confirm before they
+  destroy anything instead.
+- **Play mode.** Changes made while the game is running are not recorded, because stopping play
+  restores the scene to its pre-play state wholesale and discards them anyway. Your edit history from
+  before you pressed Play is untouched and still there when you stop.
+- **Closing a document.** Closing a scene or UI document discards its history entries (and any newer
+  ones), since there would be nothing left to undo them into. The console says how many were dropped.
 
 ## Edit mode and play mode
 

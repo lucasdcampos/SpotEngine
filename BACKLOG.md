@@ -25,7 +25,9 @@ Check an item off when it ships.
 **Editor**
 - [x] **Scale handles in the transform gizmo** — TransformGizmo has translation and rotation handles but no visual scale handles
 - [ ] **Prefab overrides (Apply / Revert)** — prefab instances exist but the editor has no Apply-to-prefab or Revert-to-prefab workflow
-- [ ] **Undo gaps** — undo/redo uses full-scene JSON snapshots so it only captures inspector edits; changes made by scripts or physics during play are not undoable
+- [x] **Undo gaps** — replaced the polled full-scene snapshot history with a unified, per-operation action history (named entries, selection restore, History panel). Changes made during play are still not undoable, by design: stopping play restores the pre-play scene wholesale
+- [ ] **Undo: finish migrating mutation sites** — hierarchy/component structural ops, `.sptui` documents, materials, animator controllers, project settings and the mixer layout still fall back to the coarse *Scene Change* catch-all. The History panel's "generic" counter names what is left
+- [ ] **Root sibling order is not persisted** — root entity order lives only in the Hierarchy panel's runtime-id list and is not written to `.sptscene`, so **Move Up**/**Move Down** on a root is lost on save/load (and on play/stop). Undo restores an order the next save discards
 
 **Rendering**
 - [ ] **Full PBR material** — `Material` has a `Metallic` slot but no `Roughness` or ambient-occlusion map slot; the lighting model is PBR by half

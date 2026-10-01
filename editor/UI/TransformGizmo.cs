@@ -1,10 +1,12 @@
 using System;
 using System.Numerics;
+using System.Reflection;
 using ImGuiNET;
 using Spot.Rendering;
 using Spot.Scenes;
 
 using Spot.DebugUI.UI;
+using Spot.DebugUI.Undo;
 using Spot.Editor.UI;
 namespace Spot.Editor.UI;
 
@@ -82,13 +84,13 @@ public sealed class TransformGizmo
         _originWorld = transform.WorldPosition;
         if (!WorldToScreen(_originWorld, out _originScreen))
         {
-            _active = Handle.None; // origin behind the camera; nothing to interact with
+            EndDrag(transform); // origin behind the camera; nothing to interact with
             return;
         }
 
         if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
         {
-            _active = Handle.None;
+            EndDrag(transform);
         }
 
         switch (Mode)
@@ -97,6 +99,54 @@ public sealed class TransformGizmo
             case GizmoMode.Rotate: DoRotate(transform, viewportHovered); break;
             case GizmoMode.Scale: DoScale(transform, viewportHovered); break;
         }
+    }
+
+    // Ends a drag, recording it as a single undo entry. The gizmo writes the transform continuously
+    // while the mouse is down (so the object tracks the cursor), but only the whole gesture is
+    // interesting to undo — and `_dragStart` already holds the value it began from.
+    private void EndDrag(TransformComponent transform)
+    {
+        if (_active == Handle.None)
+        {
+            return;
+        }
+
+        _active = Handle.None;
+
+        if (transform.Entity is not Entity entity || !entity.IsValid)
+        {
+            return;
+        }
+
+        (string member, Vector3 after, string verb) = Mode switch
+        {
+            GizmoMode.Translate => (nameof(TransformComponent.Position), transform.Position, "Move"),
+            GizmoMode.Rotate => (nameof(TransformComponent.Rotation), transform.Rotation, "Rotate"),
+            _ => (nameof(TransformComponent.Scale), transform.Scale, "Scale"),
+        };
+
+        // A click that grabbed a handle without moving it is not an edit.
+        if (after == _dragStart)
+        {
+            return;
+        }
+
+        PropertyInfo? prop = typeof(TransformComponent).GetProperty(member);
+        if (prop == null)
+        {
+            return;
+        }
+
+        Scene scene = entity.Scene;
+        EditorHistory.Current.Push(new ComponentValueAction(
+            $"{verb} {entity.Name}",
+            scene,
+            entity.EnsurePersistentId(),
+            typeof(TransformComponent),
+            MemberAccessor.FromProperty(prop),
+            _dragStart,
+            after,
+            EditorHistory.DocumentFor(scene)));
     }
 
     // ------------------------------------------------------------------ Translate
