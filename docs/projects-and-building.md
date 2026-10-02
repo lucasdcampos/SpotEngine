@@ -24,8 +24,8 @@ Two pieces of tooling operate on a project, and both share the same underlying l
 - **The `spot` CLI** — a thin command-line front-end over that library, convenient for scripting,
   automation, and headless workflows.
 
-A published build is **self-contained and standalone** — it bundles the engine and everything the
-game needs, so players don't install anything extra. Builds can target **Windows**, **Linux**, or **Mac**, or
+A published build is **self-contained and standalone** — it bundles the engine (and the framework
+assemblies it is built on) and everything the game needs, so players don't install anything extra. Builds can target **Windows**, **Linux**, or **Mac**, or
 **the browser** (WebAssembly + WebGL2) for 2D games — see [The browser target](#the-browser-target).
 
 ## From project to shippable app
@@ -63,13 +63,14 @@ The CLI exposes these operations. At a high level:
 # Create a new project (folder, Assets/, .sptproj, build files)
 dotnet run --project tools/Spot.Cli -- new MyGame --path <dir>
 
-# Regenerate a project's build files (and copy the engine DLL)
+# Regenerate a project's build files (and refresh the engine and framework DLLs in EngineBin/)
 dotnet run --project tools/Spot.Cli -- generate --project <dir>
 
 # Cook source assets into engine-native artifacts + a manifest
 dotnet run --project tools/Spot.Cli -- cook --project <dir>
 
-# Rewrite asset references to stable guid: references (and add .meta sidecars)
+# Rewrite asset references to stable guid: references (and add .meta sidecars), and move
+# scripts to the current namespaces
 dotnet run --project tools/Spot.Cli -- migrate --project <dir>
 
 # Cook assets and run the project from source (quick iteration, no publish)
@@ -89,6 +90,30 @@ dotnet run --project tools/Spot.Cli -- help
 ```
 
 The exact options are printed by `help`; run it to see the current set.
+
+## Upgrading a project
+
+A game project compiles against copies of Spot's assemblies in its `EngineBin/` folder: `Spot.Engine.dll`
+and the framework it is built on — `Spot.Framework.Core.dll`, `Spot.Framework.dll`, and on desktop
+`Spot.Framework.Assimp.dll` (plus `Spot.DebugUI.dll` for the runtime debug overlay). After updating Spot:
+
+1. **`spot migrate`** brings the project's content and code forward: asset references become guid
+   references, and scripts (and the project's `Program.cs`) move to the current namespaces — each old
+   `using` (such as `Spot.Core`, `Spot.Rendering` or `Spot.Scenes`) is replaced by just the new namespaces
+   the file uses (such as `Spot.Framework`, `Spot.Framework.Graphics` or `Spot.Engine.Scenes`), and fully
+   qualified names are re-pointed.
+2. **`spot generate`** (or opening the project in the editor) refreshes `EngineBin/` and the project's
+   `.csproj` references.
+
+Saved scenes, prefabs and UI documents need no migration: they store stable component keys, not .NET type
+names.
+
+## Framework-only programs
+
+A game that uses only the framework levels is an ordinary .NET program that references
+`Spot.Framework.Core` (and `Spot.Framework`, and optionally `Spot.Framework.Assimp`): it has no `.sptproj`,
+no cooking and no manifest, and is built and published with the regular `dotnet` commands. The `samples/`
+folder shows the shape; see [Levels](levels.md).
 
 ## The browser target
 

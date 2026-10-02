@@ -4,6 +4,15 @@ Spot is a 2D/3D game engine written in C# (.NET 10), built on [Silk.NET](https:/
 (windowing, OpenGL, input, Assimp) and [Dear ImGui](https://github.com/ocornut/imgui). It ships with an
 ImGui-based editor, a sample game, and a `spot` command-line tool for creating and building projects.
 
+Spot comes in three levels, each usable on its own (see [docs/levels.md](docs/levels.md)):
+
+- **Core** (`Spot.Framework.Core`) — a window, events, raw input, the GPU, a minimal 2D batch and an audio
+  device. You write the loop.
+- **Framework** (`Spot.Framework`) — a code-only layer in the spirit of raylib or MonoGame: sprites, text,
+  basic 3D, models, skeletal animation, a mixer, input actions.
+- **Engine** (`Spot.Engine`) — the full engine: scenes, the lit renderer, physics, particles, UI, assets,
+  the editor and the CLI.
+
 <img src="assets/screenshot4.png">
 
 ## Requirements
@@ -33,8 +42,9 @@ dotnet build SpotEngine.slnx
 ## Running
 
 ```bash
-dotnet run --project editor    # launch the editor
-dotnet run --project sandbox/Sandbox.csproj      # run the sandbox project
+dotnet run --project editor                  # launch the editor
+dotnet run --project sandbox/Sandbox.csproj  # run the sandbox project
+dotnet run --project samples/HelloQuad       # a framework-only program (also HelloTriangle, Hello2D, Hello3D)
 ```
 
 ## The `spot` CLI
@@ -59,10 +69,16 @@ spot help
 
 | Path | Description |
 |---|---|
-| `engine/` | The engine library (`Spot.Engine`) |
+| `framework/` | The framework: `Spot.Framework.Core` (level 1), `Spot.Framework` and `Spot.Framework.Assimp` (level 2) |
+| `engine/` | The engine library (`Spot.Engine`, level 3) |
 | `editor/` | The ImGui-based editor |
+| `debugui/` | Debug/authoring panels shared by the editor and the runtime overlay |
+| `net/` | Networking (`Spot.Net`) |
 | `sandbox/` | A sample game |
+| `samples/` | One small program per framework level |
 | `tools/` | `Spot.Build` (project/build library) and the `spot` CLI |
+| `tests/` | The xUnit test suites |
+| `docs/` | Documentation |
 
 ## License
 

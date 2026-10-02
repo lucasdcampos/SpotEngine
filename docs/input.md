@@ -4,6 +4,11 @@ Spot exposes input as **polled state**: instead of subscribing to events, you as
 from a script's update. (Discrete, event-driven input is still available by overriding a scene's
 event hook — see [Scenes](scenes.md).) There are two ways to ask, and you can freely mix them.
 
+The two follow Spot's [levels](levels.md): the raw state of keys, buttons, gamepads and the cursor is
+the core level, fed by the window each time it polls events; named actions are a framework layer on top
+of it; and the console's capture of input is engine policy built on a framework switch. All of it is the
+same static `Input` you call from a script or from a loop you wrote yourself.
+
 ## Reading keys directly
 
 The low-level path queries a physical key or mouse button by name — the same as it has always
@@ -20,6 +25,9 @@ worked:
   below) and restores your requested state afterward. In the browser this maps to the Pointer Lock
   API; because browsers only grant it from a user gesture, the lock engages on the first canvas click
   after the game asks for it (mouse-look then works and the cursor hides, exactly as on desktop).
+
+Gamepads are read the same way: buttons (held / pressed / released) and analog axes — sticks and
+triggers — either from a specific pad or from whichever connected pad pushes hardest.
 
 This is the most direct option and is perfect for prototypes and editor tooling. For shipping game
 code, prefer **actions**, so the keys aren't hard-coded.
@@ -38,13 +46,14 @@ The down/up edges are about the action as a whole: pressing a second bound key w
 already active does not re-fire "down", and releasing one bound key while another is still held does
 not fire "up". Action names are matched case-insensitively.
 
-**The game owns the action names.** The engine ships only the machinery to bind, unbind, query, and
+**The game owns the action names.** Spot ships only the machinery to bind, unbind, query, and
 persist-through-defaults; which names exist and what they mean is entirely up to your project.
 
 ## Default bindings
 
-A project declares its starting bindings on its **application spec** (the same place it sets the
-window title and start scene, in your game's entry point). These defaults are applied once at
+An engine project declares its starting bindings on its **application spec** (the same place it sets
+the window title and start scene, in your game's entry point); a framework program binds them in code
+before its loop. These defaults are applied once at
 startup, so they work identically in the editor's play mode and in a shipped build. Conceptually:
 
 ```
@@ -86,12 +95,20 @@ Keys and buttons are written as short tokens, case-insensitive:
   (`del`), `up`/`down`/`left`/`right`, `f1`–`f12`, `leftshift`/`shift`, `leftcontrol`/`ctrl`, `alt`,
   and the right-hand variants (`rshift`, `rctrl`, `ralt`), plus punctuation like `,` `.` `/` `-` `'`.
 - **Mouse buttons**: `mouse0`/`lmb`, `mouse1`/`rmb`, `mouse2`/`mmb`, `mouse3`, `mouse4`.
+- **Gamepad**: buttons `gamepad_a`/`b`/`x`/`y`, `gamepad_lb`/`rb`, `gamepad_back`/`start`/`guide`,
+  `gamepad_lthumb`/`rthumb` and `gamepad_dpadup`/`down`/`left`/`right`; axes `gamepad_lx`/`ly`/`rx`/`ry`
+  and the triggers `gamepad_lt`/`rt` (each also has a short `gp_` form, such as `gp_a`).
 
 ## Capture and the console
 
 While the developer console (opened with the `'` key) is on screen, the **engine owns input**: the
 cursor is forced free and both direct and action queries report nothing to the game, so a scene never
 reacts to keys you type into the console. Control returns to the game the moment the console closes.
+
+The engine does this through a generic switch any overlay can use: `Input.Captured` withholds input from
+the game and frees the cursor, restoring the game's cursor request afterward, while `Input.Suppressed`
+only withholds reads and leaves the cursor alone. A framework program with its own menus or debug UI can
+flip the same switches.
 
 `MousePosition` is **frozen** for the duration, and resumes from the frozen value when capture ends.
 That matters for mouse-look: the hardware cursor is released so you can click in the console, and a
@@ -109,7 +126,6 @@ which would draw the console body, prompt included, twice.
 
 ## Not yet
 
-- **Gamepads and analog axes** aren't supported — input is keyboard and mouse, digital.
 - **Player rebinds aren't persisted to disk**; runtime changes last for the session, and defaults
   come from the project's code.
 

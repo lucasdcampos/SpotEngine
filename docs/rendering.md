@@ -17,16 +17,43 @@ the scene clears to.
 
 ## The layers
 
-Underneath the automatic path are progressively lower-level tools:
+Underneath the automatic path are progressively lower-level tools, following Spot's
+[levels](levels.md):
 
-- **High level** — the scene rendering system draws your entities for you.
-- **Mid level** — separate 2D and 3D renderers let you draw batches of quads, lines, meshes, and
-  effects yourself, in your own render passes.
-- **Low level** — a core renderer wraps draw calls and render state, and exposes the underlying
-  graphics API directly for full control.
+- **Engine** — the scene rendering system draws your entities for you, with the full lit renderer
+  (shadows, many lights, culling, sky, post-processing). [Custom render passes](#custom-render-passes)
+  add your own drawing at fixed points of its pipeline.
+- **Framework** — code-only renderers you call yourself: shapes, sprites and text on the 2D batch; a
+  screen-space batch with blending and scissor clipping; `Camera3D` and `BasicRenderer3D` for meshes
+  and models (one directional light and ambient; unlit, textured, instanced, skinned, or with your own
+  shader); `BillboardBatch` for blended camera-facing quads; and `FullscreenPass` for running a shader
+  over the screen.
+- **Core** — the render state (clear, viewport, blending, depth, targets), a minimal immediate
+  `Renderer2D` (quads, lines, rectangles), GPU resources, and the backend-neutral graphics device itself
+  (`Renderer.Device`) for full control.
 
-You can mix these: a scene can let the engine draw its entities and then issue extra custom drawing
-on top.
+You can mix these: a scene can let the engine draw its entities, and a render pass can then issue extra
+drawing with any framework renderer — or raw device calls — on top.
+
+## Custom render passes
+
+A **render pass** is drawing the engine has no component for — a custom effect, a debug visualization, a
+procedural background — injected into a scene's frame. Implement `IRenderPass` (or wrap a callback in a
+`DelegateRenderPass`) and register it with `Scene.AddRenderPass`. Each pass runs at one **stage**:
+
+| Stage | Runs | Typical use |
+|---|---|---|
+| `BeforeOpaque` | after the shadow maps, before any opaque geometry | backgrounds, custom skies |
+| `AfterOpaque` | after opaque meshes and sprites, with depth filled | geometry that should be occluded and lit like the scene |
+| `AfterTransparent` | after particles and world text, still inside the HDR capture | effects that should be tone-mapped and bloom |
+| `AfterPostProcess` | after post-processing, before the screen-space UI | crisp, untone-mapped world overlays |
+| `Overlay` | last, over the UI | debug overlays, cursors, fades |
+
+A pass receives a `RenderContext` with the scene, the camera's view-projection and position, the render
+target and viewport bound at that point (the HDR capture, an editor viewport, or the screen), and whether
+the frame is post-processed. Passes in the same stage run by their order, then by registration. A pass
+should restore any state the engine relies on — depth testing, blending, the bound target — and one that
+throws is logged once and skipped, never taking the frame down.
 
 ## 3D content and lighting
 
@@ -98,7 +125,8 @@ existing components rather than scattered ad-hoc knobs.
 
 The renderer never talks to a graphics library directly. Every GPU command flows through a small
 `IGraphicsDevice` seam — buffers, vertex arrays, shaders, textures, draws — expressed in engine-neutral
-types. Two backends implement it:
+types. The seam is public and lives in the core level, so your own code can use it exactly as the
+engine does. Two backends implement it:
 
 - **Desktop** uses an OpenGL device backed by **Silk.NET**.
 - **The browser** uses a **WebGL2** device that issues each call from C# to JavaScript over `[JSImport]`,

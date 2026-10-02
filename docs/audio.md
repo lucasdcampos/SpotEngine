@@ -5,6 +5,19 @@ in the browser — with positional (3D) audio driven by the same entity/componen
 else. The backend is a thin platform seam (`IAudioBackend`) behind the mixer; everything above it
 (sources, listener, clips, the audio system) is backend-agnostic and identical across targets.
 
+## Across the levels
+
+Audio is split along Spot's [levels](levels.md):
+
+- **Core** — the audio device: the OpenAL and Web Audio backends playing PCM buffers through voices
+  (play, stop, pause, gain, pitch, loop, position) and the listener.
+- **Framework** — clips decoded from WAV or OGG files or bytes (the format is detected from the data),
+  the mixer with its buses, and a single call that opens the platform's default device (or falls back to
+  silence). A framework program loads a clip and plays it through the mixer from code.
+- **Engine** — the Audio Source and Audio Listener components, the audio system that keeps them in sync
+  with their entities, cooked audio assets, and the project's bus layout and Audio Mixer panel. The rest of
+  this page describes this level.
+
 ## Sources and the listener
 
 Audio is built from two components:
