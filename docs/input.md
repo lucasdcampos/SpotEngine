@@ -114,13 +114,13 @@ flip the same switches.
 That matters for mouse-look: the hardware cursor is released so you can click in the console, and a
 live position would feed that roaming into the camera as delta — the camera would spin while you type.
 Freezing keeps a `position - lastPosition` delta at zero while captured and zero on the first frame
-back, so neither the console nor the editor's Game-panel focus switching can jolt the view. Scroll,
+back, so neither the console nor the editor handing the controls to and from the game can jolt the view. Scroll,
 keys, buttons and actions all read as idle, and a `CursorLocked = true` set while captured is
 remembered and applied when the console closes.
 
 In the **editor** the console is a docked panel rather than an overlay, so the editor takes ownership of
 its window (`Console.SetHost`) and the engine stops drawing its own. Engine-level capture is not used
-there either: the editor already gates game input on its Game panel's focus, which `'` releases. A host
+there either: the editor already gates game input on whether the game has the controls, which `'` takes back. A host
 that owns the console window must claim it this way — two ImGui windows sharing a name merge into one,
 which would draw the console body, prompt included, twice.
 

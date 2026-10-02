@@ -45,6 +45,11 @@ public class OpenSceneData : IUndoDocument
     // The render pass reads it to skip re-rendering a hidden viewport (and its camera preview overlay).
     public bool ViewportVisible = true;
 
+    // Whether the viewport looks through the scene's game camera (its active primary camera) instead of the
+    // editor camera. Play turns it on for the playing scene, so the scene becomes the game, and Stop turns it
+    // off; F8 switches it at any time, like Unreal's eject/possess.
+    public bool GameView;
+
     public OpenSceneData(EditorContext context)
     {
         ViewportPanel = new ViewportPanel(context);
@@ -113,7 +118,6 @@ public class EditorScene : Scene
 
     private readonly HierarchyPanel _hierarchyPanel;
     private readonly InspectorPanel _inspectorPanel;
-    private readonly ViewportPanel _gamePanel;
     private readonly ConsolePanel _consolePanel;
     private readonly AssetBrowserPanel _assetBrowserPanel;
     private readonly ProjectSettingsPanel _projectSettingsPanel;
@@ -127,11 +131,12 @@ public class EditorScene : Scene
     private readonly List<UIDocumentData> _openUIDocuments = new();
     private UIDocumentData? _activeUIDocument;
 
-    private Framebuffer? _gameFramebuffer;
-
     private List<OpenSceneData> _openScenes = new();
     private OpenSceneData? _activeSceneData = null;
-    private OpenSceneData? _lastEditedSceneData = null;
+
+    // The scene being played, pinned when Play is pressed: focusing another scene tab during play must not
+    // move the simulation (or Stop's snapshot restore) onto that scene.
+    private OpenSceneData? _playSceneData;
 
     // One dockable node-graph editor window per open .sptcontroller asset.
     private readonly List<AnimatorControllerPanel> _animatorEditors = new();
@@ -143,14 +148,12 @@ public class EditorScene : Scene
     private string? _lastWindowTitle;
 
     // Per-panel visibility, toggled from View > Panels and by each window's close button.
-    private bool _showGame = true;
-    // Whether the Game panel was actually visible last ImGui frame. The render pass reads it to skip the
-    // full extra scene render into the game framebuffer when the panel is tabbed behind another or closed.
-    private bool _gameViewVisible;
     private bool _showHierarchy = true;
     private bool _showInspector = true;
-    private uint _lastGameDockId;
     private bool _showConsole = true;
+
+    // The dock node the scene viewports live in, where newly opened scene and UI tabs are docked.
+    private uint _lastViewportDockId;
 
     // Set when something asks for the console (the ' key, routed here because the editor owns the
     // console's window). Consumed by the next ImGui pass, which reveals the panel, raises its dock tab
@@ -180,7 +183,6 @@ public class EditorScene : Scene
         _hierarchyPanel = new HierarchyPanel(_context);
         _inspectorPanel = new InspectorPanel(_context);
 
-        _gamePanel = new ViewportPanel(_context);
         _consolePanel = new ConsolePanel(_context);
         _assetBrowserPanel = new AssetBrowserPanel(_context);
         _projectSettingsPanel = new ProjectSettingsPanel();
@@ -236,21 +238,18 @@ public class EditorScene : Scene
         // and focuses the docked panel instead.
         Spot.Engine.Application.Instance.Console.SetHost(FocusConsolePanel);
 
-        _gameFramebuffer = new Framebuffer(1280, 720);
-        _gamePanel.SetFramebuffer(_gameFramebuffer);
-
         LoadStartScene();
     }
 
     // Reveals the docked Console panel and hands it the keyboard, the editor's answer to the engine's
-    // "open the console" request (the ' key). Runs during event handling, before OnUpdate, so dropping the
-    // Game panel's input focus is picked up by the same frame's focus transition: the cursor is freed and
+    // "open the console" request (the ' key). Runs during event handling, before OnUpdate, so taking the
+    // controls away from the game is picked up by the same frame's input transition: the cursor is freed and
     // game input suppressed, exactly as Escape does. Without that, keys typed into the prompt would also
     // drive the game and the camera would stay on mouse-look.
     private void FocusConsolePanel()
     {
         _focusConsoleRequested = true;
-        _gamePanelFocused = false;
+        _gameHasInput = false;
     }
 
     // Routes a double-clicked asset to the right editor: scenes open as tabs, animator controllers open as
@@ -353,7 +352,6 @@ public class EditorScene : Scene
         {
             existing.FocusNextFrame = true;
             _activeSceneData = existing;
-            _lastEditedSceneData = existing;
             _context.ActiveScene = existing.Scene;
             return;
         }
@@ -367,7 +365,6 @@ public class EditorScene : Scene
             newSceneData.IsDirty = false;
             _openScenes.Add(newSceneData);
             _activeSceneData = newSceneData;
-            _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
             _context.Selection = null;
         }
@@ -587,7 +584,6 @@ public class EditorScene : Scene
     {
         _openScenes.Clear();
         _activeSceneData = null;
-        _lastEditedSceneData = null;
         _context.ActiveScene = null;
         _context.Selection = null;
 
@@ -597,7 +593,6 @@ public class EditorScene : Scene
             var newSceneData = new OpenSceneData(_context);
             _openScenes.Add(newSceneData);
             _activeSceneData = newSceneData;
-            _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
             return;
         }
@@ -622,7 +617,6 @@ public class EditorScene : Scene
             var newSceneData = new OpenSceneData(_context);
             _openScenes.Add(newSceneData);
             _activeSceneData = newSceneData;
-            _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
         }
     }
@@ -677,7 +671,6 @@ public class EditorScene : Scene
             {
                 active.FocusNextFrame = true;
                 _activeSceneData = active;
-                _lastEditedSceneData = active;
                 _context.ActiveScene = active.Scene;
             }
         }
@@ -702,7 +695,6 @@ public class EditorScene : Scene
             if (System.IO.File.Exists(path)) OpenAnimatorController(path);
         }
 
-        _showGame = session.ShowGame;
         _showHierarchy = session.ShowHierarchy;
         _showInspector = session.ShowInspector;
         _showConsole = session.ShowConsole;
@@ -725,7 +717,6 @@ public class EditorScene : Scene
         {
             ActiveScene = _activeSceneData?.FilePath,
             ActiveUIDocument = _activeUIDocument?.Path,
-            ShowGame = _showGame,
             ShowHierarchy = _showHierarchy,
             ShowInspector = _showInspector,
             ShowConsole = _showConsole,
@@ -761,19 +752,26 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
+        // Opening a project mid-play replaces every scene tab, the playing one included (and a closed tab
+        // takes its scene with it). Leave play mode rather than keep a scene running that is no longer open.
+        if (_state != EditorState.Edit && (_playSceneData == null || !_openScenes.Contains(_playSceneData)))
+        {
+            OnStop();
+        }
+
         foreach (var sceneData in _openScenes)
         {
-            bool isActiveSim = _state != EditorState.Edit && sceneData == _activeSceneData;
+            bool isActiveSim = _state != EditorState.Edit && sceneData == _playSceneData;
             if (isActiveSim)
             {
-                // Gate game input to the Game panel. _gamePanelFocused is evaluated from the
-                // previous frame's ImGui pass (one-frame lag is imperceptible to the user).
-                // Handle focus transitions before setting suppression so cursor management runs
+                // Gate game input on the playing viewport holding the controls. _gameHasInput is evaluated
+                // from the previous frame's ImGui pass (one-frame lag is imperceptible to the user).
+                // Handle transitions before setting suppression so cursor management runs
                 // while InputBlocked still matches the previous frame's state.
-                if (_gamePanelFocused != _prevGamePanelFocused)
+                if (_gameHasInput != _prevGameHasInput)
                 {
-                    _prevGamePanelFocused = _gamePanelFocused;
-                    if (_gamePanelFocused)
+                    _prevGameHasInput = _gameHasInput;
+                    if (_gameHasInput)
                     {
                         // Gaining focus: unsuppress input first, then restore game's cursor lock.
                         Spot.Framework.Input.Suppressed = false;
@@ -789,7 +787,7 @@ public class EditorScene : Scene
                 else
                 {
                     // No transition: just maintain current suppression state.
-                    Spot.Framework.Input.Suppressed = !_gamePanelFocused;
+                    Spot.Framework.Input.Suppressed = !_gameHasInput;
                 }
 
                 // In play mode: run the full system stack for the active scene.
@@ -845,13 +843,18 @@ public class EditorScene : Scene
 
     public override void OnRender()
     {
-        if (_gameFramebuffer == null)
-            return;
-
         // Render Scene Views
         foreach (var sceneData in _openScenes)
         {
             if (!sceneData.IsOpen) continue;
+
+            if (sceneData.GameView)
+            {
+                // A full game render (shadows, post-processing) is only worth it when the tab is on screen; a
+                // hidden one keeps its last picture until shown again.
+                if (sceneData.ViewportVisible) RenderGameView(sceneData);
+                continue;
+            }
 
             sceneData.Framebuffer.Bind();
             Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1088,66 +1091,6 @@ public class EditorScene : Scene
             }
         }
 
-        // Render Game View
-        _gameFramebuffer.Bind();
-        Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        Renderer.Clear();
-
-        // Only render the game view when its panel is actually visible. When it is tabbed behind another
-        // panel (or closed) this would otherwise be a full extra scene render — shadow pass, meshes, and
-        // post-processing — every frame; skipping it is a large editor win and the panel keeps its last
-        // image until shown again.
-        var gameScene = _gameViewVisible
-            ? (_state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene)
-            : null;
-
-        if (gameScene != null)
-        {
-            System.Numerics.Matrix4x4? viewProjection = null;
-            Vector3 cameraPosition = Vector3.Zero;
-            Vector4 clearColor = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-            bool is3D = false;
-
-            foreach (var entity in gameScene.View<CameraComponent>())
-            {
-                var cc = entity.GetComponent<CameraComponent>();
-                if (cc.Primary)
-                {
-                    if (entity.HasComponent<TransformComponent>())
-                    {
-                        var transform = entity.GetComponent<TransformComponent>();
-                        viewProjection = cc.GetViewProjection(transform);
-                        cameraPosition = transform.WorldPosition;
-                        is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
-                    }
-                    clearColor = cc.BackgroundColor;
-                    break;
-                }
-            }
-
-            Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
-            Renderer.Clear();
-
-            if (viewProjection.HasValue)
-            {
-                if (is3D)
-                {
-                    Renderer.SetDepthTest(true);
-                    Renderer.SetFaceCulling(true);
-                }
-
-                RenderSystem.Render(gameScene, viewProjection.Value, cameraPosition);
-
-                if (is3D)
-                {
-                    Renderer.SetDepthTest(false);
-                    Renderer.SetFaceCulling(false);
-                }
-            }
-        }
-
-        _gameFramebuffer.Unbind();
-
         // Render each open UI document into its own offscreen target so its tab shows an up-to-date picture.
         foreach (UIDocumentData data in _openUIDocuments)
         {
@@ -1158,6 +1101,44 @@ public class EditorScene : Scene
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
+
+    // Renders a scene viewport through the scene's game camera, the picture a build of the game would show:
+    // no grid, gizmos or editor icons. Without a camera that would render, the viewport is cleared to black and
+    // the ImGui pass explains why.
+    private static void RenderGameView(OpenSceneData sceneData)
+    {
+        sceneData.Framebuffer.Bind();
+        Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        Renderer.Clear();
+
+        if (sceneData.Scene.TryGetActivePrimaryCamera(out Entity cameraEntity))
+        {
+            var cc = cameraEntity.GetComponent<CameraComponent>();
+            var transform = cameraEntity.GetComponent<TransformComponent>();
+            bool is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
+
+            Vector4 clearColor = cc.BackgroundColor;
+            Renderer.SetClearColor(clearColor.X, clearColor.Y, clearColor.Z, clearColor.W);
+            Renderer.Clear();
+
+            if (is3D)
+            {
+                Renderer.SetDepthTest(true);
+                Renderer.SetFaceCulling(true);
+            }
+
+            RenderSystem.Render(sceneData.Scene, cc.GetViewProjection(transform), transform.WorldPosition);
+
+            if (is3D)
+            {
+                Renderer.SetDepthTest(false);
+                Renderer.SetFaceCulling(false);
+            }
+        }
+
+        sceneData.Framebuffer.Unbind();
+    }
+
     public override void OnImGuiRender()
     {
         // Only edit-mode changes belong in the history. Panels still draw and still edit the live scene
@@ -1207,9 +1188,11 @@ public class EditorScene : Scene
                 ? System.IO.Path.GetFileNameWithoutExtension(sceneData.FilePath)
                 : "Untitled";
 
-            // Generate unique title but nice display name
+            // Generate unique title but nice display name. The playing scene's tab carries a play mark: that
+            // viewport is the game now.
             string stableId = sceneData.FilePath != null ? sceneData.FilePath : $"Untitled_{i}";
-            string title = $"{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{stableId}";
+            string playMark = IsPlaying(sceneData) ? $"{EditorIcons.Play}  " : "";
+            string title = $"{playMark}{sceneName}{(sceneData.IsDirty ? "*" : "")}###Scene_{stableId}";
 
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
 
@@ -1220,7 +1203,7 @@ public class EditorScene : Scene
             }
             if (sceneData.FirstFrame)
             {
-                uint targetDock = _lastGameDockId != 0 ? _lastGameDockId : dockspaceId;
+                uint targetDock = _lastViewportDockId != 0 ? _lastViewportDockId : dockspaceId;
                 ImGui.SetNextWindowDockID(targetDock, ImGuiCond.FirstUseEver);
                 sceneData.FirstFrame = false;
             }
@@ -1229,6 +1212,9 @@ public class EditorScene : Scene
             bool open = ImGui.Begin(title, ref sceneData.IsOpen, ImGuiWindowFlags.NoCollapse);
             ImGui.PopStyleVar();
             sceneData.ViewportVisible = open;
+
+            uint viewportDockId = ImGui.GetWindowDockID();
+            if (viewportDockId != 0) _lastViewportDockId = viewportDockId;
 
             // Closing a scene with unsaved changes: keep it open and confirm first.
             if (wasOpen && !sceneData.IsOpen && sceneData.IsDirty)
@@ -1250,7 +1236,6 @@ public class EditorScene : Scene
             {
                 _activeSceneData = sceneData;
                 _context.ActiveScene = sceneData.Scene;
-                _lastEditedSceneData = sceneData;
             }
 
             // Focusing a scene viewport switches the shared Hierarchy panel back to the scene's entities.
@@ -1261,7 +1246,18 @@ public class EditorScene : Scene
 
             if (open)
             {
-                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered);
+                Vector2 imageMin = ImGui.GetCursorScreenPos();
+                Vector2 imageSize = ImGui.GetContentRegionAvail();
+
+                // The game renders into this viewport when played, so its camera takes the viewport's aspect.
+                // That also keeps the camera preview and frustum gizmo true to what play will show.
+                if (imageSize.X > 0 && imageSize.Y > 0 && sceneData.Scene.TryGetActivePrimaryCamera(out Entity gameCamera))
+                {
+                    gameCamera.GetComponent<CameraComponent>().SetViewportSize(imageSize.X, imageSize.Y);
+                }
+
+                sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered, gameView: sceneData.GameView);
+                DrawGameViewOverlays(sceneData, imageMin, imageSize);
             }
             ImGui.End();
         }
@@ -1286,92 +1282,6 @@ public class EditorScene : Scene
         {
             _activeSceneData = _openScenes.Count > 0 ? _openScenes[0] : null;
             _context.ActiveScene = _activeSceneData?.Scene;
-            if (_activeSceneData != null) _lastEditedSceneData = _activeSceneData;
-        }
-
-        _gameViewVisible = false;
-        if (_showGame)
-        {
-            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0.0f, 0.0f));
-            bool open = ImGui.Begin("Game", ref _showGame, ImGuiWindowFlags.NoCollapse);
-            _gameViewVisible = open;
-            _lastGameDockId = ImGui.GetWindowDockID();
-            ImGui.PopStyleVar();
-            if (open)
-            {
-                var size = ImGui.GetContentRegionAvail();
-                var gameScene = _state == EditorState.Play ? _context.ActiveScene : _lastEditedSceneData?.Scene;
-                if (size.X > 0 && size.Y > 0 && gameScene != null)
-                {
-                    foreach (var entity in gameScene.View<CameraComponent>())
-                    {
-                        var cc = entity.GetComponent<CameraComponent>();
-                        if (cc.Primary)
-                        {
-                            cc.SetViewportSize(size.X, size.Y);
-                            break;
-                        }
-                    }
-                }
-
-                var imageTopLeft = ImGui.GetCursorScreenPos();
-                _gamePanel.OnImGuiRender(handleInput: false);
-
-                bool playing = _state != EditorState.Edit;
-                var drawList = ImGui.GetWindowDrawList();
-
-                // Click-to-focus: while in play mode, clicking the Game panel gives it input focus.
-                // The cursor is free when the panel is not focused, so hover detection works normally.
-                bool gameWinHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.None);
-                if (playing && !_gamePanelFocused && gameWinHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-                {
-                    _gamePanelFocused = true;
-                }
-
-                // Overlay: "Click to control" when in play mode but the panel has no input focus.
-                if (playing && !_gamePanelFocused && size.X > 0 && size.Y > 0)
-                {
-                    const string clickMsg = "Click to control";
-                    var textSize = ImGui.CalcTextSize(clickMsg);
-                    var textPos = new Vector2(
-                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
-                        imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
-                    var pad = new Vector2(10.0f, 6.0f);
-                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
-                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
-                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), clickMsg);
-                }
-
-                // Overlay: subtle "Esc to release" hint at the bottom when the panel holds cursor lock.
-                if (playing && _gamePanelFocused && Spot.Framework.Input.CursorLocked && size.X > 0 && size.Y > 0)
-                {
-                    const string escMsg = "Esc to release cursor";
-                    var textSize = ImGui.CalcTextSize(escMsg);
-                    var textPos = new Vector2(
-                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
-                        imageTopLeft.Y + size.Y - textSize.Y - 12.0f);
-                    var pad = new Vector2(8.0f, 4.0f);
-                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
-                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.40f)), 3.0f);
-                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.55f)), escMsg);
-                }
-
-                // Without an active primary camera nothing renders, leaving a blank Game view. Explain it
-                // instead of showing an unexplained black panel — a common first-time snag.
-                if (size.X > 0 && size.Y > 0 && gameScene != null && !gameScene.HasActivePrimaryCamera())
-                {
-                    const string msg = "No camera in scene";
-                    var textSize = ImGui.CalcTextSize(msg);
-                    var textPos = new Vector2(
-                        imageTopLeft.X + (size.X - textSize.X) * 0.5f,
-                        imageTopLeft.Y + (size.Y - textSize.Y) * 0.5f);
-                    var pad = new Vector2(10.0f, 6.0f);
-                    drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
-                        ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
-                    drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), msg);
-                }
-            }
-            ImGui.End();
         }
 
         if (_showInspector)
@@ -1501,16 +1411,19 @@ public class EditorScene : Scene
         // Prevent ImGui's backend from resetting the hardware cursor while the game holds a cursor
         // lock. The fly-mode viewports manage this flag themselves (NoMouseCursorChange); here we
         // apply the same guard for game-side cursor lock so the cursor stays hidden during play.
-        // Placed last so all viewport panels have already had their turn with the flag.
-        bool gameLocksCursor = _state != EditorState.Edit && _gamePanelFocused && Spot.Framework.Input.CursorLocked;
+        // The mouse is withheld from ImGui as well: the hidden cursor is parked at the window centre,
+        // which may sit over any panel, so the game's clicks would otherwise press editor buttons.
+        // Placed last so all viewport panels have already had their turn with the flags.
+        const ImGuiConfigFlags gameLockFlags = ImGuiConfigFlags.NoMouseCursorChange | ImGuiConfigFlags.NoMouse;
+        bool gameLocksCursor = _state != EditorState.Edit && _gameHasInput && Spot.Framework.Input.CursorLocked;
         if (gameLocksCursor)
         {
-            ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
+            ImGui.GetIO().ConfigFlags |= gameLockFlags;
             _gameHeldImGuiLock = true;
         }
         else if (_gameHeldImGuiLock)
         {
-            ImGui.GetIO().ConfigFlags &= ~ImGuiConfigFlags.NoMouseCursorChange;
+            ImGui.GetIO().ConfigFlags &= ~gameLockFlags;
             _gameHeldImGuiLock = false;
         }
 
@@ -1518,6 +1431,139 @@ public class EditorScene : Scene
         // refresh the selection baseline so the next recorded action knows what was selected when the
         // user started it. Must come after every panel has drawn.
         UndoTracker.EndFrame();
+    }
+
+    // ----- Game view -------------------------------------------------------------------------------
+
+    private bool IsPlaying(OpenSceneData sceneData) => _state != EditorState.Edit && sceneData == _playSceneData;
+
+    // Hints painted over a scene viewport that shows the game camera, or that play mode ejected to the editor
+    // camera, plus click-to-control for the playing scene. Draw-list only, so they never take input from the
+    // viewport underneath.
+    private void DrawGameViewOverlays(OpenSceneData sceneData, Vector2 min, Vector2 size)
+    {
+        bool playing = IsPlaying(sceneData);
+        if ((!playing && !sceneData.GameView) || size.X <= 0 || size.Y <= 0) return;
+
+        if (!sceneData.GameView)
+        {
+            // Ejected: the game keeps running, but the viewport is the editor's until F8 hands it back.
+            DrawViewportHint(min, size, "Editor camera  ·  F8 to return to the game");
+            return;
+        }
+
+        // Clicking the picture hands the game the controls. Only the image counts, so clicking the tab to
+        // bring the viewport forward doesn't also start driving the game.
+        if (playing && !_gameHasInput && ImGui.IsWindowHovered()
+            && ImGui.IsMouseHoveringRect(min, min + size) && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            _gameHasInput = true;
+        }
+
+        // Without a camera that would render nothing shows, so explain the black viewport instead of leaving
+        // it unexplained, a common first-time snag.
+        if (!sceneData.Scene.HasActivePrimaryCamera())
+            DrawViewportMessage(min, size, "No camera in scene");
+        else if (playing && !_gameHasInput)
+            DrawViewportMessage(min, size, "Click to control");
+
+        if (!playing)
+            DrawViewportHint(min, size, "Game camera  ·  F8 for the editor camera");
+        else if (!_gameHasInput)
+            DrawViewportHint(min, size, "F8 for the editor camera");
+        else if (Spot.Framework.Input.CursorLocked)
+            DrawViewportHint(min, size, "Esc to release the cursor  ·  F8 for the editor camera");
+    }
+
+    // A message in a dark pill at the centre of a viewport.
+    private static void DrawViewportMessage(Vector2 min, Vector2 size, string text)
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        Vector2 textSize = ImGui.CalcTextSize(text);
+        Vector2 textPos = min + (size - textSize) * 0.5f;
+        var pad = new Vector2(10.0f, 6.0f);
+        drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+            ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
+        drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), text);
+    }
+
+    // A subtle hint centred along the bottom edge of a viewport.
+    private static void DrawViewportHint(Vector2 min, Vector2 size, string text)
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        Vector2 textSize = ImGui.CalcTextSize(text);
+        var textPos = new Vector2(min.X + (size.X - textSize.X) * 0.5f, min.Y + size.Y - textSize.Y - 12.0f);
+        var pad = new Vector2(8.0f, 4.0f);
+        drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
+            ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.40f)), 3.0f);
+        drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.65f)), text);
+    }
+
+    // The scene F8 acts on: the playing scene during play, otherwise the scene being edited.
+    private OpenSceneData? GameViewTarget => _state != EditorState.Edit ? _playSceneData : _activeSceneData;
+
+    // Switches a viewport between the game camera and the editor camera (F8), like Unreal's eject/possess.
+    // During play it acts on the playing scene: ejecting takes the controls back for the editor and starts
+    // the editor camera at the game camera's view, so you inspect the running world from where the player
+    // stands; possessing hands the controls back to the game. In edit mode it previews the scene through
+    // its game camera.
+    private void ToggleGameView()
+    {
+        OpenSceneData? target = GameViewTarget;
+        if (target == null) return;
+
+        target.GameView = !target.GameView;
+        if (_state == EditorState.Edit) return;
+
+        _gameHasInput = target.GameView;
+        if (target.GameView)
+            target.FocusNextFrame = true;
+        else
+            MoveEditorCameraToGameCamera(target);
+    }
+
+    // Puts the editor camera where the game camera is, looking the same way. Skipped when the two don't share
+    // a projection: a 2D editor view has no pose matching a perspective game camera, and vice versa.
+    private static void MoveEditorCameraToGameCamera(OpenSceneData sceneData)
+    {
+        if (!sceneData.Scene.TryGetActivePrimaryCamera(out Entity cameraEntity)) return;
+
+        var cc = cameraEntity.GetComponent<CameraComponent>();
+        var transform = cameraEntity.GetComponent<TransformComponent>();
+        EditorCamera camera = sceneData.EditorCamera;
+        bool perspective = cc.ProjectionType == SceneCameraProjection.Perspective;
+        if (perspective != camera.Is3D) return;
+
+        Vector3 position = transform.WorldPosition;
+        if (perspective)
+        {
+            // Read the look direction off the camera's own view-projection (as the frustum gizmo does), so it
+            // matches what the game renders whatever rotation convention the component uses.
+            if (!Matrix4x4.Invert(cc.GetViewProjection(transform), out Matrix4x4 invVP)) return;
+            Vector3 near = Unproject(invVP, 0.0f);
+            Vector3 far = Unproject(invVP, 1.0f);
+            Vector3 forward = far - near;
+            if (forward.LengthSquared() < 1e-12f || !float.IsFinite(forward.LengthSquared())) return;
+            forward = Vector3.Normalize(forward);
+
+            // Inverse of EditorCamera's forward: (cos p sin y, sin p, -cos p cos y).
+            const float pitchLimit = MathF.PI / 2.0f - 0.01f;
+            camera.Yaw = MathF.Atan2(forward.X, -forward.Z);
+            camera.Pitch = Math.Clamp(MathF.Asin(Math.Clamp(forward.Y, -1.0f, 1.0f)), -pitchLimit, pitchLimit);
+            camera.Position = position;
+        }
+        else
+        {
+            camera.Position = new Vector3(position.X, position.Y, camera.Position.Z);
+        }
+        camera.UpdateView();
+
+        // The centre of the view at NDC depth z (0 = near plane, 1 = far plane), in world space.
+        static Vector3 Unproject(Matrix4x4 invVP, float z)
+        {
+            Vector4 p = Vector4.Transform(new Vector4(0.0f, 0.0f, z, 1.0f), invVP);
+            return new Vector3(p.X, p.Y, p.Z) / p.W;
+        }
     }
 
     // ----- About dialog --------------------------------------------------------------------------
@@ -1794,7 +1840,6 @@ public class EditorScene : Scene
         var newSceneData = new OpenSceneData(_context);
         _openScenes.Add(newSceneData);
         _activeSceneData = newSceneData;
-        _lastEditedSceneData = newSceneData;
         _context.ActiveScene = newSceneData.Scene;
         _context.Selection = null;
     }
@@ -1875,7 +1920,6 @@ public class EditorScene : Scene
 
         StopScriptWatcher();
         foreach (var sceneData in _openScenes) sceneData.Dispose();
-        _gameFramebuffer?.Dispose();
         _inspectorPanel.Dispose();
         foreach (UIDocumentData data in _openUIDocuments) data.Dispose();
         _context.ActiveScene?.OnExit();
@@ -1886,10 +1930,11 @@ public class EditorScene : Scene
     private bool _isPlayPaused;
     private bool _playStep;
     private bool _gameHeldImGuiLock;
-    // Whether the Game panel currently has input focus (set by clicking into it).
-    // When false the game receives no keyboard/mouse input and the cursor is free.
-    private bool _gamePanelFocused;
-    private bool _prevGamePanelFocused;
+    // Whether the game holds the controls: set when play starts, on possess (F8) and by clicking the playing
+    // viewport; cleared by Esc, eject (F8) and the console. When false the game receives no keyboard/mouse
+    // input and the cursor is free.
+    private bool _gameHasInput;
+    private bool _prevGameHasInput;
 
     private void OnPlay()
     {
@@ -1906,34 +1951,46 @@ public class EditorScene : Scene
         // Drop any in-flight edit rather than recording it: play mode is about to replace this state.
         UndoTracker.Abandon();
 
-        _prePlaySnapshot = new SceneSerializer(_activeSceneData.Scene).SerializeToString();
+        _playSceneData = _activeSceneData;
+        _prePlaySnapshot = new SceneSerializer(_playSceneData.Scene).SerializeToString();
         _isPlayPaused = false;
         _playStep = false;
-        _gamePanelFocused = false;
-        _prevGamePanelFocused = false;
+
+        // The scene becomes the game: its viewport switches to the game camera and the game gets the controls
+        // straight away, as in Unreal. F8 ejects to the editor camera; Esc frees the cursor.
+        _playSceneData.GameView = true;
+        _playSceneData.FocusNextFrame = true;
+        _gameHasInput = true;
+        _prevGameHasInput = false;
         _state = EditorState.Play;
-        _showGame = true;
         Spot.Framework.Log.Info("Entering play mode.");
     }
 
     private void OnStop()
     {
-        if (_state == EditorState.Edit || _activeSceneData == null) return;
+        if (_state == EditorState.Edit) return;
 
-        var scene = _activeSceneData.Scene;
-        ScriptSystem.DestroyAll(scene);
-        foreach (var e in scene.View<AudioSourceComponent>())
+        if (_playSceneData != null)
         {
-            var src = e.GetComponent<AudioSourceComponent>();
-            if (src.IsPlaying) src.Stop();
+            var scene = _playSceneData.Scene;
+            ScriptSystem.DestroyAll(scene);
+            foreach (var e in scene.View<AudioSourceComponent>())
+            {
+                var src = e.GetComponent<AudioSourceComponent>();
+                if (src.IsPlaying) src.Stop();
+            }
+            scene.TeardownPhysics();
+            if (_prePlaySnapshot != null) RestoreSnapshot(_playSceneData, _prePlaySnapshot);
+
+            // Back to editing, so back to the editor camera.
+            _playSceneData.GameView = false;
+            _playSceneData = null;
         }
-        scene.TeardownPhysics();
-        RestoreSnapshot(_activeSceneData, _prePlaySnapshot!);
         SyncSnapshotBaselines();
         _prePlaySnapshot = null;
         _isPlayPaused = false;
-        _gamePanelFocused = false;
-        _prevGamePanelFocused = false;
+        _gameHasInput = false;
+        _prevGameHasInput = false;
         // Clear suppression first so CursorLocked can actually apply the cursor-free state.
         Spot.Framework.Input.Suppressed = false;
         // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
@@ -2065,7 +2122,7 @@ public class EditorScene : Scene
     }
 
     // Rebuilds the default docked arrangement: Hierarchy and Inspector on the right,
-    // Asset Browser and Console side-by-side along the bottom, and the Scene/Game viewports in the center.
+    // Asset Browser and Console side-by-side along the bottom, and the scene viewports in the center.
     private void BuildDefaultLayout(uint dockspaceId, Vector2 size)
     {
         ImGuiDock.igDockBuilderRemoveNode(dockspaceId);
@@ -2096,8 +2153,6 @@ public class EditorScene : Scene
             ImGuiDock.igDockBuilderDockWindow(title, center);
         }
 
-        ImGuiDock.igDockBuilderDockWindow("Game", center);
-
         ImGuiDock.igDockBuilderFinish(dockspaceId);
     }
 
@@ -2121,7 +2176,7 @@ public class EditorScene : Scene
             }
             if (data.FirstFrame)
             {
-                uint targetDock = _lastGameDockId != 0 ? _lastGameDockId : dockspaceId;
+                uint targetDock = _lastViewportDockId != 0 ? _lastViewportDockId : dockspaceId;
                 ImGui.SetNextWindowDockID(targetDock, ImGuiCond.FirstUseEver);
                 data.FirstFrame = false;
             }
@@ -2230,7 +2285,6 @@ public class EditorScene : Scene
         {
             if (ImGui.BeginMenu("Panels"))
             {
-                ImGui.MenuItem("Game", "", ref _showGame);
                 ImGui.MenuItem("Hierarchy", "", ref _showHierarchy);
                 ImGui.MenuItem("Properties", "", ref _showInspector);
                 ImGui.MenuItem("Console", "", ref _showConsole);
@@ -2244,8 +2298,7 @@ public class EditorScene : Scene
             if (ImGui.MenuItem("Reset Layout"))
             {
                 // Bring every panel back and rebuild the default docked arrangement next frame.
-                _showGame = _showHierarchy = true;
-                _showInspector = _showConsole = _showAssetBrowser = true;
+                _showHierarchy = _showInspector = _showConsole = _showAssetBrowser = true;
                 _rebuildDefaultLayout = true;
             }
 
@@ -2277,13 +2330,14 @@ public class EditorScene : Scene
 
 
 
-    // Draws the centered play / pause / step toolbar inside the main menu bar.
+    // Draws the centered play / pause / step / camera toolbar inside the main menu bar.
     private void DrawPlayControl()
     {
         var palette = EditorThemeManager.Current.Palette;
         float size = ImGui.GetFrameHeight();
         const float gap = 2.0f;
-        float totalWidth = size * 3 + gap * 2;
+        const float groupGap = 12.0f;
+        float totalWidth = size * 4 + gap * 2 + groupGap;
 
         // Center the three-button group; clamp so we never overlap existing menu items.
         float centerX = (ImGui.GetWindowWidth() - totalWidth) * 0.5f;
@@ -2368,6 +2422,32 @@ public class EditorScene : Scene
         drawList.AddRectFilled(p2 + new Vector2(size - pad - sw, pad), p2 + new Vector2(size - pad, size - pad), stepCol, 1.0f);
         if (c2 && stepEnabled) OnStep();
         if (h2) ImGui.SetTooltip(stepEnabled ? "Step (advance one frame)" : "Step (pause first)");
+
+        // ── 4. Game / editor camera ────────────────────────────────────
+        // Shows which camera the viewport looks through (gamepad = game, camera = editor), lit while it is the
+        // game's; clicking switches, as F8 does.
+        ImGui.SameLine(0, groupGap);
+        Vector2 p3 = ImGui.GetCursorScreenPos();
+        OpenSceneData? viewTarget = GameViewTarget;
+        bool gameView = viewTarget?.GameView ?? false;
+        var (h3, c3) = IconButton("##gameview", size);
+        if (gameView)
+            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(palette.Accent), 4.0f);
+        else if (h3 && viewTarget != null)
+            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+
+        string glyph = gameView ? EditorIcons.Gamepad : EditorIcons.Camera;
+        Vector2 glyphSize = ImGui.CalcTextSize(glyph);
+        uint glyphCol = viewTarget != null ? ImGui.GetColorU32(palette.Text) : ImGui.GetColorU32(palette.TextDisabled);
+        drawList.AddText(p3 + (new Vector2(size, size) - glyphSize) * 0.5f, glyphCol, glyph);
+
+        if (c3) ToggleGameView();
+        if (h3)
+        {
+            ImGui.SetTooltip(gameView
+                ? "Game camera: switch to the editor camera (F8)"
+                : "Editor camera: switch to the game camera (F8)");
+        }
     }
 
     private void OnPause()
@@ -2438,6 +2518,13 @@ public class EditorScene : Scene
             _showHistory = !_showHistory;
         }
 
+        // F8 switches between the game camera and the editor camera, like Unreal's eject/possess. Read through
+        // ImGui so it still fires while the game holds the controls (game input reads are blocked otherwise).
+        if (ImGui.IsKeyPressed(ImGuiKey.F8, false))
+        {
+            ToggleGameView();
+        }
+
         // Play-mode controls: Ctrl+P toggles pause/resume; Ctrl+Right steps one frame while paused.
         // (Space is intentionally NOT used here — it's commonly bound to game actions like jump.)
         if (_state == EditorState.Play)
@@ -2449,11 +2536,11 @@ public class EditorScene : Scene
             if (ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.Right))
                 OnStep();
 
-            // Escape releases the Game panel's input focus (frees the cursor back to the editor).
+            // Escape takes the controls back from the game (frees the cursor for the editor).
             // Use ImGui's key check so it fires even while the game holds cursor lock.
-            if (_gamePanelFocused && ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+            if (_gameHasInput && ImGui.IsKeyPressed(ImGuiKey.Escape, false))
             {
-                _gamePanelFocused = false;
+                _gameHasInput = false;
             }
         }
 
@@ -2629,7 +2716,6 @@ public class EditorScene : Scene
         newSceneData.FocusNextFrame = true;
         _openScenes.Add(newSceneData);
         _activeSceneData = newSceneData;
-        _lastEditedSceneData = newSceneData;
         _context.ActiveScene = newSceneData.Scene;
         _context.Selection = null;
     }
@@ -2861,7 +2947,6 @@ public class EditorScene : Scene
             var newSceneData = new OpenSceneData(_context);
             _openScenes.Add(newSceneData);
             _activeSceneData = newSceneData;
-            _lastEditedSceneData = newSceneData;
             _context.ActiveScene = newSceneData.Scene;
         }
         _context.Selection = null;

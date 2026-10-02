@@ -36,7 +36,9 @@ The editor is organized into dockable panels you can rearrange and save into a l
   billboards of invisible entities (cameras, lights, sky) are all clickable, and clicking empty space
   clears the selection. With the viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale
   and `F` frames the selected entity (double-clicking an entity in the hierarchy does the same). Hold
-  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×).
+  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×). It is also where the game
+  runs: Play turns the viewport into the game, and `F8` switches between the game camera and the editor
+  camera (see [Edit mode and play mode](#edit-mode-and-play-mode)).
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
   You create, delete, and reparent entities here. Select several at once with `Ctrl`+click (toggle one)
   and `Shift`+click (range), then delete, duplicate, reparent (drag any one of them), or reorder
@@ -58,8 +60,8 @@ The editor is organized into dockable panels you can rearrange and save into a l
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
   The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
-  including the Game panel during play, where it also hands the cursor and input back to the editor
-  (same as `Esc`), so what you type doesn't drive the game as well. Click the Game panel to take
+  including while the game has the controls during play, where it also hands the cursor and input back to
+  the editor (same as `Esc`), so what you type doesn't drive the game as well. Click the game view to take
   control again. The editor owns this window, so the engine does not also draw its floating overlay.
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
   you import and organize assets. Textures show their image, materials render a live sphere preview, and
@@ -200,26 +202,38 @@ The editor has two modes:
   tick in real time. Play starts instantly (no build step) and, when you stop, the scene is restored
   exactly as it was before you pressed Play, so testing never disturbs your work.
 
-The **Game** view shows what the scene's primary camera sees during play. The Scene view stays open
-alongside it, so you can fly around and inspect the live runtime state.
+There is no separate Game panel: **the scene becomes the game**. Pressing Play switches the active
+scene's viewport to the scene's game camera (its primary camera) and marks its tab with a play icon. The
+game gets the controls straight away, so WASD, mouse-look and any cursor lock the game requests work as in
+a standalone build. If the scene has no camera that would render, the viewport says so.
 
-**Game panel input focus.** While in play mode the Game panel only receives keyboard and mouse input
-when it is focused. Click inside the Game view to give it focus (the "Click to control" hint
-disappears). From that point WASD, mouse-look, and any cursor lock the game requests all work as in
-a standalone build. Press `Escape` to release focus and return the cursor to the editor — after that
-you can fly the Scene camera or inspect entities without the game reacting to your input. The game's
-simulation continues in the background regardless of focus.
+**Game camera and editor camera (`F8`).** As in Unreal's *eject*/*possess*, `F8` switches the playing
+viewport between the two cameras:
 
-Three controls sit centered in the menu bar:
+- **Eject** (game camera → editor camera): the game keeps running but stops receiving input, the cursor is
+  freed, and the editor camera starts at the game camera's view. Fly around, click entities, and inspect or
+  tweak them in the Inspector while the simulation runs; the viewport shows an *Editor camera* hint.
+  Anything you change is discarded on Stop, like every play-mode change.
+- **Possess** (editor camera → game camera): the viewport shows the game again and hands it the controls.
+
+`Esc` gives the cursor and input back to the editor without leaving the game camera; the viewport then
+shows *Click to control*, and clicking it hands the controls back to the game. The game's simulation
+continues regardless of who has the controls. Stopping play returns the viewport to the editor camera.
+
+In edit mode `F8` previews the active scene through its game camera, without running anything; press it
+again to return to the editor camera. While a viewport shows the game camera its gizmos, picking and
+editor icons are off, since they work in the editor camera's space.
+
+Four controls sit centered in the menu bar:
 
 | Button | Keyboard | Effect |
 |--------|----------|--------|
 | Play / Stop | — | Enters or exits play mode. On stop the scene is fully restored. |
 | Pause / Resume | `Ctrl`+`P` | Freezes the simulation without discarding state; resume to continue. |
 | Step | `Ctrl`+`Right` | Advances the simulation exactly one frame (only works while paused). |
+| Game / editor camera | `F8` | Switches the viewport between the game camera (gamepad icon, highlighted) and the editor camera. |
 
-While the simulation is running the scene-view gizmos and drag-drop are locked — edits belong in
-edit mode. You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
+You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
 pre-play (authored) version since any runtime changes are ephemeral.
 
 ## Managing projects

@@ -72,6 +72,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Scene camera default look rate retuned (60% slower): the previous rate compensated for the dropped mouse motion described below, and felt far too fast once that was fixed
 - Scene camera **Look sensitivity** and **Fly speed** are now adjustable from the viewport's **Camera** toolbar button and persist with the window layout; `Shift` while flying is a 4x multiplier on the configured speed
 - Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders
+- **The scene becomes the game** in the editor: Play turns the active scene viewport into the game view (game camera, controls handed to the game) instead of using a separate Game panel, and `F8` (or the camera button next to Play) switches between the game camera and the editor camera, like Unreal's eject/possess: ejecting frees the controls and starts the editor camera at the player's view so the running scene can be inspected, and in edit mode `F8` previews the scene through its game camera
 
 ### Added
 - **Point light shadows**: point and spot lights now cast real-time cubemap shadows; enable per-light via `CastShadows` (the first shadow-casting light in the scene gets a depth cubemap, sampled as linear distance); `RenderSettings.PointShadows` and `PointShadowResolution` are global controls
@@ -91,8 +92,11 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 
 ### Removed
 - The `sandbox/` project: `samples/` now holds the examples, with `samples/HelloEngine` as the engine-level project
+- The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- Focusing another scene tab during play moved the simulation (and Stop's restore) onto that scene; the played scene is now pinned until Stop, and play ends cleanly if its tab closes or another project opens
+- While a game held a locked cursor in the editor, its clicks could press editor buttons under the hidden cursor
 - The editor could not find a project's script assembly when a `Directory.Build.props` more than one folder up redirected its build output (as the repo's does for `samples/HelloEngine`), so Play ran without scripts
 - Editor thumbnails (model and material previews) showed fragments of the editor UI, such as console text, when several rendered in the same frame: previews and the FXAA pass restored the render target behind the renderer's back, so the next framebuffer created re-bound the previous preview and the rest of the frame drew into it. Previews also no longer leave face culling on
 - The generated sphere was wound inside out (so `BasicRenderer3D` culled its outside and lit it from the wrong side) and mapped its texture upside down; the generated plane mirrored its texture

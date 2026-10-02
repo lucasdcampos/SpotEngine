@@ -70,11 +70,20 @@ public class ViewportPanel
         _camera = camera;
     }
 
-    public void OnImGuiRender(bool handleInput = true)
+    /// <summary>
+    /// Draws the viewport image, then the editor HUD and interaction (toolbar, gizmos, picking, camera
+    /// navigation) on top of it.
+    /// </summary>
+    /// <param name="handleInput">Whether the editor camera and gizmos respond to the mouse and keyboard.</param>
+    /// <param name="gameView">The image is the game camera's view: only the picture is drawn, since the HUD,
+    /// gizmos and picking all work in the editor camera's space and input belongs to the game.</param>
+    public void OnImGuiRender(bool handleInput = true, bool gameView = false)
     {
+        if (gameView) handleInput = false;
+
         // Safety net: if we grabbed the cursor lock but won't run input this frame (panel lost
-        // focus mid-flight, entered Play, etc.), release it here so the cursor can never get
-        // stranded in the hidden/locked state.
+        // focus mid-flight, switched to the game camera, etc.), release it here so the cursor can
+        // never get stranded in the hidden/locked state.
         if (!handleInput && _ownsCursorLock)
         {
             ReleaseCursorLock();
@@ -85,11 +94,13 @@ public class ViewportPanel
         if (_framebuffer != null && viewportSize.X > 0 && viewportSize.Y > 0)
         {
             _framebuffer.Resize((uint)viewportSize.X, (uint)viewportSize.Y);
-            if (handleInput && _camera != null)
-                _camera.SetViewportSize(viewportSize.X, viewportSize.Y);
+            // Kept in step even while the viewport shows the game camera, so switching back never shows
+            // a frame stretched to an old size.
+            _camera?.SetViewportSize(viewportSize.X, viewportSize.Y);
 
             var cursorPos = ImGui.GetCursorScreenPos();
             ImGui.Image((IntPtr)_framebuffer.ColorAttachment, viewportSize, new Vector2(0, 1), new Vector2(1, 0));
+            if (gameView) return;
             bool isHovered = ImGui.IsItemHovered();
 
             // Dragging a model from the Asset Browser onto the viewport imports it into the scene as a

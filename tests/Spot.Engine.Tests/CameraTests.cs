@@ -59,6 +59,26 @@ public class CameraTests
         AssertMatrixClose(cam.Projection, vp);
     }
 
+    [Fact]
+    public void TryGetActivePrimaryCamera_SkipsCamerasThatWouldNotRender()
+    {
+        var scene = new Scene();
+        Entity disabled = scene.Instantiate();
+        disabled.AddComponent(new CameraComponent()).Enabled = false;
+        Entity secondary = scene.Instantiate();
+        secondary.AddComponent(new CameraComponent { Primary = false });
+
+        Assert.False(scene.TryGetActivePrimaryCamera(out _));
+        Assert.False(scene.HasActivePrimaryCamera());
+
+        Entity primary = scene.Instantiate();
+        primary.AddComponent(new CameraComponent());
+
+        Assert.True(scene.TryGetActivePrimaryCamera(out Entity found));
+        Assert.Equal(primary, found);
+        Assert.True(scene.HasActivePrimaryCamera());
+    }
+
     private static void AssertMatrixClose(Matrix4x4 a, Matrix4x4 b)
     {
         const float tol = 1e-4f;

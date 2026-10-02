@@ -216,9 +216,15 @@ public class Scene
     /// <summary>
     /// Returns true if the scene has a primary camera that would actually render this frame — active in
     /// the hierarchy, enabled, and carrying an enabled transform (the same conditions <see cref="OnRender"/>
-    /// uses to pick a camera). The editor uses this to warn when the Game view would otherwise be blank.
+    /// uses to pick a camera). The editor uses this to warn when its game view would otherwise be blank.
     /// </summary>
-    public bool HasActivePrimaryCamera()
+    public bool HasActivePrimaryCamera() => TryGetActivePrimaryCamera(out _);
+
+    /// <summary>
+    /// Finds the primary camera that would actually render this frame (see <see cref="HasActivePrimaryCamera"/>).
+    /// The returned entity always carries a <see cref="CameraComponent"/> and a <see cref="TransformComponent"/>.
+    /// </summary>
+    public bool TryGetActivePrimaryCamera(out Entity camera)
     {
         foreach (var entity in View<CameraComponent>())
         {
@@ -227,9 +233,11 @@ public class Scene
             if (!cc.Enabled || !cc.Primary) continue;
             if (!HasComponent<TransformComponent>(entity)) continue;
             if (!GetComponent<TransformComponent>(entity).Enabled) continue;
+            camera = entity;
             return true;
         }
 
+        camera = default;
         return false;
     }
 
