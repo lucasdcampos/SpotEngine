@@ -505,7 +505,7 @@ internal static class ComponentInspector
         string? display = AssetDatabase.ToDisplayPath(stored);
 
         string[] patterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
-        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, display, out string? newPath))
+        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Texture))
         {
             try
             {
@@ -513,7 +513,10 @@ internal static class ComponentInspector
                 // so what the editor shows matches what a build ships.
                 string? storedRef = AssetDatabase.ToGuidRef(newPath);
                 var newTexture = storedRef != null ? Texture2D.Load(storedRef) : null;
-                texture?.Dispose();
+
+                // Built-in textures are shared by everything that uses them, so only a texture of our own is freed.
+                if (!BuiltinAssets.IsBuiltin(stored))
+                    texture?.Dispose();
                 meta.Prop.SetValue(component, newTexture);
                 meta.AssetPathProp!.SetValue(component, storedRef);
             }
@@ -557,31 +560,7 @@ internal static class ComponentInspector
 
         string[] patterns = { "*.obj", "*.fbx", "*.gltf", "*.glb", "*.dae" };
 
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
-        {
-            if (ImGui.MenuItem("Cube", "", stored == "primitive:Cube"))
-            {
-                selectedPath = "primitive:Cube";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Plane", "", stored == "primitive:Plane"))
-            {
-                selectedPath = "primitive:Plane";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Quad", "", stored == "primitive:Quad"))
-            {
-                selectedPath = "primitive:Quad";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Sphere", "", stored == "primitive:Sphere"))
-            {
-                selectedPath = "primitive:Sphere";
-                changed = true;
-            }
-        };
-
-        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, display, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Mesh))
         {
             try
             {
@@ -628,16 +607,7 @@ internal static class ComponentInspector
 
         string[] patterns = { "*.sptmat" };
 
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
-        {
-            if (ImGui.MenuItem("Checkerboard", "", stored == "editor:Checkerboard"))
-            {
-                selectedPath = "editor:Checkerboard";
-                changed = true;
-            }
-        };
-
-        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, display, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Material))
         {
             try
             {

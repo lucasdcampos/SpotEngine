@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Engine.Assets;
 using Spot.Engine.Scenes;
 using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
@@ -168,10 +169,10 @@ public class HierarchyPanel
                 }
                 if (ImGui.BeginMenu("3D Object"))
                 {
-                    if (ImGui.MenuItem("Cube")) CreatePrimitive("Cube");
-                    if (ImGui.MenuItem("Plane")) CreatePrimitive("Plane");
-                    if (ImGui.MenuItem("Quad")) CreatePrimitive("Quad");
-                    if (ImGui.MenuItem("Sphere")) CreatePrimitive("Sphere");
+                    foreach (PrimitiveShape shape in PrimitiveSpec.Shapes)
+                    {
+                        if (ImGui.MenuItem(shape.ToString())) CreatePrimitive(shape);
+                    }
                     ImGui.EndMenu();
                 }
                 ImGui.Separator();
@@ -227,18 +228,21 @@ public class HierarchyPanel
         return entity;
     }
 
-    /// <summary>Creates an entity with a procedural primitive <see cref="MeshComponent"/>, selects it, and returns it.</summary>
-    public Entity CreatePrimitive(string typeName)
+    /// <summary>
+    /// Creates an entity drawing a built-in mesh (<c>builtin:Mesh/…</c>) with its default parameters, selects it,
+    /// and returns it.
+    /// </summary>
+    public Entity CreatePrimitive(PrimitiveShape shape)
     {
-        var entity = CreateEntity(typeName);
-        var meshRenderer = new MeshComponent { ModelPath = $"primitive:{typeName}" };
+        var entity = CreateEntity(shape.ToString());
+        var meshRenderer = new MeshComponent { ModelPath = BuiltinAssets.MeshReference(PrimitiveSpec.For(shape)) };
         try
         {
-            meshRenderer.Model = Spot.Framework.Graphics.Model.Load(meshRenderer.ModelPath);
+            meshRenderer.Model = BuiltinAssets.LoadModel(meshRenderer.ModelPath!);
         }
         catch (System.Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to load primitive '{0}': {1}", typeName, ex.Message);
+            Spot.Framework.Log.Error("Failed to load primitive '{0}': {1}", shape, ex.Message);
         }
         entity.AddComponent(meshRenderer);
         return entity;

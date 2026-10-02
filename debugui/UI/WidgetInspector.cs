@@ -165,7 +165,7 @@ public static class WidgetInspector
     private static void TextureSlot(string label, ref string reference, Action<Texture2D?> assign)
     {
         string? display = AssetDatabase.ToDisplayPath(string.IsNullOrEmpty(reference) ? null : reference);
-        if (EditorGui.AssetSlot(label, "IMAGE_FILE", ImagePatterns, display, out string? newPath))
+        if (EditorGui.AssetSlot(label, "IMAGE_FILE", ImagePatterns, display, out string? newPath, builtins: BuiltinAssetKind.Texture))
         {
             string? guid = AssetDatabase.ToGuidRef(newPath);
             reference = guid ?? string.Empty;

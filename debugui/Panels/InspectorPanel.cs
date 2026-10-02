@@ -20,6 +20,10 @@ public class InspectorPanel : IDisposable
     // of every frame the inspector is open.
     private string? _materialPreviewErrorPath;
 
+    // The preview of the selected built-in mesh (rendered once per selection).
+    private Spot.Framework.Graphics.Framebuffer? _builtinPreviewFb;
+    private string? _builtinPreviewReference;
+
     // Prefab editing state: the inspected prefab is loaded into an isolated scene so its components can be
     // edited with the same reflection-based UI as a live entity, then re-serialized back to disk on change.
     private Scene? _prefabScene;
@@ -38,6 +42,8 @@ public class InspectorPanel : IDisposable
     {
         _materialPreviewFb?.Dispose();
         _materialPreviewFb = null;
+        _builtinPreviewFb?.Dispose();
+        _builtinPreviewFb = null;
         GC.SuppressFinalize(this);
     }
 
@@ -46,7 +52,11 @@ public class InspectorPanel : IDisposable
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
         ImGui.Begin("Properties", ref open, flags);
 
-        if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
+        if (_context.SelectedAssetPath != null && BuiltinAssets.TryGet(_context.SelectedAssetPath, out BuiltinAsset builtin))
+        {
+            DrawBuiltinAsset(builtin);
+        }
+        else if (_context.SelectedAssetPath != null && _context.SelectedAssetPath.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
         {
             DrawMaterialEditor(_context.SelectedAssetPath);
         }
@@ -204,6 +214,115 @@ public class InspectorPanel : IDisposable
         }
     }
 
+    // ----- Built-in assets -------------------------------------------------------------------------
+
+    // A read-only view of a built-in asset: a preview, what it is, its reference, and a way to get an editable
+    // copy into the project.
+    private void DrawBuiltinAsset(BuiltinAsset asset)
+    {
+        string kind = asset.Kind switch
+        {
+            BuiltinAssetKind.Mesh => "Built-in mesh",
+            BuiltinAssetKind.Texture => "Built-in texture",
+            _ => "Built-in material",
+        };
+        ImGui.TextUnformatted(asset.Name);
+        ImGui.SameLine();
+        ImGui.TextDisabled(kind);
+        ImGui.Separator();
+
+        const float previewSize = 200.0f;
+        float xOffset = (ImGui.GetContentRegionAvail().X - previewSize) * 0.5f;
+        if (xOffset > 0)
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + xOffset);
+        nint preview = BuiltinPreview(asset);
+        if (preview != 0)
+            ImGui.Image(preview, new Vector2(previewSize, previewSize), new Vector2(0, 1), new Vector2(1, 0));
+        else
+            ImGui.Dummy(new Vector2(previewSize, previewSize));
+        ImGui.Separator();
+
+        ImGui.TextWrapped(asset.Description);
+        ImGui.Spacing();
+        ImGui.TextDisabled(asset.Reference);
+        ImGui.Spacing();
+        ImGui.TextWrapped("Built-in assets are shared and read-only. Copy one into the project to edit it.");
+        ImGui.Spacing();
+
+        if (ImGui.Button($"{EditorIcons.FolderOpen}  Copy to Project", new Vector2(-1, 0)))
+            CopyBuiltinToProject(asset);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Saves an editable copy into the project's Assets folder and selects it.");
+
+        if (ImGui.Button("Copy Reference", new Vector2(-1, 0)))
+            ImGui.SetClipboardText(asset.Reference);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Copies the reference, for use from scripts.");
+    }
+
+    // The preview texture for a built-in: the texture itself, a material sphere, or a rendered mesh.
+    private nint BuiltinPreview(BuiltinAsset asset)
+    {
+        try
+        {
+            switch (asset.Kind)
+            {
+                case BuiltinAssetKind.Texture:
+                    return (nint)BuiltinAssets.LoadTexture(asset.Reference).Handle.Id;
+
+                case BuiltinAssetKind.Material:
+                    _materialPreviewFb ??= new Spot.Framework.Graphics.Framebuffer(200, 200);
+                    Material material = BuiltinAssets.LoadMaterial(asset.Reference);
+                    int signature = MaterialPreviewHelper.Signature(material);
+                    if (_materialPreviewPath != asset.Reference || _materialPreviewSig != signature)
+                    {
+                        MaterialPreviewHelper.RenderToFramebuffer(material, _materialPreviewFb);
+                        _materialPreviewPath = asset.Reference;
+                        _materialPreviewSig = signature;
+                    }
+
+                    return (nint)_materialPreviewFb.ColorAttachment;
+
+                default:
+                    _builtinPreviewFb ??= new Spot.Framework.Graphics.Framebuffer(200, 200);
+                    if (_builtinPreviewReference != asset.Reference)
+                    {
+                        ModelPreviewHelper.RenderToFramebuffer(BuiltinAssets.LoadModel(asset.Reference), _builtinPreviewFb);
+                        _builtinPreviewReference = asset.Reference;
+                    }
+
+                    return (nint)_builtinPreviewFb.ColorAttachment;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_materialPreviewErrorPath != asset.Reference)
+            {
+                _materialPreviewErrorPath = asset.Reference;
+                Spot.Framework.Log.Error("Failed to preview '{0}': {1}", asset.Reference, ex.Message);
+            }
+
+            return 0;
+        }
+    }
+
+    // Saves an editable copy into the project's Assets folder and selects it, so a copied material opens straight
+    // into the material editor.
+    private void CopyBuiltinToProject(BuiltinAsset asset)
+    {
+        try
+        {
+            string folder = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+            string path = BuiltinAssets.Export(asset.Reference, folder);
+            Spot.Framework.Log.Info("Copied built-in '{0}' to {1}.", asset.Name, path);
+            _context.SelectedAssetPath = path;
+        }
+        catch (Exception ex)
+        {
+            Spot.Framework.Log.Error("Failed to copy '{0}' into the project: {1}", asset.Name, ex.Message);
+        }
+    }
+
     // ----- Material editor -------------------------------------------------------------------------
 
     private void DrawMaterialEditor(string path)
@@ -319,7 +438,7 @@ public class InspectorPanel : IDisposable
         // pick one from a searchable, thumbnailed list; the ✕ clears the slot. Each edit saves immediately.
         string[] imagePatterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
 
-        if (EditorGui.AssetSlot("Texture", "IMAGE_FILE", imagePatterns, material.TexturePath, out string? newTexture))
+        if (EditorGui.AssetSlot("Texture", "IMAGE_FILE", imagePatterns, material.TexturePath, out string? newTexture, builtins: BuiltinAssetKind.Texture))
         {
             try
             {
@@ -332,7 +451,7 @@ public class InspectorPanel : IDisposable
             }
         }
 
-        if (EditorGui.AssetSlot("Normal Map", "IMAGE_FILE", imagePatterns, material.NormalMapPath, out string? newNormal))
+        if (EditorGui.AssetSlot("Normal Map", "IMAGE_FILE", imagePatterns, material.NormalMapPath, out string? newNormal, builtins: BuiltinAssetKind.Texture))
         {
             try
             {

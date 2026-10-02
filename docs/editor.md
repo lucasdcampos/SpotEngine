@@ -47,7 +47,10 @@ The editor is organized into dockable panels you can rearrange and save into a l
   values. The inspector is generated from the components themselves, so custom components appear
   automatically. Asset reference fields (mesh, material, texture, ...) show a preview tile — an image
   thumbnail, or a live-rendered sphere for materials — and open a searchable, thumbnailed picker when
-  clicked, so you can pick an asset without dragging.
+  clicked, so you can pick an asset without dragging. The picker lists the matching
+  [built-in assets](assets.md#built-in-assets) first, then the project's files; a built-in mesh with custom
+  parameters shows them next to its name (*Capsule (radius 0.3, height 1.7)*). Selecting a built-in asset
+  shows a read-only preview with **Copy to Project** and **Copy Reference** buttons.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
   The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
@@ -59,7 +62,13 @@ The editor is organized into dockable panels you can rearrange and save into a l
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
   models apart at a glance without dropping them into a scene. Model thumbnails load in the background and
   are cached per folder. Select several files at once with `Ctrl`+click and `Shift`+click, then delete or
-  drag the whole selection into a folder together.
+  drag the whole selection into a folder together. The project root starts with a read-only **Built-in**
+  folder holding the engine's [built-in assets](assets.md#built-in-assets) — meshes, textures and materials —
+  which you drag onto slots, the scene or the hierarchy like any other asset. They can't be renamed, moved
+  or deleted; to customize one, copy it into the project: `Ctrl`+`D` (or **Copy to Project**) saves an
+  editable copy into the last project folder you visited, dragging it onto a project folder saves it there,
+  and `Ctrl`+`C` then `Ctrl`+`V` pastes a copy wherever you like. `Enter` shows the selected built-in in the
+  Inspector.
 - **UI Canvas** — a screen-space surface for authoring a game UI (`.sptui`) document, separate from the
   scene viewport; the shared **Hierarchy** panel shows its widgets while it is focused. See
   [Runtime UI](ui.md#authoring-in-the-editor).

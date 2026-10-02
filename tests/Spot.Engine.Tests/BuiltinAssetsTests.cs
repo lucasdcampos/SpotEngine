@@ -290,6 +290,75 @@ public class BuiltinAssetsTests
         }
     }
 
+    // ----- Copies into the project ------------------------------------------------------------------
+
+    [Fact]
+    public void Export_WritesEditableFilesNamedAfterTheAsset()
+    {
+        Install();
+        using var dir = new TempDir();
+
+        string mesh = BuiltinAssets.Export("builtin:Mesh/Capsule?radius=0.3&height=1.7", dir.Path);
+        string texture = BuiltinAssets.Export("builtin:Texture/Grid", dir.Path);
+        string material = BuiltinAssets.Export("editor:Checkerboard", dir.Path);
+
+        Assert.Equal(Path.Combine(dir.Path, "Capsule.obj"), mesh);
+        Assert.Equal(Path.Combine(dir.Path, "Grid.png"), texture);
+        Assert.Equal(Path.Combine(dir.Path, "Checker.sptmat"), material);
+
+        // The mesh bakes in its parameters; the texture is the generated image; the material keeps its settings.
+        Assert.Contains("o Capsule", File.ReadAllText(mesh), StringComparison.Ordinal);
+        Assert.Equal(1.7f, ObjHeight(mesh), 3);
+        Assert.Equal(BuiltinAssets.CreateImage("builtin:Texture/Grid").Pixels, Image.FromFile(texture).Pixels);
+        JsonNode saved = JsonNode.Parse(File.ReadAllText(material))!;
+        Assert.Equal("builtin:Texture/Checker", saved["TexturePath"]!.GetValue<string>());
+        Assert.True(saved["AutoTile"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void Export_NumbersCopiesInsteadOfOverwriting()
+    {
+        Install();
+        using var dir = new TempDir();
+
+        string first = BuiltinAssets.Export("builtin:Texture/White", dir.Path);
+        string second = BuiltinAssets.Export("builtin:Texture/White", dir.Path);
+        string nested = BuiltinAssets.Export("builtin:Mesh/Cube", Path.Combine(dir.Path, "Shapes", "Basic"));
+
+        Assert.Equal(Path.Combine(dir.Path, "White 1.png"), second);
+        Assert.True(File.Exists(first));
+        Assert.True(File.Exists(nested));
+        Assert.Throws<ArgumentException>(() => BuiltinAssets.Export("builtin:Mesh/Teapot", dir.Path));
+    }
+
+    [Fact]
+    public void ModelInstantiator_TurnsABuiltinMeshIntoOneEntity()
+    {
+        var scene = new Scene();
+        Entity parent = scene.Instantiate("Parent");
+
+        Entity? created = ModelInstantiator.Instantiate(scene, "primitive:Cylinder?segments=8", parent);
+
+        Entity shape = Assert.NotNull(created);
+        Assert.Equal("Cylinder", shape.Name);
+        Assert.Equal(parent, shape.Parent);
+        Assert.Equal("builtin:Mesh/Cylinder?segments=8", shape.GetComponent<MeshComponent>().ModelPath);
+        Assert.Null(ModelInstantiator.Instantiate(scene, "builtin:Mesh/Teapot"));
+    }
+
+    private static float ObjHeight(string objPath)
+    {
+        float min = float.MaxValue, max = float.MinValue;
+        foreach (string line in File.ReadLines(objPath).Where(l => l.StartsWith("v ", StringComparison.Ordinal)))
+        {
+            float y = float.Parse(line.Split(' ')[2], System.Globalization.CultureInfo.InvariantCulture);
+            min = Math.Min(min, y);
+            max = Math.Max(max, y);
+        }
+
+        return max - min;
+    }
+
     // ----- Scenes and rendering --------------------------------------------------------------------
 
     [Fact]

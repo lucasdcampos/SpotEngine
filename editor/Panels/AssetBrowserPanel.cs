@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Engine.Assets;
 using Spot.Engine.Scenes;
 using Spot.Framework.Audio;
 using Spot.Framework.Graphics;
@@ -40,9 +41,22 @@ public class AssetBrowserPanel
     private static readonly string[] AudioExtensions = { ".wav", ".ogg" };
     private const int MaxThumbnails = 128;
 
+    // The engine's built-in assets appear as a read-only virtual folder at the project root: "builtin:" lists one
+    // subfolder per kind ("builtin:Mesh/", ...), and each entry's path is its builtin: reference.
+    private const string BuiltinRoot = BuiltinAssets.Scheme;
+    private static readonly (string Path, string Name, BuiltinAssetKind Kind)[] BuiltinFolders =
+    {
+        (BuiltinRoot + "Mesh/", "Meshes", BuiltinAssetKind.Mesh),
+        (BuiltinRoot + "Texture/", "Textures", BuiltinAssetKind.Texture),
+        (BuiltinRoot + "Material/", "Materials", BuiltinAssetKind.Material),
+    };
+
     private readonly EditorContext _context;
     private string _currentDirectory;
     private string _baseDirectory;
+
+    // The last real project folder visited: where copies of built-in assets go.
+    private string _lastProjectDirectory;
 
     private string _searchQuery = "";
     private float _iconSize = 84.0f;
@@ -108,7 +122,13 @@ public class AssetBrowserPanel
         _baseDirectory = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         EnsureDirectory(_baseDirectory);
         _currentDirectory = _baseDirectory;
+        _lastProjectDirectory = _baseDirectory;
     }
+
+    private static bool IsBuiltinPath(string? path) =>
+        path is not null && path.StartsWith(BuiltinRoot, StringComparison.OrdinalIgnoreCase);
+
+    private bool InBuiltin => IsBuiltinPath(_currentDirectory);
 
     public string CurrentDirectory => _currentDirectory;
 
@@ -121,6 +141,7 @@ public class AssetBrowserPanel
             _baseDirectory = currentProjectAssetDir;
             EnsureDirectory(_baseDirectory);
             SetDirectory(_baseDirectory);
+            _lastProjectDirectory = _baseDirectory;
         }
 
         if (asWindow)
@@ -180,7 +201,29 @@ public class AssetBrowserPanel
             ImGui.EndDragDropTarget();
         }
 
-        string rel = Path.GetRelativePath(_baseDirectory, _currentDirectory);
+        if (InBuiltin)
+        {
+            ImGui.SameLine(0, 2);
+            ImGui.TextDisabled(">");
+            ImGui.SameLine(0, 2);
+            if (ImGui.Button("Built-in##crumb"))
+            {
+                _pendingNavigate = BuiltinRoot;
+            }
+
+            foreach ((string path, string name, _) in BuiltinFolders)
+            {
+                if (string.Equals(_currentDirectory, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    ImGui.SameLine(0, 2);
+                    ImGui.TextDisabled(">");
+                    ImGui.SameLine(0, 2);
+                    ImGui.Button(name + "##crumb");
+                }
+            }
+        }
+
+        string rel = InBuiltin ? "." : Path.GetRelativePath(_baseDirectory, _currentDirectory);
         if (rel != ".")
         {
             string accum = _baseDirectory;
@@ -275,13 +318,28 @@ public class AssetBrowserPanel
         if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _inlineRenamePath == null && !ImGui.IsAnyItemActive())
         {
             bool hasSelection = _selectedPath != null;
+            bool builtinSelected = IsBuiltinPath(_selectedPath);
             if (ImGui.GetIO().KeyCtrl)
             {
                 // Copy/cut/duplicate act on the primary selection; multi-asset clipboard isn't supported yet.
+                // A built-in can be copied (and pasted into a project folder) but not cut; duplicating one saves an
+                // editable copy into the project.
                 if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.C)) CopySelected(cut: false);
-                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
-                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateAsset(_selectedPath!);
-                else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteClipboardInto(_currentDirectory);
+                else if (hasSelection && !builtinSelected && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
+                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D))
+                {
+                    if (builtinSelected) CopyBuiltinsInto(_lastProjectDirectory);
+                    else DuplicateAsset(_selectedPath!);
+                }
+                else if (!InBuiltin && ImGui.IsKeyPressed(ImGuiKey.V)) PasteClipboardInto(_currentDirectory);
+            }
+            else if (hasSelection && builtinSelected)
+            {
+                if (ImGui.IsKeyPressed(ImGuiKey.Enter) && !Directory.Exists(_selectedPath!) && !IsBuiltinFolder(_selectedPath!))
+                {
+                    _context.Selection = null;
+                    _context.SelectedAssetPath = _selectedPath;
+                }
             }
             else if (hasSelection)
             {
@@ -330,6 +388,12 @@ public class AssetBrowserPanel
             {
                 _pendingNavigate = entry.FullPath;
             }
+            else if (IsBuiltinPath(entry.FullPath))
+            {
+                // Built-ins open read-only in the Inspector, with a way to copy them into the project.
+                _context.Selection = null;
+                _context.SelectedAssetPath = entry.FullPath;
+            }
             else if (entry.Kind == AssetKind.Material || entry.Kind == AssetKind.Prefab)
             {
                 // Open the material/prefab in the Inspector for editing (mirrors how scenes open on double-click).
@@ -351,7 +415,8 @@ public class AssetBrowserPanel
         // Drag as a typed payload (consumed by the Inspector and by folder tiles for moving). Folders drag
         // too, so a whole folder can be dropped into another. _dragPath records the real source path so the
         // move target doesn't have to reparse the (kind-specific) payload data.
-        if (ImGui.BeginDragDropSource())
+        bool virtualFolder = entry.IsDirectory && IsBuiltinPath(entry.FullPath);
+        if (!virtualFolder && ImGui.BeginDragDropSource())
         {
             _dragPath = entry.FullPath;
             (string payloadType, string payloadData) = DragPayloadFor(entry);
@@ -365,7 +430,7 @@ public class AssetBrowserPanel
         }
 
         // Drop onto a folder tile to move the dragged asset (or the whole selection) into it.
-        if (entry.IsDirectory && ImGui.BeginDragDropTarget())
+        if (entry.IsDirectory && !virtualFolder && ImGui.BeginDragDropTarget())
         {
             if (TryAcceptAssetMove())
             {
@@ -439,7 +504,9 @@ public class AssetBrowserPanel
 
             if (hovered)
             {
-                ImGui.SetTooltip(entry.Name);
+                ImGui.SetTooltip(BuiltinAssets.TryGet(entry.FullPath, out BuiltinAsset builtin)
+                    ? $"{builtin.Name}\n{builtin.Description}"
+                    : entry.Name);
             }
         }
 
@@ -487,6 +554,13 @@ public class AssetBrowserPanel
         Vector2 iconMax = iconMin + new Vector2(size, size);
 
         // Dynamic previews take priority and keep their existing look (thumbnail / rendered material).
+        if (entry.Kind == AssetKind.Image && TryGetBuiltinTexture(entry.FullPath, out Texture2D? builtinTex))
+        {
+            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
+            drawList.AddImage((IntPtr)builtinTex.Handle.Id, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
+            return;
+        }
+
         if (entry.Kind == AssetKind.Image && TryGetThumbnail(entry.FullPath, out var tex))
         {
             drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
@@ -615,6 +689,13 @@ public class AssetBrowserPanel
             SelectSingle(entry.FullPath);
         }
 
+        if (IsBuiltinPath(entry.FullPath))
+        {
+            DrawBuiltinContextMenu(entry);
+            ImGui.EndPopup();
+            return;
+        }
+
         if (entry.Kind == AssetKind.Material && ImGui.MenuItem("Edit Material"))
         {
             _context.Selection = null;
@@ -706,6 +787,17 @@ public class AssetBrowserPanel
     {
         if (!ImGui.BeginPopupContextWindow("AssetBrowserContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
         {
+            return;
+        }
+
+        if (InBuiltin)
+        {
+            ImGui.TextDisabled("Built-in assets are read-only.");
+            if (ImGui.MenuItem("Back to Assets"))
+            {
+                _pendingNavigate = _lastProjectDirectory;
+            }
+            ImGui.EndPopup();
             return;
         }
 
@@ -836,8 +928,8 @@ public class AssetBrowserPanel
     private void RequestDeleteSelection()
     {
         _deleteTargets.Clear();
-        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths);
-        else if (_selectedPath != null) _deleteTargets.Add(_selectedPath);
+        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths.Where(p => !IsBuiltinPath(p)));
+        else if (_selectedPath != null && !IsBuiltinPath(_selectedPath)) _deleteTargets.Add(_selectedPath);
         if (_deleteTargets.Count > 0) _isDeleting = true;
     }
 
@@ -846,6 +938,15 @@ public class AssetBrowserPanel
     private void MoveDraggedInto(string destDir)
     {
         if (string.IsNullOrEmpty(_dragPath)) return;
+        if (IsBuiltinPath(destDir)) return;
+        if (IsBuiltinPath(_dragPath))
+        {
+            // Built-ins can't move; dropping them on a project folder saves editable copies there instead.
+            CopyBuiltinsInto(destDir, _selectedPaths.Contains(_dragPath) ? _selectedPaths.ToList() : new List<string> { _dragPath });
+            _dragPath = null;
+            return;
+        }
+
         if (_selectedPaths.Contains(_dragPath) && _selectedPaths.Count > 1)
         {
             foreach (string p in _selectedPaths.ToList()) MoveEntryInto(p, destDir);
@@ -951,7 +1052,20 @@ public class AssetBrowserPanel
 
     private List<AssetEntry> GatherEntries()
     {
+        if (InBuiltin)
+        {
+            return GatherBuiltinEntries();
+        }
+
         var result = new List<AssetEntry>();
+
+        // The read-only Built-in folder leads the project root.
+        if (_currentDirectory == _baseDirectory
+            && (string.IsNullOrEmpty(_searchQuery) || "Built-in".Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)))
+        {
+            result.Add(new AssetEntry(BuiltinRoot, "Built-in", true, AssetKind.Folder, hasContents: true));
+        }
+
         var dirInfo = new DirectoryInfo(_currentDirectory);
         if (!dirInfo.Exists)
         {
@@ -982,6 +1096,131 @@ public class AssetBrowserPanel
             }
         }
         return result;
+    }
+
+    // The Built-in folder: one subfolder per kind at its root (or, while searching, every matching asset), and
+    // a kind's assets inside its subfolder.
+    private List<AssetEntry> GatherBuiltinEntries()
+    {
+        var result = new List<AssetEntry>();
+        bool Matches(string name) =>
+            string.IsNullOrEmpty(_searchQuery) || name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase);
+
+        bool atRoot = string.Equals(_currentDirectory, BuiltinRoot, StringComparison.OrdinalIgnoreCase);
+        if (atRoot && string.IsNullOrEmpty(_searchQuery))
+        {
+            foreach ((string path, string name, _) in BuiltinFolders)
+            {
+                result.Add(new AssetEntry(path, name, true, AssetKind.Folder, hasContents: true));
+            }
+
+            return result;
+        }
+
+        foreach ((string path, _, BuiltinAssetKind kind) in BuiltinFolders)
+        {
+            if (!atRoot && !string.Equals(_currentDirectory, path, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (BuiltinAsset asset in BuiltinAssets.OfKind(kind).Where(a => Matches(a.Name)))
+            {
+                AssetKind assetKind = kind switch
+                {
+                    BuiltinAssetKind.Mesh => AssetKind.Model,
+                    BuiltinAssetKind.Texture => AssetKind.Image,
+                    _ => AssetKind.Material,
+                };
+                result.Add(new AssetEntry(asset.Reference, asset.Name, false, assetKind));
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsBuiltinFolder(string path) =>
+        string.Equals(path, BuiltinRoot, StringComparison.OrdinalIgnoreCase)
+        || BuiltinFolders.Any(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase));
+
+    // A built-in texture is drawn straight from its shared instance rather than loaded as a file thumbnail.
+    private static bool TryGetBuiltinTexture(string path, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Texture2D? texture)
+    {
+        texture = null;
+        if (!BuiltinAssets.TryGet(path, out BuiltinAsset asset) || asset.Kind != BuiltinAssetKind.Texture)
+        {
+            return false;
+        }
+
+        try
+        {
+            texture = BuiltinAssets.LoadTexture(asset.Reference);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // The context menu of a built-in asset or folder: no rename, delete or move — just ways to use or copy it.
+    private void DrawBuiltinContextMenu(AssetEntry entry)
+    {
+        if (entry.IsDirectory)
+        {
+            if (ImGui.MenuItem("Open")) _pendingNavigate = entry.FullPath;
+            return;
+        }
+
+        if (ImGui.MenuItem("Show in Inspector", "Enter"))
+        {
+            _context.Selection = null;
+            _context.SelectedAssetPath = entry.FullPath;
+        }
+
+        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Add to Scene", "", false, _context.ActiveScene != null))
+        {
+            Entity? created = ModelInstantiator.Instantiate(_context.ActiveScene!, entry.FullPath);
+            if (created != null) _context.Selection = created.Value;
+        }
+
+        ImGui.Separator();
+        string target = Path.GetRelativePath(Path.GetDirectoryName(_baseDirectory) ?? _baseDirectory, _lastProjectDirectory);
+        if (ImGui.MenuItem($"Copy to Project ({target})", "Ctrl+D"))
+        {
+            CopyBuiltinsInto(_lastProjectDirectory);
+        }
+
+        if (ImGui.MenuItem("Copy", "Ctrl+C"))
+        {
+            _selectedPath = entry.FullPath;
+            CopySelected(cut: false);
+        }
+
+        if (ImGui.MenuItem("Copy Reference"))
+        {
+            ImGui.SetClipboardText(entry.FullPath);
+        }
+    }
+
+    // Saves editable copies of built-in assets (the selection by default) into a project folder.
+    private void CopyBuiltinsInto(string destDir, IReadOnlyList<string>? references = null)
+    {
+        IEnumerable<string> sources = references ?? (_selectedPaths.Count > 0 ? _selectedPaths : new List<string> { _selectedPath ?? "" });
+        foreach (string reference in sources.Where(r => IsBuiltinPath(r) && !IsBuiltinFolder(r)).ToList())
+        {
+            try
+            {
+                string path = BuiltinAssets.Export(reference, destDir);
+                Spot.Framework.Log.Info("Copied built-in '{0}' to {1}.", BuiltinAssets.TryGet(reference, out BuiltinAsset a) ? a.Name : reference, path);
+            }
+            catch (Exception ex)
+            {
+                Spot.Framework.Log.Error("Failed to copy '{0}' into the project: {1}", reference, ex.Message);
+            }
+        }
+
+        ClearThumbnails();
     }
 
     // Cheap "does this folder hold anything" probe for the empty/full folder icon. Enumeration stops at the
@@ -1192,7 +1431,7 @@ public class {className} : EntityBehaviour
     // current folder and marking the source entity as an instance of the new prefab.
     private void AcceptEntityDropToCreatePrefab()
     {
-        if (!ImGui.BeginDragDropTarget())
+        if (InBuiltin || !ImGui.BeginDragDropTarget())
         {
             return;
         }
@@ -1447,8 +1686,15 @@ public class {className} : EntityBehaviour
     // copy duplicates as a fresh asset. Names that collide in the target get a unique suffix.
     private void PasteClipboardInto(string destDir)
     {
-        if (string.IsNullOrEmpty(s_clipboardPath)) return;
+        if (string.IsNullOrEmpty(s_clipboardPath) || IsBuiltinPath(destDir)) return;
         string src = s_clipboardPath;
+
+        // A copied built-in pastes as an editable copy (and stays on the clipboard for more).
+        if (IsBuiltinPath(src))
+        {
+            CopyBuiltinsInto(destDir, new List<string> { src });
+            return;
+        }
 
         if (!File.Exists(src) && !Directory.Exists(src))
         {
@@ -1570,6 +1816,10 @@ public class {className} : EntityBehaviour
             return;
         }
         _currentDirectory = path;
+        if (!IsBuiltinPath(path))
+        {
+            _lastProjectDirectory = path;
+        }
         ClearSelection();
         ClearThumbnails();
     }

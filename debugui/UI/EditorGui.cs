@@ -492,7 +492,8 @@ public static class EditorGui
         string[] searchPatterns,
         string? currentPath,
         out string? outPath,
-        AssetSlotCustomItems? drawCustomItems = null)
+        AssetSlotCustomItems? drawCustomItems = null,
+        BuiltinAssetKind? builtins = null)
     {
         outPath = currentPath;
         bool changed = false;
@@ -530,7 +531,7 @@ public static class EditorGui
             ImGui.OpenPopup(popupName);
         }
 
-        DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems);
+        DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems, builtins);
 
         EndLabel();
         ImGui.PopID();
@@ -684,7 +685,8 @@ public static class EditorGui
         string? currentPath,
         ref string? outPath,
         ref bool changed,
-        AssetSlotCustomItems? drawCustomItems)
+        AssetSlotCustomItems? drawCustomItems,
+        BuiltinAssetKind? builtins)
     {
         if (!ImGui.BeginPopup(popupName))
             return;
@@ -710,6 +712,44 @@ public static class EditorGui
 
         drawCustomItems?.Invoke(ref outPath, ref changed);
         if (changed) ImGui.CloseCurrentPopup();
+
+        // The engine's built-in assets of the slot's kind, ahead of the project's files.
+        if (builtins is { } kind && !changed)
+        {
+            bool listed = false;
+            bool hasCurrent = BuiltinAssets.TryGet(currentPath, out BuiltinAsset current);
+            foreach (BuiltinAsset asset in BuiltinAssets.OfKind(kind))
+            {
+                if (!string.IsNullOrEmpty(_assetSearchFilter) &&
+                    !asset.Name.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!listed)
+                {
+                    ImGui.Separator();
+                    listed = true;
+                }
+
+                bool isSelected = hasCurrent && ReferenceEquals(current, asset);
+                (string glyph, Vector4 color) = AssetGlyph(asset.Reference);
+                if (PickerRow(glyph, color, asset.Name, "Built-in", isSelected, ResolveThumbnail(asset.Reference)))
+                {
+                    // Picking the shape already in the slot keeps its parameters.
+                    if (!isSelected)
+                    {
+                        outPath = asset.Reference;
+                        changed = true;
+                    }
+
+                    ImGui.CloseCurrentPopup();
+                }
+
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(asset.Description);
+            }
+        }
 
         var assets = EnumerateProjectAssets(searchPatterns);
         if (assets.Count > 0)
@@ -797,6 +837,23 @@ public static class EditorGui
     // material sphere, or 0 to fall back to a kind glyph.
     private static nint ResolveThumbnail(string path)
     {
+        if (BuiltinAssets.TryGet(path, out BuiltinAsset builtin))
+        {
+            try
+            {
+                return builtin.Kind switch
+                {
+                    BuiltinAssetKind.Texture => (nint)BuiltinAssets.LoadTexture(builtin.Reference).Handle.Id,
+                    BuiltinAssetKind.Material => MaterialThumbnails.Get(builtin.Reference),
+                    _ => 0,
+                };
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         if (IsImagePath(path))
         {
             Texture2D? tex = EditorThumbnails.Get(AssetPath.Resolve(path));
@@ -999,6 +1056,27 @@ public static class EditorGui
 
     // ----- Asset helpers ---------------------------------------------------------------------------
 
+    /// <summary>
+    /// A readable label for a built-in reference: its catalog name, followed by any mesh parameters that differ
+    /// from the shape's defaults, such as <c>Capsule (radius 0.3, height 1.7)</c>.
+    /// </summary>
+    /// <param name="reference">The built-in reference.</param>
+    /// <returns>The label, or the reference itself when it is not a known built-in.</returns>
+    public static string BuiltinLabel(string reference)
+    {
+        if (!BuiltinAssets.TryGet(reference, out BuiltinAsset asset))
+            return reference;
+        if (asset.Kind != BuiltinAssetKind.Mesh || !BuiltinAssets.TryGetPrimitive(reference, out PrimitiveSpec spec))
+            return asset.Name;
+
+        PrimitiveSpec defaults = PrimitiveSpec.For(spec.Shape);
+        var changed = PrimitiveSpec.ParametersOf(spec.Shape)
+            .Where(p => spec.Get(p) != defaults.Get(p))
+            .Select(p => $"{PrimitiveSpec.KeyOf(p)} {spec.Get(p).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}")
+            .ToList();
+        return changed.Count == 0 ? asset.Name : $"{asset.Name} ({string.Join(", ", changed)})";
+    }
+
     private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
 
     private static bool IsImagePath(string path)
@@ -1009,9 +1087,13 @@ public static class EditorGui
         return Array.IndexOf(ImageExtensions, System.IO.Path.GetExtension(path).ToLowerInvariant()) >= 0;
     }
 
-    // The display name for a slot value: the tail of a pseudo path ("primitive:Cube" -> "Cube") or the file name.
+    // The display name for a slot value: a built-in's name (with any mesh parameters), the tail of another pseudo
+    // path, or the file name.
     private static string AssetDisplayName(string path)
     {
+        if (BuiltinAssets.TryGet(path, out _))
+            return BuiltinLabel(path);
+
         int colon = path.IndexOf(':');
         if (colon > 0 && !System.IO.Path.IsPathRooted(path))
             return path[(colon + 1)..];
@@ -1021,10 +1103,15 @@ public static class EditorGui
     // The kind glyph + tint for an asset path, matching the asset browser's color coding.
     private static (string Glyph, Vector4 Color) AssetGlyph(string path)
     {
-        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
-            return (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f));
-        if (path.StartsWith("editor:", StringComparison.OrdinalIgnoreCase))
-            return (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f));
+        if (BuiltinAssets.TryGet(path, out BuiltinAsset builtin))
+        {
+            return builtin.Kind switch
+            {
+                BuiltinAssetKind.Mesh => (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
+                BuiltinAssetKind.Texture => (EditorIcons.Image, new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
+                _ => (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f)),
+            };
+        }
 
         string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
         return ext switch

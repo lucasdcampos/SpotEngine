@@ -247,6 +247,61 @@ public static class BuiltinAssets
     /// <exception cref="ArgumentException">The reference is not a known built-in material.</exception>
     public static Material CreateMaterial(string reference) => CreateMaterial(Require(reference, BuiltinAssetKind.Material));
 
+    /// <summary>
+    /// Saves an editable copy of a built-in asset into a folder — a mesh as a Wavefront <c>.obj</c> with its
+    /// parameters baked in, a texture as a <c>.png</c>, a material as an <c>.sptmat</c> (whose textures stay
+    /// built-in references). The file is named after the asset, numbered if the name is taken.
+    /// </summary>
+    /// <param name="reference">The built-in reference, with any mesh parameters.</param>
+    /// <param name="directory">The destination folder; created if missing.</param>
+    /// <returns>The full path of the new file.</returns>
+    /// <exception cref="ArgumentException">The reference is not a known built-in asset.</exception>
+    public static string Export(string reference, string directory)
+    {
+        if (!TryGet(reference, out BuiltinAsset asset))
+        {
+            throw new ArgumentException($"Unknown built-in asset '{reference}'.", nameof(reference));
+        }
+
+        Directory.CreateDirectory(directory);
+        switch (asset.Kind)
+        {
+            case BuiltinAssetKind.Mesh:
+            {
+                TryGetPrimitive(reference, out PrimitiveSpec spec);
+                string path = UniquePath(directory, asset.Name, ".obj");
+                File.WriteAllText(path, MeshExport.ToObj(spec.Build(), asset.Name));
+                return path;
+            }
+
+            case BuiltinAssetKind.Texture:
+            {
+                string path = UniquePath(directory, asset.Name, ".png");
+                CreateImage(asset.Reference).SavePng(path);
+                return path;
+            }
+
+            default:
+            {
+                string path = UniquePath(directory, asset.Name, ".sptmat");
+                CreateMaterial(asset).Save(path);
+                return path;
+            }
+        }
+    }
+
+    // A file path in the folder that doesn't exist yet: the name, then "Name 1", "Name 2", ...
+    private static string UniquePath(string directory, string name, string extension)
+    {
+        string path = Path.GetFullPath(Path.Combine(directory, name + extension));
+        for (int i = 1; File.Exists(path); i++)
+        {
+            path = Path.GetFullPath(Path.Combine(directory, $"{name} {i}{extension}"));
+        }
+
+        return path;
+    }
+
     private static Material CreateMaterial(BuiltinAsset asset)
     {
         var material = new Material { SourcePath = asset.Reference };
