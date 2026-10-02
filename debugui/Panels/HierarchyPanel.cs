@@ -117,7 +117,8 @@ public class HierarchyPanel
                 }
             }
 
-            // Allow dropping on the empty space to clear parent, or to instantiate a prefab at the root.
+            // Allow dropping on the empty space to clear parent, or to add dragged assets (a prefab, a model, a
+            // sprite from an image, ...) as root entities.
             if (ImGui.BeginDragDropTarget())
             {
                 unsafe
@@ -128,22 +129,9 @@ public class HierarchyPanel
                         int payloadId = *(int*)payload.Data;
                         ReparentDragged(payloadId, null);
                     }
-
-                    var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
-                    if (prefabPayload.NativePtr != null)
-                    {
-                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
-                        if (path != null) InstantiatePrefab(path, null);
-                    }
-
-                    // Dropping a model file imports it as a root entity hierarchy with materials applied.
-                    var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                    if (modelPayload.NativePtr != null)
-                    {
-                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
-                        if (path != null) InstantiateModel(path, null);
-                    }
                 }
+
+                if (AssetSpawner.AcceptDrop(out var paths, out _)) SpawnAssets(paths, null);
                 ImGui.EndDragDropTarget();
             }
 
@@ -268,31 +256,18 @@ public class HierarchyPanel
         return entity;
     }
 
-    // Instantiates a prefab file into the active scene under an optional parent, marks the new root as an
-    // instance of that prefab, and selects it. Failures are logged by the loader and leave the scene unchanged.
-    private void InstantiatePrefab(string path, Entity? parent)
+    // Adds the entities the dropped assets stand for (see AssetSpawner) to the active scene under an optional
+    // parent, and selects them. Failures are logged by the spawner and leave the scene unchanged.
+    private void SpawnAssets(System.Collections.Generic.IReadOnlyList<string> paths, Entity? parent)
     {
         var scene = _context.ActiveScene;
         if (scene == null) return;
 
-        Entity? root = Prefab.InstantiateFile(scene, path, parent);
-        if (root == null) return;
+        var spawned = AssetSpawner.SpawnAll(scene, paths, parent);
+        if (spawned.Count == 0) return;
 
-        string? reference = Spot.Engine.Assets.AssetDatabase.ToGuidRef(path);
-        root.Value.AddComponent(new PrefabComponent { PrefabRef = reference });
-        _context.Selection = root.Value;
-    }
-
-    // Imports a model file as a faithful entity hierarchy (one entity per part, with the model's materials
-    // extracted and applied) under an optional parent, and selects the new root. Failures are logged by the
-    // instantiator and leave the scene unchanged.
-    private void InstantiateModel(string path, Entity? parent)
-    {
-        var scene = _context.ActiveScene;
-        if (scene == null) return;
-
-        Entity? root = ModelInstantiator.Instantiate(scene, path, parent);
-        if (root != null) _context.Selection = root.Value;
+        _context.SetSelectedEntities(spawned);
+        Spot.DebugUI.Undo.EditorHistory.RecordSceneEdit(scene, AssetSpawner.AddLabel(paths));
     }
 
     // Creates a new root entity, selects it, triggers inline rename, and returns it.
@@ -420,22 +395,18 @@ public class HierarchyPanel
                     int payloadId = *(int*)payload.Data;
                     ReparentDragged(payloadId, entity);
                 }
+            }
 
-                // Dropping a prefab onto an entity instantiates it as a child of that entity.
-                var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
-                if (prefabPayload.NativePtr != null)
-                {
-                    string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
-                    if (path != null) InstantiatePrefab(path, entity);
-                }
+            // Dropping assets onto an entity adds what they stand for as children of that entity.
+            if (AssetSpawner.AcceptDrop(out var paths, out _)) SpawnAssets(paths, entity);
 
-                // Dropping a model onto an entity imports its hierarchy as a child of that entity.
-                var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                if (modelPayload.NativePtr != null)
-                {
-                    string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
-                    if (path != null) InstantiateModel(path, entity);
-                }
+            // A material paints the entity's mesh, or every mesh under it (a model's root). Only offered (and
+            // highlighted) where there is a mesh to take it.
+            if (MaterialDrop.IsDragging())
+            {
+                var targets = MaterialDrop.TargetsFor(entity);
+                if (targets.Count > 0 && MaterialDrop.Accept(out string material, out _))
+                    MaterialDrop.Apply(targets, material);
             }
             ImGui.EndDragDropTarget();
         }

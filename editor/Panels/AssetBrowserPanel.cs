@@ -421,10 +421,11 @@ public class AssetBrowserPanel
             _dragPath = entry.FullPath;
             (string payloadType, string payloadData) = DragPayloadFor(entry);
             SetDragPayload(payloadType, payloadData);
-            // Dragging one of several selected assets carries the whole selection; label reflects that.
-            ImGui.Text(_selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1
-                ? $"{_selectedPaths.Count} items"
-                : entry.Name);
+            // Dragging one of several selected assets carries the whole selection; label reflects that. The
+            // payload holds one path, so the scene drop targets read the rest from AssetSpawner.DraggedPaths.
+            bool dragsSelection = _selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1;
+            AssetSpawner.DraggedPaths = dragsSelection ? _selectedPaths.ToArray() : new[] { entry.FullPath };
+            ImGui.Text(dragsSelection ? $"{_selectedPaths.Count} items" : entry.Name);
             _pendingClickPath = null; // this press became a drag, so don't collapse the selection on release
             ImGui.EndDragDropSource();
         }
@@ -689,6 +690,26 @@ public class AssetBrowserPanel
         return label;
     }
 
+    // "Add to Scene" for anything that stands for an entity (a prefab, a model, an image, an audio clip, a UI
+    // document): adds it to the active scene, exactly as dropping it on the Hierarchy does. Acts on every selected
+    // asset, so right-clicking within a multi-selection adds all of it.
+    private void DrawAddToSceneItem(AssetEntry entry)
+    {
+        if (AssetSpawner.KindOf(entry.FullPath) == AssetSpawnKind.None) return;
+
+        Scene? scene = _context.ActiveScene;
+        if (ImGui.MenuItem("Add to Scene", "", false, scene != null) && scene != null)
+        {
+            IEnumerable<string> paths = _selectedPaths.Contains(entry.FullPath) ? _selectedPaths : new[] { entry.FullPath };
+            List<Entity> spawned = AssetSpawner.SpawnAll(scene, paths);
+            if (spawned.Count > 0)
+            {
+                _context.SetSelectedEntities(spawned);
+                Spot.DebugUI.Undo.EditorHistory.RecordSceneEdit(scene, AssetSpawner.AddLabel(paths));
+            }
+        }
+    }
+
     private void DrawItemContextMenu(AssetEntry entry)
     {
         if (!ImGui.BeginPopupContextItem("itemctx"))
@@ -716,14 +737,7 @@ public class AssetBrowserPanel
             _context.SelectedAssetPath = entry.FullPath;
         }
 
-        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Add to Scene (with materials)"))
-        {
-            if (_context.ActiveScene != null)
-            {
-                var root = Spot.Engine.Scenes.ModelInstantiator.Instantiate(_context.ActiveScene, entry.FullPath);
-                if (root != null) _context.Selection = root.Value;
-            }
-        }
+        DrawAddToSceneItem(entry);
 
         if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
         {
@@ -1192,11 +1206,7 @@ public class AssetBrowserPanel
             _context.SelectedAssetPath = entry.FullPath;
         }
 
-        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Add to Scene", "", false, _context.ActiveScene != null))
-        {
-            Entity? created = ModelInstantiator.Instantiate(_context.ActiveScene!, entry.FullPath);
-            if (created != null) _context.Selection = created.Value;
-        }
+        DrawAddToSceneItem(entry);
 
         ImGui.Separator();
         string target = Path.GetRelativePath(Path.GetDirectoryName(_baseDirectory) ?? _baseDirectory, _lastProjectDirectory);

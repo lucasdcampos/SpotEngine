@@ -52,7 +52,7 @@ public class OpenSceneData : IUndoDocument
 
     public OpenSceneData(EditorContext context)
     {
-        ViewportPanel = new ViewportPanel(context);
+        ViewportPanel = new ViewportPanel(context, () => Scene);
         Framebuffer = new Framebuffer(1280, 720);
         CameraPreviewFramebuffer = new Framebuffer(320, 180);
         ViewportPanel.SetFramebuffer(Framebuffer);
@@ -199,6 +199,10 @@ public class EditorScene : Scene
         // scene back to the tab that owns it — that is what puts the "*" on the right tab.
         EditorHistory.SceneDocumentResolver =
             scene => _openScenes.FirstOrDefault(s => ReferenceEquals(s.Scene, scene));
+
+        // Panels name their structural edits (adding dropped assets, ...) through this instead of leaving
+        // them to the catch-all's generic "Scene Change".
+        EditorHistory.SceneEditRecorder = RecordSceneEdit;
 
         // Any history movement leaves the catch-all's baselines out of date. Without this, a precise
         // action recorded by a panel would be followed moments later by the periodic check noticing the
@@ -2579,6 +2583,35 @@ public class EditorScene : Scene
         sceneData.LastPushSnapshot = current;
 
         _unattributedChanges++;
+    }
+
+    /// <summary>
+    /// Records a structural edit a panel just made to <paramref name="scene"/> as one named entry: the scene
+    /// as the catch-all last saw it, and as it is now. Taken at once rather than at the next periodic check,
+    /// so a quick follow-up edit (dragging the new entity's gizmo) cannot fold the change into its own
+    /// baseline and leave it impossible to undo.
+    /// </summary>
+    private void RecordSceneEdit(Scene scene, string label)
+    {
+        OpenSceneData? sceneData = _openScenes.FirstOrDefault(s => ReferenceEquals(s.Scene, scene));
+        if (sceneData == null || !_history.Enabled)
+        {
+            return;
+        }
+
+        // Land any half-finished field edit first, so it keeps its own entry ahead of this one.
+        UndoTracker.Flush();
+
+        string current = new SceneSerializer(scene).SerializeToString();
+        string? before = sceneData.LastPushSnapshot;
+        sceneData.LastPushSnapshot = current;
+        if (before == null || before == current)
+        {
+            return;
+        }
+
+        _history.Push(new DocumentSnapshotAction(
+            label, sceneData, before, current, json => RestoreSnapshot(sceneData, json)));
     }
 
     private void Undo()

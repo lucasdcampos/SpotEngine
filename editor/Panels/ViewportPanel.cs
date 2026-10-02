@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Scenes;
 using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
+using Spot.DebugUI.Undo;
 using Spot.Editor.UI;
 
 namespace Spot.Editor.Panels;
@@ -50,9 +52,14 @@ public class ViewportPanel
     // that frame's reading is ignored instead of being fed in as a jump.
     private bool _skipLookFrame = true;
 
-    public ViewportPanel(EditorContext context)
+    // The scene this viewport shows. Assets dropped here go into it even when another scene tab is the
+    // active one; falls back to the active scene when not given.
+    private readonly Func<Scene?>? _scene;
+
+    public ViewportPanel(EditorContext context, Func<Scene?>? scene = null)
     {
         _context = context;
+        _scene = scene;
     }
 
     public void SetFramebuffer(Framebuffer framebuffer)
@@ -103,21 +110,32 @@ public class ViewportPanel
             if (gameView) return;
             bool isHovered = ImGui.IsItemHovered();
 
-            // Dragging a model from the Asset Browser onto the viewport imports it into the scene as a
-            // faithful entity hierarchy with its materials applied, then selects the new root.
-            if (handleInput && ImGui.BeginDragDropTarget())
+            // Dragging assets from the Asset Browser onto the viewport builds the entities they stand for (a
+            // prefab, a model with its materials, a sprite from an image, ...) where the cursor points, and selects
+            // them. Not gated on handleInput: during a drag the asset tile holds ImGui's active item, so this window
+            // only counts as hovered on the release frame, and the gate would hide the landing preview.
+            // A material dropped on a mesh is applied to it instead; the mesh under the cursor is outlined while
+            // the material hovers, and nothing is highlighted where there is no mesh to take it.
+            if (_camera != null && ImGui.BeginDragDropTarget())
             {
-                unsafe
+                Scene? scene = _scene?.Invoke() ?? _context.ActiveScene;
+                Vector2 mouse = ImGui.GetIO().MousePos;
+
+                if (AssetSpawner.AcceptDrop(out IReadOnlyList<string> paths, out bool delivered, preview: true))
                 {
-                    var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                    if (modelPayload.NativePtr != null && _context.ActiveScene != null)
+                    Vector3 point = ScenePicker.DropPoint(
+                        scene, _camera.ViewProjection, _camera.Is3D, mouse, cursorPos, viewportSize);
+
+                    if (delivered) DropAssets(scene, paths, point);
+                    else DrawDropPreview(paths, point, cursorPos, viewportSize);
+                }
+                else if (scene != null && MaterialDrop.IsDragging())
+                {
+                    Entity? target = ScenePicker.PickMesh(scene, _camera.ViewProjection, mouse, cursorPos, viewportSize);
+                    if (MaterialDrop.Accept(out string material, out bool dropped, preview: true, drawRect: false))
                     {
-                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
-                        if (path != null)
-                        {
-                            Entity? root = ModelInstantiator.Instantiate(_context.ActiveScene, path);
-                            if (root != null) _context.Selection = root.Value;
-                        }
+                        if (!dropped) DrawMaterialPreview(target, material, mouse, cursorPos, viewportSize);
+                        else if (target != null) MaterialDrop.Apply(new[] { target.Value }, material);
                     }
                 }
                 ImGui.EndDragDropTarget();
@@ -396,6 +414,128 @@ public class ViewportPanel
         {
             ImGui.Text("Viewport Placeholder");
         }
+    }
+
+    // Spawns the dropped assets at the drop point and selects them. In 2D only the plane position comes from
+    // the cursor: each asset keeps its own depth, which is its draw order there.
+    private void DropAssets(Scene? scene, IReadOnlyList<string> paths, Vector3 point)
+    {
+        if (scene == null || _camera == null) return;
+
+        List<Entity> spawned = AssetSpawner.SpawnAll(scene, paths);
+        if (spawned.Count == 0) return;
+
+        foreach (Entity root in spawned)
+        {
+            var transform = root.GetComponent<TransformComponent>();
+            transform.Position = _camera.Is3D ? point : new Vector3(point.X, point.Y, transform.Position.Z);
+        }
+
+        _context.SetSelectedEntities(spawned);
+        EditorHistory.RecordSceneEdit(scene, AssetSpawner.AddLabel(paths));
+
+        // Take focus: the scene becomes the active one and W/E/R/F act on the new selection straight away.
+        ImGui.SetWindowFocus();
+    }
+
+    // While assets hover the viewport: a ring where they will land, one unit across and lying in the ground
+    // plane (the z = 0 plane in 2D) so its perspective conveys the depth, labeled with what the drop creates.
+    private void DrawDropPreview(IReadOnlyList<string> paths, Vector3 point, Vector2 cursorPos, Vector2 viewportSize)
+    {
+        if (_camera == null) return;
+
+        Matrix4x4 vp = _camera.ViewProjection;
+        if (!ScenePicker.TryProject(point, vp, cursorPos, viewportSize, out Vector2 center)) return;
+
+        var palette = EditorThemeManager.Current.Palette;
+        var drawList = ImGui.GetWindowDrawList();
+        uint accent = ImGui.GetColorU32(palette.Accent);
+
+        const int Segments = 32;
+        const float Radius = 0.5f;
+        Vector3 axisA = Vector3.UnitX;
+        Vector3 axisB = _camera.Is3D ? Vector3.UnitZ : Vector3.UnitY;
+        Span<Vector2> ring = stackalloc Vector2[Segments];
+        bool ringVisible = true;
+        for (int i = 0; i < Segments && ringVisible; i++)
+        {
+            float angle = i * MathF.Tau / Segments;
+            Vector3 world = point + (axisA * MathF.Cos(angle) + axisB * MathF.Sin(angle)) * Radius;
+            ringVisible = ScenePicker.TryProject(world, vp, cursorPos, viewportSize, out ring[i]);
+        }
+        if (ringVisible)
+        {
+            for (int i = 0; i < Segments; i++)
+            {
+                drawList.AddLine(ring[i], ring[(i + 1) % Segments], accent, 2.0f);
+            }
+        }
+        drawList.AddCircleFilled(center, 3.0f, accent, 12);
+
+        string label = paths.Count == 1
+            ? $"{AssetSpawner.Describe(AssetSpawner.KindOf(paths[0]))}: {AssetSpawner.NameFor(paths[0])}"
+            : $"{paths.Count} assets";
+
+        DrawDropLabel(drawList, center, label, palette.Text);
+    }
+
+    // While a material hovers the viewport: the bounds of the mesh it would paint, outlined, and a label naming
+    // the material and the mesh — or saying there is no mesh under the cursor to take it.
+    private void DrawMaterialPreview(Entity? target, string material, Vector2 mouse, Vector2 cursorPos, Vector2 viewportSize)
+    {
+        if (_camera == null) return;
+
+        var palette = EditorThemeManager.Current.Palette;
+        var drawList = ImGui.GetWindowDrawList();
+        string name = AssetSpawner.NameFor(material);
+
+        if (target is not Entity mesh)
+        {
+            DrawDropLabel(drawList, mouse, $"No mesh here for '{name}'", palette.TextDisabled);
+            return;
+        }
+
+        if (ScenePicker.TryGetMeshBounds(mesh, out var bounds))
+        {
+            Matrix4x4 model = mesh.GetComponent<TransformComponent>().Matrix;
+            Matrix4x4 vp = _camera.ViewProjection;
+            Span<Vector2> corners = stackalloc Vector2[8];
+            bool visible = true;
+            for (int i = 0; i < 8 && visible; i++)
+            {
+                var local = new Vector3(
+                    (i & 1) == 0 ? bounds.Min.X : bounds.Max.X,
+                    (i & 2) == 0 ? bounds.Min.Y : bounds.Max.Y,
+                    (i & 4) == 0 ? bounds.Min.Z : bounds.Max.Z);
+                visible = ScenePicker.TryProject(Vector3.Transform(local, model), vp, cursorPos, viewportSize, out corners[i]);
+            }
+
+            if (visible)
+            {
+                // The twelve edges join corners whose indices differ in exactly one bit (one axis).
+                uint accent = ImGui.GetColorU32(palette.Accent);
+                for (int i = 0; i < 8; i++)
+                {
+                    for (int bit = 1; bit < 8; bit <<= 1)
+                    {
+                        if ((i & bit) == 0) drawList.AddLine(corners[i], corners[i | bit], accent, 2.0f);
+                    }
+                }
+            }
+        }
+
+        DrawDropLabel(drawList, mouse, $"Apply '{name}' to {mesh.Name}", palette.Text);
+    }
+
+    // A small dark tag centred above a screen point; above, because the drag source's own tooltip sits
+    // below-right of the cursor.
+    private static void DrawDropLabel(ImDrawListPtr drawList, Vector2 anchor, string label, Vector4 color)
+    {
+        Vector2 size = ImGui.CalcTextSize(label);
+        Vector2 textPos = anchor - new Vector2(size.X * 0.5f, size.Y + 18.0f);
+        drawList.AddRectFilled(textPos - new Vector2(6, 3), textPos + size + new Vector2(6, 3),
+            ImGui.GetColorU32(new Vector4(0, 0, 0, 0.65f)), 4.0f);
+        drawList.AddText(textPos, ImGui.GetColorU32(color), label);
     }
 
     // Restores the hardware cursor to its normal (visible, free) state and drops this panel's

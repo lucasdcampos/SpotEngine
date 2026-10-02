@@ -141,12 +141,47 @@ reference material in one place:
 - **Credits** — the open-source libraries Spot is built on, with their licenses, plus the copyright
   and license notice.
 
-## Importing models into a scene
+## Adding assets to a scene
 
-To place a model (FBX, OBJ, glTF, ...) in your scene, **drag it from the asset browser** onto the
-scene view or into the hierarchy — or right-click it and choose **Add to Scene (with materials)**.
-Dropping onto an entity in the hierarchy adds the model as a child of that entity; dropping onto empty
-space or the viewport adds it at the root.
+You never have to create an empty entity and add components by hand to use an asset: **drag it from the
+asset browser** into the scene and the editor builds the finished entity for you.
+
+| Asset | Becomes |
+|-------|---------|
+| Prefab (`.sptprefab`) | the prefab's entity tree, marked as an instance of it |
+| Model (FBX, OBJ, glTF, ...) or built-in mesh | the model's entity hierarchy with its materials applied (see below) |
+| Image (PNG, JPG, ...) or built-in texture | a **Sprite**, scaled to the picture's proportions |
+| Audio clip (WAV, OGG) | an **Audio Source** playing it |
+| UI document (`.sptui`) | a **UI Canvas** showing it |
+
+- **Onto the scene view**, the new entity lands where the cursor points. In 3D that is the first surface
+  under the cursor (a sprite, or the bounds of a mesh you are looking at from outside) or the ground plane
+  (y = 0), whichever is nearer; looking at the sky or at something far away, it lands a short way in front
+  of the camera. In 2D it is the cursor's spot on the z = 0 plane, keeping the asset's own depth. While you
+  drag, a ring marks the landing spot (lying in the ground plane, so its size shows the distance) with a
+  label naming what will be created. Assets dropped on a scene tab go into that scene, which becomes the
+  active one.
+- **Onto the hierarchy**, dropping on an entity adds the new entity as its child; dropping on empty space
+  adds it at the root, at the asset's own position.
+- **Right-click → Add to Scene** in the asset browser does the same as dropping on the hierarchy's empty
+  space.
+
+Dragging a multi-selection adds every asset in it that stands for an entity (other files are skipped).
+The new entities are selected, so `W`/`E`/`R` and `F` act on them straight away, and `Ctrl`+`Z` takes the
+whole drop back.
+
+**Materials** (`.sptmat` or built-in) are applied rather than added: drag one onto a mesh to restyle it.
+
+- **Onto the scene view**, it goes to the mesh under the cursor: that mesh's bounds are outlined while you
+  drag, with a label naming the material and the mesh (or saying there is no mesh there). For an imported
+  model that is the one part you point at, since each part is its own mesh. As with placing, meshes whose
+  bounds contain the camera are passed over, so from inside a room you paint what you point at, not the room.
+- **Onto an entity in the hierarchy**, it goes to that entity's mesh or, for an entity without one (such as
+  a model's root), to every mesh beneath it. Entities with no mesh anywhere below don't take the drop.
+
+Each drop is one undo step, however many meshes it painted.
+
+### Importing models
 
 The import does two things automatically:
 

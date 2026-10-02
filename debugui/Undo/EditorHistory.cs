@@ -28,4 +28,34 @@ public static class EditorHistory
     /// </summary>
     public static object? DocumentFor(Spot.Engine.Scenes.Scene? scene) =>
         scene != null ? SceneDocumentResolver?.Invoke(scene) : null;
+
+    /// <summary>
+    /// Records a structural edit a panel has just made to a scene (entities added, say) as one named
+    /// entry that restores the whole scene. Panels cannot snapshot or restore a scene tab themselves, so
+    /// the host installs this; when it has not, the edit is left to the host's periodic catch-all.
+    /// </summary>
+    public static Action<Spot.Engine.Scenes.Scene, string>? SceneEditRecorder { get; set; }
+
+    /// <summary>
+    /// Records a structural edit of <paramref name="scene"/> through <see cref="SceneEditRecorder"/>. Never
+    /// throws: a recorder that fails is logged and the edit stays in the scene.
+    /// </summary>
+    /// <param name="scene">The edited scene.</param>
+    /// <param name="label">What the edit did, e.g. "Add Sprite 'hero'".</param>
+    public static void RecordSceneEdit(Spot.Engine.Scenes.Scene? scene, string label)
+    {
+        if (scene == null || SceneEditRecorder == null)
+        {
+            return;
+        }
+
+        try
+        {
+            SceneEditRecorder(scene, label);
+        }
+        catch (Exception ex)
+        {
+            Spot.Framework.Log.CoreWarn("Could not record '{0}' in the undo history: {1}", label, ex.Message);
+        }
+    }
 }
