@@ -11,6 +11,9 @@ namespace Spot.Assets;
 /// </summary>
 public static class AssetPath
 {
+    // The first use of the engine's asset paths plugs the pipeline into the framework's loaders.
+    static AssetPath() => EngineAssets.Install();
+
     /// <summary>
     /// Gets or sets the directory that relative asset paths resolve against — normally the active
     /// project's <c>Assets/</c> directory. The host (editor or game) sets this when a project loads.

@@ -632,7 +632,7 @@ public class AssetBrowserPanel
 
         if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
         {
-            Spot.Assets.AssimpModelImporter.ExtractMaterials(entry.FullPath);
+            Spot.Assets.ModelMaterials.ExtractEmbedded(entry.FullPath);
         }
 
         if (entry.Kind == AssetKind.Audio)

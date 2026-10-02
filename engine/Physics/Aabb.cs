@@ -1,5 +1,4 @@
 using System.Numerics;
-using Spot.Scenes;
 
 namespace Spot.Physics;
 
@@ -39,16 +38,6 @@ public readonly struct Aabb
     /// Gets the upper-right corner.
     /// </summary>
     public Vector2 Max => Center + HalfExtents;
-
-    /// <summary>
-    /// Builds a box from a transform, using its XY position and scale. This matches a unit quad
-    /// (as drawn for a sprite) placed by the transform.
-    /// </summary>
-    /// <param name="transform">The transform to build the box from.</param>
-    /// <returns>The bounding box.</returns>
-    public static Aabb FromTransform(TransformComponent transform) => new(
-        new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y),
-        new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
 
     /// <summary>
     /// Returns whether this box overlaps another.

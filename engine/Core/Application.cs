@@ -385,6 +385,8 @@ public class Application
     // content logs and continues (the engine must never crash on bad data) rather than aborting startup.
     private void InitializeContent()
     {
+        EngineAssets.Install();
+
         if (!string.IsNullOrEmpty(_spec.AssetRoot))
         {
             AssetPath.Root = ResolveContentPath(_spec.AssetRoot);

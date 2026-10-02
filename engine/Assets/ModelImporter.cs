@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Spot.Core;
+using Spot.IO;
 using Spot.Rendering;
 
 namespace Spot.Assets;
@@ -42,12 +43,12 @@ public static class ModelImporter
     }
 
     /// <summary>
-    /// Builds a drawable <see cref="Model"/> from CPU model data, uploading each submesh (rigid or skinned)
-    /// to the GPU and carrying its bones and animation clips across. Must run on the render thread.
+    /// Builds the GPU meshes for CPU-side model data (the result of <see cref="IModelImporter.ImportModel"/>).
+    /// Must run on the render thread. Custom importers use it to implement <see cref="IModelImporter.Import"/>.
     /// </summary>
-    /// <param name="cooked">The CPU-side geometry, skinning and clips.</param>
-    /// <returns>The GPU-ready model.</returns>
-    internal static Model BuildModel(CookedModel cooked)
+    /// <param name="cooked">The CPU-side geometry and animation data.</param>
+    /// <returns>The model, with its GPU meshes uploaded.</returns>
+    public static Model BuildModel(CookedModel cooked)
     {
         var meshes = new List<Mesh>(cooked.Submeshes.Count);
         var bones = new IReadOnlyList<Spot.Animation.BoneInfo>?[cooked.Submeshes.Count];
@@ -84,33 +85,30 @@ public static class ModelImporter
     public static bool CanLoad(string path) => s_importers.ContainsKey(Path.GetExtension(path));
 
     /// <summary>
-    /// Resolves a stored model reference to an absolute path to load from, and whether that path is a cooked
-    /// <c>.sptmesh</c> (loaded without Assimp) rather than a source model. A <c>guid:</c> reference resolves
-    /// through the content host; anything else resolves as a source path. Returns <see langword="false"/> when a
-    /// guid reference has no cooked artifact (unknown guid or no host installed), so callers can skip it.
+    /// Gets or sets the mapping from a model reference (what <see cref="Load"/> and <see cref="RequestAsync"/>
+    /// receive) to a file path, or <see langword="null"/> when the reference cannot be resolved. Defaults to
+    /// <see cref="FileSystem.Resolve"/>; the engine installs one that also resolves <c>guid:</c> references to
+    /// cooked content. <c>primitive:</c> references never reach it.
     /// </summary>
-    private static bool TryResolveModelPath(string path, out string fullPath, out bool cooked)
+    public static Func<string, string?>? ReferenceResolver { get; set; }
+
+    // Resolves a reference to an absolute file path, or false when the resolver cannot place it.
+    private static bool TryResolveModelPath(string path, out string fullPath)
     {
-        if (AssetRef.IsGuidRef(path))
+        string? resolved = ReferenceResolver is { } resolver ? resolver(path) : FileSystem.Resolve(path);
+        if (string.IsNullOrEmpty(resolved))
         {
-            string? content = AssetPath.ResolveContent(path);
-            if (content is null)
-            {
-                fullPath = string.Empty;
-                cooked = false;
-                return false;
-            }
-
-            fullPath = Path.GetFullPath(content);
-        }
-        else
-        {
-            fullPath = Path.GetFullPath(AssetPath.Resolve(path));
+            fullPath = string.Empty;
+            return false;
         }
 
-        cooked = fullPath.EndsWith(".sptmesh", StringComparison.OrdinalIgnoreCase);
+        fullPath = Path.GetFullPath(resolved);
         return true;
     }
+
+    // The importer registered for a file's extension, or null.
+    private static IModelImporter? ImporterFor(string fullPath) =>
+        s_importers.TryGetValue(Path.GetExtension(fullPath), out IModelImporter? importer) ? importer : null;
 
     /// <summary>
     /// Loads a model from a file through the importer registered for its extension, caching by full path.
@@ -135,7 +133,7 @@ public static class ModelImporter
             return primitive;
         }
 
-        if (!TryResolveModelPath(path, out string fullPath, out bool cooked))
+        if (!TryResolveModelPath(path, out string fullPath))
         {
             throw new FileNotFoundException($"Unresolved model reference '{path}'.");
         }
@@ -145,23 +143,12 @@ public static class ModelImporter
             return cached;
         }
 
-        Model model = cooked ? BuildFromSpMesh(fullPath) : ImportFromSource(fullPath);
+        IModelImporter importer = ImporterFor(fullPath)
+            ?? throw new NotSupportedException($"No model importer is registered for '{Path.GetExtension(fullPath)}' files.");
+        Model model = importer.Import(fullPath);
         model.SourcePath = fullPath;
         s_cache[fullPath] = model;
         return model;
-    }
-
-    private static Model BuildFromSpMesh(string fullPath) => BuildModel(SpMesh.ReadModelFile(fullPath));
-
-    private static Model ImportFromSource(string fullPath)
-    {
-        string extension = Path.GetExtension(fullPath);
-        if (!s_importers.TryGetValue(extension, out IModelImporter? importer))
-        {
-            throw new NotSupportedException($"No model importer is registered for '{extension}' files.");
-        }
-
-        return importer.Import(fullPath);
     }
 
     /// <summary>
@@ -203,7 +190,7 @@ public static class ModelImporter
             return Load(path);
         }
 
-        if (!TryResolveModelPath(path, out string fullPath, out bool cooked))
+        if (!TryResolveModelPath(path, out string fullPath))
         {
             // Unknown guid or no content host yet: log once (keyed by the reference) and don't retry.
             if (s_failed.Add(path))
@@ -224,27 +211,16 @@ public static class ModelImporter
             return null;
         }
 
-        // Cooked meshes just need their blob read on the worker; source models go through Assimp there.
-        Func<CookedModel> parse;
-        if (cooked)
+        // The importer's CPU-side parse (a cooked blob read, or a full source import) runs on the worker.
+        if (ImporterFor(fullPath) is not { } importer)
         {
-            parse = () => SpMesh.ReadModelFile(fullPath);
-        }
-        else
-        {
-            string extension = Path.GetExtension(fullPath);
-            if (!s_importers.TryGetValue(extension, out IModelImporter? importer))
-            {
-                Log.CoreError("No model importer is registered for '{0}' files.", extension);
-                s_failed.Add(fullPath);
-                return null;
-            }
-
-            parse = () => importer.ImportModel(fullPath);
+            Log.CoreError("No model importer is registered for '{0}' files.", Path.GetExtension(fullPath));
+            s_failed.Add(fullPath);
+            return null;
         }
 
         s_inFlight.Add(fullPath);
-        QueueParse(fullPath, parse);
+        QueueParse(fullPath, () => importer.ImportModel(fullPath));
         return null;
     }
 

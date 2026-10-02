@@ -68,6 +68,7 @@
     <Compile Remove="Audio\AudioDevice.cs" />
     <Compile Remove="Audio\OpenAlAudioBackend.cs" />
     <Compile Remove="Assets\AssimpModelImporter.cs" />
+    <Compile Remove="Assets\ModelMaterials.cs" />
     <Compile Remove="Scenes\ModelInstantiator.cs" />
     <!-- Dear ImGui developer console (authoring/debug overlay). -->
     <Compile Remove="Console\DevConsole.cs" />

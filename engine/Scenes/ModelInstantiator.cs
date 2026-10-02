@@ -70,7 +70,7 @@ public static class ModelInstantiator
             string dir = Path.GetDirectoryName(modelPath) ?? string.Empty;
             string name = Path.GetFileNameWithoutExtension(modelPath);
             string outDir = Path.Combine(dir, name + "_Materials");
-            return AssimpModelImporter.ExtractMaterialsPerSlot(modelPath, outDir);
+            return ModelMaterials.ExtractPerSlot(modelPath, outDir);
         }
         catch (Exception ex)
         {

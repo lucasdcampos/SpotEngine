@@ -386,90 +386,71 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
     }
 
     /// <summary>
-    /// Parses the model file and extracts any embedded textures to the same directory, generating 
-    /// a corresponding .sptmat material file for each.
+    /// Writes every compressed (PNG/JPG) texture embedded in the model into <paramref name="outDir"/>, named after
+    /// the texture (or <c>&lt;model&gt;_Texture_N</c> when it has no name).
     /// </summary>
-    public static void ExtractMaterials(string path)
+    /// <param name="modelPath">The path to the source model file.</param>
+    /// <param name="outDir">The directory the images are written to.</param>
+    /// <returns>The paths of the written images. Empty when the model has none or cannot be read (logged).</returns>
+    public static IReadOnlyList<string> ExtractEmbeddedTextures(string modelPath, string outDir)
     {
-        string directory = Path.GetDirectoryName(path) ?? string.Empty;
-        string modelName = Path.GetFileNameWithoutExtension(path);
+        var written = new List<string>();
+        string modelName = Path.GetFileNameWithoutExtension(modelPath);
 
-        const uint flags = 0;
-        Scene* scene = s_assimp.ImportFile(path, flags);
+        Scene* scene = s_assimp.ImportFile(modelPath, 0);
         if (scene == null)
         {
-            Log.CoreError($"Failed to read file for extraction '{path}': {s_assimp.GetErrorStringS()}");
-            return;
+            Log.CoreError($"Failed to read file for extraction '{modelPath}': {s_assimp.GetErrorStringS()}");
+            return written;
         }
 
         try
         {
+            Directory.CreateDirectory(outDir);
             for (uint i = 0; i < scene->MNumTextures; i++)
             {
                 Texture* tex = scene->MTextures[i];
-                if (tex->MHeight == 0) // Compressed texture (PNG, JPG, etc)
+                string texName = tex->MFilename.AsString;
+                texName = string.IsNullOrWhiteSpace(texName) || texName.StartsWith('*')
+                    ? $"{modelName}_Texture_{i}"
+                    : Path.GetFileNameWithoutExtension(texName);
+
+                string imagePath = Path.Combine(outDir, Sanitize(texName) + ".png");
+                if (WriteEmbeddedTexture(tex, imagePath))
                 {
-                    string texName = tex->MFilename.AsString;
-                    if (string.IsNullOrWhiteSpace(texName) || texName.StartsWith("*"))
-                    {
-                        texName = $"{modelName}_Texture_{i}";
-                    }
-                    else
-                    {
-                        texName = Path.GetFileNameWithoutExtension(texName);
-                    }
-                    
-                    // Sanitize name
-                    foreach (char c in Path.GetInvalidFileNameChars())
-                        texName = texName.Replace(c, '_');
-
-                    string imagePath = Path.Combine(directory, texName + ".png");
-                    
-                    int byteCount = (int)tex->MWidth;
-                    if (byteCount > 0)
-                    {
-                        byte[] data = new byte[byteCount];
-                        fixed (byte* pData = data)
-                        {
-                            System.Buffer.MemoryCopy(tex->PcData, pData, byteCount, byteCount);
-                        }
-                        System.IO.File.WriteAllBytes(imagePath, data);
-
-                        // Create a corresponding material
-                        string matPath = Path.Combine(directory, texName + ".sptmat");
-                        if (!System.IO.File.Exists(matPath))
-                        {
-                            var mat = new Material();
-                            mat.SetTexture(imagePath);
-                            mat.Save(matPath);
-                        }
-                    }
+                    written.Add(imagePath);
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.CoreError($"Error extracting materials from '{path}': {ex.Message}");
+            Log.CoreError($"Error extracting textures from '{modelPath}': {ex.Message}");
         }
         finally
         {
             s_assimp.ReleaseImport(scene);
         }
+
+        return written;
     }
 
     /// <summary>
-    /// Extracts one <c>.sptmat</c> per material slot in the model into <paramref name="outDir"/>, pulling
-    /// each slot's base color and base-color/diffuse texture (embedded textures are written out as PNGs,
-    /// referenced ones are resolved next to the model). Existing <c>.sptmat</c> files are kept as-is. This
-    /// is the material half of dropping a model into the scene: it produces assets that
-    /// <see cref="Scenes.ModelInstantiator"/> assigns to the matching mesh parts.
+    /// Reads each material slot of the model: a file-name-safe name, its base color (the PBR base-color factor,
+    /// falling back to the legacy diffuse color) and its base texture (base color, falling back to diffuse).
+    /// Embedded textures are written out as PNGs into <paramref name="textureOutDir"/>; referenced ones are
+    /// resolved next to the model.
     /// </summary>
     /// <param name="modelPath">The path to the source model file.</param>
-    /// <param name="outDir">The directory the <c>.sptmat</c> files (and any extracted textures) are written to.</param>
-    /// <returns>A map from material slot index to the written <c>.sptmat</c> path.</returns>
-    public static IReadOnlyDictionary<int, string> ExtractMaterialsPerSlot(string modelPath, string outDir)
+    /// <param name="textureOutDir">The directory embedded textures are written to.</param>
+    /// <param name="resolveSlot">
+    /// Optional filter, called with each slot's name: return <see langword="false"/> to skip reading its color
+    /// and texture (for example because a material for it already exists). The slot is still listed.
+    /// </param>
+    /// <returns>One entry per material slot. Empty when the model cannot be read (logged).</returns>
+    public static IReadOnlyList<ImportedMaterial> ReadMaterials(string modelPath, string textureOutDir,
+        Func<string, bool>? resolveSlot = null)
     {
-        var result = new Dictionary<int, string>();
+        var result = new List<ImportedMaterial>();
 
         Scene* scene = s_assimp.ImportFile(modelPath, 0);
         if (scene == null)
@@ -480,7 +461,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
 
         try
         {
-            Directory.CreateDirectory(outDir);
+            Directory.CreateDirectory(textureOutDir);
             string modelDir = Path.GetDirectoryName(modelPath) ?? string.Empty;
 
             for (uint i = 0; i < scene->MNumMaterials; i++)
@@ -489,44 +470,32 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
                 {
                     AiMaterial* mat = scene->MMaterials[i];
                     string safeName = Sanitize(GetMaterialName(mat, i));
-                    string matPath = Path.Combine(outDir, safeName + ".sptmat");
-
-                    if (File.Exists(matPath))
+                    if (resolveSlot is not null && !resolveSlot(safeName))
                     {
-                        result[(int)i] = matPath;
+                        result.Add(new ImportedMaterial((int)i, safeName, null, null));
                         continue;
                     }
 
-                    var material = new Material();
+                    Vector4? color = TryGetColor(mat, AssimpApi.MatkeyBaseColor, out Vector4 c) ||
+                                     TryGetColor(mat, AssimpApi.MatkeyColorDiffuse, out c)
+                        ? c
+                        : null;
 
-                    // Base color: prefer the PBR base-color factor, fall back to the legacy diffuse color.
-                    if (TryGetColor(mat, AssimpApi.MatkeyBaseColor, out Vector4 color) ||
-                        TryGetColor(mat, AssimpApi.MatkeyColorDiffuse, out color))
-                    {
-                        material.Color = color;
-                    }
-
-                    // Base texture: prefer base color, fall back to diffuse.
                     string? texturePath =
-                        ResolveTexture(scene, mat, TextureType.BaseColor, modelDir, outDir, safeName) ??
-                        ResolveTexture(scene, mat, TextureType.Diffuse, modelDir, outDir, safeName);
-                    if (texturePath != null)
-                    {
-                        material.SetTexture(texturePath);
-                    }
+                        ResolveTexture(scene, mat, TextureType.BaseColor, modelDir, textureOutDir, safeName) ??
+                        ResolveTexture(scene, mat, TextureType.Diffuse, modelDir, textureOutDir, safeName);
 
-                    material.Save(matPath);
-                    result[(int)i] = matPath;
+                    result.Add(new ImportedMaterial((int)i, safeName, color, texturePath));
                 }
                 catch (Exception ex)
                 {
-                    Log.CoreError($"Failed to extract material slot {i} from '{modelPath}': {ex.Message}");
+                    Log.CoreError($"Failed to read material slot {i} from '{modelPath}': {ex.Message}");
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.CoreError($"Error extracting materials from '{modelPath}': {ex.Message}");
+            Log.CoreError($"Error reading materials from '{modelPath}': {ex.Message}");
         }
         finally
         {
@@ -637,3 +606,12 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
         return string.IsNullOrWhiteSpace(name) ? "Material" : name;
     }
 }
+
+/// <summary>
+/// One material slot read from a model file (see <see cref="AssimpModelImporter.ReadMaterials"/>).
+/// </summary>
+/// <param name="Slot">The material slot index, as referenced by the model's meshes.</param>
+/// <param name="Name">The material's name, made safe to use as a file name.</param>
+/// <param name="Color">The base color, or <see langword="null"/> when the model defines none (or it was skipped).</param>
+/// <param name="TexturePath">The base texture file, or <see langword="null"/> when there is none (or it was skipped).</param>
+public readonly record struct ImportedMaterial(int Slot, string Name, Vector4? Color, string? TexturePath);
