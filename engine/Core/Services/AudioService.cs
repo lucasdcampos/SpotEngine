@@ -11,7 +11,7 @@ namespace Spot.Engine.Services;
 /// </summary>
 public class AudioService : IEngineService
 {
-    public void Init(Application app) => AudioManager.Init(new OpenAlAudioBackend());
+    public void Init(Application app) => AudioManager.Init();
 
     public void Update(float deltaTime) => AudioManager.Update(deltaTime);
 

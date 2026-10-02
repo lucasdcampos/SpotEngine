@@ -68,7 +68,7 @@ public static partial class BrowserHost
 
             // Web Audio drives the browser mixer. If the AudioContext can't be created, the backend reports
             // unavailable and AudioManager degrades to silence on its own; rendering and gameplay run regardless.
-            AudioManager.Init(new WebAudioBackend());
+            AudioManager.Init();
 
             FileSystem.Current = s_assets;
             EngineAssets.Install();

@@ -55,10 +55,34 @@ public static class AudioManager
     private static bool Available => s_backend.Available;
 
     /// <summary>
-    /// Installs the platform audio backend, opens the device, and allocates the source pool. Safe to call
-    /// more than once. Mirrors <see cref="Rendering.Renderer"/>'s device injection: the desktop host passes an
-    /// OpenAL backend, the browser host a Web Audio backend.
+    /// Gets whether a working audio device is open (false before <see cref="Init()"/>, and when the platform has
+    /// no audio device — in which case every call is a silent no-op).
     /// </summary>
+    public static bool IsAvailable => Available;
+
+    /// <summary>
+    /// Opens the platform's default audio device: OpenAL on desktop, Web Audio in the browser. If it cannot be
+    /// opened, audio runs silently.
+    /// </summary>
+    public static void Init() => Init(CreateDefaultBackend());
+
+    /// <summary>
+    /// Creates the platform's default audio backend (OpenAL on desktop, Web Audio in the browser), unopened.
+    /// </summary>
+    /// <returns>The backend.</returns>
+    public static IAudioBackend CreateDefaultBackend() =>
+#if BROWSER
+        new WebAudioBackend();
+#else
+        new OpenAlAudioBackend();
+#endif
+
+    /// <summary>
+    /// Installs an audio backend, opens the device, and allocates the source pool. Safe to call more than once.
+    /// Pass your own <see cref="IAudioBackend"/> to drive a different audio API, or a <see cref="SilentAudioBackend"/>
+    /// to run without sound.
+    /// </summary>
+    /// <param name="backend">The backend; <see langword="null"/> installs a silent one.</param>
     public static void Init(IAudioBackend backend)
     {
         s_backend = backend ?? new SilentAudioBackend();

@@ -32,8 +32,14 @@ public class ScriptRegistryGeneratorTests
         SyntaxTree tree = CSharpSyntaxTree.ParseText(source, path: sourcePath);
 
         // Reference every loaded assembly so the compilation resolves Spot.Engine.Scenes.EntityBehaviour and friends.
-        // Touch the engine type first: nothing else guarantees its assembly is loaded when this test runs.
-        _ = typeof(Spot.Engine.Scenes.EntityBehaviour);
+        // Load the engine and everything it references first (the framework levels its types derive from):
+        // nothing else guarantees they are loaded when this test runs, and the test order varies.
+        System.Reflection.Assembly engine = typeof(Spot.Engine.Scenes.EntityBehaviour).Assembly;
+        foreach (System.Reflection.AssemblyName dependency in engine.GetReferencedAssemblies())
+        {
+            System.Reflection.Assembly.Load(dependency);
+        }
+
         var references = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
