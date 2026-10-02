@@ -769,20 +769,20 @@ public class EditorScene : Scene
                     if (_gamePanelFocused)
                     {
                         // Gaining focus: unsuppress input first, then restore game's cursor lock.
-                        Spot.Core.Input.GameInputSuppressed = false;
-                        Spot.Core.Input.EditorRestoreCursor();
+                        Spot.Core.Input.Suppressed = false;
+                        Spot.Core.Input.RestoreCursor();
                     }
                     else
                     {
                         // Losing focus: release cursor while not yet suppressed, then suppress.
-                        Spot.Core.Input.EditorReleaseCursor();
-                        Spot.Core.Input.GameInputSuppressed = true;
+                        Spot.Core.Input.ReleaseCursor();
+                        Spot.Core.Input.Suppressed = true;
                     }
                 }
                 else
                 {
                     // No transition: just maintain current suppression state.
-                    Spot.Core.Input.GameInputSuppressed = !_gamePanelFocused;
+                    Spot.Core.Input.Suppressed = !_gamePanelFocused;
                 }
 
                 // In play mode: run the full system stack for the active scene.
@@ -1928,7 +1928,7 @@ public class EditorScene : Scene
         _gamePanelFocused = false;
         _prevGamePanelFocused = false;
         // Clear suppression first so CursorLocked can actually apply the cursor-free state.
-        Spot.Core.Input.GameInputSuppressed = false;
+        Spot.Core.Input.Suppressed = false;
         // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
         Spot.Core.Input.CursorLocked = false;
         _state = EditorState.Edit;

@@ -5,10 +5,11 @@ namespace Spot.Core;
 
 /// <summary>
 /// Locks or unlocks the hardware cursor on behalf of <see cref="Input"/>, without coupling it to a
-/// particular windowing backend. The active host installs an implementation — a Silk mouse on desktop,
-/// the Pointer Lock API in the browser — so the same input code drives both.
+/// particular windowing backend. The active window installs an implementation — a Silk mouse on desktop,
+/// the Pointer Lock API in the browser — so the same input code drives both. Implement it to plug in a
+/// platform of your own.
 /// </summary>
-internal interface ICursorController
+public interface ICursorController
 {
     /// <summary>Gets or sets whether the hardware cursor is locked and hidden.</summary>
     bool Locked { get; set; }
@@ -23,15 +24,17 @@ internal interface ICursorController
 }
 
 /// <summary>
-/// Polled input state, queryable at any time (typically from a scene's update). This is the
-/// convenient, Unity-style path: ask "is this key down?" instead of handling events. For discrete,
-/// event-driven input, override <see cref="Spot.Scenes.Scene.OnEvent"/> instead.
+/// Polled input state, queryable at any time: ask "is this key down?" instead of handling events. The
+/// window feeds it (see <see cref="NewFrame"/> and <see cref="OnEvent"/>); for discrete, event-driven input,
+/// handle the window's events directly.
 /// </summary>
 public static class Input
 {
-    // The active platform's hardware-cursor controller, installed by the host once its window exists.
-    // Null (and cursor operations no-op) in headless tests and before the window is created.
-    internal static ICursorController? CursorController { get; set; }
+    /// <summary>
+    /// Gets or sets the active platform's hardware-cursor controller, installed by the window once it exists.
+    /// Null (and cursor operations no-op) in headless use and before a window is created.
+    /// </summary>
+    public static ICursorController? CursorController { get; set; }
 
     private static readonly HashSet<Key> DownKeys = new();
     private static readonly HashSet<Key> PressedThisFrame = new();
@@ -49,52 +52,39 @@ public static class Input
     private static readonly Dictionary<(int, GamepadAxis), float> _gamepadAxes = new();
     private static readonly Dictionary<(int, GamepadAxis), float> _prevGamepadAxes = new();
 
-    private static readonly HashSet<string> _activeCustomActions = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> _customActionsPressedThisFrame = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> _customActionsReleasedThisFrame = new(StringComparer.OrdinalIgnoreCase);
-
-    // What the game last asked for via CursorLocked. Kept separate from the hardware state so the
-    // engine can override the cursor (e.g. while the dev console is open) and later restore exactly
-    // what the game wanted.
+    // What the app last asked for via CursorLocked. Kept separate from the hardware state so a capture
+    // (e.g. a debug console) can override the cursor and later restore exactly what the app wanted.
     private static bool _desiredCursorLocked;
 
-    // True while the engine owns input: the cursor is forced free/visible and polled input is
-    // withheld from the game. Driven by Application from the console's open state.
+    // True while something above the app owns input (see Captured): the cursor is forced free/visible and
+    // polled input is withheld.
     private static bool _engineCaptured;
 
-    // True while the editor suppresses game input because the Game panel is not focused.
-    // Unlike _engineCaptured, this does NOT touch the cursor lock state — cursor management
-    // is handled separately by the editor when the Game panel gains or loses focus.
+    // True while reads are suppressed without touching the cursor (see Suppressed).
     private static bool _gameFocusCapture;
 
-    // MousePosition is frozen at this value while input is blocked (engine console/debugger open, or
-    // the editor's Game panel unfocused), so the game's _lastMouse delta tracking stays in sync and
-    // there is no camera spin while the cursor roams free, nor a jump when the block ends.
+    // MousePosition is frozen at this value while input is blocked, so an app's frame-to-frame delta
+    // tracking stays in sync: no camera spin while the cursor roams free, nor a jump when the block ends.
     private static Vector2 _frozenMousePosition;
 
     private static Vector2 _mousePosition;
     private static Vector2 _mouseScrollDelta;
 
-    // While true the mouse position is driven by accumulated relative motion (the host recentres the
-    // hardware cursor each frame and feeds deltas), so absolute move events must not overwrite it. Set
-    // by the platform cursor controller when it locks the cursor for mouse-look.
-    internal static bool RelativeMouseMode { get; set; }
-
-    // Named actions mapped to the physical inputs that trigger them (an action can have several, e.g.
-    // "forward" -> W and Up). Names are compared case-insensitively so console usage is forgiving.
-    // _defaults holds the project's startup bindings so a runtime "resetbinds" can restore them.
-    private static readonly Dictionary<string, HashSet<InputBinding>> _actions = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<string, HashSet<InputBinding>> _defaults = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Gets or sets whether the mouse position is driven by accumulated relative motion
+    /// (<see cref="AddMouseMotion"/>) instead of absolute move events. Set by the cursor controller while it
+    /// locks the cursor for mouse-look.
+    /// </summary>
+    public static bool RelativeMouseMode { get; set; }
 
     /// <summary>
     /// Gets the mouse position in window pixels, with the origin at the top-left.
     /// </summary>
     /// <remarks>
-    /// Returns the frozen position while input is blocked — the engine owns input (dev console or
-    /// debugger open) or the editor suppresses it (Game panel not focused). Freezing is what keeps a
-    /// game's mouse-look still while the console has the cursor: the hardware cursor is released and
-    /// roams free, and a live position would feed that roaming straight into the camera as delta. The
-    /// position is restored on release, so the first frame back sees a zero delta and no jump.
+    /// Returns the frozen position while input is blocked (<see cref="Captured"/> or <see cref="Suppressed"/>).
+    /// Freezing is what keeps mouse-look still while, say, a debug console has the cursor: the hardware cursor
+    /// is released and roams free, and a live position would feed that roaming straight into the camera as
+    /// delta. The position is restored on release, so the first frame back sees a zero delta and no jump.
     /// </remarks>
     public static Vector2 MousePosition => InputBlocked ? _frozenMousePosition : _mousePosition;
 
@@ -107,10 +97,10 @@ public static class Input
     /// Gets or sets whether the cursor is locked and hidden.
     /// </summary>
     /// <remarks>
-    /// The getter reflects the real, effective hardware state: while the engine has captured input
-    /// the cursor is forced free, so this reads <see langword="false"/> even if the game asked for a
-    /// locked cursor. Setting it records the game's request and applies it immediately unless the
-    /// engine is currently overriding the cursor, in which case it is applied when the override ends.
+    /// The getter reflects the real, effective hardware state: while input is captured the cursor is forced
+    /// free, so this reads <see langword="false"/> even if the app asked for a locked cursor. Setting it records
+    /// the request and applies it immediately unless input is blocked, in which case it is applied when the
+    /// block ends.
     /// </remarks>
     public static bool CursorLocked
     {
@@ -118,8 +108,7 @@ public static class Input
         set
         {
             _desiredCursorLocked = value;
-            // Don't apply cursor lock while input is blocked (engine console or editor Game panel
-            // not focused). The editor restores the desired state when the Game panel gains focus.
+            // Don't apply the lock while input is blocked; RestoreCursor / releasing the capture applies it.
             if (!InputBlocked)
             {
                 ApplyCursorMode(value);
@@ -128,17 +117,34 @@ public static class Input
     }
 
     /// <summary>
-    /// Gets whether the engine currently owns input (cursor forced free, game input withheld).
+    /// Gets or sets whether something above the app owns input — a debug console, an overlay, a pause menu
+    /// drawn by another layer. While captured the cursor is forced free and visible, every query reports no
+    /// input and <see cref="MousePosition"/> is frozen; releasing the capture restores the cursor state the
+    /// app last requested. Idempotent.
     /// </summary>
-    internal static bool EngineCaptured => _engineCaptured;
+    public static bool Captured
+    {
+        get => _engineCaptured;
+        set
+        {
+            if (value == _engineCaptured)
+            {
+                return;
+            }
+
+            bool wasBlocked = InputBlocked;
+            _engineCaptured = value;
+            UpdateMouseFreeze(wasBlocked);
+            ApplyCursorMode(value ? false : _desiredCursorLocked);
+        }
+    }
 
     /// <summary>
-    /// Suppresses all game input reads without touching the cursor lock state. Used by the editor
-    /// when the Game panel does not have focus, so WASD / mouse-look do not affect the game while
-    /// the user is working in the Scene view or other panels. Idempotent; freezes MousePosition on
-    /// the transition to suppressed so the game's delta tracking stays in sync.
+    /// Gets or sets whether input reads are suppressed without touching the cursor — for example while the
+    /// app's view is not focused inside a larger tool. Idempotent; freezes <see cref="MousePosition"/> on the
+    /// transition so delta tracking stays in sync.
     /// </summary>
-    internal static bool GameInputSuppressed
+    public static bool Suppressed
     {
         get => _gameFocusCapture;
         set
@@ -150,13 +156,19 @@ public static class Input
         }
     }
 
+    /// <summary>
+    /// Gets whether input is currently blocked (<see cref="Captured"/> or <see cref="Suppressed"/>), in which
+    /// case every query reports no input.
+    /// </summary>
+    public static bool IsBlocked => InputBlocked;
+
     // Combined gate: any form of capture blocks all input reads.
     private static bool InputBlocked => _engineCaptured || _gameFocusCapture;
 
     // Freezes MousePosition when a block begins and restores it when the last block ends. Called after
     // either capture flag changes, with the blocked state as it was before the change.
     //
-    // Freezing on entry keeps the game's delta tracking in sync: while blocked the cursor is free, so
+    // Freezing on entry keeps the app's delta tracking in sync: while blocked the cursor is free, so
     // _mousePosition keeps absorbing absolute OS move events that have nothing to do with mouse-look.
     // Restoring on exit makes the first unblocked delta zero — without it, _mousePosition holds a stale
     // absolute screen coordinate and the camera snaps.
@@ -179,35 +191,15 @@ public static class Input
     }
 
     /// <summary>
-    /// Forces the cursor free without altering the game's <see cref="CursorLocked"/> request.
-    /// Used by the editor when the Game panel loses input focus.
+    /// Forces the hardware cursor free without altering the app's <see cref="CursorLocked"/> request
+    /// (for example when the app's view loses focus). <see cref="RestoreCursor"/> re-applies the request.
     /// </summary>
-    internal static void EditorReleaseCursor() => ApplyCursorMode(false);
+    public static void ReleaseCursor() => ApplyCursorMode(false);
 
     /// <summary>
-    /// Re-applies the game's last cursor-lock request.
-    /// Used by the editor when the Game panel regains input focus.
+    /// Re-applies the app's last <see cref="CursorLocked"/> request.
     /// </summary>
-    internal static void EditorRestoreCursor() => ApplyCursorMode(_desiredCursorLocked);
-
-    /// <summary>
-    /// Sets whether the engine owns input. While captured the cursor is forced free/visible and the
-    /// polled query methods report no input to the game; releasing capture restores the cursor state
-    /// the game last requested. Idempotent.
-    /// </summary>
-    /// <param name="captured">Whether the engine should own input.</param>
-    internal static void SetEngineCaptured(bool captured)
-    {
-        if (captured == _engineCaptured)
-        {
-            return;
-        }
-
-        bool wasBlocked = InputBlocked;
-        _engineCaptured = captured;
-        UpdateMouseFreeze(wasBlocked);
-        ApplyCursorMode(captured ? false : _desiredCursorLocked);
-    }
+    public static void RestoreCursor() => ApplyCursorMode(_desiredCursorLocked);
 
     // Writes the cursor mode through the active platform controller, a no-op when none is installed.
     private static void ApplyCursorMode(bool locked)
@@ -220,10 +212,10 @@ public static class Input
 
     /// <summary>
     /// Advances the platform cursor controller once per frame (see <see cref="ICursorController.Tick"/>).
-    /// Called by the host after polling input, so a locked cursor is recentred and its motion applied
-    /// before scenes read <see cref="MousePosition"/>.
+    /// Called after polling input — <c>Window.PollEvents</c> does it — so a locked cursor is recentred and its
+    /// motion applied before the app reads <see cref="MousePosition"/>.
     /// </summary>
-    internal static void TickCursorLock() => CursorController?.Tick();
+    public static void TickCursorLock() => CursorController?.Tick();
 
     /// <summary>
     /// Accumulates relative mouse motion into <see cref="MousePosition"/>. Used by the host while the
@@ -231,11 +223,10 @@ public static class Input
     /// is pinned in place.
     /// </summary>
     /// <param name="delta">The relative motion since the last frame, in pixels.</param>
-    internal static void AddMouseMotion(Vector2 delta)
+    public static void AddMouseMotion(Vector2 delta)
     {
-        // Skip accumulation while input is blocked (console/debugger open, or the editor's Game panel
-        // unfocused): the cursor is unlocked and free, so there is no meaningful locked-cursor motion to
-        // track. Keeping _mousePosition frozen ensures the game's _lastMouse delta stays in sync.
+        // Skip accumulation while input is blocked: the cursor is unlocked and free, so there is no meaningful
+        // locked-cursor motion to track. Keeping _mousePosition frozen keeps the app's delta tracking in sync.
         if (!InputBlocked) _mousePosition += delta;
     }
 
@@ -308,10 +299,27 @@ public static class Input
     public static float GetGamepadAxis(int gamepadIndex, GamepadAxis axis)
         => InputBlocked ? 0f : (_gamepadAxes.TryGetValue((gamepadIndex, axis), out float val) ? val : 0f);
 
-    private static float GetGamepadAxisAnyIndex(GamepadAxis axis)
+    /// <summary>
+    /// Gets an axis across every connected gamepad: the value furthest from center. Returns 0 while input is
+    /// blocked or when no gamepad reports the axis.
+    /// </summary>
+    /// <param name="axis">The axis.</param>
+    /// <returns>The strongest value in [-1, 1] (triggers in [0, 1]).</returns>
+    public static float GetGamepadAxis(GamepadAxis axis) => InputBlocked ? 0f : StrongestAxis(_gamepadAxes, axis);
+
+    /// <summary>
+    /// Gets <see cref="GetGamepadAxis(GamepadAxis)"/> as it was at the end of the previous frame, so an axis can be
+    /// treated as a button (crossing a threshold this frame). Returns 0 while input is blocked.
+    /// </summary>
+    /// <param name="axis">The axis.</param>
+    /// <returns>The previous frame's strongest value.</returns>
+    public static float GetPreviousGamepadAxis(GamepadAxis axis) =>
+        InputBlocked ? 0f : StrongestAxis(_prevGamepadAxes, axis);
+
+    private static float StrongestAxis(Dictionary<(int, GamepadAxis), float> axes, GamepadAxis axis)
     {
         float maxVal = 0f;
-        foreach (var kvp in _gamepadAxes)
+        foreach (var kvp in axes)
         {
             if (kvp.Key.Item2 == axis && Math.Abs(kvp.Value) > Math.Abs(maxVal))
             {
@@ -321,313 +329,22 @@ public static class Input
         return maxVal;
     }
 
-    private static float GetPrevGamepadAxisAnyIndex(GamepadAxis axis)
-    {
-        float maxVal = 0f;
-        foreach (var kvp in _prevGamepadAxes)
-        {
-            if (kvp.Key.Item2 == axis && Math.Abs(kvp.Value) > Math.Abs(maxVal))
-            {
-                maxVal = kvp.Value;
-            }
-        }
-        return maxVal;
-    }
+    /// <summary>
+    /// Raised by <see cref="NewFrame"/> after the per-frame state is cleared, so layers built on top (named
+    /// actions, for example) can reset their own per-frame state in step.
+    /// </summary>
+    public static event Action? FrameStarted;
 
     /// <summary>
-    /// Returns whether any input bound to the named action is currently held down.
+    /// Raised by <see cref="Reset"/> after all input state is cleared.
     /// </summary>
-    /// <param name="action">The action name (case-insensitive), e.g. "forward".</param>
-    /// <returns><see langword="true"/> while any bound key/button is down.</returns>
-    public static bool GetAction(string action)
-    {
-        if (InputBlocked)
-        {
-            return false;
-        }
-
-        if (_activeCustomActions.Contains(action))
-        {
-            return true;
-        }
-
-        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
-        {
-            return false;
-        }
-
-        foreach (InputBinding binding in bindings)
-        {
-            if (IsHeld(binding))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    public static event Action? Cleared;
 
     /// <summary>
-    /// Returns whether the named action became active during this frame.
+    /// Starts a new input frame: clears the "this frame" presses/releases and the scroll delta. Call it once per
+    /// frame before feeding the frame's events — <c>Window.PollEvents</c> does both for you.
     /// </summary>
-    /// <remarks>
-    /// Fires only on the inactive-to-active transition: pressing a second bound key while the action is
-    /// already held does not re-fire it.
-    /// </remarks>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <returns><see langword="true"/> on the frame the action goes active.</returns>
-    public static bool GetActionDown(string action)
-    {
-        if (InputBlocked)
-        {
-            return false;
-        }
-
-        if (_customActionsPressedThisFrame.Contains(action))
-        {
-            return true;
-        }
-
-        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
-        {
-            return false;
-        }
-
-        bool pressedThisFrame = false;
-        bool heldBefore = false;
-        foreach (InputBinding binding in bindings)
-        {
-            bool pressed = IsPressed(binding);
-            pressedThisFrame |= pressed;
-
-            // Held coming into this frame (down now but not from this frame's press) means the action
-            // was already active, so this isn't a fresh activation.
-            heldBefore |= IsHeld(binding) && !pressed;
-        }
-
-        return pressedThisFrame && !heldBefore;
-    }
-
-    /// <summary>
-    /// Returns whether the named action became inactive during this frame.
-    /// </summary>
-    /// <remarks>
-    /// Fires only on the active-to-inactive transition: releasing one bound key while another is still
-    /// held keeps the action active and does not fire.
-    /// </remarks>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <returns><see langword="true"/> on the frame the action goes inactive.</returns>
-    public static bool GetActionUp(string action)
-    {
-        if (InputBlocked)
-        {
-            return false;
-        }
-
-        if (_customActionsReleasedThisFrame.Contains(action))
-        {
-            return true;
-        }
-
-        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
-        {
-            return false;
-        }
-
-        bool releasedThisFrame = false;
-        bool stillHeld = false;
-        foreach (InputBinding binding in bindings)
-        {
-            releasedThisFrame |= IsReleased(binding);
-            stillHeld |= IsHeld(binding);
-        }
-
-        return releasedThisFrame && !stillHeld;
-    }
-
-    /// <summary>
-    /// Explicitly sets the state of an action. This allows developers to trigger actions via custom input devices
-    /// or virtual UI buttons without needing to emulate a physical key press.
-    /// </summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <param name="isActive">Whether the action should be considered active.</param>
-    public static void SetActionState(string action, bool isActive)
-    {
-        if (isActive)
-        {
-            if (_activeCustomActions.Add(action))
-            {
-                _customActionsPressedThisFrame.Add(action);
-            }
-        }
-        else
-        {
-            if (_activeCustomActions.Remove(action))
-            {
-                _customActionsReleasedThisFrame.Add(action);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Binds a physical input to an action. An action may have several bindings; binding one that is
-    /// already present is a no-op.
-    /// </summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <param name="binding">The key or mouse button to bind.</param>
-    public static void Bind(string action, InputBinding binding)
-    {
-        if (string.IsNullOrWhiteSpace(action))
-        {
-            return;
-        }
-
-        if (!_actions.TryGetValue(action, out HashSet<InputBinding>? bindings))
-        {
-            bindings = new HashSet<InputBinding>();
-            _actions[action] = bindings;
-        }
-
-        bindings.Add(binding);
-    }
-
-    /// <summary>Binds a keyboard key to an action.</summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <param name="key">The key to bind.</param>
-    public static void Bind(string action, Key key) => Bind(action, InputBinding.Key(key));
-
-    /// <summary>Binds a mouse button to an action.</summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <param name="button">The button to bind.</param>
-    public static void Bind(string action, MouseButton button) => Bind(action, InputBinding.Mouse(button));
-
-    /// <summary>
-    /// Removes a physical input from every action it is bound to.
-    /// </summary>
-    /// <param name="binding">The key or mouse button to unbind.</param>
-    /// <returns><see langword="true"/> if the binding was removed from at least one action.</returns>
-    public static bool Unbind(InputBinding binding)
-    {
-        bool removed = false;
-        foreach (string action in _actions.Keys.ToList())
-        {
-            HashSet<InputBinding> bindings = _actions[action];
-            if (bindings.Remove(binding))
-            {
-                removed = true;
-                if (bindings.Count == 0)
-                {
-                    _actions.Remove(action);
-                }
-            }
-        }
-
-        return removed;
-    }
-
-    /// <summary>
-    /// Removes an action and all of its bindings.
-    /// </summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <returns><see langword="true"/> if the action existed.</returns>
-    public static bool UnbindAction(string action) => _actions.Remove(action);
-
-    /// <summary>
-    /// Gets the bindings currently mapped to an action.
-    /// </summary>
-    /// <param name="action">The action name (case-insensitive).</param>
-    /// <returns>A snapshot of the action's bindings, or an empty list if it has none.</returns>
-    public static IReadOnlyList<InputBinding> GetBindings(string action)
-        => _actions.TryGetValue(action, out HashSet<InputBinding>? bindings) ? bindings.ToArray() : Array.Empty<InputBinding>();
-
-    /// <summary>
-    /// Gets the names of all actions that currently have at least one binding.
-    /// </summary>
-    /// <returns>A snapshot of the action names.</returns>
-    public static IReadOnlyList<string> GetActionNames() => _actions.Keys.ToArray();
-
-    /// <summary>Removes every action binding.</summary>
-    public static void ClearBindings() => _actions.Clear();
-
-    /// <summary>
-    /// Replaces the default bindings and applies them, discarding any current bindings. Called once at
-    /// startup from the application spec so both the editor and shipped games get the project's
-    /// defaults; the snapshot is what <see cref="ResetBindingsToDefaults"/> restores.
-    /// </summary>
-    /// <param name="defaults">Actions mapped to their default bindings. May be <see langword="null"/>.</param>
-    public static void SetDefaultBindings(IReadOnlyDictionary<string, InputBinding[]>? defaults)
-    {
-        _defaults.Clear();
-        if (defaults != null)
-        {
-            foreach ((string action, InputBinding[] bindings) in defaults)
-            {
-                if (string.IsNullOrWhiteSpace(action) || bindings == null)
-                {
-                    continue;
-                }
-
-                _defaults[action] = new HashSet<InputBinding>(bindings);
-            }
-        }
-
-        ResetBindingsToDefaults();
-    }
-
-    /// <summary>
-    /// Discards current bindings and restores the defaults set by <see cref="SetDefaultBindings"/>.
-    /// </summary>
-    public static void ResetBindingsToDefaults()
-    {
-        _actions.Clear();
-        foreach ((string action, HashSet<InputBinding> bindings) in _defaults)
-        {
-            _actions[action] = new HashSet<InputBinding>(bindings);
-        }
-    }
-
-    // Whether a single binding is held / went down / went up this frame, dispatching to the keyboard or
-    // mouse frame state the action layer is built on.
-    private static bool IsHeld(InputBinding binding)
-    {
-        return binding.Device switch
-        {
-            InputDeviceKind.Keyboard => DownKeys.Contains((Key)binding.Code),
-            InputDeviceKind.Mouse => DownButtons.Contains((MouseButton)binding.Code),
-            InputDeviceKind.GamepadButton => DownGamepadButtons.Contains((GamepadButton)binding.Code),
-            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f,
-            _ => false
-        };
-    }
-
-    private static bool IsPressed(InputBinding binding)
-    {
-        return binding.Device switch
-        {
-            InputDeviceKind.Keyboard => PressedThisFrame.Contains((Key)binding.Code),
-            InputDeviceKind.Mouse => ButtonsPressedThisFrame.Contains((MouseButton)binding.Code),
-            InputDeviceKind.GamepadButton => GamepadButtonsPressedThisFrame.Contains((GamepadButton)binding.Code),
-            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f && Math.Abs(GetPrevGamepadAxisAnyIndex((GamepadAxis)binding.Code)) < 0.5f,
-            _ => false
-        };
-    }
-
-    private static bool IsReleased(InputBinding binding)
-    {
-        return binding.Device switch
-        {
-            InputDeviceKind.Keyboard => ReleasedThisFrame.Contains((Key)binding.Code),
-            InputDeviceKind.Mouse => ButtonsReleasedThisFrame.Contains((MouseButton)binding.Code),
-            InputDeviceKind.GamepadButton => GamepadButtonsReleasedThisFrame.Contains((GamepadButton)binding.Code),
-            InputDeviceKind.GamepadAxis => Math.Abs(GetGamepadAxisAnyIndex((GamepadAxis)binding.Code)) < 0.5f && Math.Abs(GetPrevGamepadAxisAnyIndex((GamepadAxis)binding.Code)) >= 0.5f,
-            _ => false
-        };
-    }
-
-    /// <summary>
-    /// Clears the per-frame state. Called by the application before polling the next frame's events.
-    /// </summary>
-    internal static void NewFrame()
+    public static void NewFrame()
     {
         PressedThisFrame.Clear();
         ReleasedThisFrame.Clear();
@@ -635,8 +352,6 @@ public static class Input
         ButtonsReleasedThisFrame.Clear();
         GamepadButtonsPressedThisFrame.Clear();
         GamepadButtonsReleasedThisFrame.Clear();
-        _customActionsPressedThisFrame.Clear();
-        _customActionsReleasedThisFrame.Clear();
         _mouseScrollDelta = Vector2.Zero;
 
         _prevGamepadAxes.Clear();
@@ -644,13 +359,15 @@ public static class Input
         {
             _prevGamepadAxes[kvp.Key] = kvp.Value;
         }
+
+        FrameStarted?.Invoke();
     }
 
     /// <summary>
-    /// Resets all input state — held/frame keys and buttons, action bindings, defaults and capture —
-    /// so headless tests start from a clean slate. Test-only.
+    /// Clears all input state — held keys and buttons, gamepads, mouse position, capture and suppression — as if
+    /// no input had ever arrived. Useful when switching contexts and in tests.
     /// </summary>
-    internal static void ResetForTests()
+    public static void Reset()
     {
         DownKeys.Clear();
         PressedThisFrame.Clear();
@@ -664,24 +381,21 @@ public static class Input
         _gamepadButtonsByIndex.Clear();
         _gamepadAxes.Clear();
         _prevGamepadAxes.Clear();
-        _activeCustomActions.Clear();
-        _customActionsPressedThisFrame.Clear();
-        _customActionsReleasedThisFrame.Clear();
         _mousePosition = Vector2.Zero;
         _mouseScrollDelta = Vector2.Zero;
         _frozenMousePosition = Vector2.Zero;
         _gameFocusCapture = false;
-        _actions.Clear();
-        _defaults.Clear();
         _engineCaptured = false;
         RelativeMouseMode = false;
+        Cleared?.Invoke();
     }
 
     /// <summary>
-    /// Updates the input state from a window event. Called by the application for every event.
+    /// Updates the input state from a window event. <c>Window.PollEvents</c> feeds every event through here;
+    /// call it yourself to drive input from a platform of your own.
     /// </summary>
     /// <param name="e">The event.</param>
-    internal static void OnEvent(Event e)
+    public static void OnEvent(Event e)
     {
         switch (e)
         {

@@ -421,7 +421,7 @@ public class Application
 
         // The engine owns input while the dev console or debugger panels are open:
         // cursor forced free, game input withheld.
-        Input.SetEngineCaptured(_console.IsOpen || (Debugger?.IsOpen ?? false));
+        Input.Captured = _console.IsOpen || (Debugger?.IsOpen ?? false);
 
         _window!.PollEvents();
 
@@ -576,7 +576,7 @@ public class Application
 
             // While the engine owns input, keyboard/mouse events don't reach the game; non-input
             // events (e.g. window resize) still flow so the scene keeps its framebuffers correct.
-            if (!e.Handled && !(Input.EngineCaptured && e.IsInCategory(EventCategory.Input)))
+            if (!e.Handled && !(Input.Captured && e.IsInCategory(EventCategory.Input)))
             {
                 SceneManager.DispatchEvent(e);
             }

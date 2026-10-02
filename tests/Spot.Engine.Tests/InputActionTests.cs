@@ -12,7 +12,7 @@ public class InputActionTests
     [Fact]
     public void Action_TracksHeldDownAndUp()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("forward", Key.W);
         Input.Bind("forward", Key.Up);
 
@@ -38,7 +38,7 @@ public class InputActionTests
     [Fact]
     public void ActionDown_DoesNotRefireWhileAlreadyActive()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("forward", Key.W);
         Input.Bind("forward", Key.Up);
 
@@ -56,7 +56,7 @@ public class InputActionTests
     [Fact]
     public void ActionUp_FiresOnlyWhenEveryBindingReleased()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("forward", Key.W);
         Input.Bind("forward", Key.Up);
 
@@ -81,7 +81,7 @@ public class InputActionTests
     [Fact]
     public void ActionLookup_IsCaseInsensitive()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("Forward", Key.W);
 
         Input.NewFrame();
@@ -93,7 +93,7 @@ public class InputActionTests
     [Fact]
     public void Action_SupportsMouseButtons()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("fire", MouseButton.Left);
 
         Input.NewFrame();
@@ -105,7 +105,7 @@ public class InputActionTests
     [Fact]
     public void Unbind_RemovesBindingFromEveryAction()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("forward", Key.W);
         Input.Bind("run", Key.W); // same physical key drives two actions
 
@@ -124,7 +124,7 @@ public class InputActionTests
     [Fact]
     public void UnbindAction_RemovesTheWholeAction()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.Bind("forward", Key.W);
         Input.Bind("forward", Key.Up);
 
@@ -136,7 +136,7 @@ public class InputActionTests
     [Fact]
     public void ResetBindingsToDefaults_RestoresTheDefaultSet()
     {
-        Input.ResetForTests();
+        Input.Reset();
         Input.SetDefaultBindings(new Dictionary<string, InputBinding[]>
         {
             ["forward"] = new[] { InputBinding.Key(Key.W) },
