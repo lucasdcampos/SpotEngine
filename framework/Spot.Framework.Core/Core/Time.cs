@@ -1,9 +1,11 @@
+using System.Diagnostics;
+
 namespace Spot.Framework;
 
 /// <summary>
-/// The engine's frame clock, queryable from anywhere (typically a script's update). Values are set
-/// once per frame by <see cref="Application"/> and hold steady for the duration of that frame, so
-/// every system sees a consistent delta.
+/// The frame clock, queryable from anywhere. Advance it once per frame — <see cref="Tick"/> measures the real
+/// time itself, <see cref="NewFrame"/> takes a delta you measured — and its values hold steady for the rest of
+/// the frame, so everything sees a consistent delta. The engine advances it for you.
 /// </summary>
 /// <remarks>
 /// Gameplay (scenes, scripts, physics) advances on the <em>scaled</em> clock — multiply per-frame
@@ -14,6 +16,8 @@ namespace Spot.Framework;
 public static class Time
 {
     private static float _timeScale = 1.0f;
+    private static readonly Stopwatch s_clock = new();
+    private static TimeSpan s_lastTick;
 
     /// <summary>
     /// Gets the scaled time in seconds since the previous frame: <see cref="UnscaledDeltaTime"/>
@@ -71,6 +75,7 @@ public static class Time
     /// <param name="unscaledDeltaTime">The real elapsed seconds since the previous frame.</param>
     public static void NewFrame(float unscaledDeltaTime)
     {
+        unscaledDeltaTime = Math.Max(0.0f, unscaledDeltaTime);
         UnscaledDeltaTime = unscaledDeltaTime;
 
         if (StepNextFrame)
@@ -86,5 +91,48 @@ public static class Time
         UnscaledTime += unscaledDeltaTime;
         ElapsedTime += DeltaTime;
         FrameCount++;
+    }
+
+    /// <summary>
+    /// Advances the clock by the real time elapsed since the previous <see cref="Tick"/> (zero on the first
+    /// call), clamped to <paramref name="maxDeltaTime"/> so a hitch — a window drag, a GC pause, a breakpoint —
+    /// can't feed a huge step into your simulation. Call it once per frame in your own loop.
+    /// </summary>
+    /// <param name="maxDeltaTime">The largest real delta a single frame may advance, in seconds.</param>
+    /// <returns>The frame's scaled <see cref="DeltaTime"/>.</returns>
+    public static float Tick(float maxDeltaTime = 0.1f)
+    {
+        float real = 0.0f;
+        if (s_clock.IsRunning)
+        {
+            TimeSpan now = s_clock.Elapsed;
+            real = (float)(now - s_lastTick).TotalSeconds;
+            s_lastTick = now;
+        }
+        else
+        {
+            s_clock.Start();
+            s_lastTick = TimeSpan.Zero;
+        }
+
+        NewFrame(Math.Min(real, maxDeltaTime));
+        return DeltaTime;
+    }
+
+    /// <summary>
+    /// Restores the clock to its startup state: zero time and frames, a time scale of 1, and the next
+    /// <see cref="Tick"/> treated as the first.
+    /// </summary>
+    public static void Reset()
+    {
+        s_clock.Reset();
+        s_lastTick = TimeSpan.Zero;
+        _timeScale = 1.0f;
+        DeltaTime = 0.0f;
+        UnscaledDeltaTime = 0.0f;
+        ElapsedTime = 0.0f;
+        UnscaledTime = 0.0f;
+        FrameCount = 0;
+        StepNextFrame = false;
     }
 }

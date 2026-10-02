@@ -27,14 +27,6 @@ public static class Renderer2D
         new Vector4(-0.5f, 0.5f, 0.0f, 1.0f),
     };
 
-    private static readonly Vector2[] QuadTexCoords =
-    {
-        new Vector2(0.0f, 0.0f),
-        new Vector2(1.0f, 0.0f),
-        new Vector2(1.0f, 1.0f),
-        new Vector2(0.0f, 1.0f),
-    };
-
     private const string VertexShaderSource =
         """
         #version 330 core
@@ -218,32 +210,30 @@ public static class Renderer2D
     /// <param name="tint">The color multiplied with the sampled texture.</param>
     public static void DrawQuad(Matrix4x4 transform, Texture2D texture, Vector4 tint)
     {
-        EnsureInitialized();
-        if (s_indexCount >= MaxIndices || (s_currentTexture is not null && s_currentTexture != texture))
-        {
-            Flush();
-        }
-
-        s_currentTexture = texture;
-
+        Span<Vector3> corners = stackalloc Vector3[4];
         for (int i = 0; i < 4; i++)
         {
-            Vector4 position = Vector4.Transform(QuadPositions[i], transform);
-            Vector2 uv = QuadTexCoords[i];
-
-            s_vertices[s_vertexCursor++] = position.X;
-            s_vertices[s_vertexCursor++] = position.Y;
-            s_vertices[s_vertexCursor++] = position.Z;
-            s_vertices[s_vertexCursor++] = tint.X;
-            s_vertices[s_vertexCursor++] = tint.Y;
-            s_vertices[s_vertexCursor++] = tint.Z;
-            s_vertices[s_vertexCursor++] = tint.W;
-            s_vertices[s_vertexCursor++] = uv.X;
-            s_vertices[s_vertexCursor++] = uv.Y;
+            Vector4 p = Vector4.Transform(QuadPositions[i], transform);
+            corners[i] = new Vector3(p.X, p.Y, p.Z);
         }
 
-        s_indexCount += 6;
+        Submit(corners[0], corners[1], corners[2], corners[3], tint, texture, FullUv);
     }
+
+    /// <summary>
+    /// Draws a quad from its four corners — any convex quad; repeat the third corner as the fourth to draw a
+    /// triangle. The building block for custom shapes, sprites from an atlas and anything else made of quads.
+    /// </summary>
+    /// <param name="bottomLeft">The first corner (UV <c>(u0, v0)</c>).</param>
+    /// <param name="bottomRight">The second corner (UV <c>(u1, v0)</c>).</param>
+    /// <param name="topRight">The third corner (UV <c>(u1, v1)</c>).</param>
+    /// <param name="topLeft">The fourth corner (UV <c>(u0, v1)</c>).</param>
+    /// <param name="color">The color, multiplied with the texture.</param>
+    /// <param name="texture">The texture, or <see langword="null"/> for a solid color.</param>
+    /// <param name="uv">The texture rectangle as <c>(u0, v0, u1, v1)</c>; <see langword="null"/> maps the whole texture.</param>
+    public static void DrawQuad(Vector3 bottomLeft, Vector3 bottomRight, Vector3 topRight, Vector3 topLeft,
+        Vector4 color, Texture2D? texture = null, Vector4? uv = null) =>
+        Submit(bottomLeft, bottomRight, topRight, topLeft, color, texture ?? WhiteTexture, uv ?? FullUv);
 
     /// <summary>
     /// Draws a hollow rectangle (wireframe) at the given position and size using 4 thin quads.
@@ -298,13 +288,49 @@ public static class Renderer2D
         DrawQuad(transform2, color);
     }
 
-    private static Texture2D WhiteTexture
+    /// <summary>
+    /// Gets the 1x1 white texture colored quads are drawn with — handy for drawing solid shapes through your own
+    /// code paths while still batching with them.
+    /// </summary>
+    public static Texture2D WhiteTexture
     {
         get
         {
             EnsureInitialized();
             return s_whiteTexture!;
         }
+    }
+
+    private static readonly Vector4 FullUv = new(0.0f, 0.0f, 1.0f, 1.0f);
+
+    // Appends one quad to the batch, flushing first when the batch is full or the texture changes.
+    private static void Submit(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Vector4 tint, Texture2D texture, Vector4 uv)
+    {
+        EnsureInitialized();
+        if (s_indexCount >= MaxIndices || (s_currentTexture is not null && s_currentTexture != texture))
+        {
+            Flush();
+        }
+
+        s_currentTexture = texture;
+        Emit(p0, tint, uv.X, uv.Y);
+        Emit(p1, tint, uv.Z, uv.Y);
+        Emit(p2, tint, uv.Z, uv.W);
+        Emit(p3, tint, uv.X, uv.W);
+        s_indexCount += 6;
+    }
+
+    private static void Emit(Vector3 position, Vector4 tint, float u, float v)
+    {
+        s_vertices[s_vertexCursor++] = position.X;
+        s_vertices[s_vertexCursor++] = position.Y;
+        s_vertices[s_vertexCursor++] = position.Z;
+        s_vertices[s_vertexCursor++] = tint.X;
+        s_vertices[s_vertexCursor++] = tint.Y;
+        s_vertices[s_vertexCursor++] = tint.Z;
+        s_vertices[s_vertexCursor++] = tint.W;
+        s_vertices[s_vertexCursor++] = u;
+        s_vertices[s_vertexCursor++] = v;
     }
 
     private static Matrix4x4 TransformFor(Vector2 position, Vector2 size) =>
