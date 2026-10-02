@@ -328,7 +328,6 @@ public class Application
     private void Initialize(Scene? startScene)
     {
         EngineLogging.Init(new DevConsoleSink(_console));
-        Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
         // Establish the asset root and, for a cooked/shipped game, the content manifest that resolves
         // guid: references — before any service or scene loads an asset.

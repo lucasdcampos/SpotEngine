@@ -1948,7 +1948,6 @@ public class EditorScene : Scene
         _gameHasInput = true;
         _prevGameHasInput = false;
         _state = EditorState.Play;
-        Spot.Framework.Log.Info("Entering play mode.");
     }
 
     private void OnStop()
@@ -1981,7 +1980,6 @@ public class EditorScene : Scene
         // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
         Spot.Framework.Input.CursorLocked = false;
         _state = EditorState.Edit;
-        Spot.Framework.Log.Info("Exited play mode.");
     }
 
     // Compiles the project scripts (dotnet build → bin/) and loads the resulting assembly so that
@@ -2554,10 +2552,6 @@ public class EditorScene : Scene
     // and a non-zero count in a normal editing session names a gap worth closing.
     private int _unattributedChanges;
 
-    // The gap notice is told once per session and then stays quiet: it is a migration signal, not news
-    // the user needs repeated. The running count lives in the History panel's footer instead.
-    private bool _gapNoticeShown;
-
     /// <summary>
     /// Records any scene change that did not come through the undo history as a single coarse entry.
     /// This is what makes Ctrl+Z complete even where a mutation site has not been migrated to a
@@ -2585,13 +2579,6 @@ public class EditorScene : Scene
         sceneData.LastPushSnapshot = current;
 
         _unattributedChanges++;
-        if (!_gapNoticeShown)
-        {
-            _gapNoticeShown = true;
-            Spot.Framework.Log.Info(
-                "Some edits are being undone as whole-scene 'Scene Change' steps rather than named ones. "
-                + "Everything is still undoable; the History panel (Ctrl+H) counts them.");
-        }
     }
 
     private void Undo()
