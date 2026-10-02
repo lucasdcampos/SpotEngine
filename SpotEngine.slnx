@@ -11,6 +11,12 @@
   <Folder Name="/net/">
     <Project Path="net/Spot.Net/Spot.Net.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/HelloQuad/HelloQuad.csproj" />
+    <Project Path="samples/HelloTriangle/HelloTriangle.csproj" />
+    <Project Path="samples/Hello2D/Hello2D.csproj" />
+    <Project Path="samples/Hello3D/Hello3D.csproj" />
+  </Folder>
   <Folder Name="/sandbox/" />
   <Folder Name="/editor/">
     <Project Path="editor/Spot.Editor.csproj" />

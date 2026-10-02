@@ -106,6 +106,45 @@ public class AnimationTests
         Assert.Contains(skinned.Bones!, b => b.Name.Contains("mixamorig", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Skeleton_OnARealRig_InverseBindCancelsTheBindPose()
+    {
+        string? path = FindRepoFile(Path.Combine("sandbox", "Assets", "Models", "ybot.fbx"));
+        if (path is null)
+        {
+            return; // the rigged fixture isn't present in this checkout
+        }
+
+        var importer = new AssimpModelImporter();
+        CookedModel model = importer.ImportModel(path);
+        Skeleton skeleton = Skeleton.FromModelNodes(importer.ImportSceneInfo(path).Root);
+        var globals = new Matrix4x4[skeleton.NodeCount];
+        skeleton.SamplePose(null, 0f, loop: true, globals);
+
+        // In the rest pose every bone's inverse bind matrix undoes its global transform, so each palette entry is the
+        // identity — which only holds if the skeleton composes transforms in the same order and convention the
+        // importer bakes inverse binds with (the convention the skinning shaders rely on).
+        MeshData skinned = model.Submeshes.First(s => s.Skinned);
+        var palette = new Matrix4x4[skinned.Bones!.Count];
+        skeleton.ComputeSkinningPalette(skinned.Bones, globals, Matrix4x4.Identity, palette);
+
+        int matched = 0;
+        for (int i = 0; i < palette.Length; i++)
+        {
+            if (skeleton.IndexOf(skinned.Bones[i].Name) < 0)
+            {
+                continue;
+            }
+
+            matched++;
+            Vector3 probe = Vector3.Transform(new Vector3(10, 20, 30), palette[i]);
+            Assert.True(Vector3.Distance(probe, new Vector3(10, 20, 30)) < 0.5f,
+                $"bone {skinned.Bones[i].Name} moved the probe to {probe}");
+        }
+
+        Assert.True(matched > 10, "expected the rig's bones to be found in its skeleton");
+    }
+
     private static string? FindRepoFile(string relativePath)
     {
         string? dir = AppContext.BaseDirectory;
