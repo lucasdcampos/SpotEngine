@@ -149,19 +149,19 @@ internal sealed class RecordingGraphicsDevice : IGraphicsDevice
     public void DrawArrays(PrimitiveKind primitive, uint first, uint count)
     {
         Record();
-        Draws.Add(new DrawCall(primitive, count, 1, BoundVertexArray, _boundProgram, Indexed: false));
+        Draws.Add(new DrawCall(primitive, count, 1, BoundVertexArray, _boundProgram, Indexed: false, DepthWrite));
     }
 
     public void DrawElements(PrimitiveKind primitive, uint count)
     {
         Record();
-        Draws.Add(new DrawCall(primitive, count, 1, BoundVertexArray, _boundProgram, Indexed: true));
+        Draws.Add(new DrawCall(primitive, count, 1, BoundVertexArray, _boundProgram, Indexed: true, DepthWrite));
     }
 
     public void DrawElementsInstanced(PrimitiveKind primitive, uint count, uint instanceCount)
     {
         Record();
-        Draws.Add(new DrawCall(primitive, count, instanceCount, BoundVertexArray, _boundProgram, Indexed: true));
+        Draws.Add(new DrawCall(primitive, count, instanceCount, BoundVertexArray, _boundProgram, Indexed: true, DepthWrite));
     }
 
     public void VertexAttribDivisor(uint index, uint divisor)
@@ -482,8 +482,10 @@ internal sealed class RecordingGraphicsDevice : IGraphicsDevice
 
     private void Record([System.Runtime.CompilerServices.CallerMemberName] string method = "") => Calls.Add(method);
 
+    /// <summary>A draw call, with whether depth writes were enabled when it was issued.</summary>
     internal readonly record struct DrawCall(
-        PrimitiveKind Primitive, uint Count, uint Instances, uint VertexArray, uint Program, bool Indexed);
+        PrimitiveKind Primitive, uint Count, uint Instances, uint VertexArray, uint Program, bool Indexed,
+        bool DepthWrite = true);
 
     internal readonly record struct VertexAttribute(
         uint VertexArray, uint Index, int Size, VertexAttribType Type, uint Stride, nint Offset);

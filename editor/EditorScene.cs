@@ -868,46 +868,31 @@ public class EditorScene : Scene
 
             RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position);
 
-            // The editor grid and world axes are screen-aligned / crossed-quad overlays with no single
-            // front-face winding, so culling must be off while drawing them. Otherwise the back-face
-            // culling enabled above for the scene meshes discards them and the grid/axes vanish.
-            if (sceneData.EditorCamera.Is3D)
-                Renderer.SetFaceCulling(false);
-
-            // Draw Axes. Drawn before the grid so that, at the ground plane, the axis lines win the
-            // equal-depth test against the grid's own centre lines and read as crisp coloured lines.
+            // The grid draws the world axes itself, in the theme's axis colors. In 3D it is depth-tested
+            // against the scene just rendered, so geometry in front hides it, while a surface lying on the
+            // ground plane shows the grid over it steadily rather than z-fighting with it.
             var palette = EditorThemeManager.Current.Palette;
-            Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+            var gridStyle = EditorGridStyle.Default with
+            {
+                AxisXColor = palette.AxisX,
+                AxisYColor = palette.AxisY,
+                AxisZColor = palette.AxisZ,
+            };
 
             if (sceneData.EditorCamera.Is3D)
             {
-                // Full X/Y/Z origin axes. Thin lines whose thickness scales with camera distance so
-                // they hold a steady, understated on-screen weight as the camera dollies in and out.
-                float axisThickness = Math.Max(0.004f, sceneData.EditorCamera.Position.Length() * 0.0018f);
-                Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
-                Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
-                Renderer2D.DrawLine(new Vector3(0, 0, -1000), new Vector3(0, 0, 1000), palette.AxisZ, axisThickness);
+                EditorGrid.Draw3D(sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position, gridStyle);
+
+                // The overlays below (colliders, gizmos, icons) are crossed quads with no single front-face
+                // winding, drawn over everything.
+                Renderer.SetDepthTest(false);
+                Renderer.SetFaceCulling(false);
             }
             else
             {
-                float axisThickness = Math.Max(0.006f, sceneData.EditorCamera.ZoomLevel * 0.003f);
-                EditorGrid.Draw2D(sceneData.EditorCamera.ZoomLevel);
-                Renderer2D.DrawLine(new Vector3(-1000, 0, 0), new Vector3(1000, 0, 0), palette.AxisX, axisThickness);
-                Renderer2D.DrawLine(new Vector3(0, -1000, 0), new Vector3(0, 1000, 0), palette.AxisY, axisThickness);
-            }
-            Renderer2D.EndScene();
-
-            if (sceneData.EditorCamera.Is3D)
-            {
-                Renderer3D.BeginScene(sceneData.EditorCamera.ViewProjection);
-                Renderer3D.DrawEditorGrid(sceneData.EditorCamera.Position);
-                Renderer3D.EndScene();
-            }
-
-            if (sceneData.EditorCamera.Is3D)
-            {
-                Renderer.SetDepthTest(false);
-                Renderer.SetFaceCulling(false);
+                Renderer2D.BeginScene(sceneData.EditorCamera.ViewProjection);
+                EditorGrid.Draw2D(gridStyle);
+                Renderer2D.EndScene();
             }
 
             // Debug Physics Rendering

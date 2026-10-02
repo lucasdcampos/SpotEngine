@@ -50,7 +50,6 @@ public static partial class Renderer3D
     private static Shader? s_waterShader;
     private static Shader? s_skyboxShader;
     private static Shader? s_cloudsShader;
-    private static Shader? s_gridShader;
     private static Shader? s_shadowShader;
     private static Shader? s_skinnedShader;
     private static Shader? s_skinnedShadowShader;
@@ -158,7 +157,6 @@ public static partial class Renderer3D
         s_waterShader = new Shader(WaterVertexShaderSource, WaterFragmentShaderSource);
         s_skyboxShader = new Shader(SkyboxVertexShaderSource, SkyboxFragmentShaderSource);
         s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
-        s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
         s_shadowShader = new Shader(ShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_skinnedShader = new Shader(SkinnedVertexShaderSource, FragmentShaderSource);
         s_skinnedShadowShader = new Shader(SkinnedShadowVertexShaderSource, ShadowFragmentShaderSource);
@@ -292,7 +290,7 @@ public static partial class Renderer3D
         s_lastNormalTexture = null;
 
         s_viewProjection = viewProjection;
-        // Invert once per scene: the skybox, clouds and grid all need the inverse view-projection, and
+        // Invert once per scene: the skybox and clouds need the inverse view-projection, and
         // recomputing it per draw was pure waste. The camera position is supplied by the caller (the
         // camera's world position) rather than derived from the matrix, which is only approximate.
         Matrix4x4.Invert(viewProjection, out s_inverseViewProjection);
@@ -815,25 +813,5 @@ public static partial class Renderer3D
         Renderer.SetDepthTest(false);
         Renderer.DrawArrays(s_emptyVao, 3);
         Renderer.SetDepthTest(true);
-    }
-
-    /// <summary>
-    /// Draws an infinite anti-aliased 3D grid plane for the editor.
-    /// </summary>
-    public static void DrawEditorGrid(Vector3 cameraPos)
-    {
-        if (s_gridShader == null || s_emptyVao == null) return;
-
-        s_gridShader.Use();
-        s_gridShader.SetUniform("uViewProjection", s_viewProjection);
-        s_gridShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
-        s_gridShader.SetUniform("uCameraPos", cameraPos);
-
-        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
-        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
-
-        Renderer.DrawArrays(s_emptyVao, 3);
-        
-        // Editor will reset or disable blending later if needed, but standard UI and transparent sprites need it too.
     }
 }

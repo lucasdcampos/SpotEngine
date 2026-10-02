@@ -36,7 +36,12 @@ The editor is organized into dockable panels you can rearrange and save into a l
   billboards of invisible entities (cameras, lights, sky) are all clickable, and clicking empty space
   clears the selection. With the viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale
   and `F` frames the selected entity (double-clicking an entity in the hierarchy does the same). Hold
-  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×). It is also where the game
+  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×). An infinite grid marks the
+  ground plane (y = 0 in 3D, the XY plane in 2D): its spacing follows the zoom in powers of ten — finer near
+  the camera, coarser in the distance, every tenth line stronger — and its lines through the origin are the
+  world axes in the theme's X/Y/Z colors, with the Y axis rising from the origin in 3D. Geometry in front of
+  the grid hides it, but a surface lying on the ground plane (a floor at y = 0) keeps showing the grid on top,
+  and the grid runs all the way to the camera however low it flies. It is also where the game
   runs: Play turns the viewport into the game, and `F8` switches between the game camera and the editor
   camera (see [Edit mode and play mode](#edit-mode-and-play-mode)).
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.

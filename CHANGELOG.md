@@ -73,6 +73,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Scene camera **Look sensitivity** and **Fly speed** are now adjustable from the viewport's **Camera** toolbar button and persist with the window layout; `Shift` while flying is a 4x multiplier on the configured speed
 - Extracted shared GLSL `ShadowCalculation` and `hash` utilities into `GlslSnippets.cs`; eliminated copy-paste across fragment, water, skybox, clouds, and post-process shaders
 - **The scene becomes the game** in the editor: Play turns the active scene viewport into the game view (game camera, controls handed to the game) instead of using a separate Game panel, and `F8` (or the camera button next to Play) switches between the game camera and the editor camera, like Unreal's eject/possess: ejecting frees the controls and starts the editor camera at the player's view so the running scene can be inspected, and in edit mode `F8` previews the scene through its game camera
+- **Editor grid redrawn**: its spacing adapts per pixel in powers of ten (finer near the camera, coarser in the distance, every tenth line emphasized, no popping between levels), lines keep a constant pixel width, and the world axes are part of the grid instead of quads laid over it; the Y axis fades out in top-down views. `Renderer3D.DrawEditorGrid` became `EditorGrid.Draw3D`, `EditorGrid.Draw2D` no longer takes a zoom, and both accept an `EditorGridStyle`
 
 ### Added
 - **Point light shadows**: point and spot lights now cast real-time cubemap shadows; enable per-light via `CastShadows` (the first shadow-casting light in the scene gets a depth cubemap, sampled as linear distance); `RenderSettings.PointShadows` and `PointShadowResolution` are global controls
@@ -95,6 +96,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- The editor grid flickered (z-fighting) where an object lay on it, such as a floor at y = 0; it now shows steadily on top of such surfaces, and no longer stops short of the camera when it skims the ground
 - Focusing another scene tab during play moved the simulation (and Stop's restore) onto that scene; the played scene is now pinned until Stop, and play ends cleanly if its tab closes or another project opens
 - While a game held a locked cursor in the editor, its clicks could press editor buttons under the hidden cursor
 - The editor could not find a project's script assembly when a `Directory.Build.props` more than one folder up redirected its build output (as the repo's does for `samples/HelloEngine`), so Play ran without scripts
