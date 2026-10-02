@@ -29,6 +29,12 @@ public class Scene
     /// </summary>
     public SystemRegistry Systems { get; } = new();
 
+    /// <summary>
+    /// The custom render passes drawn into this scene's frame at fixed points of the pipeline. See
+    /// <see cref="IRenderPass"/> and <see cref="AddRenderPass"/>.
+    /// </summary>
+    public RenderPassRegistry RenderPasses { get; } = new();
+
     private UIRoot? _ui;
 
     /// <summary>
@@ -68,6 +74,18 @@ public class Scene
     /// </summary>
     /// <param name="system">The system to register.</param>
     public void RegisterSystem(ISystem system) => Systems.Add(system);
+
+    /// <summary>
+    /// Adds custom drawing to this scene's frame at the pass's <see cref="IRenderPass.Stage"/> — for rendering the
+    /// engine has no component for. See <see cref="IRenderPass"/>.
+    /// </summary>
+    /// <param name="pass">The render pass.</param>
+    public void AddRenderPass(IRenderPass pass) => RenderPasses.Add(pass);
+
+    /// <summary>Removes a render pass added with <see cref="AddRenderPass"/>.</summary>
+    /// <param name="pass">The render pass.</param>
+    /// <returns><see langword="true"/> if it was registered.</returns>
+    public bool RemoveRenderPass(IRenderPass pass) => RenderPasses.Remove(pass);
 
     /// <summary>
     /// Called once when the scene becomes active. Create resources and entities here.

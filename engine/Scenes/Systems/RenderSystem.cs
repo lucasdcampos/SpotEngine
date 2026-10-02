@@ -311,6 +311,8 @@ public static class RenderSystem
             Renderer.Device.SetWireframe(true);
         }
 
+        RunPasses(scene, RenderStage.BeforeOpaque, viewProjection, cameraPos, capturing);
+
         float pointShadowFar = pointShadowIdx >= 0 ? pointLights[pointShadowIdx].Range : 1.0f;
         Renderer3D.BeginScene(viewProjection, hasDirLight, dirLightDir, dirLightColor, ambientIntensity,
             lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos,
@@ -482,6 +484,8 @@ public static class RenderSystem
 
         Renderer2D.EndScene();
 
+        RunPasses(scene, RenderStage.AfterOpaque, viewProjection, cameraPos, capturing);
+
         // Particles draw after the opaque 2D sprite batch so they are visible over 2D scenes (a
         // full-screen sprite would otherwise paint over them), and before post-processing so glowing
         // additive particles feed bloom. In 3D scenes they still blend over the meshes drawn earlier.
@@ -492,15 +496,34 @@ public static class RenderSystem
         // via the shared depth test.
         TextRenderSystem.Render(scene, viewProjection);
 
+        RunPasses(scene, RenderStage.AfterTransparent, viewProjection, cameraPos, capturing);
+
         if (capturing)
         {
             PostProcessor!.Resolve(postProcess!);
         }
 
+        RunPasses(scene, RenderStage.AfterPostProcess, viewProjection, cameraPos, false);
+
         // Screen-space UI is the final pass: it draws to whatever framebuffer is now bound (the default one
         // in a running game), after post-processing, so the interface is crisp and never tone-mapped or
         // bloomed. Scenes without UI skip it entirely.
         RenderUI(scene);
+
+        RunPasses(scene, RenderStage.Overlay, viewProjection, cameraPos, false);
+    }
+
+    // Runs the scene's custom passes for a stage against whatever target and viewport are bound at that point.
+    private static void RunPasses(Scene scene, RenderStage stage, Matrix4x4 viewProjection, Vector3 cameraPosition, bool postProcessing)
+    {
+        if (scene.RenderPasses.Count == 0)
+        {
+            return;
+        }
+
+        scene.RenderPasses.Run(new RenderContext(
+            scene, stage, viewProjection, cameraPosition, Renderer.CurrentRenderTarget,
+            Renderer.ViewportWidth, Renderer.ViewportHeight, postProcessing));
     }
 
     /// <summary>Draws the scene's screen-space UI tree sized to the current viewport, when it has any widgets.</summary>
