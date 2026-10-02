@@ -63,7 +63,6 @@
          browser runs the shared RenderSystem with no post-processor installed (see IScenePostProcessor). -->
     <Compile Remove="Rendering\PostProcessingRenderer.cs" />
     <Compile Remove="Rendering\BloomRenderer.cs" />
-    <Compile Remove="Rendering\Framebuffer.cs" />
     <Compile Remove="Scenes\Systems\DesktopScenePostProcessor.cs" />
     <Compile Remove="Audio\AudioDevice.cs" />
     <Compile Remove="Audio\OpenAlAudioBackend.cs" />

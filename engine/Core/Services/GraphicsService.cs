@@ -20,7 +20,6 @@ public class GraphicsService : IEngineService
         PostProcessingRenderer.Init();
         BloomRenderer.Init();
         ParticleRenderer.Init();
-        UIRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
         // The desktop scene renderer applies the full HDR/bloom/tone-mapping post pipeline; the browser leaves

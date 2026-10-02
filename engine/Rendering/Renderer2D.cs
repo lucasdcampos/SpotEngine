@@ -298,8 +298,14 @@ public static class Renderer2D
         DrawQuad(transform2, color);
     }
 
-    private static Texture2D WhiteTexture =>
-        s_whiteTexture ?? throw new InvalidOperationException("Renderer2D has not been initialized.");
+    private static Texture2D WhiteTexture
+    {
+        get
+        {
+            EnsureInitialized();
+            return s_whiteTexture!;
+        }
+    }
 
     private static Matrix4x4 TransformFor(Vector2 position, Vector2 size) =>
         Matrix4x4.CreateScale(size.X, size.Y, 1.0f)

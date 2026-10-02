@@ -254,4 +254,108 @@ public class GpuResourceTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ShaderDataType.None.Size());
     }
+
+    [Theory]
+    [InlineData(FramebufferFormat.RGBA8, TextureInternalFormat.Rgba8)]
+    [InlineData(FramebufferFormat.RGBA16F, TextureInternalFormat.Rgba16F)]
+    public void Framebuffer_CreatesColorAndDepthStencilAttachments(FramebufferFormat format, TextureInternalFormat color)
+    {
+        RecordingGraphicsDevice device = Install();
+
+        using var fb = new Framebuffer(64, 32, format);
+
+        Dictionary<RenderTargetAttachment, uint> attachments = device.FramebufferAttachments[fb.Handle.Id];
+        Assert.Equal(fb.ColorTexture.Id, attachments[RenderTargetAttachment.Color0]);
+        Assert.Equal(fb.DepthTexture.Id, attachments[RenderTargetAttachment.DepthStencil]);
+        Assert.Equal(fb.ColorTexture.Id, fb.ColorAttachment);
+        Assert.Equal(color, device.TextureImages[fb.ColorTexture.Id].Format);
+        Assert.Equal(TextureInternalFormat.Depth24Stencil8, device.TextureImages[fb.DepthTexture.Id].Format);
+        Assert.Equal((64u, 32u), (device.TextureImages[fb.DepthTexture.Id].Width, device.TextureImages[fb.DepthTexture.Id].Height));
+    }
+
+    [Fact]
+    public void Framebuffer_CreationLeavesThePreviouslyBoundTargetBound()
+    {
+        RecordingGraphicsDevice device = Install();
+        using var outer = new Framebuffer(8, 8);
+        outer.Bind();
+
+        using var inner = new Framebuffer(4, 4);
+
+        Assert.Equal(outer.Handle.Id, device.BoundFramebuffer);
+        Assert.Equal(outer.Handle, Renderer.CurrentRenderTarget);
+    }
+
+    [Fact]
+    public void Framebuffer_BindTracksTheTargetAndUnbindRestoresTheScreen()
+    {
+        RecordingGraphicsDevice device = Install();
+        using var fb = new Framebuffer(128, 64);
+
+        fb.Bind();
+        Assert.Equal(fb.Handle, Renderer.CurrentRenderTarget);
+        Assert.Equal((0, 0, 128u, 64u), device.Viewport);
+
+        fb.Unbind();
+        Assert.Equal(FramebufferHandle.Default, Renderer.CurrentRenderTarget);
+        Assert.Equal(0u, device.BoundFramebuffer);
+        Assert.Equal((0, 0, 128u, 64u), device.Viewport); // the viewport is left alone
+    }
+
+    [Fact]
+    public void Framebuffer_IncompleteTargetThrowsWithoutLeaking()
+    {
+        RecordingGraphicsDevice device = Install();
+        device.FailFramebuffer = true;
+
+        Assert.Throws<InvalidOperationException>(() => new Framebuffer(16, 16));
+
+        Assert.Empty(device.LiveFramebuffers);
+        Assert.Empty(device.LiveTextures);
+    }
+
+    [Fact]
+    public void Framebuffer_ResizeRecreatesOnlyOnARealChange()
+    {
+        RecordingGraphicsDevice device = Install();
+        using var fb = new Framebuffer(16, 16);
+        uint first = fb.Handle.Id;
+
+        fb.Resize(16, 16);
+        fb.Resize(0, 32);
+        Assert.Equal(first, fb.Handle.Id);
+
+        fb.Resize(32, 8);
+        Assert.NotEqual(first, fb.Handle.Id);
+        Assert.Equal((32u, 8u), (fb.Width, fb.Height));
+        Assert.DoesNotContain(first, device.LiveFramebuffers);
+        Assert.Single(device.LiveFramebuffers);
+        Assert.Equal(2, device.LiveTextures.Count);
+    }
+
+    [Fact]
+    public void Framebuffer_DisposeReleasesEverythingOnce()
+    {
+        RecordingGraphicsDevice device = Install();
+        var fb = new Framebuffer(16, 16);
+
+        fb.Dispose();
+        fb.Dispose();
+
+        Assert.Empty(device.LiveFramebuffers);
+        Assert.Empty(device.LiveTextures);
+        Assert.Equal(1, device.Count(nameof(IGraphicsDevice.DeleteFramebuffer)));
+    }
+
+    [Fact]
+    public void Framebuffer_BlitDepthToCopiesItsWholeDepthIntoTheRegion()
+    {
+        RecordingGraphicsDevice device = Install();
+        using var fb = new Framebuffer(100, 50);
+
+        fb.BlitDepthTo(7, 10, 20, 200, 100);
+
+        Assert.Equal((fb.Handle.Id, 7u, 100u, 50u, 10, 20, 200u, 100u), device.LastBlit);
+        Assert.Equal(7u, device.BoundFramebuffer);
+    }
 }

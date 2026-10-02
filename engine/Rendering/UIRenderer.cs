@@ -71,12 +71,18 @@ public static class UIRenderer
     private static float s_screenHeight;
     private static bool s_active;
 
+    private static IGraphicsDevice? s_device;
+
     private static readonly List<PositionedGlyph> s_glyphScratch = new(256);
     private static readonly List<Vector4> s_clipStack = new();
 
-    /// <summary>Creates the shared batch resources. Called once by the application after the renderer is ready.</summary>
-    internal static void Init()
+    /// <summary>
+    /// Creates the shared batch resources on the current <see cref="Renderer.Device"/>. Happens automatically on
+    /// first use; call it to pay the cost up front.
+    /// </summary>
+    public static void Init()
     {
+        s_device = Renderer.Device;
         s_vertices = new float[MaxVertices * FloatsPerVertex];
 
         s_vao = new VertexArray();
@@ -109,14 +115,30 @@ public static class UIRenderer
         s_whiteTexture = new Texture2D(1, 1, white);
     }
 
-    /// <summary>Releases the shared batch resources. Called once by the application on shutdown.</summary>
-    internal static void Shutdown()
+    /// <summary>Releases the shared batch resources. The next pass recreates them.</summary>
+    public static void Shutdown()
     {
         s_shader?.Dispose();
         s_whiteTexture?.Dispose();
         s_vbo?.Dispose();
         s_ibo?.Dispose();
         s_vao?.Dispose();
+        s_shader = null;
+        s_whiteTexture = null;
+        s_vbo = null;
+        s_ibo = null;
+        s_vao = null;
+        s_device = null;
+        s_vertices = Array.Empty<float>();
+    }
+
+    // Creates the batch resources on first use, and again whenever a different device has been installed.
+    private static void EnsureInitialized()
+    {
+        if (s_vao is null || !ReferenceEquals(s_device, Renderer.Device))
+        {
+            Init();
+        }
     }
 
     /// <summary>The width of the current UI surface in pixels, valid between <see cref="Begin"/> and <see cref="End"/>.</summary>
@@ -134,6 +156,7 @@ public static class UIRenderer
     /// <param name="screenHeight">The surface height in pixels.</param>
     public static void Begin(float screenWidth, float screenHeight)
     {
+        EnsureInitialized();
         s_screenWidth = screenWidth;
         s_screenHeight = screenHeight;
         // Top-left origin, y down: swap top/bottom in the off-center ortho.
@@ -205,6 +228,7 @@ public static class UIRenderer
     /// <param name="uv">The source rectangle as <c>(u0, v0, u1, v1)</c>. <c>v0</c> maps to the top edge.</param>
     public static void DrawQuad(Vector2 position, Vector2 size, Vector4 tint, Texture2D texture, Vector4 uv)
     {
+        EnsureInitialized();
         if (s_indexCount >= MaxIndices || (s_currentTexture is not null && s_currentTexture != texture))
         {
             Flush();
@@ -290,8 +314,14 @@ public static class UIRenderer
         return blockSize;
     }
 
-    private static Texture2D WhiteTexture =>
-        s_whiteTexture ?? throw new InvalidOperationException("UIRenderer has not been initialized.");
+    private static Texture2D WhiteTexture
+    {
+        get
+        {
+            EnsureInitialized();
+            return s_whiteTexture!;
+        }
+    }
 
     private static void Emit(float x, float y, float u, float v, Vector4 color)
     {

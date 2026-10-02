@@ -137,7 +137,14 @@ internal sealed class RecordingGraphicsDevice : IGraphicsDevice
         BlendFunc = (source, destination);
     }
 
-    public void SetScissor(int x, int y, uint width, uint height) => Record();
+    /// <summary>The last scissor rectangle set (lower-left origin).</summary>
+    public (int X, int Y, uint Width, uint Height)? Scissor { get; private set; }
+
+    public void SetScissor(int x, int y, uint width, uint height)
+    {
+        Record();
+        Scissor = (x, y, width, height);
+    }
 
     public void DrawArrays(PrimitiveKind primitive, uint first, uint count)
     {
@@ -440,8 +447,20 @@ internal sealed class RecordingGraphicsDevice : IGraphicsDevice
 
     public void SetColorBuffersNone() => Record();
 
+    /// <summary>The arguments of the last depth blit.</summary>
+    public (uint Source, uint Destination, uint Width, uint Height, int X, int Y, uint DestWidth, uint DestHeight)? LastBlit
+    {
+        get;
+        private set;
+    }
+
     public void BlitDepth(FramebufferHandle source, FramebufferHandle destination, uint width, uint height,
-        int destX, int destY, uint destWidth, uint destHeight) => Record();
+        int destX, int destY, uint destWidth, uint destHeight)
+    {
+        Record();
+        LastBlit = (source.Id, destination.Id, width, height, destX, destY, destWidth, destHeight);
+        BoundFramebuffer = destination.Id;
+    }
 
     public void DeleteFramebuffer(FramebufferHandle handle)
     {
