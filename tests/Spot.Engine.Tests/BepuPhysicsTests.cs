@@ -1,8 +1,7 @@
 using System.Numerics;
-using Spot.Physics;
-using Spot.Physics.Bepu;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Physics.Bepu;
+using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 

@@ -4,7 +4,7 @@ namespace Spot.DebugUI.UI;
 
 /// <summary>
 /// Font Awesome 6 Free (Solid) icon glyphs, baked into the body font by the engine (see Program.cs /
-/// <see cref="Spot.Core.IconFontSpec"/>). Every codepoint is in the Basic Multilingual Plane, so each
+/// <see cref="Spot.Engine.IconFontSpec"/>). Every codepoint is in the Basic Multilingual Plane, so each
 /// icon is a single-char string that can be concatenated into any label — e.g.
 /// <c>ImGui.Button(EditorIcons.Move)</c> or <c>$"{EditorIcons.Folder}  Assets"</c>. Codepoints come
 /// from the canonical IconFontCppHeaders (IconsFontAwesome6.h).

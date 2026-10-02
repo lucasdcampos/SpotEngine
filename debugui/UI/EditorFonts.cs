@@ -1,6 +1,6 @@
 using System;
 using ImGuiNET;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.DebugUI.UI;
 

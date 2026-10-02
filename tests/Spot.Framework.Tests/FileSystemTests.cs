@@ -1,6 +1,6 @@
 using System.IO;
 using System.Text;
-using Spot.IO;
+using Spot.Framework.IO;
 using Spot.Tests;
 
 namespace Spot.Framework.Tests;

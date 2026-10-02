@@ -75,16 +75,20 @@ public class ArchitectureTests
         Assert.Empty(AllReferences(Core).Intersect(decoders));
     }
 
-    [Fact]
-    public void FrameworkLevels_ExposeNoEngineNamespaces()
+    [Theory]
+    [InlineData(Core, "Spot.Framework")]
+    [InlineData(Framework, "Spot.Framework")]
+    [InlineData(Assimp, "Spot.Framework")]
+    [InlineData(Engine, "Spot.Engine")]
+    public void EveryPublicType_LivesUnderItsLevelsNamespace(string assembly, string root)
     {
-        // Types keep their namespaces until the namespace pass; what matters here is that nothing from the engine's
-        // own namespaces (scenes, console, editor UI) was moved down by mistake.
-        string[] engineNamespaces = { "Spot.Scenes", "Spot.Console", "Spot.UI", "Spot.Core.Services" };
-        foreach (string assembly in new[] { Core, Framework, Assimp })
-        {
-            IEnumerable<string?> namespaces = Load(assembly).GetTypes().Select(t => t.Namespace).Distinct();
-            Assert.DoesNotContain(namespaces, ns => ns is not null && engineNamespaces.Any(e => ns == e || ns.StartsWith(e + ".")));
-        }
+        // Namespaces say which level a type belongs to: Spot.Framework.* for the core and framework assemblies,
+        // Spot.Engine.* for the engine.
+        string[] strays = Load(assembly).GetExportedTypes()
+            .Where(t => t.Namespace is not { } ns || (ns != root && !ns.StartsWith(root + ".", StringComparison.Ordinal)))
+            .Select(t => t.FullName!)
+            .ToArray();
+
+        Assert.Empty(strays);
     }
 }

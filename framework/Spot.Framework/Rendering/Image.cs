@@ -1,7 +1,7 @@
-using Spot.IO;
+using Spot.Framework.IO;
 using StbImageSharp;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A decoded RGBA8 image in CPU memory: the bridge between image files (PNG, JPG, BMP, TGA, PSD, GIF, HDR) and

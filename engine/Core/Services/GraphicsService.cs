@@ -1,7 +1,9 @@
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 
-namespace Spot.Core.Services;
+namespace Spot.Engine.Services;
 
 /// <summary>
 /// Initializes rendering systems.

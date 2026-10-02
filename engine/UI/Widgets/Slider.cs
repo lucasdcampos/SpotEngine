@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// A horizontal slider: drag the handle to pick a value between <see cref="Min"/> and <see cref="Max"/>.

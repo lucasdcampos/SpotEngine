@@ -1,8 +1,9 @@
 using System.Numerics;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Draws every entity's <see cref="ParticleSystemComponent"/> as a batch of textured quads, together with

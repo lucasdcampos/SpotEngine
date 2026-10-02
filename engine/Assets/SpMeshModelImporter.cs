@@ -1,6 +1,6 @@
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Loads cooked <c>.sptmesh</c> models — geometry, skinning and clips parsed once at cook time — through the

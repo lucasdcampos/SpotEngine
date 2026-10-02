@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build;
 
@@ -107,7 +107,7 @@ public static class ProjectRunner
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(assetDir, contentRoot);
+            var cook = Spot.Engine.Assets.AssetDatabase.CookAll(assetDir, contentRoot);
             if (cook.Failed > 0)
             {
                 onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; those entries are missing. See the log for details.");

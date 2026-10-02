@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Threading.Channels;
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.Net;
 

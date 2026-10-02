@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A human-readable name attached to an entity. Every entity created by

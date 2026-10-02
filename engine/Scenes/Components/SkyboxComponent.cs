@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 [ComponentMenu("Skybox", Order = 95)]
 [SceneComponent("Skybox")]

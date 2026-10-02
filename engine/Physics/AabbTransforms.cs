@@ -1,7 +1,8 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Builds framework bounding boxes from engine transforms.

@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// The current render surface size in pixels — the desktop window's client area, or the browser canvas.

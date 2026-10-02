@@ -1,9 +1,9 @@
 using System.IO;
 using System.Numerics;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Framework;
+using Spot.Framework.Assimp;
+using Spot.Framework.Graphics;
 using Spot.Tests.Fakes;
-using Spot.Rendering;
 using Spot.Tests;
 
 namespace Spot.Framework.Tests;

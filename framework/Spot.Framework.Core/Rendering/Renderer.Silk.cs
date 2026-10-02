@@ -1,6 +1,6 @@
 using Silk.NET.OpenGL;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The desktop half of <see cref="Renderer"/>: the raw Silk.NET OpenGL escape hatch and the OpenGL context

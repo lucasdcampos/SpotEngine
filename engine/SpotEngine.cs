@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Spot.DebugUI")]
 [assembly: InternalsVisibleTo("Spot.Engine.Tests")]
 
-namespace Spot;
+namespace Spot.Engine;
 
 /// <summary>
 /// Provides top-level information about the Spot engine.
@@ -20,10 +20,10 @@ public static class SpotEngine
 #if !BROWSER
     /// <summary>
     /// Creates a new engine application instance. Desktop only — the browser host drives its own RAF loop
-    /// instead of the Silk.NET-backed <see cref="Core.Application"/>.
+    /// instead of the Silk.NET-backed <see cref="Application"/>.
     /// </summary>
     /// <param name="spec">The application specification.</param>
     /// <returns>A new application instance.</returns>
-    public static Core.Application CreateApplication(Core.ApplicationSpec? spec = null) => new Core.Application(spec);
+    public static Application CreateApplication(ApplicationSpec? spec = null) => new Application(spec);
 #endif
 }

@@ -1,6 +1,7 @@
 using System.Numerics;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// The editor's infinite 2D grid: a full-screen pass that draws world-space lines at three zoom-dependent

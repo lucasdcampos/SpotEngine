@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Spot.Rendering;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 public static class PrimitiveModelFactory
 {

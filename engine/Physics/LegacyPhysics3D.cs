@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Adapts the engine's built-in AABB solver (<see cref="Physics3DSystem"/>) to the

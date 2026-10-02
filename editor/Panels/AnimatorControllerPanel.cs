@@ -5,7 +5,8 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using ImGuiNET;
-using Spot.Animation;
+using Spot.Engine.Animation;
+using Spot.Framework.Animation;
 using Spot.DebugUI.UI;
 
 namespace Spot.Editor.Panels;
@@ -85,7 +86,7 @@ public sealed class AnimatorControllerPanel
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to save animator controller '{0}': {1}", _path, ex.Message);
+                Spot.Framework.Log.Error("Failed to save animator controller '{0}': {1}", _path, ex.Message);
             }
 
             _dirty = false;
@@ -756,11 +757,11 @@ public sealed class AnimatorControllerPanel
     {
         try
         {
-            Spot.Assets.Model model = Spot.Assets.Model.Load(file);
+            Spot.Framework.Graphics.Model model = Spot.Framework.Graphics.Model.Load(file);
             string? first = model.Animations.Select(a => a.Name).FirstOrDefault(n => !string.IsNullOrEmpty(n));
             if (first is null)
             {
-                Spot.Core.Log.CoreWarn("'{0}' has no animation clips.", System.IO.Path.GetFileName(file));
+                Spot.Framework.Log.CoreWarn("'{0}' has no animation clips.", System.IO.Path.GetFileName(file));
                 return;
             }
 
@@ -770,21 +771,21 @@ public sealed class AnimatorControllerPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Animator editor could not read clips from '{0}': {1}", file, ex.Message);
+            Spot.Framework.Log.Error("Animator editor could not read clips from '{0}': {1}", file, ex.Message);
         }
     }
 
     // A portable reference to a clip's source file: a guid reference when the project has indexed it, else a
     // project-relative path.
     private static string ClipRef(string file) =>
-        Spot.Assets.AssetDatabase.ToGuidRef(file) ?? Spot.Assets.AssetPath.MakeRelative(file);
+        Spot.Engine.Assets.AssetDatabase.ToGuidRef(file) ?? Spot.Engine.Assets.AssetPath.MakeRelative(file);
 
     // Scans every model/animation file under the project's Assets folder and collects the clip names they
     // expose (de-duplicated by name). Model.Load is cached, and this only runs when the picker opens.
     private void RefreshProjectClips()
     {
         _projectClips.Clear();
-        string? root = Spot.Core.Project.Active?.GetAssetDirectory();
+        string? root = Spot.Engine.Project.Active?.GetAssetDirectory();
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
         {
             return;
@@ -801,7 +802,7 @@ public sealed class AnimatorControllerPanel
 
             try
             {
-                Spot.Assets.Model model = Spot.Assets.Model.Load(file);
+                Spot.Framework.Graphics.Model model = Spot.Framework.Graphics.Model.Load(file);
                 foreach (AnimationClip clip in model.Animations)
                 {
                     if (!string.IsNullOrEmpty(clip.Name) && seen.Add(clip.Name))

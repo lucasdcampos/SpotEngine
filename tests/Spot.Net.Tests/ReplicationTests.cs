@@ -1,6 +1,6 @@
 using System.Numerics;
 using Spot.Net;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
 namespace Spot.Net.Tests;
 

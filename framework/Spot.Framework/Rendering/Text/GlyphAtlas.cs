@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A rectangle placed inside a glyph atlas, in texels.

@@ -1,7 +1,7 @@
 using System.Numerics;
 using StbTrueTypeSharp;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The measured shape of a single glyph, in atlas base pixels (see <see cref="IFontMetrics.BasePixelSize"/>).
@@ -233,14 +233,14 @@ public sealed class Font : IFontMetrics, IDisposable
     }
 
     /// <summary>
-    /// Loads a TrueType/OpenType font file, read through <see cref="Spot.IO.FileSystem"/>. The font is named after
+    /// Loads a TrueType/OpenType font file, read through <see cref="Spot.Framework.IO.FileSystem"/>. The font is named after
     /// the file (without its extension).
     /// </summary>
     /// <param name="path">The <c>.ttf</c>/<c>.otf</c> file path.</param>
     /// <returns>The font, with its glyph atlas uploaded.</returns>
     /// <exception cref="FileNotFoundException">The file does not exist.</exception>
     public static Font FromFile(string path) =>
-        new(Spot.IO.FileSystem.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path));
+        new(Spot.Framework.IO.FileSystem.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path));
 
     /// <inheritdoc />
     public bool TryGetGlyph(int codepoint, out GlyphInfo glyph) => _glyphs.TryGetValue(codepoint, out glyph);

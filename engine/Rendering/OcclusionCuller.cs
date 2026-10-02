@@ -1,8 +1,8 @@
 using System;
 using System.Numerics;
-using Spot.Physics;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// A software occlusion-culling buffer: a small CPU depth image of the scene's <b>occluders</b> (solid

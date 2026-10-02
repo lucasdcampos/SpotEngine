@@ -1,5 +1,5 @@
-using Spot.Console;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Engine.Console;
 
 namespace Spot.Net;
 

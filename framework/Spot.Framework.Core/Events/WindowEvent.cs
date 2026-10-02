@@ -1,4 +1,4 @@
-namespace Spot.Events;
+namespace Spot.Framework.Events;
 
 /// <summary>
 /// Raised when the window is requested to close.

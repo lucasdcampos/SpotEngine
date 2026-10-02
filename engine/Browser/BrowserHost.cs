@@ -1,14 +1,17 @@
 using System;
 using System.Runtime.InteropServices.JavaScript;
 using System.Threading.Tasks;
-using Spot.Assets;
-using Spot.Audio;
-using Spot.Core;
-using Spot.Rendering;
-using Spot.Scenes;
-using Spot.IO;
+using Spot.Engine;
+using Spot.Engine.Assets;
+using Spot.Engine.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework;
+using Spot.Framework.Audio;
+using Spot.Framework.Browser;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 
-namespace Spot.Browser;
+namespace Spot.Engine.Browser;
 
 /// <summary>
 /// The engine's browser host: the WebAssembly counterpart to the desktop <see cref="Application"/>. It boots the
@@ -104,10 +107,10 @@ public static partial class BrowserHost
 
             // Clamp the delta so a background tab or GC hitch can't feed a huge dt into physics/scripts.
             float dt = Math.Min((float)deltaTime, 0.1f);
-            Spot.Core.Time.NewFrame(dt);
+            Spot.Framework.Time.NewFrame(dt);
 
             SceneManager.ApplyPendingSwitch();
-            SceneManager.Update(Spot.Core.Time.DeltaTime);
+            SceneManager.Update(Spot.Framework.Time.DeltaTime);
             AudioManager.Update(dt);
 
             Renderer.Clear();

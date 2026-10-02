@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices.JavaScript;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Browser;
+namespace Spot.Framework.Browser;
 
 /// <summary>
 /// The browser <see cref="ICursorController"/>: maps <see cref="Input.CursorLocked"/> onto the DOM Pointer

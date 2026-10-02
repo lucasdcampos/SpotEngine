@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Mouse buttons, independent of the windowing backend. Values match the underlying platform codes.

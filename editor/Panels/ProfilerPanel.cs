@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using ImGuiNET;
 using System.Numerics;
-using Spot.Core;
+using Spot.Engine.Rendering;
+using Spot.Framework;
+using Spot.Framework.Mathematics;
 using Spot.DebugUI.UI;
-using Spot.Rendering;
 
 namespace Spot.Editor.Panels;
 

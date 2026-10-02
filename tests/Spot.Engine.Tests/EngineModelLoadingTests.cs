@@ -1,7 +1,7 @@
 using System.IO;
 using System.Numerics;
-using Spot.Assets;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework.Graphics;
 using Spot.Tests;
 using Spot.Tests.Fakes;
 
@@ -75,7 +75,7 @@ public class EngineModelLoadingTests : IDisposable
         {
             AssetPath.Root = previousRoot;
             AssetPath.ContentResolver = previousContent;
-            Spot.IO.FileSystem.PathResolver = null;
+            Spot.Framework.IO.FileSystem.PathResolver = null;
         }
     }
 

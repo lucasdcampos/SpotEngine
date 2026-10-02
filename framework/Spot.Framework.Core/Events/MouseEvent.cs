@@ -1,6 +1,6 @@
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Events;
+namespace Spot.Framework.Events;
 
 /// <summary>
 /// Raised when the mouse moves.

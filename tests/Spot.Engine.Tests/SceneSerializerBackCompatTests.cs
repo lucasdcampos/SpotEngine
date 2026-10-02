@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 using Xunit;
 
 namespace Spot.Engine.Tests;
@@ -50,7 +49,7 @@ public class SceneSerializerBackCompatTests
         Assert.True(sun.HasComponent<SkyboxComponent>());
         // A null slot must not create the component.
         Assert.False(sun.HasComponent<CameraComponent>());
-        Assert.False(sun.HasComponent<Spot.Physics.PhysicsBody2DComponent>());
+        Assert.False(sun.HasComponent<Spot.Engine.Physics.PhysicsBody2DComponent>());
     }
 
     [Fact]

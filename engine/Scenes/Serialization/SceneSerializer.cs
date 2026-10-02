@@ -3,11 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Assets;
-using Spot.Core;
-using Spot.IO;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Reads and writes a <see cref="Scene"/> as <c>.sptscene</c> JSON. Component data is handled entirely

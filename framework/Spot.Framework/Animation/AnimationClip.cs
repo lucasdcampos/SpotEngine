@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Animation;
+namespace Spot.Framework.Animation;
 
 /// <summary>A single keyframe: a value paired with the time (in seconds) it takes effect.</summary>
 /// <typeparam name="T">The keyed value type (a <see cref="Vector3"/> or <see cref="Quaternion"/>).</typeparam>

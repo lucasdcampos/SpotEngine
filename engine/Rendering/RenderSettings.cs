@@ -1,4 +1,5 @@
-namespace Spot.Rendering;
+
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// Global, engine-wide rendering pipeline settings. These are quality/pipeline knobs that apply to

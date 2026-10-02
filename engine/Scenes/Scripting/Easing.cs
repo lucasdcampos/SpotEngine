@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// An easing curve applied to a tween's normalized progress, shaping how a value accelerates and

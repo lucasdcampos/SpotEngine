@@ -1,5 +1,7 @@
-using Spot.Assets;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Framework;
+using Spot.Framework.Assimp;
+using Spot.Framework.Graphics;
 using Spot.DebugUI;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
@@ -44,9 +46,9 @@ public static class Program
             // Gameplay scripts compile into the game's assembly, not the editor, so a scene opened for
             // authoring routinely references script types this process hasn't loaded. Keep those references
             // (the inspector shows them) but don't log them as warnings — they resolve at play time.
-            Spot.Scenes.ScriptResolver.QuietMissingScripts = true;
+            Spot.Engine.Scenes.ScriptResolver.QuietMissingScripts = true;
 
-            var app = new Spot.Core.Application(spec);
+            var app = new Spot.Engine.Application(spec);
             // Host the in-game debug overlay (hierarchy/inspector/time panels), now that it lives in
             // Spot.DebugUI rather than being auto-wired by the engine.
             app.Debugger = new RuntimeDebuggerService();

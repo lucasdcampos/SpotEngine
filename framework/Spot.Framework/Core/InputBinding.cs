@@ -1,7 +1,7 @@
-using SKey = Spot.Core.Key;
-using SMouse = Spot.Core.MouseButton;
+using SKey = Spot.Framework.Key;
+using SMouse = Spot.Framework.MouseButton;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// The kind of physical device an <see cref="InputBinding"/> refers to.

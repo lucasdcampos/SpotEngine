@@ -1,9 +1,9 @@
 using System;
 using System.Numerics;
-using Spot.Scenes;
-using Spot.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A basic 3D physics system that applies gravity, updates positions, and resolves simple AABB overlaps.

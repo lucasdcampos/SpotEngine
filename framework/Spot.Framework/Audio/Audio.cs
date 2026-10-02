@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// The simple, fire-and-forget audio API for game scripts. For one-shot sounds that need no follow-up

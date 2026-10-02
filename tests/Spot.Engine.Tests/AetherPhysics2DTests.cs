@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Physics;
-using Spot.Physics.Aether;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Physics.Aether;
+using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 

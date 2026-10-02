@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Describes a contact between the entity receiving a collision callback and another entity, passed to

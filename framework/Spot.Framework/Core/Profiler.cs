@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Lightweight per-frame CPU profiler. Wrap any code block with <see cref="BeginSample"/> /

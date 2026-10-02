@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Turns the flat list of overlapping pairs a physics backend reports each step into the enter/stay/exit

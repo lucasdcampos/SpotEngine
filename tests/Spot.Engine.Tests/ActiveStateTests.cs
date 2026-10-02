@@ -1,7 +1,5 @@
 using System.Numerics;
-using Spot.Scenes;
-using Spot.Physics;
-using Spot.Rendering;
+using Spot.Engine.Scenes;
 using Xunit;
 
 namespace Spot.Engine.Tests;

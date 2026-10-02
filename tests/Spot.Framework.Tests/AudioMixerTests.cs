@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using Spot.Audio;
+using Spot.Framework.Audio;
 using Xunit;
 
 namespace Spot.Framework.Tests;

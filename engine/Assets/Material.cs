@@ -1,10 +1,10 @@
 using System.Numerics;
 using System.Text.Json;
-using Spot.Core;
-using Spot.Rendering;
-using Spot.IO;
+using Spot.Framework;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 public enum MaterialShaderType
 {

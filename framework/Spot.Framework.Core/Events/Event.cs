@@ -1,4 +1,4 @@
-namespace Spot.Events;
+namespace Spot.Framework.Events;
 
 /// <summary>
 /// Identifies the concrete type of an <see cref="Event"/>.

@@ -1,9 +1,9 @@
 using System;
 using System.Numerics;
-using Spot.Assets;
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
 namespace Spot.Editor.UI;
 

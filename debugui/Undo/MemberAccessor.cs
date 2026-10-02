@@ -33,12 +33,12 @@ public sealed class MemberAccessor : IEquatable<MemberAccessor>
     /// <summary>The declared type of the member's value.</summary>
     public Type MemberType { get; }
 
-    /// <summary>Wraps a property (the shape every <see cref="Spot.Scenes.Component"/> field takes).</summary>
+    /// <summary>Wraps a property (the shape every <see cref="Spot.Engine.Scenes.Component"/> field takes).</summary>
     public static MemberAccessor FromProperty(PropertyInfo property) => new(
         property.Name, property.PropertyType, property,
         t => property.GetValue(t), (t, v) => property.SetValue(t, v));
 
-    /// <summary>Wraps a public field (the shape every UI <see cref="Spot.UI.Widget"/> field takes).</summary>
+    /// <summary>Wraps a public field (the shape every UI <see cref="Spot.Engine.UI.Widget"/> field takes).</summary>
     public static MemberAccessor FromField(FieldInfo field) => new(
         field.Name, field.FieldType, field,
         t => field.GetValue(t), (t, v) => field.SetValue(t, v));

@@ -2,8 +2,8 @@ using System;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Scenes;
-using Spot.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;
@@ -234,11 +234,11 @@ public class HierarchyPanel
         var meshRenderer = new MeshComponent { ModelPath = $"primitive:{typeName}" };
         try
         {
-            meshRenderer.Model = Spot.Assets.Model.Load(meshRenderer.ModelPath);
+            meshRenderer.Model = Spot.Framework.Graphics.Model.Load(meshRenderer.ModelPath);
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Error("Failed to load primitive '{0}': {1}", typeName, ex.Message);
+            Spot.Framework.Log.Error("Failed to load primitive '{0}': {1}", typeName, ex.Message);
         }
         entity.AddComponent(meshRenderer);
         return entity;
@@ -254,11 +254,11 @@ public class HierarchyPanel
         var meshRenderer = new MeshComponent { ModelPath = modelPath };
         try
         {
-            meshRenderer.Model = Spot.Assets.Model.Load(modelPath);
+            meshRenderer.Model = Spot.Framework.Graphics.Model.Load(modelPath);
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Error("Failed to load model '{0}': {1}", modelPath, ex.Message);
+            Spot.Framework.Log.Error("Failed to load model '{0}': {1}", modelPath, ex.Message);
         }
         entity.AddComponent(meshRenderer);
         return entity;
@@ -274,7 +274,7 @@ public class HierarchyPanel
         Entity? root = Prefab.InstantiateFile(scene, path, parent);
         if (root == null) return;
 
-        string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
+        string? reference = Spot.Engine.Assets.AssetDatabase.ToGuidRef(path);
         root.Value.AddComponent(new PrefabComponent { PrefabRef = reference });
         _context.Selection = root.Value;
     }
@@ -516,7 +516,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to copy entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to copy entity: {0}", ex.Message);
         }
     }
 
@@ -529,7 +529,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to cut entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to cut entity: {0}", ex.Message);
         }
     }
 
@@ -551,7 +551,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to duplicate entity: {0}", ex.Message);
         }
     }
 
@@ -586,7 +586,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to paste entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to paste entity: {0}", ex.Message);
         }
     }
 
@@ -870,7 +870,7 @@ public class HierarchyPanel
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+                Spot.Framework.Log.Error("Failed to duplicate entity: {0}", ex.Message);
             }
         }
 

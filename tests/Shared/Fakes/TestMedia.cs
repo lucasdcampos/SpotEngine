@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.IO;
 using System.IO.Compression;
-using Spot.IO;
+using Spot.Framework.IO;
 
 namespace Spot.Tests.Fakes;
 

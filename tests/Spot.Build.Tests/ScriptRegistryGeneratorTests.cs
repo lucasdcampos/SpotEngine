@@ -31,9 +31,9 @@ public class ScriptRegistryGeneratorTests
     {
         SyntaxTree tree = CSharpSyntaxTree.ParseText(source, path: sourcePath);
 
-        // Reference every loaded assembly so the compilation resolves Spot.Scenes.EntityBehaviour and friends.
+        // Reference every loaded assembly so the compilation resolves Spot.Engine.Scenes.EntityBehaviour and friends.
         // Touch the engine type first: nothing else guarantees its assembly is loaded when this test runs.
-        _ = typeof(Spot.Scenes.EntityBehaviour);
+        _ = typeof(Spot.Engine.Scenes.EntityBehaviour);
         var references = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
             .Select(a => MetadataReference.CreateFromFile(a.Location))
@@ -60,7 +60,7 @@ public class ScriptRegistryGeneratorTests
     {
         const string scriptPath = "C:/proj/Assets/Scripts/Enemy.cs";
         const string source = """
-            using Spot.Scenes;
+            using Spot.Engine.Scenes;
             namespace Game
             {
                 public class Enemy : EntityBehaviour { }
@@ -82,7 +82,7 @@ public class ScriptRegistryGeneratorTests
     {
         const string scriptPath = "C:/proj/Assets/Scripts/NoMeta.cs";
         const string source = """
-            using Spot.Scenes;
+            using Spot.Engine.Scenes;
             public class NoMeta : EntityBehaviour { }
             """;
 
@@ -90,7 +90,7 @@ public class ScriptRegistryGeneratorTests
 
         Assert.Contains("global::NoMeta", generated);
         // No sidecar -> empty guid, still resolvable by name.
-        Assert.Contains("new global::Spot.Scenes.ScriptDescriptor(\"\", \"NoMeta\"", generated);
+        Assert.Contains("new global::Spot.Engine.Scenes.ScriptDescriptor(\"\", \"NoMeta\"", generated);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class ScriptRegistryGeneratorTests
     {
         const string scriptPath = "C:/proj/Assets/Scripts/Mixed.cs";
         const string source = """
-            using Spot.Scenes;
+            using Spot.Engine.Scenes;
             public abstract class BaseThing : EntityBehaviour { }
             public class PlainClass { }
             public class Concrete : EntityBehaviour { }

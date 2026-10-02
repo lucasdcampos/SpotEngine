@@ -2,8 +2,7 @@ using System;
 using System.Numerics;
 using System.Reflection;
 using ImGuiNET;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
 using Spot.DebugUI.UI;
 using Spot.DebugUI.Undo;

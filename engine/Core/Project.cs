@@ -1,9 +1,10 @@
 using System.IO;
 using System.Text.Json;
-using Spot.Assets;
-using Spot.Audio;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Audio;
 
-namespace Spot.Core;
+namespace Spot.Engine;
 
 public class ProjectConfig
 {

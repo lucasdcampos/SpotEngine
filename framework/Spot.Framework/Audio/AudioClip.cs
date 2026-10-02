@@ -1,6 +1,5 @@
-using Spot.Assets;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// A fully-decoded sound: interleaved 16-bit PCM held in memory, ready to be uploaded to a backend audio
@@ -42,7 +41,7 @@ public sealed class AudioClip : IDisposable
         Channels > 0 && SampleRate > 0 ? (float)Pcm.Length / Channels / SampleRate : 0.0f;
 
     /// <summary>
-    /// Decodes a WAV or OGG/Vorbis file, read through <see cref="Spot.IO.FileSystem"/>, into a new clip.
+    /// Decodes a WAV or OGG/Vorbis file, read through <see cref="Spot.Framework.IO.FileSystem"/>, into a new clip.
     /// </summary>
     /// <param name="path">The audio file path.</param>
     /// <returns>The decoded clip.</returns>

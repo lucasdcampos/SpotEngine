@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Physics;
+namespace Spot.Framework.Mathematics;
 
 /// <summary>
 /// A 2D axis-aligned bounding box, defined by a center and half-extents. Useful for simple overlap

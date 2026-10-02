@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// A handle to one playing (or finished) sound. Sources are pooled and recycled, so a voice carries the

@@ -1,4 +1,5 @@
-namespace Spot.Assets;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks one category of source asset (by file extension) into an engine-native artifact the runtime can load

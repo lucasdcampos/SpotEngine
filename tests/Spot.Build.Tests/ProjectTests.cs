@@ -1,6 +1,6 @@
 using System.IO;
 using Spot.Build;
-using Spot.Core;
+using Spot.Engine;
 using Xunit;
 
 namespace Spot.Build.Tests;

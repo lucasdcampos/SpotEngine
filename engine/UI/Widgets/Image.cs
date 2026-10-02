@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// Displays a texture (or a solid color when it has none). With a non-zero <see cref="Border"/> it draws as a

@@ -1,6 +1,7 @@
-using Spot.Rendering;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The desktop <see cref="IScenePostProcessor"/>: captures the scene into an offscreen HDR (<c>RGBA16F</c>)

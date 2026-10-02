@@ -1,4 +1,4 @@
-namespace Spot.IO;
+namespace Spot.Framework.IO;
 
 /// <summary>
 /// A source of file contents. The default reads the local disk; a host can install another — for example the

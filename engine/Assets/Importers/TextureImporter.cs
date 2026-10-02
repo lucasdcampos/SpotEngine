@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks image files (PNG, JPG, ...) into <c>.spttex</c>: raw RGBA pixels decoded once here so the runtime needs

@@ -1,7 +1,6 @@
-using Spot.Rendering;
 using System.Numerics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Defines the projection type of a Scene Camera.

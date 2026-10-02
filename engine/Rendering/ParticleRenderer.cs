@@ -1,6 +1,7 @@
 using System.Numerics;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// A batched renderer for particle quads. Like <see cref="Renderer2D"/> it accumulates quads into one

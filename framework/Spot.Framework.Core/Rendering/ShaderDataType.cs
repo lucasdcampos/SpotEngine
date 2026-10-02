@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The type of a single vertex attribute, used to describe a vertex buffer layout

@@ -1,7 +1,8 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// A simple 3D mesh renderer. Draws individual <see cref="Mesh"/> instances through a camera, with a
@@ -196,7 +197,7 @@ public static partial class Renderer3D
         s_lightsSupported = device.SupportsUniformBuffers;
         if (!s_lightsSupported)
         {
-            Spot.Core.Log.CoreWarn("Uniform buffers unavailable; point lights are disabled on this backend.");
+            Spot.Framework.Log.CoreWarn("Uniform buffers unavailable; point lights are disabled on this backend.");
             return;
         }
 
@@ -423,7 +424,7 @@ public static partial class Renderer3D
     /// <param name="mesh">The mesh to draw.</param>
     /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
     /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
-    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null, int shaderType = 0, Spot.Assets.Material? material = null)
+    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null, int shaderType = 0, Spot.Engine.Assets.Material? material = null)
     {
         Shader? activeShader = shaderType == 1 ? s_waterShader : s_shader;
         
@@ -491,7 +492,7 @@ public static partial class Renderer3D
         }
         else if (shaderType == 1) // Water
         {
-            activeShader.SetUniform("uTime", Spot.Core.Time.UnscaledTime);
+            activeShader.SetUniform("uTime", Spot.Framework.Time.UnscaledTime);
             
             float speed = material?.WaveSpeed ?? 1.0f;
             float scale = material?.WaveScale ?? 1.0f;
@@ -521,7 +522,7 @@ public static partial class Renderer3D
     /// <param name="instances">The per-instance world matrices and colors.</param>
     /// <param name="texture">The shared surface texture, or <see langword="null"/> for a solid color.</param>
     /// <param name="material">The shared surface material, or <see langword="null"/> for defaults.</param>
-    public static void DrawMeshInstanced(Mesh mesh, ReadOnlySpan<InstanceData> instances, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    public static void DrawMeshInstanced(Mesh mesh, ReadOnlySpan<InstanceData> instances, Texture2D? texture = null, Spot.Engine.Assets.Material? material = null)
     {
         if (instances.IsEmpty || s_instancedShader is null || s_whiteTexture is null || s_instanceBuffer is null)
         {
@@ -582,7 +583,7 @@ public static partial class Renderer3D
     /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
     /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
     /// <param name="material">The surface material, or <see langword="null"/> for defaults.</param>
-    public static void DrawSkinnedMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones, Vector4 color, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    public static void DrawSkinnedMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones, Vector4 color, Texture2D? texture = null, Spot.Engine.Assets.Material? material = null)
     {
         Shader? activeShader = s_skinnedShader;
         if (activeShader is null || s_whiteTexture is null)
@@ -657,7 +658,7 @@ public static partial class Renderer3D
             return bones;
         }
 
-        Spot.Core.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
+        Spot.Framework.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
         return bones[..MaxBones];
     }
 

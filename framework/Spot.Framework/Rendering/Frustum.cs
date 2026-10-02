@@ -1,8 +1,7 @@
 using System;
 using System.Numerics;
-using Spot.Physics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Mathematics;
 
 /// <summary>
 /// The six clipping planes of a view-projection volume, used for coarse visibility culling: an object

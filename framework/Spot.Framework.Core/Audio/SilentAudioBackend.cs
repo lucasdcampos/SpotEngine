@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// The default <see cref="IAudioBackend"/>: reports the device as unavailable and no-ops every call. It keeps

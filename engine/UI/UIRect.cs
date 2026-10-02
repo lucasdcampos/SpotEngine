@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// An anchored rectangle describing where a <see cref="Widget"/> sits inside its parent. A point on the

@@ -1,6 +1,6 @@
 using System;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A framebuffer that only attaches a depth texture, optimized for shadow map generation. Backend-neutral:

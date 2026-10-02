@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A typed GPU buffer object: vertex data, element indices, or a uniform block. This is the low-level

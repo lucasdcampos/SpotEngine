@@ -1,9 +1,8 @@
 using System.Linq;
-using Spot.Core;
-using Spot.UI;
-using Spot.UI.Serialization;
+using Spot.Engine.UI;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The play-mode system that brings editor-authored UI to life: for each active

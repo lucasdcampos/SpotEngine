@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Engine.Animation;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Animation;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Plays skeletal animation on an imported model by posing its bone entities (the tree the model was

@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Core;
+namespace Spot.Framework.Mathematics;
 
 /// <summary>
 /// Small numeric helpers shared across the engine's systems and renderers.

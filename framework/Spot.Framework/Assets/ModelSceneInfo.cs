@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A single node of an imported model's scene graph: its name, its transform relative to its parent,

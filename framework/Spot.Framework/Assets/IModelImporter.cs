@@ -1,6 +1,5 @@
-using Spot.Rendering;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// Imports a 3D model file into engine <see cref="Model"/> data. Implement this to add support for a

@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Represents the buttons on a standard gamepad.

@@ -1,12 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using Spot.Core;
-using Spot.Events;
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.UI;
+using Spot.Engine.Physics;
+using Spot.Engine.UI;
+using Spot.Framework;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A game scene: both a container of entities/components and a switchable screen with its own
@@ -81,7 +81,7 @@ public class Scene
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
-                cc.SetViewportSize(Spot.Core.Display.Width, Spot.Core.Display.Height);
+                cc.SetViewportSize(Spot.Framework.Display.Width, Spot.Framework.Display.Height);
             }
         }
     }
@@ -112,8 +112,8 @@ public class Scene
         if (_ui is null || _ui.Children.Count == 0) return;
 
         _ui.Update(
-            Spot.Core.Display.Width,
-            Spot.Core.Display.Height,
+            Spot.Framework.Display.Width,
+            Spot.Framework.Display.Height,
             Input.MousePosition,
             Input.GetMouseButton(MouseButton.Left),
             Input.GetMouseButtonDown(MouseButton.Left),

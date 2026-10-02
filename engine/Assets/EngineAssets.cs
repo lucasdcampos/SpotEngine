@@ -1,6 +1,7 @@
-using Spot.IO;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Plugs the engine's asset pipeline into the framework's loaders: project-relative paths resolve against

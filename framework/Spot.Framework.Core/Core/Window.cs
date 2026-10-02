@@ -2,11 +2,11 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using Spot.Events;
-using Spot.Rendering;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 using SilkWindow = Silk.NET.Windowing.Window;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// A platform window with an OpenGL context, backed by Silk.NET. Creating one is all it takes to start drawing:
@@ -77,7 +77,7 @@ public sealed class Window : IDisposable
         _input = _window.CreateInput();
         // Centre in the mouse-position coordinate space (the window's client size, matching IMouse.Position)
         // so recentring keeps the cursor comfortably inside the window regardless of DPI/framebuffer scale.
-        global::Spot.Core.Input.CursorController = new SilkCursorController(
+        global::Spot.Framework.Input.CursorController = new SilkCursorController(
             _input, () => new System.Numerics.Vector2(_window.Size.X / 2f, _window.Size.Y / 2f));
         SetupCallbacks();
 
@@ -166,12 +166,12 @@ public sealed class Window : IDisposable
     /// </summary>
     public void PollEvents()
     {
-        Spot.Core.Input.NewFrame();
+        Spot.Framework.Input.NewFrame();
         _window.DoEvents();
 
         // After the frame's mouse events are in, recentre a locked cursor and turn its drift into relative
         // motion, before the app reads Input.MousePosition. Keeps mouse-look confined to the window.
-        Spot.Core.Input.TickCursorLock();
+        Spot.Framework.Input.TickCursorLock();
 
         // Safety net: if the drawable size still hasn't reached the renderer (the startup resize was deferred
         // by the platform), re-sync it so no frame renders into a 0-sized viewport.
@@ -276,7 +276,7 @@ public sealed class Window : IDisposable
     // Feeds an event to Input first (so polled state is current), then to the app's callback.
     private void Dispatch(Event e)
     {
-        Spot.Core.Input.OnEvent(e);
+        Spot.Framework.Input.OnEvent(e);
         _callback?.Invoke(e);
     }
 
@@ -414,7 +414,7 @@ public sealed class Window : IDisposable
                     mouse.Position = UnlockPosition();
                 }
 
-                global::Spot.Core.Input.RelativeMouseMode = value;
+                global::Spot.Framework.Input.RelativeMouseMode = value;
             }
         }
 
@@ -465,7 +465,7 @@ public sealed class Window : IDisposable
             System.Numerics.Vector2 delta = mouse.Position - center;
             if (delta != System.Numerics.Vector2.Zero)
             {
-                global::Spot.Core.Input.AddMouseMotion(delta);
+                global::Spot.Framework.Input.AddMouseMotion(delta);
                 mouse.Position = center; // snap back so the next frame's offset is pure movement
             }
         }

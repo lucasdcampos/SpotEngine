@@ -1,4 +1,4 @@
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// One volume group in the <see cref="AudioMixer"/> tree — a named fader every sound routed to it passes

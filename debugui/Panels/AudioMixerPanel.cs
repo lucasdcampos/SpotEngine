@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Audio;
+using Spot.Framework.Audio;
 using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;

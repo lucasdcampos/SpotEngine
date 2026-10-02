@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using Serilog;
 using Serilog.Events;
+using Spot.Framework;
+using Log = Spot.Framework.Log;
 
-namespace Spot.Core;
+namespace Spot.Engine;
 
 /// <summary>
 /// The engine's logging setup: routes <see cref="Log"/> to the terminal and a rolling log file through Serilog,

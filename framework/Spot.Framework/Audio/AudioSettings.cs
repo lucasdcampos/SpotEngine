@@ -1,4 +1,4 @@
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// Global, engine-wide audio settings. These are runtime mixing knobs that apply to every scene, mirroring

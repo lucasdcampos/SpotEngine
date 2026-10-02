@@ -20,12 +20,12 @@ public static class EditorHistory
     /// a panel marks the right document as having unsaved changes. Panels live in this assembly and
     /// know nothing about the editor's tab bookkeeping, so the host installs this.
     /// </summary>
-    public static Func<Spot.Scenes.Scene, object?>? SceneDocumentResolver { get; set; }
+    public static Func<Spot.Engine.Scenes.Scene, object?>? SceneDocumentResolver { get; set; }
 
     /// <summary>
     /// The document owning a scene, or <see langword="null"/> when the host has not registered a
     /// resolver or does not recognise the scene (a scratch scene, for instance).
     /// </summary>
-    public static object? DocumentFor(Spot.Scenes.Scene? scene) =>
+    public static object? DocumentFor(Spot.Engine.Scenes.Scene? scene) =>
         scene != null ? SceneDocumentResolver?.Invoke(scene) : null;
 }

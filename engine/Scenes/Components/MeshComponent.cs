@@ -1,7 +1,8 @@
 using System.Numerics;
-using Spot.Assets;
+using Spot.Engine.Assets;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2DComponent"/> it is

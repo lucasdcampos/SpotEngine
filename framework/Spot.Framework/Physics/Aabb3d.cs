@@ -1,8 +1,7 @@
 using System;
 using System.Numerics;
-using Spot.Rendering;
 
-namespace Spot.Physics;
+namespace Spot.Framework.Mathematics;
 
 /// <summary>
 /// A 3D axis-aligned bounding box.

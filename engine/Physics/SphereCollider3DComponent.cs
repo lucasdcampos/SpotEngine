@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A spherical collider for 3D physics. Simulated by the Bepu backend; the legacy AABB solver

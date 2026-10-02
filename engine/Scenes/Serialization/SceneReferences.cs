@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The load-time context that resolves <see cref="Entity"/>-typed references within a scene or prefab. Entity

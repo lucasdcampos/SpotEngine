@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// The committed <c>.meta</c> sidecar that gives a source asset a stable identity independent of its path.

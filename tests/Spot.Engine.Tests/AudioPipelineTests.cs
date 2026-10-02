@@ -1,5 +1,5 @@
 using System.IO;
-using Spot.Assets;
+using Spot.Engine.Assets;
 using Spot.Tests;
 using Spot.Tests.Fakes;
 using Xunit;

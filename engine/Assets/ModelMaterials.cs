@@ -1,4 +1,6 @@
-namespace Spot.Assets;
+using Spot.Framework.Assimp;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Turns the materials of a source model into engine <c>.sptmat</c> assets, on top of what the framework's model
@@ -48,7 +50,7 @@ public static class ModelMaterials
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.CoreError("Failed to write material slot {0} of '{1}': {2}", slot.Slot, modelPath, ex.Message);
+                Spot.Framework.Log.CoreError("Failed to write material slot {0} of '{1}': {2}", slot.Slot, modelPath, ex.Message);
             }
         }
 
@@ -77,7 +79,7 @@ public static class ModelMaterials
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.CoreError("Failed to create a material for '{0}': {1}", imagePath, ex.Message);
+                Spot.Framework.Log.CoreError("Failed to create a material for '{0}': {1}", imagePath, ex.Message);
             }
         }
     }

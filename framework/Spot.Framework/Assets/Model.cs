@@ -1,9 +1,8 @@
 using System.Numerics;
-using Spot.Animation;
-using Spot.Physics;
-using Spot.Rendering;
+using Spot.Framework.Animation;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// An imported 3D model: one or more <see cref="Mesh"/> instances that together make up the asset, plus any

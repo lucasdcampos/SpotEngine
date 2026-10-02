@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A pluggable 2D physics backend for a <see cref="Scene"/>. Mirrors <see cref="IPhysics3D"/>: implementations

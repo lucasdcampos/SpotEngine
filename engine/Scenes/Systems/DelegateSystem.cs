@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// An <see cref="ISystem"/> that runs a delegate each frame, for registering simulation without declaring a

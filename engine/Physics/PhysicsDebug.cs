@@ -1,4 +1,4 @@
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Contains global physics debugging settings.

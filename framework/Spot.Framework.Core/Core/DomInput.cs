@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Maps browser DOM input codes to the engine's backend-neutral <see cref="Key"/> and <see cref="MouseButton"/>.

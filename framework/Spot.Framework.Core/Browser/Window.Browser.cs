@@ -1,8 +1,8 @@
-using Spot.Browser;
-using Spot.Events;
-using Spot.Rendering;
+using Spot.Framework.Browser;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// The browser's window: the page's canvas with a WebGL2 context. The same public surface as the desktop window,
@@ -29,7 +29,7 @@ public sealed class Window : IDisposable
         Display.SetSize(Width, Height);
 
         Renderer.Init(new WebGL2GraphicsDevice());
-        Spot.Core.Input.CursorController = new BrowserCursorController();
+        Spot.Framework.Input.CursorController = new BrowserCursorController();
         BrowserPlatform.Current = this;
         SyncViewport();
     }
@@ -69,13 +69,13 @@ public sealed class Window : IDisposable
     /// </summary>
     public void PollEvents()
     {
-        Spot.Core.Input.NewFrame();
+        Spot.Framework.Input.NewFrame();
         foreach (Event e in BrowserPlatform.DrainPending())
         {
             Dispatch(e);
         }
 
-        Spot.Core.Input.TickCursorLock();
+        Spot.Framework.Input.TickCursorLock();
 
         if (Renderer.ViewportWidth == 0 || Renderer.ViewportHeight == 0)
         {
@@ -123,7 +123,7 @@ public sealed class Window : IDisposable
     {
         try
         {
-            Spot.Core.Input.OnEvent(e);
+            Spot.Framework.Input.OnEvent(e);
             _callback?.Invoke(e);
         }
         catch (Exception ex)

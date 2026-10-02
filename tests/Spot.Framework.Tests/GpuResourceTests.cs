@@ -1,6 +1,6 @@
 using System.Numerics;
 using Spot.Tests.Fakes;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
 namespace Spot.Framework.Tests;
 

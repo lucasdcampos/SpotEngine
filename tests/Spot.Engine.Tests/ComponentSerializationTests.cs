@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
-using Spot.Physics;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
 using Xunit;
 
 namespace Spot.Engine.Tests;

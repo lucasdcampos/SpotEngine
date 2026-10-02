@@ -1,8 +1,9 @@
 using System;
 using System.Numerics;
 using Silk.NET.OpenGL;
-using Spot.Assets;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -34,7 +35,7 @@ public static class MaterialPreviewHelper
         return hash.ToHashCode();
     }
 
-    public static void RenderToFramebuffer(Material material, Spot.Rendering.Framebuffer framebuffer)
+    public static void RenderToFramebuffer(Material material, Spot.Framework.Graphics.Framebuffer framebuffer)
     {
         if (s_sphereModel == null)
         {

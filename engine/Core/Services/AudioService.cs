@@ -1,6 +1,7 @@
-using Spot.Audio;
+using Spot.Engine;
+using Spot.Framework.Audio;
 
-namespace Spot.Core.Services;
+namespace Spot.Engine.Services;
 
 /// <summary>
 /// Ties the audio subsystem into the application lifecycle: it installs the desktop OpenAL backend and opens

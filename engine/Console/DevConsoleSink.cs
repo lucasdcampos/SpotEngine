@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Console;
+namespace Spot.Engine.Console;
 
 /// <summary>
 /// A log sink that mirrors log entries into the developer console.

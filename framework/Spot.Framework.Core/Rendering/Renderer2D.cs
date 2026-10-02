@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A batched 2D renderer. Quads submitted between <see cref="BeginScene"/> and <see cref="EndScene"/>

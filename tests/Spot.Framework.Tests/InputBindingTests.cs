@@ -1,4 +1,4 @@
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.Framework.Tests;
 

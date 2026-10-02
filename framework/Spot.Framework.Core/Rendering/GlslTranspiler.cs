@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// Rewrites engine-authored desktop GLSL (<c>#version 330 core</c>) into the WebGL2 / OpenGL ES 3.0

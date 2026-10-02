@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Memoizes <c>IsActiveInHierarchy</c> per entity id for one scene. An entity's active state — its

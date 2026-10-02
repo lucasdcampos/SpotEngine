@@ -4,8 +4,7 @@ using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Spot.DebugUI.UI;
-using Spot.UI;
-using Spot.UI.Serialization;
+using Spot.Engine.UI;
 
 namespace Spot.DebugUI.Panels;
 
@@ -227,7 +226,7 @@ public class UIHierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to duplicate widget: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to duplicate widget: {0}", ex.Message);
         }
     }
 

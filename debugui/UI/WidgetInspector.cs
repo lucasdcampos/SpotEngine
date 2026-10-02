@@ -1,11 +1,11 @@
 using System;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
-using Spot.UI;
-using Image = Spot.UI.Image;
+using Spot.Engine.Assets;
+using Spot.Engine.UI;
+using Spot.Framework;
+using Spot.Framework.Graphics;
+using Image = Spot.Engine.UI.Image;
 
 namespace Spot.DebugUI.UI;
 

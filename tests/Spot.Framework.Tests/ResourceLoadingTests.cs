@@ -1,9 +1,8 @@
 using System.IO;
-using Spot.Assets;
-using Spot.Audio;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 using Spot.Tests.Fakes;
-using Spot.IO;
-using Spot.Rendering;
 using Spot.Tests;
 
 namespace Spot.Framework.Tests;

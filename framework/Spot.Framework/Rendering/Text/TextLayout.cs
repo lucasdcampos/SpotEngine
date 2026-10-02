@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>How lines of text are positioned horizontally within their box.</summary>
 public enum TextAlign

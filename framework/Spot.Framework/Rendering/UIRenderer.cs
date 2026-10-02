@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A batched renderer for screen-space user interface: solid and textured quads, nine-slice sprites and

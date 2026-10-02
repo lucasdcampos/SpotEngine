@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The high-level rendering facade. Wraps the underlying graphics API so callers never

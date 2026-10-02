@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Editor.Utils;
 

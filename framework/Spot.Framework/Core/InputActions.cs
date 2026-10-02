@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Named input actions: game-level names ("jump", "forward") mapped to the physical inputs that trigger them, so

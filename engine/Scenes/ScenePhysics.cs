@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Core;
-using Spot.Physics;
+using Spot.Engine.Physics;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Owns a scene's runtime physics: the 3D and 2D backends and their collision dispatchers. Split out of

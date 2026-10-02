@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.IO;
-using Spot.Core;
+using Spot.Framework;
 using Spot.Tests.Fakes;
 using Xunit;
 using Spot.Tests;

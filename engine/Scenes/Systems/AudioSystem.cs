@@ -1,9 +1,9 @@
 using System.Numerics;
-using Spot.Audio;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Framework;
+using Spot.Framework.Audio;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The play-mode system that connects scene data to the audio mixer: it points the listener at the active

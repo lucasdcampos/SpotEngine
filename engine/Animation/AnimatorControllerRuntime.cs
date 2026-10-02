@@ -1,13 +1,14 @@
 using System.Collections.Generic;
+using Spot.Framework.Animation;
 
-namespace Spot.Animation;
+namespace Spot.Engine.Animation;
 
 /// <summary>
 /// The per-instance evaluator for an <see cref="AnimatorController"/>: it holds the live parameter values and
 /// the current state, advances the active clip's time, and each tick picks the first transition whose
 /// conditions pass — switching state instantly (no crossfade yet). It is pure logic with no engine or GL
 /// dependency (clips are supplied by the caller), so the state machine can be unit-tested on its own; the
-/// <see cref="Spot.Scenes.AnimatorComponent"/> owns one and applies the resulting pose to the bones.
+/// <see cref="Spot.Engine.Scenes.AnimatorComponent"/> owns one and applies the resulting pose to the bones.
 /// </summary>
 public sealed class AnimatorControllerRuntime
 {

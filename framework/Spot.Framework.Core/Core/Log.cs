@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// The severity of a log entry.

@@ -1,8 +1,12 @@
 using System;
 using Silk.NET.OpenGL;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
+using Framebuffer = Spot.Framework.Graphics.Framebuffer;
+using Shader = Spot.Framework.Graphics.Shader;
+using VertexArray = Spot.Framework.Graphics.VertexArray;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 public static class PostProcessingRenderer
 {

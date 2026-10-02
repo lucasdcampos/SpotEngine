@@ -2,11 +2,11 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Spot.Animation;
-using Spot.Rendering;
-using Spot.IO;
+using Spot.Framework.Animation;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Reads and writes <c>.sptmesh</c>, the engine-native cooked mesh format: a serialization of the interleaved

@@ -1,5 +1,5 @@
-using Spot.Core;
-using Spot.Events;
+using Spot.Framework;
+using Spot.Framework.Events;
 
 namespace Spot.Framework.Tests;
 

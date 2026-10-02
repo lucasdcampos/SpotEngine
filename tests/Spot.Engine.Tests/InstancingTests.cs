@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Spot.Rendering;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
 
 namespace Spot.Engine.Tests;
 

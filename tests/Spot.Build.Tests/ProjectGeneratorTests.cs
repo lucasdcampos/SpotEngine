@@ -1,6 +1,6 @@
 using System.IO;
 using Spot.Build;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build.Tests;
 

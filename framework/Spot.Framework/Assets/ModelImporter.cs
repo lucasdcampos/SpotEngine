@@ -2,11 +2,10 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Spot.Core;
-using Spot.IO;
-using Spot.Rendering;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The registry that maps model file formats to their <see cref="IModelImporter"/> and loads models
@@ -51,7 +50,7 @@ public static class ModelImporter
     public static Model BuildModel(CookedModel cooked)
     {
         var meshes = new List<Mesh>(cooked.Submeshes.Count);
-        var bones = new IReadOnlyList<Spot.Animation.BoneInfo>?[cooked.Submeshes.Count];
+        var bones = new IReadOnlyList<Spot.Framework.Animation.BoneInfo>?[cooked.Submeshes.Count];
         bool anySkinned = false;
 
         for (int i = 0; i < cooked.Submeshes.Count; i++)

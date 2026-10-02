@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Spot.Animation;
+namespace Spot.Framework.Animation;
 
 /// <summary>
 /// Canonicalizes bone/node names so animation channels and skinning bones retarget across Mixamo exports.

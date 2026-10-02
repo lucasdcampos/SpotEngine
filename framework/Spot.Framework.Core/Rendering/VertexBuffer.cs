@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A buffer of vertex data together with the layout describing how each vertex is structured.

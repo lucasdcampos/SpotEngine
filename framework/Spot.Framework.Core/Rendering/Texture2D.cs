@@ -1,4 +1,4 @@
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A 2D texture on the GPU, created from raw RGBA pixels. Loading image files is a framework feature

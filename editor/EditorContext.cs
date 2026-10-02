@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Engine.UI;
 using Spot.DebugUI;
-using Spot.UI;
 
 namespace Spot.Editor;
 

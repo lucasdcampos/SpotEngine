@@ -1,8 +1,8 @@
 using System;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 
@@ -139,24 +139,24 @@ public class ViewportPanel
                 ImGui.Dummy(new Vector2(8, 0));
                 ImGui.SameLine();
 
-                bool showColliders = Spot.Physics.PhysicsDebug.ShowColliders;
+                bool showColliders = Spot.Engine.Physics.PhysicsDebug.ShowColliders;
                 if (ImGui.Checkbox("Show Colliders", ref showColliders))
                 {
-                    Spot.Physics.PhysicsDebug.ShowColliders = showColliders;
+                    Spot.Engine.Physics.PhysicsDebug.ShowColliders = showColliders;
                 }
 
                 ImGui.SameLine();
-                bool fullbright = Spot.Rendering.RendererDebug.Fullbright;
+                bool fullbright = Spot.Engine.Rendering.RendererDebug.Fullbright;
                 if (ImGui.Checkbox("Fullbright", ref fullbright))
                 {
-                    Spot.Rendering.RendererDebug.Fullbright = fullbright;
+                    Spot.Engine.Rendering.RendererDebug.Fullbright = fullbright;
                 }
 
                 ImGui.SameLine();
-                bool wireframe = Spot.Rendering.RendererDebug.Wireframe;
+                bool wireframe = Spot.Engine.Rendering.RendererDebug.Wireframe;
                 if (ImGui.Checkbox("Wireframe", ref wireframe))
                 {
-                    Spot.Rendering.RendererDebug.Wireframe = wireframe;
+                    Spot.Engine.Rendering.RendererDebug.Wireframe = wireframe;
                 }
 
                 // Camera feel (look sensitivity / fly speed). Tucked behind a gear so the toolbar stays
@@ -201,7 +201,7 @@ public class ViewportPanel
                     ImGui.EndPopup();
                 }
 
-                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Scenes.CameraComponent>())
+                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.Scenes.CameraComponent>())
                 {
                     // Render Camera Preview in bottom right
                     float previewWidth = 320;
@@ -303,7 +303,7 @@ public class ViewportPanel
                     // position was polled, so every motion the mouse made in between is thrown away by
                     // the snap. That loses a variable slice of each frame's movement — the camera feels
                     // both sluggish and jittery because the amount lost changes with frame time.
-                    var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+                    var mice = Spot.Engine.Application.Instance.Window.Input.Mice;
                     var mouse = mice.Count > 0 ? mice[0] : null;
                     if (mouse != null && mouse.Cursor.CursorMode != LockMode)
                     {
@@ -391,7 +391,7 @@ public class ViewportPanel
     // ownership of the lock. Safe to call whether or not the cursor is currently captured.
     private void ReleaseCursorLock()
     {
-        var mice = Spot.Core.Application.Instance.Window.Input.Mice;
+        var mice = Spot.Engine.Application.Instance.Window.Input.Mice;
         if (mice.Count > 0)
         {
             var mouse = mice[0];
@@ -431,8 +431,8 @@ public class ViewportPanel
         float rightEdge = cursorPos.X + viewportSize.X - 12.0f;
         float y = center.Y + axisLen + 12.0f;
 
-        float fps = Spot.Core.FrameStats.Fps;
-        float ms = Spot.Core.FrameStats.FrameTimeMs;
+        float fps = Spot.Framework.FrameStats.Fps;
+        float ms = Spot.Framework.FrameStats.FrameTimeMs;
         DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS  ({ms:0.0} ms)", palette.Text);
 
         DrawRightText(drawList, rightEdge, ref y, _camera.Is3D ? "Perspective" : "Orthographic", palette.TextDisabled);

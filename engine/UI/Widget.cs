@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>The pointer state handed to widgets each frame, in UI (virtual) pixel coordinates.</summary>
 /// <param name="Pointer">The pointer position in UI coordinates.</param>

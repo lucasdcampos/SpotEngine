@@ -1,4 +1,4 @@
-namespace Spot.Events;
+namespace Spot.Framework.Events;
 
 /// <summary>
 /// Raised once per tick.

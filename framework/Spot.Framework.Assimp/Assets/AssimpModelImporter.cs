@@ -2,17 +2,19 @@ using System;
 using System.IO;
 using System.Numerics;
 using Silk.NET.Assimp;
-using Spot.Animation;
-using Spot.Core;
+using Spot.Framework;
+using Spot.Framework.Animation;
+using Spot.Framework.Graphics;
 using AssimpApi = Silk.NET.Assimp.Assimp;
 using AiMaterial = Silk.NET.Assimp.Material;
 using AiAnimation = Silk.NET.Assimp.Animation;
-using RenderMesh = Spot.Rendering.Mesh;
-using MeshData = Spot.Rendering.MeshData;
+using Mesh = Silk.NET.Assimp.Mesh;
+using RenderMesh = Spot.Framework.Graphics.Mesh;
+using MeshData = Spot.Framework.Graphics.MeshData;
 using NQuaternion = System.Numerics.Quaternion;
 using File = System.IO.File;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Assimp;
 
 /// <summary>
 /// Imports 3D models through the Assimp library, which handles many common formats

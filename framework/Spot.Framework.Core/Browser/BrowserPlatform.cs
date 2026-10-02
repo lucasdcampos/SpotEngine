@@ -1,9 +1,9 @@
 using System.Numerics;
 using System.Runtime.InteropServices.JavaScript;
-using Spot.Core;
-using Spot.Events;
+using Spot.Framework;
+using Spot.Framework.Events;
 
-namespace Spot.Browser;
+namespace Spot.Framework.Browser;
 
 /// <summary>
 /// The browser's platform entry points: the page's JavaScript calls these (<c>[JSExport]</c>) from

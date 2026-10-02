@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
-using Spot.IO;
+using Spot.Framework.IO;
 using StbVorbisSharp;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// Decodes a source audio file (<c>.wav</c> or <c>.ogg</c>) into interleaved signed 16-bit PCM — the single

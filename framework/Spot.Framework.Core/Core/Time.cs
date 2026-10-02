@@ -1,4 +1,4 @@
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// The engine's frame clock, queryable from anywhere (typically a script's update). Values are set

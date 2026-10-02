@@ -1,7 +1,6 @@
-using Spot.Animation;
-using Spot.Rendering;
+using Spot.Framework.Animation;
 
-namespace Spot.Assets;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The CPU-side result of importing or reading a model: its submeshes (rigid or skinned) together with any

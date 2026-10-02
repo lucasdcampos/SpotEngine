@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Assets;
-using Spot.Rendering;
-using Spot.Scenes;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -978,8 +978,8 @@ public static class EditorGui
 
             try
             {
-                string metaPath = Spot.Assets.AssetMeta.MetaPathFor(path);
-                Spot.Assets.AssetMeta meta = Spot.Assets.AssetMeta.ReadOrCreate(path, "script");
+                string metaPath = Spot.Engine.Assets.AssetMeta.MetaPathFor(path);
+                Spot.Engine.Assets.AssetMeta meta = Spot.Engine.Assets.AssetMeta.ReadOrCreate(path, "script");
                 if (!System.IO.File.Exists(metaPath))
                 {
                     meta.Save(path);

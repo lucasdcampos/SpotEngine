@@ -1,11 +1,11 @@
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI.Serialization;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// Reads and writes a <c>.sptui</c> UI document — a <see cref="UIRoot"/>'s scale settings and its retained

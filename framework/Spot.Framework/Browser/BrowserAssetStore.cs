@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Spot.Assets;
-using Spot.IO;
 
-namespace Spot.Browser;
+namespace Spot.Framework.IO;
 
 /// <summary>
 /// The browser <see cref="IFileSystem"/>: an in-memory store of cooked content the host preloads over HTTP

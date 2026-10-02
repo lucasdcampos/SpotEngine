@@ -1,9 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// The outcome of a full asset cook: where the runtime <c>manifest.json</c> was written, how many sources

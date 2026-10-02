@@ -2,7 +2,7 @@ using System;
 using System.Numerics;
 using Silk.NET.OpenAL;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// The desktop <see cref="IAudioBackend"/>: maps the neutral source/buffer/listener operations onto

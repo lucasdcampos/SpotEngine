@@ -1,6 +1,6 @@
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The ordered set of <see cref="ISystem"/>s a <see cref="Scene"/> runs each play-mode frame. Every scene

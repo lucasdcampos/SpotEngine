@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A 2D orthographic camera, positioned and rotated in the XY plane. This is the Unity-style

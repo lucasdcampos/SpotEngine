@@ -1,5 +1,5 @@
 using System.IO;
-using Spot.Assets;
+using Spot.Framework.Audio;
 using Spot.Tests.Fakes;
 using Xunit;
 using Spot.Tests;

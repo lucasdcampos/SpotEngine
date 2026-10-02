@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>A backend-neutral handle to a playback source (one voice channel).</summary>
 public readonly record struct AudioSourceHandle(uint Id)

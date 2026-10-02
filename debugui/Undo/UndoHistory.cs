@@ -1,4 +1,4 @@
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.DebugUI.Undo;
 
@@ -258,7 +258,7 @@ public sealed class UndoHistory
 
     /// <summary>
     /// Opens a scope in which nothing is recorded. Required around inspector UI driven over scratch
-    /// objects — the prefab editor builds a throwaway <see cref="Spot.Scenes.Scene"/>, and the material
+    /// objects — the prefab editor builds a throwaway <see cref="Spot.Engine.Scenes.Scene"/>, and the material
     /// and model thumbnail helpers build their own — because the generic property editing those share
     /// with the real inspector would otherwise push actions targeting objects nobody owns.
     /// </summary>

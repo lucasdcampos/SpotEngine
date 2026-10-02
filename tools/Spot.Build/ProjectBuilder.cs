@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build;
 
@@ -54,7 +54,7 @@ public static class ProjectBuilder
     /// <param name="fastDebug">Whether this is the editor's fast Play build.</param>
     /// <returns>The absolute output folder.</returns>
     public static string OutputDirectory(string projectDirectory, BuildPlatform platform, bool fastDebug = false) =>
-        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Core.ProjectStructure.BuildFolder,
+        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.BuildFolder,
             fastDebug ? "play" : FolderName(platform)));
 
     /// <summary>
@@ -154,11 +154,11 @@ public static class ProjectBuilder
     internal static bool StageRuntimePayload(Project project, string outputDir,
                                              Action<string>? onOutput, Action<string>? onError)
     {
-        string contentRoot = Path.Combine(outputDir, Spot.Core.ProjectStructure.ContentFolder);
+        string contentRoot = Path.Combine(outputDir, Spot.Engine.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            var cook = Spot.Engine.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
             if (cook.Failed > 0)
             {
                 // Don't abort (a single bad asset shouldn't block Play), but make the gap loud: the payload is
@@ -184,11 +184,11 @@ public static class ProjectBuilder
     {
         // Cook into a Build/ staging folder (not the project root) and copy it into wwwroot below.
         string contentRoot = Path.Combine(project.ProjectDirectory,
-            Spot.Core.ProjectStructure.BuildFolder, Spot.Core.ProjectStructure.ContentFolder);
+            Spot.Engine.ProjectStructure.BuildFolder, Spot.Engine.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            var cook = Spot.Engine.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
             if (cook.Failed > 0)
             {
                 onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; the build is missing those entries.");
@@ -230,7 +230,7 @@ public static class ProjectBuilder
         // Absolute so `-o` is unambiguous: the publish runs with the WebAssembly project (webDir) as its
         // working directory, which is deeper than the project root, so a relative output path would nest.
         string outputDir = Path.GetFullPath(
-            Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "browser"));
+            Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "browser"));
         string csprojFile = project.Config.Name + ".Browser.csproj";
         string publishArgs = $"publish \"{csprojFile}\" -c Release -o \"{outputDir}\"";
 

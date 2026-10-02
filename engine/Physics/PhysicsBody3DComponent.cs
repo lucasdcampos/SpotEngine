@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A 3D rigid body. Paired with a collider (<see cref="BoxCollider3DComponent"/>,

@@ -1,7 +1,7 @@
 using System.Numerics;
 using Silk.NET.OpenGL;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The desktop <see cref="IGraphicsDevice"/> backend, implemented against a Silk.NET OpenGL context.

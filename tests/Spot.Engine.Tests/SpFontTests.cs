@@ -1,4 +1,4 @@
-using Spot.Assets;
+using Spot.Engine.Assets;
 
 namespace Spot.Engine.Tests;
 

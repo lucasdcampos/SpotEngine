@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using BepuPhysics.Collidables;
 
-namespace Spot.Physics.Bepu;
+namespace Spot.Engine.Physics.Bepu;
 
 /// <summary>
 /// Shared collision-collection state for the Bepu backend. Trigger flags are written single-threaded by

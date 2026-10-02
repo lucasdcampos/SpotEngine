@@ -1,7 +1,7 @@
 using Silk.NET.OpenAL;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// Owns the process-wide OpenAL device and context. Opening is wrapped end to end so a machine with no

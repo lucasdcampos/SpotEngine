@@ -1,5 +1,5 @@
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
 namespace Spot.DebugUI.Undo;
 
@@ -13,7 +13,7 @@ namespace Spot.DebugUI.Undo;
 /// instances, a script reload rebuilds every behaviour, and leaving play mode clears the scene and
 /// deserializes it again. An action holding a captured component would quietly write into a dead
 /// object. The stable <see cref="Entity.PersistentId"/> survives all of those (a full deserialize keeps
-/// the stored id), so it is the only safe handle — and the <see cref="Spot.Scenes.Scene"/> instance is
+/// the stored id), so it is the only safe handle — and the <see cref="Spot.Engine.Scenes.Scene"/> instance is
 /// safe to hold because the editor always re-hydrates a scene in place.
 /// </remarks>
 public sealed class ComponentValueAction : IUndoableAction

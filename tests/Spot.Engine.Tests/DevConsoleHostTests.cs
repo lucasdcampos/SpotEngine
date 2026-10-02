@@ -1,4 +1,4 @@
-using Spot.Console;
+using Spot.Engine.Console;
 
 namespace Spot.Engine.Tests;
 

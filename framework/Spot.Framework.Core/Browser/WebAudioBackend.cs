@@ -3,9 +3,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
-using Spot.Audio;
 
-namespace Spot.Browser;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// The browser <see cref="IAudioBackend"/>: maps the neutral source/buffer/listener operations onto the

@@ -1,16 +1,18 @@
 using System.Numerics;
 using ImGuiNET;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Engine.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 using Spot.Build;
-using Spot.Rendering;
-using Spot.Scenes;
 using Spot.Editor.Panels;
 using Spot.DebugUI;
 using Spot.DebugUI.Panels;
 using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
-using Spot.Events;
 using Spot.DebugUI.Undo;
 
 namespace Spot.Editor;
@@ -64,7 +66,7 @@ public class OpenSceneData : IUndoDocument
 // the offscreen framebuffer it renders into, and the tab closes via its title-bar 'x'.
 public sealed class UIDocumentData : IUndoDocument
 {
-    public required Spot.UI.UIRoot Document;
+    public required Spot.Engine.UI.UIRoot Document;
     public required string Path;
     public required Spot.Editor.Panels.UICanvasPanel Panel;
     public bool IsOpen = true;
@@ -221,18 +223,18 @@ public class EditorScene : Scene
     {
         _warmupFrames = 3;
         EditorThemeManager.SetTheme(EditorThemes.SpotDark);
-        Spot.Editor.Utils.EditorSettings.LoadAndApply(Spot.Core.Application.Instance.Window.NativeWindow);
+        Spot.Editor.Utils.EditorSettings.LoadAndApply(Spot.Engine.Application.Instance.Window.NativeWindow);
         ImGui.LoadIniSettingsFromDisk("imgui.ini");
 
         // Intercept window-close requests so we can confirm unsaved changes first.
-        Spot.Core.Application.Instance.CanClose = CanCloseApp;
+        Spot.Engine.Application.Instance.CanClose = CanCloseApp;
 
         // The editor docks the console as a native panel, so take ownership of its window: the engine
         // then stops drawing its own floating "Console" (ImGui would merge the two by name and draw the
         // body — prompt included — twice) and stops capturing input from the console's open state, which
         // in the editor had no way to be dismissed and left the game's input dead. The ' key now reveals
         // and focuses the docked panel instead.
-        Spot.Core.Application.Instance.Console.SetHost(FocusConsolePanel);
+        Spot.Engine.Application.Instance.Console.SetHost(FocusConsolePanel);
 
         _gameFramebuffer = new Framebuffer(1280, 720);
         _gamePanel.SetFramebuffer(_gameFramebuffer);
@@ -284,7 +286,7 @@ public class EditorScene : Scene
             return;
         }
 
-        Spot.UI.UIRoot document = Spot.UI.Serialization.UISerializer.Load(filepath);
+        Spot.Engine.UI.UIRoot document = Spot.Engine.UI.UISerializer.Load(filepath);
         var data = new UIDocumentData
         {
             Document = document,
@@ -316,7 +318,7 @@ public class EditorScene : Scene
 
         try
         {
-            Spot.UI.Serialization.UISerializer.Save(_activeUIDocument.Document, _activeUIDocument.Path);
+            Spot.Engine.UI.UISerializer.Save(_activeUIDocument.Document, _activeUIDocument.Path);
             Log.Info("Saved UI document '{0}'.", System.IO.Path.GetFileName(_activeUIDocument.Path));
         }
         catch (System.Exception ex)
@@ -385,8 +387,8 @@ public class EditorScene : Scene
             return;
         }
 
-        Spot.Assets.AssetDatabase.Refresh(project.GetAssetDirectory());
-        Spot.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.LibraryFolder));
+        Spot.Engine.Assets.AssetDatabase.Refresh(project.GetAssetDirectory());
+        Spot.Engine.Assets.AssetDatabase.InstallLibraryResolver(System.IO.Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.LibraryFolder));
 
         LoadProjectAssembly(project);
         StartScriptWatcher(project);
@@ -480,7 +482,7 @@ public class EditorScene : Scene
         {
             // A missing directory or a platform quirk must never take the editor down; scripts can still be
             // reloaded manually from the menu.
-            Spot.Core.Log.CoreWarn("Could not watch project scripts for changes: {0}", ex.Message);
+            Spot.Framework.Log.CoreWarn("Could not watch project scripts for changes: {0}", ex.Message);
         }
     }
 
@@ -497,26 +499,26 @@ public class EditorScene : Scene
     /// </summary>
     private void ReloadScripts()
     {
-        Project? project = Spot.Core.Project.Active;
+        Project? project = Spot.Engine.Project.Active;
         if (project == null || _state != EditorState.Edit)
         {
             return;
         }
 
         _scriptsOutOfDate = false;
-        Spot.Core.Log.Info("Reloading scripts...");
+        Spot.Framework.Log.Info("Reloading scripts...");
 
         // 1. Recompile. A failed build leaves the running scripts untouched.
         var result = Spot.Build.ProjectBuilder.Build(
             project,
             Spot.Build.BuildPlatform.Windows,
             onOutput: LogBuildOutput,
-            onError: msg => Spot.Core.Log.Error($"[Build] {msg}"),
+            onError: msg => Spot.Framework.Log.Error($"[Build] {msg}"),
             fastDebug: true);
 
         if (!result.Success)
         {
-            Spot.Core.Log.Error("Script reload aborted: build failed.");
+            Spot.Framework.Log.Error("Script reload aborted: build failed.");
             return;
         }
 
@@ -543,7 +545,7 @@ public class EditorScene : Scene
         string? dll = FindProjectAssembly(project);
         if (dll == null || !s_scriptHost.Load(dll))
         {
-            Spot.Core.Log.Error("Script reload failed to load the rebuilt assembly; scripts are now unresolved.");
+            Spot.Framework.Log.Error("Script reload failed to load the rebuilt assembly; scripts are now unresolved.");
             return;
         }
 
@@ -570,7 +572,7 @@ public class EditorScene : Scene
             refs.ResolveDeferred();
         }
 
-        Spot.Core.Log.Info("Scripts reloaded.");
+        Spot.Framework.Log.Info("Scripts reloaded.");
     }
 
     private readonly record struct ScriptReloadSnapshot(
@@ -769,20 +771,20 @@ public class EditorScene : Scene
                     if (_gamePanelFocused)
                     {
                         // Gaining focus: unsuppress input first, then restore game's cursor lock.
-                        Spot.Core.Input.Suppressed = false;
-                        Spot.Core.Input.RestoreCursor();
+                        Spot.Framework.Input.Suppressed = false;
+                        Spot.Framework.Input.RestoreCursor();
                     }
                     else
                     {
                         // Losing focus: release cursor while not yet suppressed, then suppress.
-                        Spot.Core.Input.ReleaseCursor();
-                        Spot.Core.Input.Suppressed = true;
+                        Spot.Framework.Input.ReleaseCursor();
+                        Spot.Framework.Input.Suppressed = true;
                     }
                 }
                 else
                 {
                     // No transition: just maintain current suppression state.
-                    Spot.Core.Input.Suppressed = !_gamePanelFocused;
+                    Spot.Framework.Input.Suppressed = !_gamePanelFocused;
                 }
 
                 // In play mode: run the full system stack for the active scene.
@@ -826,7 +828,7 @@ public class EditorScene : Scene
                 {
                     particles.Play();
                 }
-                Spot.Scenes.ParticleSystem.UpdateEntity(currentSelected.Value, deltaTime);
+                Spot.Engine.Scenes.ParticleSystem.UpdateEntity(currentSelected.Value, deltaTime);
                 _lastSelectedParticleEntity = currentSelected;
             }
             else
@@ -901,7 +903,7 @@ public class EditorScene : Scene
             }
 
             // Debug Physics Rendering
-            bool showAll = Spot.Physics.PhysicsDebug.ShowColliders && sceneData == _activeSceneData;
+            bool showAll = Spot.Engine.Physics.PhysicsDebug.ShowColliders && sceneData == _activeSceneData;
             bool showSelected = _context.Selection.HasValue && sceneData == _activeSceneData;
 
             if (showAll || showSelected)
@@ -926,23 +928,23 @@ public class EditorScene : Scene
 
                 void DrawEntityColliders(Entity entity)
                 {
-                    if (entity.HasComponent<Spot.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
+                    if (entity.HasComponent<Spot.Engine.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
                     {
                         var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
+                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
 
-                    if (entity.HasComponent<Spot.Physics.BoxCollider3DComponent>() && entity.HasComponent<TransformComponent>())
+                    if (entity.HasComponent<Spot.Engine.Physics.BoxCollider3DComponent>() && entity.HasComponent<TransformComponent>())
                     {
                         var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
+                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                         DrawBox3DWire(bounds.Min, bounds.Max);
                     }
 
-                    if (entity.TryGetComponent(out Spot.Scenes.RelationshipComponent? rel))
+                    if (entity.TryGetComponent(out Spot.Engine.Scenes.RelationshipComponent? rel))
                     {
                         foreach (var child in rel.Children)
                             DrawEntityColliders(child);
@@ -954,20 +956,20 @@ public class EditorScene : Scene
                 if (showAll)
                 {
                     // ShowColliders is on: draw every entity in the scene, not just the selection.
-                    foreach (var entity in sceneData.Scene.View<Spot.Physics.BoxCollider2DComponent, TransformComponent>())
+                    foreach (var entity in sceneData.Scene.View<Spot.Engine.Physics.BoxCollider2DComponent, TransformComponent>())
                     {
                         if (!entity.IsActiveInHierarchy()) continue;
                         var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
+                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
 
-                    foreach (var entity in sceneData.Scene.View<Spot.Physics.BoxCollider3DComponent, TransformComponent>())
+                    foreach (var entity in sceneData.Scene.View<Spot.Engine.Physics.BoxCollider3DComponent, TransformComponent>())
                     {
                         if (!entity.IsActiveInHierarchy()) continue;
                         var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
+                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                         DrawBox3DWire(bounds.Min, bounds.Max);
                     }
@@ -1147,7 +1149,7 @@ public class EditorScene : Scene
             if (data.IsOpen) data.Panel.RenderDocument();
         }
 
-        var window = Spot.Core.Application.Instance.Window;
+        var window = Spot.Engine.Application.Instance.Window;
         Renderer.SetViewport(0, 0, (uint)window.Width, (uint)window.Height);
         Renderer.SetClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     }
@@ -1268,7 +1270,7 @@ public class EditorScene : Scene
             int dropped = _history.DiscardDocument(closing);
             if (dropped > 0)
             {
-                Spot.Core.Log.Info(
+                Spot.Framework.Log.Info(
                     "Closed a scene with {0} undo {1} in the history; they were discarded.",
                     dropped, dropped == 1 ? "entry" : "entries");
             }
@@ -1336,7 +1338,7 @@ public class EditorScene : Scene
                 }
 
                 // Overlay: subtle "Esc to release" hint at the bottom when the panel holds cursor lock.
-                if (playing && _gamePanelFocused && Spot.Core.Input.CursorLocked && size.X > 0 && size.Y > 0)
+                if (playing && _gamePanelFocused && Spot.Framework.Input.CursorLocked && size.X > 0 && size.Y > 0)
                 {
                     const string escMsg = "Esc to release cursor";
                     var textSize = ImGui.CalcTextSize(escMsg);
@@ -1379,7 +1381,7 @@ public class EditorScene : Scene
             _focusConsoleRequested = false;
             _showConsole = true;
             ImGui.SetWindowFocus("Console");
-            Spot.Core.Application.Instance.Console.RequestInputFocus();
+            Spot.Engine.Application.Instance.Console.RequestInputFocus();
         }
 
         if (_showConsole)
@@ -1471,7 +1473,7 @@ public class EditorScene : Scene
 
         UpdateSceneStatus();
 
-        var lastLine = Spot.Core.Application.Instance.Console.LastLine;
+        var lastLine = Spot.Engine.Application.Instance.Console.LastLine;
         if (lastLine != null)
         {
             var viewport = ImGui.GetMainViewport();
@@ -1495,7 +1497,7 @@ public class EditorScene : Scene
         // lock. The fly-mode viewports manage this flag themselves (NoMouseCursorChange); here we
         // apply the same guard for game-side cursor lock so the cursor stays hidden during play.
         // Placed last so all viewport panels have already had their turn with the flag.
-        bool gameLocksCursor = _state != EditorState.Edit && _gamePanelFocused && Spot.Core.Input.CursorLocked;
+        bool gameLocksCursor = _state != EditorState.Edit && _gamePanelFocused && Spot.Framework.Input.CursorLocked;
         if (gameLocksCursor)
         {
             ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.NoMouseCursorChange;
@@ -1797,17 +1799,17 @@ public class EditorScene : Scene
         var project = Project.Active;
         if (project == null || string.IsNullOrEmpty(project.ProjectDirectory)) return;
 
-        Spot.Core.Log.Info($"Starting build process for {platform}...");
+        Spot.Framework.Log.Info($"Starting build process for {platform}...");
 
         System.Threading.Tasks.Task.Run(() =>
         {
             var result = Spot.Build.ProjectBuilder.Build(project, platform,
-                onOutput: msg => Spot.Core.Log.Info(msg),
-                onError: msg => Spot.Core.Log.Error(msg));
+                onOutput: msg => Spot.Framework.Log.Info(msg),
+                onError: msg => Spot.Framework.Log.Error(msg));
 
             if (result.Success)
             {
-                Spot.Core.Log.Info("Build completed successfully!");
+                Spot.Framework.Log.Info("Build completed successfully!");
                 if (System.OperatingSystem.IsWindows())
                 {
                     try { System.Diagnostics.Process.Start("explorer.exe", $"\"{result.OutputDir}\""); } catch { }
@@ -1815,7 +1817,7 @@ public class EditorScene : Scene
             }
             else
             {
-                Spot.Core.Log.Error($"Build failed with exit code {result.ExitCode}. See above for details.");
+                Spot.Framework.Log.Error($"Build failed with exit code {result.ExitCode}. See above for details.");
             }
         });
     }
@@ -1848,12 +1850,12 @@ public class EditorScene : Scene
                 else if (System.IO.Directory.Exists(file))
                 {
                     // Basic copy for directory could be recursive, but let's just log for now
-                    Spot.Core.Log.CoreWarn($"Dropping directories is not fully supported yet: '{file}'");
+                    Spot.Framework.Log.CoreWarn($"Dropping directories is not fully supported yet: '{file}'");
                 }
             }
             catch (System.Exception ex)
             {
-                Spot.Core.Log.CoreError($"Failed to copy dropped file '{file}': {ex.Message}");
+                Spot.Framework.Log.CoreError($"Failed to copy dropped file '{file}': {ex.Message}");
             }
         }
         return true;
@@ -1861,9 +1863,9 @@ public class EditorScene : Scene
 
     public override void OnExit()
     {
-        Spot.Core.Application.Instance.CanClose = null;
-        Spot.Core.Application.Instance.Console.SetHost(null);
-        Spot.Editor.Utils.EditorSettings.Save(Spot.Core.Application.Instance.Window.NativeWindow);
+        Spot.Engine.Application.Instance.CanClose = null;
+        Spot.Engine.Application.Instance.Console.SetHost(null);
+        Spot.Editor.Utils.EditorSettings.Save(Spot.Engine.Application.Instance.Window.NativeWindow);
         SaveSession();
 
         StopScriptWatcher();
@@ -1906,7 +1908,7 @@ public class EditorScene : Scene
         _prevGamePanelFocused = false;
         _state = EditorState.Play;
         _showGame = true;
-        Spot.Core.Log.Info("Entering play mode.");
+        Spot.Framework.Log.Info("Entering play mode.");
     }
 
     private void OnStop()
@@ -1928,35 +1930,35 @@ public class EditorScene : Scene
         _gamePanelFocused = false;
         _prevGamePanelFocused = false;
         // Clear suppression first so CursorLocked can actually apply the cursor-free state.
-        Spot.Core.Input.Suppressed = false;
+        Spot.Framework.Input.Suppressed = false;
         // Return the hardware cursor to normal; game scripts never get a chance to do this on Stop.
-        Spot.Core.Input.CursorLocked = false;
+        Spot.Framework.Input.CursorLocked = false;
         _state = EditorState.Edit;
-        Spot.Core.Log.Info("Exited play mode.");
+        Spot.Framework.Log.Info("Exited play mode.");
     }
 
     // Compiles the project scripts (dotnet build → bin/) and loads the resulting assembly so that
     // ScriptResolver can instantiate game types. Called once on first Play when no assembly is loaded.
     private void EnsureScriptsBuilt(Project project)
     {
-        Spot.Core.Log.Info("Building project scripts for play mode...");
+        Spot.Framework.Log.Info("Building project scripts for play mode...");
 
         if (!BuildScriptsDll(project))
         {
-            Spot.Core.Log.Error("Script build failed; game scripts will not run. See the console for build errors.");
+            Spot.Framework.Log.Error("Script build failed; game scripts will not run. See the console for build errors.");
             return;
         }
 
         string? dll = FindProjectAssembly(project);
         if (dll == null)
         {
-            Spot.Core.Log.Error("Script build succeeded but the output DLL was not found under bin/. Cannot load scripts.");
+            Spot.Framework.Log.Error("Script build succeeded but the output DLL was not found under bin/. Cannot load scripts.");
             return;
         }
 
         if (!s_scriptHost.Load(dll))
         {
-            Spot.Core.Log.Error("Failed to load project scripts from '{0}'.", dll);
+            Spot.Framework.Log.Error("Failed to load project scripts from '{0}'.", dll);
             return;
         }
 
@@ -1997,7 +1999,7 @@ public class EditorScene : Scene
 
         if (diagnostic)
         {
-            Spot.Core.Log.Info("[Build] {0}", line);
+            Spot.Framework.Log.Info("[Build] {0}", line);
         }
     }
 
@@ -2036,12 +2038,12 @@ public class EditorScene : Scene
             process.ErrorDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(e.Data))
-                    Spot.Core.Log.Error("[Build] {0}", e.Data);
+                    Spot.Framework.Log.Error("[Build] {0}", e.Data);
             };
 
             if (!process.Start())
             {
-                Spot.Core.Log.Error("Failed to start dotnet build process.");
+                Spot.Framework.Log.Error("Failed to start dotnet build process.");
                 return false;
             }
 
@@ -2052,7 +2054,7 @@ public class EditorScene : Scene
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Error("Script build threw an exception: {0}", ex.Message);
+            Spot.Framework.Log.Error("Script build threw an exception: {0}", ex.Message);
             return false;
         }
     }
@@ -2381,8 +2383,8 @@ public class EditorScene : Scene
     // Keyboard shortcuts handled once per frame (editor/edit mode only).
     private void HandleShortcuts()
     {
-        bool ctrl = Spot.Core.Input.GetKey(Spot.Core.Key.LeftControl) || Spot.Core.Input.GetKey(Spot.Core.Key.RightControl);
-        if ((_state == EditorState.Edit || _state == EditorState.Play) && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.S))
+        bool ctrl = Spot.Framework.Input.GetKey(Spot.Framework.Key.LeftControl) || Spot.Framework.Input.GetKey(Spot.Framework.Key.RightControl);
+        if ((_state == EditorState.Edit || _state == EditorState.Play) && ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.S))
         {
             // Save what you're working in: a focused UI document tab, otherwise the active scene.
             if (_context.HierarchyTarget == HierarchyTarget.UI && _activeUIDocument != null)
@@ -2390,7 +2392,7 @@ public class EditorScene : Scene
             else
                 SaveScene();
         }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.N))
+        if (_state == EditorState.Edit && ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.N))
         {
             NewScene();
         }
@@ -2413,20 +2415,20 @@ public class EditorScene : Scene
                 Redo();
             }
         }
-        if (_state == EditorState.Edit && ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.R))
+        if (_state == EditorState.Edit && ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.R))
         {
             ReloadScripts();
         }
 
         // Ctrl+M toggles the Audio Mixer in both edit and play mode: hearing the mix while the game runs is
         // most of the point of having it.
-        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.M))
+        if (ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.M))
         {
             _showAudioMixer = !_showAudioMixer;
         }
 
         // Ctrl+H toggles the History panel.
-        if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.H))
+        if (ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.H))
         {
             _showHistory = !_showHistory;
         }
@@ -2435,11 +2437,11 @@ public class EditorScene : Scene
         // (Space is intentionally NOT used here — it's commonly bound to game actions like jump.)
         if (_state == EditorState.Play)
         {
-            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.P))
+            if (ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.P))
             {
                 if (_isPlayPaused) OnResume(); else OnPause();
             }
-            if (ctrl && Spot.Core.Input.GetKeyDown(Spot.Core.Key.Right))
+            if (ctrl && Spot.Framework.Input.GetKeyDown(Spot.Framework.Key.Right))
                 OnStep();
 
             // Escape releases the Game panel's input focus (frees the cursor back to the editor).
@@ -2509,7 +2511,7 @@ public class EditorScene : Scene
         if (!_gapNoticeShown)
         {
             _gapNoticeShown = true;
-            Spot.Core.Log.Info(
+            Spot.Framework.Log.Info(
                 "Some edits are being undone as whole-scene 'Scene Change' steps rather than named ones. "
                 + "Everything is still undoable; the History panel (Ctrl+H) counts them.");
         }
@@ -2602,7 +2604,7 @@ public class EditorScene : Scene
         }
 
         string projectName = Project.Active?.Config.Name ?? "Untitled Project";
-        string title = $"Spot {Spot.Core.Application.Instance.EngineVersion} - {projectName}";
+        string title = $"Spot {Spot.Engine.Application.Instance.EngineVersion} - {projectName}";
         if (_state == EditorState.Play)
         {
             title += _isPlayPaused ? " (Paused)" : " (Playing)";
@@ -2611,7 +2613,7 @@ public class EditorScene : Scene
         if (title != _lastWindowTitle)
         {
             _lastWindowTitle = title;
-            Spot.Core.Application.Instance.Window.NativeWindow.Title = title;
+            Spot.Engine.Application.Instance.Window.NativeWindow.Title = title;
         }
     }
 
@@ -2681,7 +2683,7 @@ public class EditorScene : Scene
     private void RequestExit()
     {
         if (_openScenes.Any(s => s.IsDirty)) _showQuitConfirm = true;
-        else Spot.Core.Application.Instance.Quit();
+        else Spot.Engine.Application.Instance.Quit();
     }
 
     // Saves every dirty scene, prompting for a path where needed. Returns false if the user cancelled.
@@ -2750,7 +2752,7 @@ public class EditorScene : Scene
                 {
                     _showQuitConfirm = false;
                     ImGui.CloseCurrentPopup();
-                    Spot.Core.Application.Instance.Quit();
+                    Spot.Engine.Application.Instance.Quit();
                 }
             }
             ImGui.SameLine();
@@ -2758,7 +2760,7 @@ public class EditorScene : Scene
             {
                 _showQuitConfirm = false;
                 ImGui.CloseCurrentPopup();
-                Spot.Core.Application.Instance.Quit();
+                Spot.Engine.Application.Instance.Quit();
             }
             ImGui.SameLine();
             if (ImGui.Button("Cancel", new Vector2(110, 0)))
@@ -2808,7 +2810,7 @@ public class EditorScene : Scene
             sptprojPath = System.IO.Path.Combine(project.ProjectDirectory, project.Config.Name + ".sptproj");
 
         Project.SaveActive(sptprojPath);
-        Spot.Core.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
+        Spot.Framework.Log.Info("Start scene set to '{0}'", project.Config.StartScene);
     }
 
     // Persists the mixer's bus layout into the active project. Project.SaveActive captures the live layout, so
@@ -2828,7 +2830,7 @@ public class EditorScene : Scene
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Warn("Could not save the audio mixer layout: {0}", ex.Message);
+            Spot.Framework.Log.Warn("Could not save the audio mixer layout: {0}", ex.Message);
         }
     }
 

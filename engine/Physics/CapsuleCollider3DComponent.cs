@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A capsule collider (an upright cylinder capped by hemispheres) for 3D physics. Ideal for

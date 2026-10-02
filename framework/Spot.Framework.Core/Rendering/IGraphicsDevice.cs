@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The kind of primitive a draw call assembles from its vertices.

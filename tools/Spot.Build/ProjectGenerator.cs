@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build;
 
@@ -27,7 +27,7 @@ public static class ProjectGenerator
         if (string.IsNullOrEmpty(project.ProjectDirectory)) return;
 
         CopyEngineDll(project.ProjectDirectory);
-        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.EngineBinFolder));
+        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder));
         WriteCsproj(project);
         WriteSolution(project);
         WriteProgram(project, overwriteProgram);
@@ -43,7 +43,7 @@ public static class ProjectGenerator
     /// </summary>
     public static string GenerateBrowser(Project project)
     {
-        string webDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "web");
+        string webDir = Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "web");
         string wwwroot = Path.Combine(webDir, "wwwroot");
         string engineBin = Path.Combine(webDir, "EngineBin");
         Directory.CreateDirectory(wwwroot);
@@ -139,7 +139,7 @@ public static class ProjectGenerator
 
         // The runtime boots this assembly's entry point; main.js then drives the engine's browser host.
         string program = @"// Browser build entry point. Rendering and the loop are driven from wwwroot/main.js
-// through Spot.Browser.BrowserHost; this Main just boots the WebAssembly runtime.
+// through Spot.Engine.Browser.BrowserHost; this Main just boots the WebAssembly runtime.
 System.Console.WriteLine(""Spot browser runtime started."");
 ";
         File.WriteAllText(Path.Combine(webDir, "Program.cs"), program);
@@ -334,7 +334,7 @@ System.Console.WriteLine(""Spot browser runtime started."");
 
     private static void CopyEngineDll(string projectDirectory)
     {
-        string engineBinDir = Path.Combine(projectDirectory, Spot.Core.ProjectStructure.EngineBinFolder);
+        string engineBinDir = Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder);
         Directory.CreateDirectory(engineBinDir);
 
         string sourceDllPath = typeof(Project).Assembly.Location;
@@ -511,7 +511,7 @@ EndGlobal
         var spec = new ApplicationSpec
         {
             Name = project.Config.Name,
-            ContentDirectory = Spot.Core.ProjectStructure.ContentFolder,
+            ContentDirectory = Spot.Engine.ProjectStructure.ContentFolder,
             ManifestPath = "manifest.json",
             StartScene = project.Config.StartScene.Replace("\\", "/"),
 
@@ -535,8 +535,7 @@ EndGlobal
         string name = project.Config.Name;
 
         string programContent = $@"using System;
-using Spot;
-using Spot.Core;
+using Spot.Engine;
 
 namespace {name.Replace(" ", "")};
 

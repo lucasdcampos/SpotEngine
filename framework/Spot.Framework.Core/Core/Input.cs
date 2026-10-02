@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Events;
+using Spot.Framework.Events;
 
-namespace Spot.Core;
+namespace Spot.Framework;
 
 /// <summary>
 /// Locks or unlocks the hardware cursor on behalf of <see cref="Input"/>, without coupling it to a

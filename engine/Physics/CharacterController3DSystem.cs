@@ -1,10 +1,10 @@
 using System;
 using System.Numerics;
-using Spot.Core;
-using Spot.Scenes;
-using Spot.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Drives every <see cref="CharacterController3DComponent"/>: mouse look, Quake/CS-style ground and

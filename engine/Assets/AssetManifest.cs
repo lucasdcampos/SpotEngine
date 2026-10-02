@@ -1,9 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spot.Core;
-using Spot.IO;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>One manifest record: where a cooked artifact lives (relative to Content) and what type it is.</summary>
 public sealed class ManifestEntry

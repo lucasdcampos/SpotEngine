@@ -1,9 +1,10 @@
 using System;
 using System.Numerics;
 using Silk.NET.OpenGL;
-using Spot.Assets;
-using Spot.Physics;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
 namespace Spot.DebugUI.UI;
 
@@ -17,7 +18,7 @@ public static class ModelPreviewHelper
     // A neutral light-gray material so previews focus on the model's silhouette, not its authored colors.
     private static readonly Material s_previewMaterial = new() { Color = new Vector4(0.78f, 0.78f, 0.80f, 1.0f) };
 
-    public static void RenderToFramebuffer(Model model, Spot.Rendering.Framebuffer framebuffer)
+    public static void RenderToFramebuffer(Model model, Spot.Framework.Graphics.Framebuffer framebuffer)
     {
         Renderer.Api.GetInteger(GLEnum.FramebufferBinding, out int prevFb);
         int[] prevViewport = new int[4];

@@ -219,10 +219,10 @@ public sealed class EditorTheme
         // Mirror the log colors onto the engine-owned developer console (the engine does not
         // reference the editor, so the theme pushes these values instead of the console pulling them).
         // The monospaced font is handed over the same way so the console reads like a terminal.
-        Spot.Console.DevConsole.DefaultTextColor = p.LogText;
-        Spot.Console.DevConsole.CommandColor = p.LogCommand;
-        Spot.Console.DevConsole.ErrorColor = p.LogError;
-        Spot.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
+        Spot.Engine.Console.DevConsole.DefaultTextColor = p.LogText;
+        Spot.Engine.Console.DevConsole.CommandColor = p.LogCommand;
+        Spot.Engine.Console.DevConsole.ErrorColor = p.LogError;
+        Spot.Engine.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);

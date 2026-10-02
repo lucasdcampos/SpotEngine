@@ -1,6 +1,6 @@
-using Spot.IO;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Resolves asset paths stored in scenes and materials against the active project's asset directory,

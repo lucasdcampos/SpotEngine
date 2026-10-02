@@ -2,15 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using ImGuiNET;
-using Spot.Console;
-using Spot.Events;
-using Spot.Rendering;
-using Spot.Scenes;
-using Spot.Core.Services;
-using Spot.Assets;
+using Spot.Engine.Assets;
+using Spot.Engine.Console;
+using Spot.Engine.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Engine.Services;
+using Spot.Framework;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 using System.IO;
 
-namespace Spot.Core;
+namespace Spot.Engine;
 
 /// <summary>
 /// Describes how an <see cref="Application"/> should be created.
@@ -93,10 +95,10 @@ public class ApplicationSpec
     /// <summary>
     /// Gets or sets the project's audio mixer layout: the volume groups sounds are routed to (Music, SFX, UI, or
     /// whatever the project defines) and their authored levels. Applied at startup via
-    /// <see cref="Spot.Audio.AudioMixer.SetLayout"/> so a shipped game mixes exactly as the editor did. Empty
+    /// <see cref="Spot.Framework.Audio.AudioMixer.SetLayout"/> so a shipped game mixes exactly as the editor did. Empty
     /// falls back to the engine's default Master / Music / SFX / UI tree.
     /// </summary>
-    public List<Spot.Audio.AudioBusDefinition> AudioBuses { get; set; } = new();
+    public List<Spot.Framework.Audio.AudioBusDefinition> AudioBuses { get; set; } = new();
 
     /// <summary>Gets the effective asset root: the cooked <see cref="ContentDirectory"/> if set, else <see cref="AssetDirectory"/>.</summary>
     public string? AssetRoot =>
@@ -362,7 +364,7 @@ public class Application
         // may query actions in OnCreate. Works for editor play and shipped games alike, as both build
         // the spec in code.
         Input.SetDefaultBindings(_spec.DefaultBindings);
-        Spot.Audio.AudioMixer.SetLayout(_spec.AudioBuses);
+        Spot.Framework.Audio.AudioMixer.SetLayout(_spec.AudioBuses);
 
         _running = true;
         if (startScene is not null)
@@ -453,7 +455,7 @@ public class Application
         // Publish the frame clock from the clamped real delta. Gameplay advances on the scaled delta
         // (Time.DeltaTime, respecting Time.TimeScale); engine services stay on the real delta so
         // pausing or slow-mo never starves audio, asset streaming, or the editor.
-        Spot.Core.Time.NewFrame(_deltaTime);
+        Spot.Framework.Time.NewFrame(_deltaTime);
 
         try
         {
@@ -462,7 +464,7 @@ public class Application
             ModelImporter.ProcessPendingUploads();
 
             SceneManager.ApplyPendingSwitch();
-            SceneManager.Update(Spot.Core.Time.DeltaTime);
+            SceneManager.Update(Spot.Framework.Time.DeltaTime);
 
             foreach (var service in _services)
             {

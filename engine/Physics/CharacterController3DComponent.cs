@@ -1,14 +1,14 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A first-person character controller with Quake/CS-style movement: ground acceleration with
 /// friction, air-strafing (accelerate toward the look+strafe direction under a small air-speed cap,
 /// so turning the mouse while holding A/D builds speed), jumping, and smooth crouching. Pair it with a
 /// dynamic <see cref="PhysicsBody3DComponent"/>, a <see cref="BoxCollider3DComponent"/>, and a child
-/// entity carrying a <see cref="Spot.Scenes.CameraComponent"/> for the eyes.
+/// entity carrying a <see cref="Spot.Engine.Scenes.CameraComponent"/> for the eyes.
 /// </summary>
 [ComponentMenu("Character Controller 3D", Order = 65)]
 [SceneComponent("CharacterController3D")]

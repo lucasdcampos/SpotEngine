@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// A compiled and linked shader program.

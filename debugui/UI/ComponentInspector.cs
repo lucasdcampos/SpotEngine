@@ -5,13 +5,13 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using ImGuiNET;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Audio;
-using Spot.Core;
+using Spot.Engine.Animation;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.Undo;
-using Spot.Rendering;
-using Spot.Scenes;
 
 namespace Spot.DebugUI.UI;
 

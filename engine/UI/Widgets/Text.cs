@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// Draws a string inside its rectangle. Uses <see cref="Font"/>, falling back to <see cref="UIRoot.DefaultFont"/>,

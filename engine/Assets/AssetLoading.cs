@@ -1,7 +1,7 @@
-using Spot.Audio;
-using Spot.Rendering;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// The engine's asset-reference loading, added to the framework's resource types. A stored reference is either

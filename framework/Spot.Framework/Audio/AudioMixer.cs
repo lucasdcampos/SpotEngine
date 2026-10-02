@@ -1,6 +1,6 @@
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Audio;
+namespace Spot.Framework.Audio;
 
 /// <summary>
 /// The engine's bus tree: named volume groups ("Music", "SFX", "UI" under "Master") that every sound is routed

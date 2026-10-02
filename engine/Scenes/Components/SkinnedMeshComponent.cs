@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Numerics;
-using Spot.Animation;
-using Spot.Rendering;
+using Spot.Framework.Animation;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Marks the sibling <see cref="MeshComponent"/> as skinned: the render system draws it through the skinning

@@ -1,8 +1,9 @@
 using System;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Scenes;
-using Spot.Assets;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;
@@ -10,7 +11,7 @@ namespace Spot.DebugUI.Panels;
 public class InspectorPanel : IDisposable
 {
     private readonly ISelectionContext _context;
-    private Spot.Rendering.Framebuffer? _materialPreviewFb;
+    private Spot.Framework.Graphics.Framebuffer? _materialPreviewFb;
     // The material path and property fingerprint the preview framebuffer was last rendered for, so the
     // offscreen render only re-runs when something the preview shows actually changed.
     private string? _materialPreviewPath;
@@ -140,7 +141,7 @@ public class InspectorPanel : IDisposable
                         }
                         catch (Exception ex)
                         {
-                            Spot.Core.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
+                            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
                         }
                         ImGui.CloseCurrentPopup();
                     }
@@ -198,7 +199,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to save prefab '{0}': {1}", path, ex.Message);
+                Spot.Framework.Log.Error("Failed to save prefab '{0}': {1}", path, ex.Message);
             }
         }
     }
@@ -218,7 +219,7 @@ public class InspectorPanel : IDisposable
         uint previewSize = 200;
         if (_materialPreviewFb == null)
         {
-            _materialPreviewFb = new Spot.Rendering.Framebuffer(previewSize, previewSize);
+            _materialPreviewFb = new Spot.Framework.Graphics.Framebuffer(previewSize, previewSize);
         }
         
         // Rendering the preview is a full offscreen draw, so only do it when the selected material or one of
@@ -241,7 +242,7 @@ public class InspectorPanel : IDisposable
                 if (_materialPreviewErrorPath != path)
                 {
                     _materialPreviewErrorPath = path;
-                    Spot.Core.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
+                    Spot.Framework.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
                 }
             }
         }
@@ -327,7 +328,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to set material texture: {0}", ex.Message);
+                Spot.Framework.Log.Error("Failed to set material texture: {0}", ex.Message);
             }
         }
 
@@ -340,7 +341,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to set material normal map: {0}", ex.Message);
+                Spot.Framework.Log.Error("Failed to set material normal map: {0}", ex.Message);
             }
         }
     }

@@ -1,5 +1,5 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
 namespace Spot.Framework.Tests;
 

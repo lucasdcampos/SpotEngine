@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Animation;
-using Spot.Physics;
+using Spot.Framework.Animation;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Rendering;
+namespace Spot.Framework.Graphics;
 
 /// <summary>
 /// The CPU-side geometry of a mesh: interleaved vertex data and triangle indices, before any GPU

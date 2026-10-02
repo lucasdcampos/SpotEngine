@@ -5,11 +5,11 @@ using BepuPhysics;
 using BepuPhysics.Collidables;
 using BepuUtilities;
 using BepuUtilities.Memory;
-using Spot.Core;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
-namespace Spot.Physics.Bepu;
+namespace Spot.Engine.Physics.Bepu;
 
 /// <summary>
 /// A BepuPhysics v2 backend for the engine's 3D physics. Owns a <see cref="Simulation"/> and mirrors

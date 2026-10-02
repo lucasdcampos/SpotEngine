@@ -1,4 +1,5 @@
-namespace Spot.Rendering;
+
+namespace Spot.Engine.Rendering;
 
 // GLSL shader program sources for Renderer3D, split out of Renderer3D.cs to keep the renderer
 // logic readable. This partial holds only the embedded shader text; the C# rendering logic and

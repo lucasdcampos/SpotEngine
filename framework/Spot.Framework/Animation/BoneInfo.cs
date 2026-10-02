@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Animation;
+namespace Spot.Framework.Animation;
 
 /// <summary>
 /// One bone of a skinned submesh: the name of the node that drives it and its inverse bind (offset) matrix.

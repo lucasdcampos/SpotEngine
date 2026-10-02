@@ -11,10 +11,10 @@ using Microsoft.CodeAnalysis.Text;
 namespace Spot.ScriptGen;
 
 /// <summary>
-/// Emits a reflection-free <c>Spot.Scenes.IScriptProvider</c> for the game assembly it compiles into: it
-/// discovers every concrete <c>Spot.Scenes.EntityBehaviour</c> subclass and generates a provider that hands
+/// Emits a reflection-free <c>Spot.Engine.Scenes.IScriptProvider</c> for the game assembly it compiles into: it
+/// discovers every concrete <c>Spot.Engine.Scenes.EntityBehaviour</c> subclass and generates a provider that hands
 /// the runtime a stable guid, class name, type and construction factory for each. A module initializer
-/// registers the provider with <c>Spot.Scenes.ScriptRegistry</c> the moment the assembly loads, so script
+/// registers the provider with <c>Spot.Engine.Scenes.ScriptRegistry</c> the moment the assembly loads, so script
 /// resolution never needs <c>Activator</c> or an assembly scan — the AOT/trimming-safe path the browser
 /// build depends on. The stable guid comes from each script's <c>.cs.meta</c> sidecar, supplied to the
 /// compiler as an <c>AdditionalFiles</c> entry; scripts without a sidecar get an empty guid and remain
@@ -23,7 +23,7 @@ namespace Spot.ScriptGen;
 [Generator]
 public sealed class ScriptRegistryGenerator : IIncrementalGenerator
 {
-    private const string BaseTypeFullName = "Spot.Scenes.EntityBehaviour";
+    private const string BaseTypeFullName = "Spot.Engine.Scenes.EntityBehaviour";
 
     private readonly record struct ScriptInfo(string FullName, string SimpleName, string FilePath);
 
@@ -129,14 +129,14 @@ public sealed class ScriptRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine("namespace Spot.Generated");
         sb.AppendLine("{");
-        sb.AppendLine("    internal sealed class __SpotScriptProvider : global::Spot.Scenes.IScriptProvider");
+        sb.AppendLine("    internal sealed class __SpotScriptProvider : global::Spot.Engine.Scenes.IScriptProvider");
         sb.AppendLine("    {");
-        sb.AppendLine("        public global::System.Collections.Generic.IEnumerable<global::Spot.Scenes.ScriptDescriptor> GetScripts()");
+        sb.AppendLine("        public global::System.Collections.Generic.IEnumerable<global::Spot.Engine.Scenes.ScriptDescriptor> GetScripts()");
         sb.AppendLine("        {");
         foreach (ScriptInfo s in distinct)
         {
             string guid = guidByPath.TryGetValue(Normalize(s.FilePath), out string? g) ? g : string.Empty;
-            sb.Append("            yield return new global::Spot.Scenes.ScriptDescriptor(\"")
+            sb.Append("            yield return new global::Spot.Engine.Scenes.ScriptDescriptor(\"")
               .Append(guid).Append("\", \"").Append(s.SimpleName).Append("\", typeof(").Append(s.FullName)
               .Append("), static () => new ").Append(s.FullName).AppendLine("());");
         }
@@ -146,7 +146,7 @@ public sealed class ScriptRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
         sb.AppendLine("        internal static void __Register()");
         sb.AppendLine("        {");
-        sb.AppendLine("            global::Spot.Scenes.ScriptRegistry.Register(new __SpotScriptProvider());");
+        sb.AppendLine("            global::Spot.Engine.Scenes.ScriptRegistry.Register(new __SpotScriptProvider());");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");

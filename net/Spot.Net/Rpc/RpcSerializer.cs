@@ -1,5 +1,5 @@
 using System.Numerics;
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.Net;
 

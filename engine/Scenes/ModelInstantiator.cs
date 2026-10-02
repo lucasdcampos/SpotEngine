@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Animation;
+using Spot.Framework.Assimp;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Turns a model file (FBX, OBJ, glTF, ...) into a live entity hierarchy: it rebuilds the source's node

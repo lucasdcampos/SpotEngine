@@ -2,9 +2,9 @@ using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework.Animation;
+using Spot.Framework.Graphics;
 using Xunit;
 using Spot.Tests;
 

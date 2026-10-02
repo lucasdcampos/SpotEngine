@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Draws every entity's 3D mesh (<see cref="MeshComponent"/>) and 2D sprite (<see cref="Sprite2DComponent"/>),
@@ -45,10 +46,10 @@ public static class RenderSystem
 
     // The software occlusion buffer, rebuilt each frame from the scene's occluder meshes. One instance is
     // reused so its depth buffer is allocated once rather than per frame.
-    private static readonly Spot.Rendering.OcclusionCuller s_occlusion = new();
+    private static readonly Spot.Engine.Rendering.OcclusionCuller s_occlusion = new();
 
     // Occluders gathered before rasterizing, so a frame's budget goes to the ones that block the most.
-    private readonly record struct OccluderCandidate(Spot.Physics.Aabb3d LocalBounds, Matrix4x4 World, float ScreenArea);
+    private readonly record struct OccluderCandidate(Spot.Framework.Mathematics.Aabb3d LocalBounds, Matrix4x4 World, float ScreenArea);
     private static readonly List<OccluderCandidate> s_occluderScratch = new();
     private static readonly Comparison<OccluderCandidate> s_byScreenAreaDescending =
         static (a, b) => b.ScreenArea.CompareTo(a.ScreenArea);
@@ -72,9 +73,9 @@ public static class RenderSystem
     /// </param>
     public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
     {
-        Spot.Core.Profiler.BeginSample("Render");
+        Spot.Framework.Profiler.BeginSample("Render");
         RenderInternal(scene, viewProjection, cameraPosition);
-        Spot.Core.Profiler.EndSample("Render");
+        Spot.Framework.Profiler.EndSample("Render");
     }
 
     private static void RenderInternal(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
@@ -109,7 +110,7 @@ public static class RenderSystem
         // (the sun disc, emissive surfaces), and only a very faint vignette. The baseline exalts the
         // engine's lighting rather than dressing it up with heavy stylistic filters. Adding the
         // component is for *customizing* that look, not for switching quality on.
-        if (postProcess is null && Spot.Rendering.RenderSettings.Hdr)
+        if (postProcess is null && Spot.Engine.Rendering.RenderSettings.Hdr)
         {
             postProcess = s_defaultPostProcess ??= new PostProcessingComponent();
         }
@@ -151,7 +152,7 @@ public static class RenderSystem
                     // We want lightDir to point TOWARDS the light source for shader math.
                     dirLightDir = Vector3.Normalize(Vector3.TransformNormal(new Vector3(0, 0, 1), transform.Matrix));
                     
-                    if (light.CastShadows && Spot.Rendering.RenderSettings.Shadows)
+                    if (light.CastShadows && Spot.Engine.Rendering.RenderSettings.Shadows)
                     {
                         castShadows = true;
                         lightSpaceMatrix = ComputeDirectionalShadowMatrix(dirLightDir, viewProjection, cameraPos);
@@ -200,14 +201,14 @@ public static class RenderSystem
             }
         }
         
-        if (Spot.Rendering.RendererDebug.Fullbright)
+        if (Spot.Engine.Rendering.RendererDebug.Fullbright)
         {
             hasDirLight = false;
             castShadows = false;
             pointLightCount = 0;
         }
 
-        bool cull = !Spot.Rendering.RendererDebug.DisableFrustumCulling;
+        bool cull = !Spot.Engine.Rendering.RendererDebug.DisableFrustumCulling;
 
         // Find the first shadow-casting point/spot light (only one cubemap per scene).
         int pointShadowIdx = -1;
@@ -220,9 +221,9 @@ public static class RenderSystem
         {
             // Casters are culled against the light's frustum (the shadow matrix), so geometry that can
             // never land on the shadow map is skipped — a different volume from the camera frustum below.
-            var shadowFrustum = new Spot.Rendering.Frustum(lightSpaceMatrix);
+            var shadowFrustum = new Spot.Framework.Mathematics.Frustum(lightSpaceMatrix);
 
-            Renderer3D.EnsureShadowMapResolution(Spot.Rendering.RenderSettings.ShadowMapResolution);
+            Renderer3D.EnsureShadowMapResolution(Spot.Engine.Rendering.RenderSettings.ShadowMapResolution);
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
             foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
             {
@@ -257,7 +258,7 @@ public static class RenderSystem
 
         // Point/spot light cubemap shadow pass — 6 faces, one depth render each.
         bool hasPointShadow = false;
-        if (pointShadowIdx >= 0 && Renderer3D.SupportsPointShadows && Spot.Rendering.RenderSettings.PointShadows)
+        if (pointShadowIdx >= 0 && Renderer3D.SupportsPointShadows && Spot.Engine.Rendering.RenderSettings.PointShadows)
         {
             Renderer3D.EnsurePointShadowMapResolution();
             ref readonly Renderer3D.PointLightData caster = ref pointLights[pointShadowIdx];
@@ -305,7 +306,7 @@ public static class RenderSystem
             Renderer3D.EndPointShadowPass();
         }
 
-        if (Spot.Rendering.RendererDebug.Wireframe)
+        if (Spot.Engine.Rendering.RendererDebug.Wireframe)
         {
             Renderer.Device.SetWireframe(true);
         }
@@ -335,12 +336,12 @@ public static class RenderSystem
                 clouds.ColorTop.X, clouds.ColorTop.Y, clouds.ColorTop.Z,
                 clouds.ColorBottom.X, clouds.ColorBottom.Y, clouds.ColorBottom.Z,
                 clouds.Speed, clouds.Density, clouds.Height, 
-                clouds.Opacity, clouds.Volume, Spot.Core.Time.UnscaledTime);
+                clouds.Opacity, clouds.Volume, Spot.Framework.Time.UnscaledTime);
             break; // only draw the first one
         }
 
-        var frustum = new Spot.Rendering.Frustum(viewProjection);
-        Spot.Rendering.OcclusionCuller? occlusion = BuildOcclusionBuffer(scene, viewProjection, frustum, cull);
+        var frustum = new Spot.Framework.Mathematics.Frustum(viewProjection);
+        Spot.Engine.Rendering.OcclusionCuller? occlusion = BuildOcclusionBuffer(scene, viewProjection, frustum, cull);
         int visible = 0;
         int culled = 0;
         int occluded = 0;
@@ -366,7 +367,7 @@ public static class RenderSystem
             if (cull)
             {
                 // One box serves both tests: outside the view, or inside it but behind a wall.
-                Spot.Physics.Aabb3d worldBounds = WorldBounds(meshRenderer.Model, transform.Matrix, isSkinned);
+                Spot.Framework.Mathematics.Aabb3d worldBounds = WorldBounds(meshRenderer.Model, transform.Matrix, isSkinned);
                 if (!frustum.Intersects(worldBounds))
                 {
                     culled++;
@@ -392,11 +393,11 @@ public static class RenderSystem
             }
 
             Matrix4x4 world = transform.Matrix;
-            int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Assets.MaterialShaderType.Standard);
+            int shaderType = (int)(meshRenderer.Material?.ShaderType ?? Spot.Engine.Assets.MaterialShaderType.Standard);
 
             // Standard rigid meshes are gathered into instanced batches (drawn after the loop); water keeps
             // its own per-draw path (a distinct shader that isn't instanced).
-            if (shaderType == (int)Spot.Assets.MaterialShaderType.Standard)
+            if (shaderType == (int)Spot.Engine.Assets.MaterialShaderType.Standard)
             {
                 CollectInstances(meshRenderer, world, color);
             }
@@ -408,13 +409,13 @@ public static class RenderSystem
 
         FlushBatches();
 
-        Spot.Rendering.RendererDebug.VisibleMeshCount = visible;
-        Spot.Rendering.RendererDebug.CulledMeshCount = culled;
-        Spot.Rendering.RendererDebug.OccludedMeshCount = occluded;
+        Spot.Engine.Rendering.RendererDebug.VisibleMeshCount = visible;
+        Spot.Engine.Rendering.RendererDebug.CulledMeshCount = culled;
+        Spot.Engine.Rendering.RendererDebug.OccludedMeshCount = occluded;
 
         Renderer3D.EndScene();
 
-        if (Spot.Rendering.RendererDebug.Wireframe)
+        if (Spot.Engine.Rendering.RendererDebug.Wireframe)
         {
             Renderer.Device.SetWireframe(false);
         }
@@ -438,23 +439,23 @@ public static class RenderSystem
             }
         }
 
-        if (Spot.Physics.PhysicsDebug.ShowColliders)
+        if (Spot.Engine.Physics.PhysicsDebug.ShowColliders)
         {
-            foreach (var entity in scene.View<Spot.Physics.BoxCollider2DComponent, TransformComponent>())
+            foreach (var entity in scene.View<Spot.Engine.Physics.BoxCollider2DComponent, TransformComponent>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
                 var transform = entity.GetComponent<TransformComponent>();
-                var collider = entity.GetComponent<Spot.Physics.BoxCollider2DComponent>();
+                var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
                 if (!transform.Enabled || !collider.Enabled) continue;
                 var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                 Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
             }
 
-            foreach (var entity in scene.View<Spot.Physics.BoxCollider3DComponent, TransformComponent>())
+            foreach (var entity in scene.View<Spot.Engine.Physics.BoxCollider3DComponent, TransformComponent>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
                 var transform = entity.GetComponent<TransformComponent>();
-                var collider = entity.GetComponent<Spot.Physics.BoxCollider3DComponent>();
+                var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
                 if (!transform.Enabled || !collider.Enabled) continue;
                 var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                 Vector3 min = bounds.Min;
@@ -505,7 +506,7 @@ public static class RenderSystem
     /// <summary>Draws the scene's screen-space UI tree sized to the current viewport, when it has any widgets.</summary>
     private static void RenderUI(Scene scene)
     {
-        Spot.UI.UIRoot? ui = scene.UIRootOrNull;
+        Spot.Engine.UI.UIRoot? ui = scene.UIRootOrNull;
         if (ui is null || ui.Children.Count == 0) return;
 
         int width = (int)Renderer.ViewportWidth;
@@ -543,8 +544,8 @@ public static class RenderSystem
     /// </summary>
     private static Matrix4x4 ComputeDirectionalShadowMatrix(Vector3 lightDir, Matrix4x4 viewProjection, Vector3 cameraPos)
     {
-        float size = MathF.Max(Spot.Rendering.RenderSettings.ShadowDistance, 1.0f);
-        float res = MathF.Max(Spot.Rendering.RenderSettings.ShadowMapResolution, 1);
+        float size = MathF.Max(Spot.Engine.Rendering.RenderSettings.ShadowDistance, 1.0f);
+        float res = MathF.Max(Spot.Engine.Rendering.RenderSettings.ShadowMapResolution, 1);
 
         // Camera forward, flattened to the horizontal plane, so the shadow box leads the camera into the
         // scene it's looking at instead of centering half the texels behind the viewer.
@@ -588,7 +589,7 @@ public static class RenderSystem
     /// Skinned meshes are padded generously first: their bounds are the bind pose, which animation can
     /// push geometry beyond, so a tight test would pop limbs out of view.
     /// </summary>
-    private static bool IsVisible(in Spot.Rendering.Frustum frustum, Model model, in Matrix4x4 world, bool isSkinned)
+    private static bool IsVisible(in Spot.Framework.Mathematics.Frustum frustum, Model model, in Matrix4x4 world, bool isSkinned)
     {
         return frustum.Intersects(WorldBounds(model, world, isSkinned));
     }
@@ -597,9 +598,9 @@ public static class RenderSystem
     /// The world-space box a mesh entity is culled by: its model's local bounds through the entity's world
     /// matrix, padded first when skinned (see <see cref="IsVisible"/>).
     /// </summary>
-    private static Spot.Physics.Aabb3d WorldBounds(Model model, in Matrix4x4 world, bool isSkinned)
+    private static Spot.Framework.Mathematics.Aabb3d WorldBounds(Model model, in Matrix4x4 world, bool isSkinned)
     {
-        Spot.Physics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
+        Spot.Framework.Mathematics.Aabb3d local = isSkinned ? model.LocalBounds.Expanded(2.0f) : model.LocalBounds;
         return local.Transform(world);
     }
 
@@ -609,14 +610,14 @@ public static class RenderSystem
     /// feature is off, the scene declares no usable occluder, or none of them ended up covering a pixel;
     /// the caller then simply never asks.
     /// </summary>
-    private static Spot.Rendering.OcclusionCuller? BuildOcclusionBuffer(
-        Scene scene, in Matrix4x4 viewProjection, in Spot.Rendering.Frustum frustum, bool cull)
+    private static Spot.Engine.Rendering.OcclusionCuller? BuildOcclusionBuffer(
+        Scene scene, in Matrix4x4 viewProjection, in Spot.Framework.Mathematics.Frustum frustum, bool cull)
     {
-        Spot.Rendering.RendererDebug.OccluderCount = 0;
+        Spot.Engine.Rendering.RendererDebug.OccluderCount = 0;
 
         if (!cull
-            || !Spot.Rendering.RenderSettings.OcclusionCulling
-            || Spot.Rendering.RendererDebug.DisableOcclusionCulling)
+            || !Spot.Engine.Rendering.RenderSettings.OcclusionCulling
+            || Spot.Engine.Rendering.RendererDebug.DisableOcclusionCulling)
         {
             return null;
         }
@@ -641,11 +642,11 @@ public static class RenderSystem
             if (color.W < 0.999f) continue;
             if ((meshRenderer.Material?.ShaderType ?? MaterialShaderType.Standard) != MaterialShaderType.Standard) continue;
 
-            Spot.Physics.Aabb3d localBounds = OccluderLocalBounds(meshRenderer);
-            Spot.Physics.Aabb3d worldBounds = localBounds.Transform(transform.Matrix);
+            Spot.Framework.Mathematics.Aabb3d localBounds = OccluderLocalBounds(meshRenderer);
+            Spot.Framework.Mathematics.Aabb3d worldBounds = localBounds.Transform(transform.Matrix);
             if (!frustum.Intersects(worldBounds)) continue;
 
-            float area = Spot.Rendering.OcclusionCuller.ScreenAreaFraction(viewProjection, worldBounds);
+            float area = Spot.Engine.Rendering.OcclusionCuller.ScreenAreaFraction(viewProjection, worldBounds);
             if (area < MinOccluderScreenFraction) continue;
 
             candidates.Add(new OccluderCandidate(localBounds, transform.Matrix, area));
@@ -656,7 +657,7 @@ public static class RenderSystem
             return null;
         }
 
-        if (!s_occlusion.Begin(viewProjection, Spot.Rendering.RenderSettings.OcclusionBufferWidth))
+        if (!s_occlusion.Begin(viewProjection, Spot.Engine.Rendering.RenderSettings.OcclusionBufferWidth))
         {
             return null;
         }
@@ -673,7 +674,7 @@ public static class RenderSystem
             s_occlusion.AddOccluder(candidate.LocalBounds, candidate.World);
         }
 
-        Spot.Rendering.RendererDebug.OccluderCount = s_occlusion.OccluderCount;
+        Spot.Engine.Rendering.RendererDebug.OccluderCount = s_occlusion.OccluderCount;
         return s_occlusion.OccluderCount > 0 ? s_occlusion : null;
     }
 
@@ -682,7 +683,7 @@ public static class RenderSystem
     /// one, otherwise the whole model. Taking the model's box for a one-submesh renderer would claim the
     /// other parts of the volume as solid too, which could hide geometry that is actually visible.
     /// </summary>
-    private static Spot.Physics.Aabb3d OccluderLocalBounds(MeshComponent meshRenderer)
+    private static Spot.Framework.Mathematics.Aabb3d OccluderLocalBounds(MeshComponent meshRenderer)
     {
         Model model = meshRenderer.Model!;
         int index = meshRenderer.SubmeshIndex;
@@ -842,7 +843,7 @@ public static class RenderSystem
                 {
                     // An unknown primitive name can't be recovered; log once and drop the reference so we
                     // don't retry (and re-log) it every frame.
-                    Spot.Core.Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
+                    Spot.Framework.Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
                     meshRenderer.ModelPath = null;
                 }
             }

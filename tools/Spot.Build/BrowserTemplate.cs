@@ -4,7 +4,7 @@ namespace Spot.Build;
 /// The static <c>wwwroot</c> assets for a browser build: the host page and the JavaScript that bridges the
 /// engine's <c>[JSImport]</c>/<c>[JSExport]</c> surface to the DOM. <c>main.js</c> owns the canvas' WebGL2
 /// context and implements the <c>spot-gl</c> (graphics) and <c>spot-host</c> (fetch) module imports that
-/// <see cref="Spot.Rendering.IGraphicsDevice"/>'s WebGL2 backend and the browser host call into, then drives
+/// <see cref="Spot.Framework.Graphics.IGraphicsDevice"/>'s WebGL2 backend and the browser host call into, then drives
 /// the frame loop through <c>requestAnimationFrame</c> and forwards DOM input events.
 /// </summary>
 internal static class BrowserTemplate
@@ -380,8 +380,8 @@ setModuleImports('spot-input', { input: inputImports });
 getConfig();
 const engineExports = await getAssemblyExports(ENGINE_ASSEMBLY);
 const coreExports = CORE_ASSEMBLY === ENGINE_ASSEMBLY ? engineExports : await getAssemblyExports(CORE_ASSEMBLY);
-const host = engineExports.Spot.Browser.BrowserHost;
-const platform = coreExports.Spot.Browser.BrowserPlatform;
+const host = engineExports.Spot.Engine.Browser.BrowserHost;
+const platform = coreExports.Spot.Framework.Browser.BrowserPlatform;
 
 setProgress('Loading runtime…', 0.3);
 await runMain();
