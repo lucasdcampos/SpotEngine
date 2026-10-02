@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using Spot.Core;
 using Spot.Net;
 
 namespace Spot.Net.Tests;
@@ -9,24 +8,6 @@ namespace Spot.Net.Tests;
 /// <summary>Shared helpers for the loopback integration tests.</summary>
 internal static class NetTest
 {
-    private static readonly object s_logGate = new();
-    private static bool s_logReady;
-
-    /// <summary>Initializes the engine logger once, so the transport's logging never throws in tests.</summary>
-    public static void EnsureLogging()
-    {
-        lock (s_logGate)
-        {
-            if (s_logReady)
-            {
-                return;
-            }
-
-            Log.Init();
-            s_logReady = true;
-        }
-    }
-
     /// <summary>Pumps the given managers until the condition holds or the timeout elapses.</summary>
     public static bool PumpUntil(Func<bool> condition, TimeSpan timeout, params NetworkManager[] managers)
     {

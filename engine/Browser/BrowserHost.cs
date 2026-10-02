@@ -55,7 +55,7 @@ public static partial class BrowserHost
     {
         try
         {
-            Log.Init();
+            EngineLogging.Init();
             Log.CoreInfo("Starting Spot browser host ({0}x{1}).", width, height);
 
             Display.SetSize(width, height);

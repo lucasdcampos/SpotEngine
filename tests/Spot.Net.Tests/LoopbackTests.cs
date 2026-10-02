@@ -12,8 +12,6 @@ public class LoopbackTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
-    static LoopbackTests() => NetTest.EnsureLogging();
-
     [Fact]
     public void HostAndClient_Connect_And_ExchangeRawMessages_BothWays()
     {

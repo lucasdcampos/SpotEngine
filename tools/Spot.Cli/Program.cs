@@ -26,8 +26,8 @@ internal static class Program
             return 0;
         }
 
-        // Engine paths (asset cook, migration) log through Serilog, which throws if never initialized.
-        Log.Init();
+        // Engine paths (asset cook, migration) log; persist them like the editor does.
+        EngineLogging.Init();
 
         string command = args[0].ToLowerInvariant();
         try

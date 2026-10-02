@@ -15,7 +15,6 @@ public class ReplicationTests
 
     static ReplicationTests()
     {
-        NetTest.EnsureLogging();
         NetworkPrefabs.Register("Cube", scene =>
         {
             Entity e = scene.Instantiate("Cube");

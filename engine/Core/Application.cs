@@ -319,7 +319,7 @@ public class Application
 
     private void Initialize(Scene? startScene)
     {
-        Log.Init(new DevConsoleSink(_console));
+        EngineLogging.Init(new DevConsoleSink(_console));
         Log.CoreInfo("Initializing '{0}'", _spec.Name);
 
         // Establish the asset root and, for a cooked/shipped game, the content manifest that resolves
@@ -529,7 +529,7 @@ public class Application
         _window = null;
 
         // Last, so every shutdown line above is flushed to the rolling log file before we release it.
-        Log.CloseAndFlush();
+        EngineLogging.CloseAndFlush();
     }
 
     /// <summary>

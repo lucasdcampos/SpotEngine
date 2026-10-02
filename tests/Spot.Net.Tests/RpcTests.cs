@@ -16,7 +16,6 @@ public class RpcTests
 
     static RpcTests()
     {
-        NetTest.EnsureLogging();
         NetworkPrefabs.Register("RpcPlayer", scene =>
         {
             Entity e = scene.Instantiate("RpcPlayer");
