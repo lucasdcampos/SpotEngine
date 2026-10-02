@@ -15,9 +15,7 @@ public class GraphicsService : IEngineService
 {
     public void Init(Application app)
     {
-        var gl = Silk.NET.OpenGL.GL.GetApi(app.Window.NativeWindow);
-        Renderer.Init(gl);
-        Renderer2D.Init();
+        // The window already installed its context as the renderer's device; set up the engine's renderers on it.
         Renderer3D.Init();
         PostProcessingRenderer.Init();
         BloomRenderer.Init();

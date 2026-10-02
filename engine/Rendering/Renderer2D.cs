@@ -75,74 +75,12 @@ public static class Renderer2D
         }
         """;
 
-    private const string GridVertexShaderSource =
-        """
-        #version 330 core
-        
-        out vec2 vWorldPos;
-
-        uniform mat4 uInverseViewProjection;
-
-        void main() 
-        {
-            float x = -1.0 + float((gl_VertexID & 1) << 2);
-            float y = -1.0 + float((gl_VertexID & 2) << 1);
-            gl_Position = vec4(x, y, 0.0, 1.0);
-            
-            vec4 unprojectedPoint = uInverseViewProjection * vec4(x, y, 0.0, 1.0);
-            vWorldPos = unprojectedPoint.xy / unprojectedPoint.w;
-        }
-        """;
-
-    private const string GridFragmentShaderSource =
-        """
-        #version 330 core
-        
-        in vec2 vWorldPos;
-        out vec4 fragColor;
-
-        uniform float uZoom;
-
-        vec4 grid(vec2 fragPos2D, float scale) {
-            vec2 coord = fragPos2D * scale;
-            vec2 derivative = max(fwidth(coord), vec2(1e-5));
-            vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
-            float line = min(grid.x, grid.y);
-            vec4 color = vec4(0.3, 0.3, 0.3, 1.0 - min(line, 1.0));
-            return color;
-        }
-
-        void main() {
-            float logZoom = log(max(uZoom * 0.2, 0.001)) / log(10.0);
-            float lod = floor(logZoom);
-            float lodFade = fract(logZoom);
-            
-            float scale0 = 1.0 / pow(10.0, lod);
-            float scale1 = 1.0 / pow(10.0, lod + 1.0);
-            float scale2 = 1.0 / pow(10.0, lod + 2.0);
-            
-            vec4 grid0 = grid(vWorldPos, scale0);
-            vec4 grid1 = grid(vWorldPos, scale1);
-            vec4 grid2 = grid(vWorldPos, scale2);
-            
-            grid0.a *= (1.0 - lodFade);
-            
-            vec4 c = grid0;
-            c = mix(c, grid1, grid1.a);
-            c = mix(c, grid2, grid2.a);
-
-            fragColor = c;
-            if (fragColor.a <= 0.0) discard;
-        }
-        """;
-
     private static VertexArray? s_vao;
     private static VertexBuffer? s_vbo;
     private static IndexBuffer? s_ibo;
     private static Shader? s_shader;
     private static Texture2D? s_whiteTexture;
-    private static Shader? s_gridShader;
-    private static VertexArray? s_emptyVao;
+    private static IGraphicsDevice? s_device;
 
     private static float[] s_vertices = Array.Empty<float>();
     private static int s_vertexCursor;
@@ -151,10 +89,17 @@ public static class Renderer2D
     private static Matrix4x4 s_viewProjection = Matrix4x4.Identity;
 
     /// <summary>
-    /// Creates the shared batch resources. Called once by the application after the renderer is ready.
+    /// Gets the view-projection matrix of the current batch (set by <see cref="BeginScene"/>).
     /// </summary>
-    internal static void Init()
+    public static Matrix4x4 ViewProjection => s_viewProjection;
+
+    /// <summary>
+    /// Creates the shared batch resources on the current <see cref="Renderer.Device"/>. Happens automatically on
+    /// first use; call it to pay the cost up front.
+    /// </summary>
+    public static void Init()
     {
+        s_device = Renderer.Device;
         s_vertices = new float[MaxVertices * FloatsPerVertex];
 
         s_vao = new VertexArray();
@@ -182,8 +127,6 @@ public static class Renderer2D
         s_vao.SetIndexBuffer(s_ibo);
 
         s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
-        s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
-        s_emptyVao = new VertexArray();
 
         // A 1x1 white texture lets colored quads reuse the textured path: texture * color == color.
         ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
@@ -191,17 +134,22 @@ public static class Renderer2D
     }
 
     /// <summary>
-    /// Releases the shared batch resources. Called once by the application on shutdown.
+    /// Releases the shared batch resources. The next draw recreates them.
     /// </summary>
-    internal static void Shutdown()
+    public static void Shutdown()
     {
         s_shader?.Dispose();
-        s_gridShader?.Dispose();
         s_whiteTexture?.Dispose();
         s_vbo?.Dispose();
         s_ibo?.Dispose();
         s_vao?.Dispose();
-        s_emptyVao?.Dispose();
+        s_shader = null;
+        s_whiteTexture = null;
+        s_vbo = null;
+        s_ibo = null;
+        s_vao = null;
+        s_device = null;
+        s_vertices = Array.Empty<float>();
     }
 
     /// <summary>
@@ -210,34 +158,25 @@ public static class Renderer2D
     /// <param name="viewProjection">The view-projection matrix to use for this batch.</param>
     public static void BeginScene(Matrix4x4 viewProjection)
     {
+        EnsureInitialized();
         s_viewProjection = viewProjection;
         StartBatch();
-    }
-
-    /// <summary>
-    /// Draws an infinite 2D grid plane for the editor.
-    /// </summary>
-    public static void DrawEditorGrid(float zoom)
-    {
-        Flush(); // Ensure previous geometry is drawn
-
-        if (s_gridShader == null || s_emptyVao == null) return;
-
-        Matrix4x4.Invert(s_viewProjection, out Matrix4x4 invViewProj);
-        s_gridShader.Use();
-        s_gridShader.SetUniform("uInverseViewProjection", invViewProj);
-        s_gridShader.SetUniform("uZoom", zoom);
-
-        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
-        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
-
-        Renderer.DrawArrays(s_emptyVao, 3);
     }
 
     /// <summary>
     /// Ends the current batch, drawing any quads submitted since <see cref="BeginScene"/>.
     /// </summary>
     public static void EndScene() => Flush();
+
+    /// <summary>
+    /// Draws everything submitted so far and starts a new, empty batch with the same view-projection — for
+    /// interleaving custom drawing (your own shader, state changes) between batched quads.
+    /// </summary>
+    public static void Flush()
+    {
+        Submit();
+        StartBatch();
+    }
 
     /// <summary>
     /// Draws a solid-colored quad at the given position and size.
@@ -279,10 +218,10 @@ public static class Renderer2D
     /// <param name="tint">The color multiplied with the sampled texture.</param>
     public static void DrawQuad(Matrix4x4 transform, Texture2D texture, Vector4 tint)
     {
+        EnsureInitialized();
         if (s_indexCount >= MaxIndices || (s_currentTexture is not null && s_currentTexture != texture))
         {
             Flush();
-            StartBatch();
         }
 
         s_currentTexture = texture;
@@ -373,7 +312,17 @@ public static class Renderer2D
         s_currentTexture = null;
     }
 
-    private static void Flush()
+    // Creates the batch resources on first use, and again whenever a different device has been installed
+    // (their handles belong to the device that created them).
+    private static void EnsureInitialized()
+    {
+        if (s_vao is null || !ReferenceEquals(s_device, Renderer.Device))
+        {
+            Init();
+        }
+    }
+
+    private static void Submit()
     {
         if (s_indexCount == 0 || s_shader is null || s_vbo is null || s_vao is null || s_currentTexture is null)
         {

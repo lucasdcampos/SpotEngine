@@ -206,4 +206,95 @@ public class RendererTests
 
         Assert.Equal(6u * 6u, Assert.Single(device.Draws).Count);
     }
+
+    [Fact]
+    public void Renderer2D_InitializesLazilyOnFirstUse()
+    {
+        Renderer2D.Shutdown();
+        RecordingGraphicsDevice device = Install();
+
+        Renderer2D.BeginScene(Matrix4x4.Identity);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.EndScene();
+
+        Assert.Equal(6u, Assert.Single(device.Draws).Count);
+    }
+
+    [Fact]
+    public void Renderer2D_RecreatesItsResourcesOnANewDevice()
+    {
+        RecordingGraphicsDevice first = Install2D();
+        Renderer2D.BeginScene(Matrix4x4.Identity);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.EndScene();
+
+        RecordingGraphicsDevice second = Install();
+        Renderer2D.BeginScene(Matrix4x4.Identity);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.EndScene();
+
+        Assert.Single(first.Draws);
+        Assert.Single(second.Draws);
+        Assert.NotEmpty(second.LivePrograms);
+    }
+
+    [Fact]
+    public void Renderer2D_FlushSubmitsAndStartsAFreshBatch()
+    {
+        RecordingGraphicsDevice device = Install2D();
+
+        Renderer2D.BeginScene(Matrix4x4.Identity);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.Flush();
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        Renderer2D.EndScene();
+        Renderer2D.EndScene(); // nothing left: no extra draw
+
+        Assert.Equal(new uint[] { 12, 6 }, device.Draws.Select(d => d.Count));
+    }
+
+    [Fact]
+    public void Renderer2D_ShutdownReleasesItsResources()
+    {
+        RecordingGraphicsDevice device = Install2D();
+        Assert.NotEmpty(device.LivePrograms);
+
+        Renderer2D.Shutdown();
+
+        Assert.Empty(device.LivePrograms);
+        Assert.Empty(device.LiveTextures);
+        Assert.Empty(device.LiveVertexArrays);
+        Assert.Empty(device.LiveBuffers);
+    }
+
+    [Fact]
+    public void Renderer2D_ExposesTheBatchViewProjection()
+    {
+        Install2D();
+        Matrix4x4 viewProjection = Matrix4x4.CreateScale(2f);
+
+        Renderer2D.BeginScene(viewProjection);
+
+        Assert.Equal(viewProjection, Renderer2D.ViewProjection);
+        Renderer2D.EndScene();
+    }
+
+    [Fact]
+    public void EditorGrid_FlushesPendingQuadsThenDrawsAFullScreenTriangle()
+    {
+        RecordingGraphicsDevice device = Install2D();
+        Matrix4x4 viewProjection = Matrix4x4.CreateScale(0.5f);
+
+        Renderer2D.BeginScene(viewProjection);
+        Renderer2D.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        EditorGrid.Draw2D(zoom: 3f);
+        Renderer2D.EndScene();
+
+        Assert.Equal(new[] { (6u, true), (3u, false) }, device.Draws.Select(d => (d.Count, d.Indexed)));
+        Matrix4x4.Invert(viewProjection, out Matrix4x4 inverse);
+        Assert.Equal(inverse, device.Uniform("uInverseViewProjection"));
+        Assert.Equal(3f, device.Uniform("uZoom"));
+        Assert.True(device.Capabilities[GraphicsCapability.Blend]);
+    }
 }

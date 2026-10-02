@@ -28,6 +28,12 @@ public class ApplicationSpec
     public WindowSpec Window { get; set; } = new WindowSpec();
 
     /// <summary>
+    /// Gets or sets an optional path to an image (PNG, ...) used as the window icon. A missing or unreadable file
+    /// logs a warning and keeps the platform default.
+    /// </summary>
+    public string? IconPath { get; set; }
+
+    /// <summary>
     /// Gets or sets an optional path to a TrueType font (.ttf) used for the ImGui UI. When null or
     /// missing on disk, ImGui's built-in default font is used instead.
     /// </summary>
@@ -326,8 +332,13 @@ public class Application
         // guid: references — before any service or scene loads an asset.
         InitializeContent();
 
+        // The window installs its context as the renderer's device and handles the startup drawable-size sync;
+        // the engine's render settings drive its VSync from here on.
+        _spec.Window.VSync = RenderSettings.VSync;
         _window = new Window(_spec.Window);
         _window.SetEventCallback(OnEvent);
+        RenderSettings.VSyncChanged += OnVSyncChanged;
+        ApplyWindowIcon();
 
         AddService(new GraphicsService());
         AddService(new AudioService());
@@ -364,11 +375,6 @@ public class Application
             // when the scene is missing or malformed — the same runtime path used for scene switches.
             SceneManager.Load(_spec.StartScene);
         }
-
-        // Now that the graphics context and the ImGui controller exist, make sure the drawable size has
-        // propagated to both — otherwise the first frames render into a 0-sized viewport (only the clear color
-        // shows) until the user manually resizes the window.
-        ForceInitialResize();
 
         _stopwatch = Stopwatch.StartNew();
         _lastTime = _stopwatch.Elapsed;
@@ -417,17 +423,13 @@ public class Application
     private void PollEvents()
     {
         _frameFaulted = false;
-        Input.NewFrame();
 
         // The engine owns input while the dev console or debugger panels are open:
         // cursor forced free, game input withheld.
         Input.Captured = _console.IsOpen || (Debugger?.IsOpen ?? false);
 
+        // Starts the input frame, feeds the events to Input and then OnEvent, and recentres a locked cursor.
         _window!.PollEvents();
-
-        // After the frame's mouse events are in, recentre a locked cursor and turn its drift into relative
-        // motion — before scenes read Input.MousePosition in Update. Keeps mouse-look confined to the window.
-        Input.TickCursorLock();
     }
 
     private void Update()
@@ -475,13 +477,6 @@ public class Application
     {
         try
         {
-            // Safety net: if the drawable size still hasn't reached the renderer (the startup resize was
-            // deferred by the platform), re-sync it before drawing so no frame renders into a 0-sized viewport.
-            if (Renderer.ViewportWidth == 0 || Renderer.ViewportHeight == 0)
-            {
-                SyncViewportToFramebuffer();
-            }
-
             SceneManager.Render();
         }
         catch (Exception ex)
@@ -525,6 +520,7 @@ public class Application
             service.Shutdown();
         }
 
+        RenderSettings.VSyncChanged -= OnVSyncChanged;
         _window?.Dispose();
         _window = null;
 
@@ -567,11 +563,9 @@ public class Application
     {
         try
         {
-            Input.OnEvent(e);
-
+            // The window has already fed the event to Input.
             var dispatcher = new EventDispatcher(e);
             dispatcher.Dispatch<WindowCloseEvent>(OnWindowClose);
-            dispatcher.Dispatch<WindowResizeEvent>(OnWindowResize);
             dispatcher.Dispatch<KeyTypedEvent>(OnKeyTyped);
 
             // While the engine owns input, keyboard/mouse events don't reach the game; non-input
@@ -610,56 +604,32 @@ public class Application
         return true;
     }
 
-    private bool OnWindowResize(WindowResizeEvent e)
+    // Mirrors the engine-wide VSync setting (console command, editor toggle) onto the window.
+    private void OnVSyncChanged(bool enabled)
     {
-        SyncViewportToFramebuffer();
-        return false;
+        if (_window is not null)
+        {
+            _window.VSync = enabled;
+        }
     }
 
-    // Points the GL viewport at the window's real drawable. Prefers the framebuffer size (physical pixels,
-    // correct under DPI scaling) and falls back to the window size when the framebuffer size isn't reported
-    // yet. Uses Renderer.SetViewport so the renderer's tracked viewport stays in sync too.
-    private void SyncViewportToFramebuffer()
+    // Loads ApplicationSpec.IconPath through the framework's image decoder. Best-effort: a bad icon never stops
+    // the app from starting.
+    private void ApplyWindowIcon()
     {
-        if (_window is null)
+        if (string.IsNullOrEmpty(_spec.IconPath))
         {
             return;
         }
 
-        var win = _window.NativeWindow;
-        int w = win.FramebufferSize.X > 0 ? win.FramebufferSize.X : win.Size.X;
-        int h = win.FramebufferSize.Y > 0 ? win.FramebufferSize.Y : win.Size.Y;
-        if (w > 0 && h > 0)
-        {
-            Renderer.SetViewport(0, 0, (uint)w, (uint)h);
-        }
-    }
-
-    // Works around a startup quirk: with the engine's manual render loop (Initialize + DoEvents rather than
-    // IWindow.Run), some platforms leave IWindow.FramebufferSize reporting 0 until the first real resize. That
-    // zero collapses both the GL viewport and ImGui's DisplayFramebufferScale to 0, so nothing draws and the
-    // window shows only the clear color until the user resizes it. Nudging the window size by a pixel and back
-    // drives Silk's resize pipeline once — populating the framebuffer size and notifying both the renderer and
-    // the ImGui controller — which is exactly what a manual resize does.
-    private void ForceInitialResize()
-    {
         try
         {
-            var win = _window!.NativeWindow;
-            var size = win.Size;
-            if (size.X > 0 && size.Y > 0 && (win.FramebufferSize.X == 0 || win.FramebufferSize.Y == 0))
-            {
-                win.Size = new Silk.NET.Maths.Vector2D<int>(size.X, size.Y + 1);
-                _window!.PollEvents();
-                win.Size = size;
-                _window!.PollEvents();
-            }
+            Image icon = Image.FromFile(_spec.IconPath, flipVertically: false);
+            _window!.SetIcon(new WindowIcon(icon.Width, icon.Height, icon.Pixels));
         }
         catch (Exception ex)
         {
-            Log.CoreWarn("Initial window resize sync failed: {0}", ex.Message);
+            Log.CoreWarn("Failed to load window icon '{0}': {1}", _spec.IconPath, ex.Message);
         }
-
-        SyncViewportToFramebuffer();
     }
 }

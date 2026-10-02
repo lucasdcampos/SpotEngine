@@ -1,7 +1,9 @@
 using Silk.NET.Input;
 using Silk.NET.Maths;
+using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using Spot.Events;
+using Spot.Rendering;
 using SilkWindow = Silk.NET.Windowing.Window;
 
 namespace Spot.Core;
@@ -27,13 +29,38 @@ public class WindowSpec
     public int Height { get; set; } = 720;
 
     /// <summary>
-    /// Gets or sets the path to the window icon.
+    /// Gets or sets whether presentation waits for vertical sync. Defaults to on.
     /// </summary>
-    public string? IconPath { get; set; }
+    public bool VSync { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the window icon, as raw pixels (see <see cref="WindowIcon"/>). Null keeps the platform default.
+    /// </summary>
+    public WindowIcon? Icon { get; set; }
 }
 
 /// <summary>
-/// A platform window backed by Silk.NET.
+/// A window icon as raw RGBA8 pixels, rows top-to-bottom.
+/// </summary>
+/// <param name="Width">The icon width in pixels.</param>
+/// <param name="Height">The icon height in pixels.</param>
+/// <param name="Rgba">The pixel data, <c>Width * Height * 4</c> bytes.</param>
+public sealed record WindowIcon(int Width, int Height, byte[] Rgba);
+
+/// <summary>
+/// A platform window with an OpenGL context, backed by Silk.NET. Creating one is all it takes to start drawing:
+/// it installs its context as the <see cref="Renderer"/>'s device and feeds every event into <see cref="Input"/>.
+/// The window does not run a loop — drive it yourself:
+/// <code>
+/// using var window = new Window(new WindowSpec { Title = "Hello" });
+/// while (window.IsOpen)
+/// {
+///     window.PollEvents();
+///     Renderer.Clear();
+///     // draw...
+///     window.SwapBuffers();
+/// }
+/// </code>
 /// </summary>
 public sealed class Window : IDisposable
 {
@@ -65,24 +92,14 @@ public sealed class Window : IDisposable
             ContextFlags.Default,
             new APIVersion(4, 6));
         options.WindowBorder = WindowBorder.Resizable;
-        options.VSync = Spot.Rendering.RenderSettings.VSync;
+        options.VSync = spec.VSync;
 
         _window = SilkWindow.Create(options);
         _window.Initialize();
 
-        if (!string.IsNullOrEmpty(spec.IconPath) && System.IO.File.Exists(spec.IconPath))
+        if (spec.Icon is { } icon)
         {
-            try
-            {
-                using var stream = System.IO.File.OpenRead(spec.IconPath);
-                var image = StbImageSharp.ImageResult.FromStream(stream, StbImageSharp.ColorComponents.RedGreenBlueAlpha);
-                var rawImage = new Silk.NET.Core.RawImage(image.Width, image.Height, image.Data);
-                _window.SetWindowIcon(ref rawImage);
-            }
-            catch (Exception ex)
-            {
-                Log.CoreWarn("Failed to load window icon '{0}': {1}", spec.IconPath, ex.Message);
-            }
+            SetIcon(icon);
         }
 
         // Center the window on the primary monitor by default. Hosts that manage their own window
@@ -103,10 +120,12 @@ public sealed class Window : IDisposable
             _input, () => new System.Numerics.Vector2(_window.Size.X / 2f, _window.Size.Y / 2f));
         SetupCallbacks();
 
-        // Apply engine-wide VSync changes to this window at runtime (the `vsync` console command, an editor
-        // toggle, or a game turning it off to profile). Unsubscribed on Dispose so the static event never
-        // pins a disposed window.
-        Spot.Rendering.RenderSettings.VSyncChanged += OnVSyncChanged;
+        // The window's context becomes the renderer's device, so drawing works as soon as the window exists.
+        Renderer.Init(GL.GetApi(_window));
+
+        // Make sure the drawable size has reached the renderer before the first frame (see ForceInitialResize).
+        ForceInitialResize();
+        SyncViewport();
     }
 
     /// <summary>
@@ -129,14 +148,39 @@ public sealed class Window : IDisposable
     }
 
     /// <summary>
+    /// Gets the drawable width in physical pixels (larger than <see cref="Width"/> under DPI scaling).
+    /// </summary>
+    public int FramebufferWidth => _window.FramebufferSize.X > 0 ? _window.FramebufferSize.X : _window.Size.X;
+
+    /// <summary>
+    /// Gets the drawable height in physical pixels (larger than <see cref="Height"/> under DPI scaling).
+    /// </summary>
+    public int FramebufferHeight => _window.FramebufferSize.Y > 0 ? _window.FramebufferSize.Y : _window.Size.Y;
+
+    /// <summary>
+    /// Gets whether the window is open: <see langword="false"/> once a close was requested (by the user or
+    /// <see cref="Close"/>) and not cancelled with <see cref="CancelClose"/>. The condition for a main loop.
+    /// </summary>
+    public bool IsOpen => !_window.IsClosing;
+
+    /// <summary>
     /// Gets or sets whether presentation waits for vertical sync on this window. Setting it updates the
-    /// swap interval immediately. Prefer <see cref="Spot.Rendering.RenderSettings.VSync"/> as the
-    /// engine-wide source of truth; it flows here automatically.
+    /// swap interval immediately; a backend that rejects the change logs and keeps the old setting.
     /// </summary>
     public bool VSync
     {
         get => _window.VSync;
-        set => _window.VSync = value;
+        set
+        {
+            try
+            {
+                _window.VSync = value;
+            }
+            catch (Exception ex)
+            {
+                Log.CoreWarn("Failed to apply VSync change to the window: {0}", ex.Message);
+            }
+        }
     }
 
     /// <summary>
@@ -156,9 +200,25 @@ public sealed class Window : IDisposable
     public void SetEventCallback(EventCallback callback) => _callback = callback;
 
     /// <summary>
-    /// Processes pending window and input events.
+    /// Processes pending window and input events for a new frame: starts a new <see cref="Input"/> frame, feeds
+    /// every event to <see cref="Input"/> and then to the event callback, and recentres a locked cursor.
     /// </summary>
-    public void PollEvents() => _window.DoEvents();
+    public void PollEvents()
+    {
+        Spot.Core.Input.NewFrame();
+        _window.DoEvents();
+
+        // After the frame's mouse events are in, recentre a locked cursor and turn its drift into relative
+        // motion, before the app reads Input.MousePosition. Keeps mouse-look confined to the window.
+        Spot.Core.Input.TickCursorLock();
+
+        // Safety net: if the drawable size still hasn't reached the renderer (the startup resize was deferred
+        // by the platform), re-sync it so no frame renders into a 0-sized viewport.
+        if (Renderer.ViewportWidth == 0 || Renderer.ViewportHeight == 0)
+        {
+            SyncViewport();
+        }
+    }
 
     /// <summary>
     /// Swaps the front and back buffers, presenting the rendered frame.
@@ -177,57 +237,116 @@ public sealed class Window : IDisposable
     /// </summary>
     public void CancelClose() => _window.IsClosing = false;
 
+    /// <summary>
+    /// Requests the window to close; <see cref="IsOpen"/> becomes <see langword="false"/>.
+    /// </summary>
+    public void Close() => _window.IsClosing = true;
+
+    /// <summary>
+    /// Sets the window icon from raw pixels. A failure logs and keeps the current icon.
+    /// </summary>
+    /// <param name="icon">The icon pixels, rows top-to-bottom.</param>
+    public void SetIcon(WindowIcon icon)
+    {
+        ArgumentNullException.ThrowIfNull(icon);
+        try
+        {
+            if (icon.Rgba.Length != icon.Width * icon.Height * 4)
+            {
+                throw new ArgumentException("Icon pixel data does not match its size.", nameof(icon));
+            }
+
+            var raw = new Silk.NET.Core.RawImage(icon.Width, icon.Height, icon.Rgba);
+            _window.SetWindowIcon(ref raw);
+        }
+        catch (Exception ex)
+        {
+            Log.CoreWarn("Failed to set the window icon: {0}", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Points the renderer's viewport at the window's whole drawable. Done automatically on resize; call it to
+    /// restore the screen viewport after rendering elsewhere.
+    /// </summary>
+    public void SyncViewport()
+    {
+        int w = FramebufferWidth;
+        int h = FramebufferHeight;
+        if (w > 0 && h > 0)
+        {
+            Renderer.SetViewport(0, 0, (uint)w, (uint)h);
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
-        Spot.Rendering.RenderSettings.VSyncChanged -= OnVSyncChanged;
         _input.Dispose();
         _window.DoEvents();
         _window.Reset();
         _window.Dispose();
     }
 
-    // Pushes an engine-wide VSync change onto the Silk window. Guarded so a backend that rejects a late
-    // swap-interval change logs and continues rather than taking the process down (never crash the engine).
-    private void OnVSyncChanged(bool enabled)
+    // Works around a startup quirk: with a manual loop (Initialize + DoEvents rather than IWindow.Run), some
+    // platforms leave IWindow.FramebufferSize reporting 0 until the first real resize. That zero collapses the
+    // GL viewport (and any UI layer's framebuffer scale), so nothing draws and the window shows only the clear
+    // color until the user resizes it. Nudging the size by a pixel and back drives Silk's resize pipeline once —
+    // populating the framebuffer size — which is exactly what a manual resize does.
+    private void ForceInitialResize()
     {
         try
         {
-            _window.VSync = enabled;
+            var size = _window.Size;
+            if (size.X > 0 && size.Y > 0 && (_window.FramebufferSize.X == 0 || _window.FramebufferSize.Y == 0))
+            {
+                _window.Size = new Vector2D<int>(size.X, size.Y + 1);
+                _window.DoEvents();
+                _window.Size = size;
+                _window.DoEvents();
+            }
         }
         catch (Exception ex)
         {
-            Log.CoreWarn("Failed to apply VSync change to the window: {0}", ex.Message);
+            Log.CoreWarn("Initial window resize sync failed: {0}", ex.Message);
         }
+    }
+
+    // Feeds an event to Input first (so polled state is current), then to the app's callback.
+    private void Dispatch(Event e)
+    {
+        Spot.Core.Input.OnEvent(e);
+        _callback?.Invoke(e);
     }
 
     private void SetupCallbacks()
     {
-        _window.Closing += () => _callback?.Invoke(new WindowCloseEvent());
+        _window.Closing += () => Dispatch(new WindowCloseEvent());
 
         _window.Resize += size =>
         {
             _width = size.X;
             _height = size.Y;
             Display.SetSize(_width, _height);
-            _callback?.Invoke(new WindowResizeEvent(size.X, size.Y));
+            SyncViewport();
+            Dispatch(new WindowResizeEvent(size.X, size.Y));
         };
 
-        _window.FileDrop += paths => _callback?.Invoke(new WindowDropEvent(paths));
+        _window.FileDrop += paths => Dispatch(new WindowDropEvent(paths));
 
         foreach (IKeyboard keyboard in _input.Keyboards)
         {
-            keyboard.KeyDown += (_, key, _) => _callback?.Invoke(new KeyPressedEvent((Key)(int)key));
-            keyboard.KeyUp += (_, key, _) => _callback?.Invoke(new KeyReleasedEvent((Key)(int)key));
-            keyboard.KeyChar += (_, character) => _callback?.Invoke(new KeyTypedEvent(character));
+            keyboard.KeyDown += (_, key, _) => Dispatch(new KeyPressedEvent((Key)(int)key));
+            keyboard.KeyUp += (_, key, _) => Dispatch(new KeyReleasedEvent((Key)(int)key));
+            keyboard.KeyChar += (_, character) => Dispatch(new KeyTypedEvent(character));
         }
 
         foreach (IMouse mouse in _input.Mice)
         {
-            mouse.MouseMove += (_, position) => _callback?.Invoke(new MouseMovedEvent(position.X, position.Y));
-            mouse.Scroll += (_, wheel) => _callback?.Invoke(new MouseScrolledEvent(wheel.X, wheel.Y));
-            mouse.MouseDown += (_, button) => _callback?.Invoke(new MouseButtonPressedEvent((MouseButton)(int)button));
-            mouse.MouseUp += (_, button) => _callback?.Invoke(new MouseButtonReleasedEvent((MouseButton)(int)button));
+            mouse.MouseMove += (_, position) => Dispatch(new MouseMovedEvent(position.X, position.Y));
+            mouse.Scroll += (_, wheel) => Dispatch(new MouseScrolledEvent(wheel.X, wheel.Y));
+            mouse.MouseDown += (_, button) => Dispatch(new MouseButtonPressedEvent((MouseButton)(int)button));
+            mouse.MouseUp += (_, button) => Dispatch(new MouseButtonReleasedEvent((MouseButton)(int)button));
         }
 
         _input.ConnectionChanged += (device, connected) =>
@@ -237,11 +356,11 @@ public sealed class Window : IDisposable
                 if (connected)
                 {
                     SetupGamepad(gamepad);
-                    _callback?.Invoke(new GamepadConnectedEvent(gamepad.Index));
+                    Dispatch(new GamepadConnectedEvent(gamepad.Index));
                 }
                 else
                 {
-                    _callback?.Invoke(new GamepadDisconnectedEvent(gamepad.Index));
+                    Dispatch(new GamepadDisconnectedEvent(gamepad.Index));
                 }
             }
         };
@@ -254,20 +373,20 @@ public sealed class Window : IDisposable
 
     private void SetupGamepad(IGamepad gamepad)
     {
-        gamepad.ButtonDown += (gp, button) => _callback?.Invoke(new GamepadButtonPressedEvent(gp.Index, MapGamepadButton(button.Name)));
-        gamepad.ButtonUp += (gp, button) => _callback?.Invoke(new GamepadButtonReleasedEvent(gp.Index, MapGamepadButton(button.Name)));
+        gamepad.ButtonDown += (gp, button) => Dispatch(new GamepadButtonPressedEvent(gp.Index, MapGamepadButton(button.Name)));
+        gamepad.ButtonUp += (gp, button) => Dispatch(new GamepadButtonReleasedEvent(gp.Index, MapGamepadButton(button.Name)));
         
         gamepad.ThumbstickMoved += (gp, thumbstick) => 
         {
             if (thumbstick.Index == 0)
             {
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftX, thumbstick.X));
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftY, thumbstick.Y));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftX, thumbstick.X));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftY, thumbstick.Y));
             }
             else if (thumbstick.Index == 1)
             {
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightX, thumbstick.X));
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightY, thumbstick.Y));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightX, thumbstick.X));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightY, thumbstick.Y));
             }
         };
 
@@ -275,11 +394,11 @@ public sealed class Window : IDisposable
         {
             if (trigger.Index == 0)
             {
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftTrigger, trigger.Position));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.LeftTrigger, trigger.Position));
             }
             else if (trigger.Index == 1)
             {
-                _callback?.Invoke(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightTrigger, trigger.Position));
+                Dispatch(new GamepadAxisMovedEvent(gp.Index, GamepadAxis.RightTrigger, trigger.Position));
             }
         };
     }
