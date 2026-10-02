@@ -15,6 +15,11 @@ An entity with a collider but no body is a static obstacle; add a body to make i
 can also be a **trigger** — it detects overlaps but produces no physical response, which is how you
 build pickups, checkpoints, and volumes.
 
+A 3D collider can be **fitted to the entity's mesh**: adding a box, sphere or capsule collider to an entity
+that already draws a mesh sizes and centers it on that geometry, and its **Fit to Mesh** button in the
+Inspector does the same later. Built-in shapes fit exactly — a capsule collider takes a built-in capsule's
+radius and height — and imported models fit their bounds (or just the part the entity draws).
+
 ## 3D backend
 
 3D physics runs on **BepuPhysics v2**, a full rigid-body simulation, behind an internal interface.

@@ -35,6 +35,28 @@ public sealed class MeshComponent : Component
     }
 
     /// <summary>
+    /// Points the renderer at another model reference and drops the loaded <see cref="Model"/> so the new one is
+    /// used: a built-in mesh loads at once, anything else resolves the next time the renderer draws.
+    /// </summary>
+    /// <param name="reference">The model reference, or <see langword="null"/> to draw nothing.</param>
+    public void SetModel(string? reference)
+    {
+        ModelPath = reference;
+        Model = null;
+        if (BuiltinAssets.TryGetPrimitive(ModelPath, out PrimitiveSpec spec))
+        {
+            try
+            {
+                Model = PrimitiveModelFactory.Get(spec);
+            }
+            catch (InvalidOperationException)
+            {
+                // No graphics device yet (headless tools); the renderer resolves the reference when it draws.
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets or sets which submesh of the <see cref="Model"/> this renderer draws. A value of
     /// <c>-1</c> (the default) draws every submesh — the whole model on one entity. A value
     /// <c>&gt;= 0</c> draws only that single submesh, which is how an imported model is spread across an

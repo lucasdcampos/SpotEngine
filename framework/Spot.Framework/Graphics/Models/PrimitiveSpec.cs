@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Numerics;
 using System.Text;
+using Spot.Framework.Mathematics;
 
 namespace Spot.Framework.Graphics;
 
@@ -224,6 +226,28 @@ public sealed record PrimitiveSpec
             Rings = Count(PrimitiveParameter.Rings, Rings, Shape == PrimitiveShape.Sphere ? 2 : 1, 128),
             Subdivisions = Count(PrimitiveParameter.Subdivisions, Subdivisions, 1, 256),
         };
+    }
+
+    /// <summary>
+    /// Gets the box the ideal shape fills, centered on the origin — known without generating any geometry (a plane
+    /// is flat in Y, a quad in Z). Curved shapes are measured as true circles; their generated polygons, inscribed
+    /// in those circles, fit inside it.
+    /// </summary>
+    public Aabb3d Bounds
+    {
+        get
+        {
+            PrimitiveSpec s = Normalize();
+            Vector3 size = s.Shape switch
+            {
+                PrimitiveShape.Cube => new Vector3(s.Width, s.Height, s.Depth),
+                PrimitiveShape.Sphere => new Vector3(2 * s.Radius),
+                PrimitiveShape.Capsule or PrimitiveShape.Cylinder or PrimitiveShape.Cone => new Vector3(2 * s.Radius, s.Height, 2 * s.Radius),
+                PrimitiveShape.Plane => new Vector3(s.Width, 0, s.Depth),
+                _ => new Vector3(s.Width, s.Height, 0),
+            };
+            return new Aabb3d(Vector3.Zero, size);
+        }
     }
 
     /// <summary>Generates the spec's geometry. See <see cref="PrimitiveMeshes"/>.</summary>

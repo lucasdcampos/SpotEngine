@@ -50,7 +50,11 @@ The editor is organized into dockable panels you can rearrange and save into a l
   clicked, so you can pick an asset without dragging. The picker lists the matching
   [built-in assets](assets.md#built-in-assets) first, then the project's files; a built-in mesh with custom
   parameters shows them next to its name (*Capsule (radius 0.3, height 1.7)*). Selecting a built-in asset
-  shows a read-only preview with **Copy to Project** and **Copy Reference** buttons.
+  shows a read-only preview with **Copy to Project** and **Copy Reference** buttons. A Mesh Renderer drawing
+  a built-in shape lists the shape's parameters (size, radius, height, segments, rings) below its model slot:
+  dragging one reshapes the mesh live, releasing it keeps the change as a single undo step, and **Reset
+  Shape** restores the defaults. A 3D collider added to an entity with a mesh starts out fitted to it, and
+  **Fit to Mesh** refits it at any time.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
   The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —

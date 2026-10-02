@@ -147,6 +147,14 @@ public class InspectorPanel : IDisposable
                         try
                         {
                             var component = (Component)Activator.CreateInstance(info.Type)!;
+
+                            // A new 3D collider starts out matching the entity's mesh, as it would be sized by hand.
+                            if (component is Spot.Engine.Physics.Collider3DComponent collider
+                                && entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null)
+                            {
+                                Spot.Engine.Physics.ColliderFitting.FitToMesh(collider, mesh);
+                            }
+
                             entity.AddComponent(component);
                         }
                         catch (Exception ex)

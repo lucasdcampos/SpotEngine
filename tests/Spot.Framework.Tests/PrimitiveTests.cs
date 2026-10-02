@@ -164,6 +164,26 @@ public class PrimitiveTests
         Assert.Equal(Vector3.Zero, (min + max) * 0.5f, new Vector3Comparer(1e-3f));
     }
 
+    [Theory]
+    [MemberData(nameof(Specs))]
+    public void Bounds_ArePredictedWithoutGeneratingTheMesh(string text)
+    {
+        PrimitiveSpec spec = PrimitiveSpec.Parse(text);
+        (Vector3 min, Vector3 max) = Extent(spec.Build());
+        Vector3 boundsMin = spec.Bounds.Min, boundsMax = spec.Bounds.Max;
+
+        // The geometry stays inside the ideal shape's box (a coarse circle is a polygon inscribed in it) and
+        // matches its height exactly; flat-sided shapes match it exactly.
+        Assert.True(Vector3.Min(min, boundsMin - new Vector3(1e-3f)) == boundsMin - new Vector3(1e-3f), $"{min} is outside {boundsMin}");
+        Assert.True(Vector3.Max(max, boundsMax + new Vector3(1e-3f)) == boundsMax + new Vector3(1e-3f), $"{max} is outside {boundsMax}");
+        Assert.Equal(boundsMax.Y - boundsMin.Y, max.Y - min.Y, 3);
+        if (spec.Shape is PrimitiveShape.Cube or PrimitiveShape.Plane or PrimitiveShape.Quad)
+        {
+            Assert.Equal(boundsMin, min, new Vector3Comparer(1e-3f));
+            Assert.Equal(boundsMax, max, new Vector3Comparer(1e-3f));
+        }
+    }
+
     [Fact]
     public void Capsule_SidesAreStraightBetweenTheCaps()
     {

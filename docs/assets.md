@@ -68,6 +68,8 @@ They are referenced like any other asset, by a stable `builtin:` reference — `
 `builtin:Texture/Grid`, `builtin:Material/Checker` — and resolve the same in the editor and in a build. A
 mesh reference can carry parameters, so one shape covers every size and resolution:
 `builtin:Mesh/Capsule?radius=0.3&height=1.7` (only parameters that differ from the defaults are written).
+In the editor a Mesh Renderer drawing a built-in shape shows those parameters — size, radius, height,
+segments, rings — under its model slot, and edits them live.
 References from older projects keep working: `primitive:Cube` reads as `builtin:Mesh/Cube` and
 `editor:Checkerboard` as `builtin:Material/Checker`, and they are saved in the new form.
 
