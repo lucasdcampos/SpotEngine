@@ -31,9 +31,9 @@
     <EmbeddedResource Include="Resources\DefaultFont.ttf" LogicalName="Spot.DefaultFont.ttf" />
   </ItemGroup>
 
-  <!-- Browser-only source: the in-memory store of fetched content. -->
+  <!-- Browser-only source: the in-memory store of fetched content (IO/Browser). -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <Compile Remove="Browser\**\*.cs" />
+    <Compile Remove="IO\Browser\**\*.cs" />
   </ItemGroup>
 
 </Project>

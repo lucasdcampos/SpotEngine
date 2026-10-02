@@ -31,9 +31,9 @@
 
   <!-- Desktop-only source: the Silk.NET window, the OpenGL device and the OpenAL backend. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
-    <Compile Remove="Core\Window.cs" />
-    <Compile Remove="Rendering\OpenGLGraphicsDevice.cs" />
-    <Compile Remove="Rendering\Renderer.Silk.cs" />
+    <Compile Remove="Platform\Window.cs" />
+    <Compile Remove="Graphics\OpenGLGraphicsDevice.cs" />
+    <Compile Remove="Graphics\Renderer.Silk.cs" />
     <Compile Remove="Audio\AudioDevice.cs" />
     <Compile Remove="Audio\OpenAlAudioBackend.cs" />
   </ItemGroup>
