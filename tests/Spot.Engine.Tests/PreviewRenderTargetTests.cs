@@ -61,6 +61,23 @@ public class PreviewRenderTargetTests
     }
 
     [Fact]
+    public void TransparentPreviews_ClearToZeroAlpha_OthersKeepAnOpaqueBackdrop()
+    {
+        (RecordingGraphicsDevice device, Framebuffer editorTarget) = Install();
+        using Framebuffer target = editorTarget;
+        using var preview = new Framebuffer(128, 128);
+
+        ModelPreviewHelper.RenderToFramebuffer(BuiltinAssets.LoadModel("builtin:Mesh/Cube"), preview, transparentBackground: true);
+        Assert.Equal(0.0f, device.ClearColor.W);
+
+        MaterialPreviewHelper.RenderToFramebuffer(BuiltinAssets.LoadMaterial("builtin:Material/Checker"), preview, transparentBackground: true);
+        Assert.Equal(0.0f, device.ClearColor.W);
+
+        MaterialPreviewHelper.RenderToFramebuffer(BuiltinAssets.LoadMaterial("builtin:Material/Checker"), preview);
+        Assert.Equal(1.0f, device.ClearColor.W);
+    }
+
+    [Fact]
     public void AFailedPreview_StillRestoresTheTarget()
     {
         (RecordingGraphicsDevice device, Framebuffer editorTarget) = Install();

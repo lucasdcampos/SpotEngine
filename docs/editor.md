@@ -71,8 +71,14 @@ The editor is organized into dockable panels you can rearrange and save into a l
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
   you import and organize assets. Textures show their image, materials render a live sphere preview, and
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
-  models apart at a glance without dropping them into a scene. Model thumbnails load in the background and
-  are cached per folder. Select several files at once with `Ctrl`+click and `Shift`+click, then delete or
+  models apart at a glance without dropping them into a scene. Previews sit directly on the tile, with no
+  backdrop. Model thumbnails load in the background and are cached per folder. Everything else gets a
+  painted icon: files are a paper page with a colored type badge (**C#** for scripts, **UI** for UI
+  documents, a waveform for audio, a state graph for animator controllers, the extension for other files),
+  scenes a small 3D viewport, prefabs a blue cube, and folders show papers when they hold anything. Under
+  each file's name, a colored line and a caption give its type (C# Script, Scene, Texture, Model,
+  Material, ...), so a material sphere and a sphere model are easy to tell apart. Files sit on a soft card;
+  folders have none until hovered or selected. Select several files at once with `Ctrl`+click and `Shift`+click, then delete or
   drag the whole selection into a folder together. The project root starts with a read-only **Built-in**
   folder holding the engine's [built-in assets](assets.md#built-in-assets) — meshes, textures and materials —
   which you drag onto slots, the scene or the hierarchy like any other asset. They can't be renamed, moved

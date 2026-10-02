@@ -293,7 +293,7 @@ public class AssetBrowserPanel
 
         float pad = 10.0f;
         float cellW = _iconSize + pad * 2;
-        float cellH = _iconSize + pad * 2 + ImGui.GetTextLineHeight() + 4;
+        float cellH = TileTextTop(pad) + ImGui.GetTextLineHeight() + TileCaptionGap + EditorFonts.Small.FontSize + pad - 2;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         float availW = ImGui.GetContentRegionAvail().X;
         int columns = Math.Max(1, (int)((availW + spacing) / (cellW + spacing)));
@@ -441,23 +441,53 @@ public class AssetBrowserPanel
 
         DrawItemContextMenu(entry);
 
-        // Backgrounds: subtle card, brighter on hover, accent when selected.
-        uint bg = selected
-            ? ImGui.GetColorU32(WithAlpha(palette.Accent, 0.35f))
-            : hovered
-                ? ImGui.GetColorU32(palette.FrameBgHovered)
-                : ImGui.GetColorU32(WithAlpha(palette.FrameBg, 0.5f));
-        drawList.AddRectFilled(p0, p0 + new Vector2(cellW, cellH), bg, 5.0f);
+        // Backgrounds: files sit on a soft, barely lifted card; folders have none until hovered or selected.
+        Vector4? card = selected ? WithAlpha(palette.Accent, 0.16f)
+            : hovered ? new Vector4(1, 1, 1, 0.06f)
+            : entry.IsDirectory ? null
+            : new Vector4(1, 1, 1, 0.03f);
+        if (card is Vector4 cardColor)
+        {
+            drawList.AddRectFilled(p0, p0 + new Vector2(cellW, cellH), ImGui.GetColorU32(cardColor), 6.0f);
+        }
+        if (selected)
+        {
+            drawList.AddRect(p0, p0 + new Vector2(cellW, cellH), ImGui.GetColorU32(WithAlpha(palette.Accent, 0.65f)),
+                6.0f, ImDrawFlags.None, 1.0f);
+        }
 
         Vector2 iconMin = p0 + new Vector2(pad, pad);
-        DrawIcon(drawList, iconMin, _iconSize, entry, palette);
+        DrawIcon(drawList, iconMin, _iconSize, entry);
+
+        // Under the icon, a divider in the asset kind's color (fading out toward the tile's edges) and a caption naming
+        // the type tell assets apart even when their previews look alike (a material sphere and a sphere model).
+        // Folders need neither.
+        float textTop = p0.Y + TileTextTop(pad);
+        if (!entry.IsDirectory)
+        {
+            float dividerY = p0.Y + pad + _iconSize + TileDividerGap;
+            Vector4 accent = KindColor(entry.Kind);
+            uint on = ImGui.GetColorU32(WithAlpha(accent, 0.9f));
+            uint off = ImGui.GetColorU32(WithAlpha(accent, 0.0f));
+            float mid = p0.X + cellW * 0.5f;
+            Vector2 lo = new(p0.X + 6, dividerY);
+            Vector2 hi = new(p0.X + cellW - 6, dividerY + TileDividerThickness);
+            drawList.AddRectFilledMultiColor(lo, new Vector2(mid, hi.Y), off, on, on, off);
+            drawList.AddRectFilledMultiColor(new Vector2(mid, lo.Y), hi, on, off, off, on);
+
+            ImFontPtr small = EditorFonts.Small;
+            string caption = Ellipsize(TypeLabel(entry), cellW - 6, small, small.FontSize);
+            Vector2 cs = small.CalcTextSizeA(small.FontSize, float.MaxValue, 0.0f, caption);
+            Vector2 captionPos = new Vector2(p0.X + (cellW - cs.X) * 0.5f, textTop + ImGui.GetTextLineHeight() + TileCaptionGap);
+            drawList.AddText(small, small.FontSize, captionPos, ImGui.GetColorU32(palette.TextDisabled), caption);
+        }
 
         bool isInlineRenaming = _inlineRenamePath == entry.FullPath;
 
         if (isInlineRenaming)
         {
-            // Draw an InputText below the icon instead of the static label.
-            Vector2 inputPos = new Vector2(p0.X + 4, p0.Y + pad + _iconSize + 1);
+            // Draw an InputText in place of the static label, its text on the label's line.
+            Vector2 inputPos = new Vector2(p0.X + 4, textTop - ImGui.GetStyle().FramePadding.Y);
             ImGui.SetCursorScreenPos(inputPos);
             ImGui.SetNextItemWidth(cellW - 8);
             bool focusThisFrame = _inlineRenameFocusPending;
@@ -485,21 +515,9 @@ public class AssetBrowserPanel
         else
         {
             // Filename label, centered and truncated with an ellipsis (full name in tooltip).
-            string label = entry.Name;
-            if (ImGui.CalcTextSize(label).X > cellW - 6)
-            {
-                float eWidth = ImGui.CalcTextSize("...").X;
-                for (int i = label.Length - 1; i > 0; i--)
-                {
-                    if (ImGui.CalcTextSize(label.Substring(0, i)).X + eWidth <= cellW - 6)
-                    {
-                        label = label.Substring(0, i) + "...";
-                        break;
-                    }
-                }
-            }
+            string label = Ellipsize(entry.Name, cellW - 6, ImGui.GetFont(), ImGui.GetFontSize());
             Vector2 ts = ImGui.CalcTextSize(label);
-            Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, p0.Y + pad + _iconSize + 3);
+            Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, textTop);
             drawList.AddText(labelPos, ImGui.GetColorU32(palette.Text), label);
 
             if (hovered)
@@ -513,16 +531,64 @@ public class AssetBrowserPanel
         ImGui.PopID();
     }
 
-    // Per-kind accent colors for the asset icons.
-    private static readonly Vector4 ScriptColor = new(0.36f, 0.66f, 0.98f, 1.0f);
-    private static readonly Vector4 SceneColor = new(0.66f, 0.40f, 0.98f, 1.0f);
-    private static readonly Vector4 ImageColor = new(0.30f, 0.80f, 0.55f, 1.0f);
-    private static readonly Vector4 ModelColor = new(0.98f, 0.62f, 0.26f, 1.0f);
-    private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
-    private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
-    private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
-    private static readonly Vector4 ControllerColor = new(0.98f, 0.78f, 0.30f, 1.0f);
-    private static readonly Vector4 UIDocumentColor = new(0.55f, 0.85f, 0.95f, 1.0f);
+    // Tile layout below the icon box: the divider, then the name and the type caption.
+    private const float TileDividerGap = 4.0f;
+    private const float TileDividerThickness = 2.0f;
+    private const float TileCaptionGap = 1.0f;
+
+    // Offset of the name line from the top of a tile.
+    private float TileTextTop(float pad) => pad + _iconSize + TileDividerGap + TileDividerThickness + 4.0f;
+
+    // Truncates text with an ellipsis so it fits maxWidth when drawn with the given font and size.
+    private static string Ellipsize(string text, float maxWidth, ImFontPtr font, float fontSize)
+    {
+        if (font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, text).X <= maxWidth)
+        {
+            return text;
+        }
+
+        float eWidth = font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, "...").X;
+        for (int i = text.Length - 1; i > 0; i--)
+        {
+            if (font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, text.Substring(0, i)).X + eWidth <= maxWidth)
+            {
+                return text.Substring(0, i) + "...";
+            }
+        }
+        return "...";
+    }
+
+    // The caption under a tile naming what kind of asset it is.
+    private static string TypeLabel(AssetEntry entry) => entry.Kind switch
+    {
+        AssetKind.Folder => "Folder",
+        AssetKind.Script => "C# Script",
+        AssetKind.Scene => "Scene",
+        AssetKind.Image => "Texture",
+        AssetKind.Model => "Model",
+        AssetKind.Material => "Material",
+        AssetKind.Prefab => "Prefab",
+        AssetKind.Audio => "Audio",
+        AssetKind.Controller => "Animator",
+        AssetKind.UIDocument => "UI Document",
+        _ => Path.GetExtension(entry.Name) is { Length: > 1 } ext ? $"{ext[1..].ToUpperInvariant()} File" : "File",
+    };
+
+    // The asset kind's accent color, shared with its painted icon.
+    private static Vector4 KindColor(AssetKind kind) => kind switch
+    {
+        AssetKind.Folder => AssetIcons.FolderAccent,
+        AssetKind.Script => AssetIcons.ScriptAccent,
+        AssetKind.Scene => AssetIcons.SceneAccent,
+        AssetKind.Image => AssetIcons.ImageAccent,
+        AssetKind.Model => AssetIcons.ModelAccent,
+        AssetKind.Material => AssetIcons.MaterialAccent,
+        AssetKind.Prefab => AssetIcons.PrefabAccent,
+        AssetKind.Audio => AssetIcons.AudioAccent,
+        AssetKind.Controller => AssetIcons.ControllerAccent,
+        AssetKind.UIDocument => AssetIcons.UIAccent,
+        _ => AssetIcons.FileAccent,
+    };
 
     private static AudioClip? _previewClip;
     private static Voice _previewVoice;
@@ -549,21 +615,20 @@ public class AssetBrowserPanel
         _previewClip = null;
     }
 
-    private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
+    private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry)
     {
         Vector2 iconMax = iconMin + new Vector2(size, size);
 
-        // Dynamic previews take priority and keep their existing look (thumbnail / rendered material).
+        // Dynamic previews take priority, drawn straight onto the tile with no backdrop: the image itself, or a
+        // material/model rendered over a transparent background.
         if (entry.Kind == AssetKind.Image && TryGetBuiltinTexture(entry.FullPath, out Texture2D? builtinTex))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             drawList.AddImage((IntPtr)builtinTex.Handle.Id, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
         if (entry.Kind == AssetKind.Image && TryGetThumbnail(entry.FullPath, out var tex))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             float scale = Math.Min(size / tex.Width, size / tex.Height);
             float w = tex.Width * scale;
             float h = tex.Height * scale;
@@ -574,105 +639,54 @@ public class AssetBrowserPanel
 
         if (entry.Kind == AssetKind.Material && TryGetMaterialPreview(entry.FullPath, out var matFb))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             drawList.AddImage((IntPtr)matFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
         // Models render a live 3D thumbnail; while the model is still loading (or if it fails) we fall
-        // through to the cube glyph below.
+        // through to the painted cube below.
         if (entry.Kind == AssetKind.Model && TryGetModelPreview(entry.FullPath, out var mdlFb))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             drawList.AddImage((IntPtr)mdlFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
-        // Folders are drawn as a vector shape (rather than a font glyph) so they can read as a modern folder
-        // and visibly distinguish an empty folder from one that holds assets.
-        if (entry.Kind == AssetKind.Folder)
+        // Everything else is a painted icon (see AssetIcons).
+        ImFontPtr labelFont = EditorFonts.IconText;
+        switch (entry.Kind)
         {
-            DrawFolderIcon(drawList, iconMin, size, entry.HasContents);
-            return;
+            case AssetKind.Folder: AssetIcons.Folder(drawList, iconMin, size, entry.HasContents); break;
+            case AssetKind.Script: AssetIcons.Script(drawList, iconMin, size, labelFont); break;
+            case AssetKind.Scene: AssetIcons.Scene(drawList, iconMin, size); break;
+            case AssetKind.Image: AssetIcons.Image(drawList, iconMin, size); break;
+            case AssetKind.Model: AssetIcons.Model(drawList, iconMin, size); break;
+            case AssetKind.Material: AssetIcons.Material(drawList, iconMin, size); break;
+            case AssetKind.Prefab: AssetIcons.Prefab(drawList, iconMin, size); break;
+            case AssetKind.Audio: AssetIcons.Audio(drawList, iconMin, size); break;
+            case AssetKind.Controller: AssetIcons.AnimatorController(drawList, iconMin, size); break;
+            case AssetKind.UIDocument: AssetIcons.UIDocument(drawList, iconMin, size, labelFont); break;
+            default: AssetIcons.File(drawList, iconMin, size, labelFont, ExtensionBadge(entry.Name)); break;
         }
-
-        // Everything else is a centered icon-font glyph tinted per kind — the same font the Hierarchy and
-        // viewport use, drawn from the large icon atlas so it stays crisp at tile sizes (48–128px).
-        (string glyph, Vector4 color) = GlyphFor(entry.Kind, palette);
-        DrawGlyph(drawList, iconMin, size, glyph, color);
     }
 
-    // Folders use a muted, professional warm yellow/orange to fit a modern dark editor.
-    private static readonly Vector4 FolderColor = new(0.80f, 0.65f, 0.35f, 1.0f);
-    private static readonly Vector4 FolderPaperColor = new(0.88f, 0.88f, 0.88f, 1.0f);
-
-    // Draws a clean, minimal folder scaled into the square icon box.
-    // The design is flatter and smaller to reduce visual weight.
-    private static void DrawFolderIcon(ImDrawListPtr dl, Vector2 iconMin, float size, bool hasContents)
+    // A short extension (up to four letters or digits, e.g. "JSON") for the generic file icon's badge; null otherwise.
+    private static string? ExtensionBadge(string name)
     {
-        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.70f)); // Subtle tonal variation
-        uint front = ImGui.GetColorU32(FolderColor);
-
-        // Tighter bounds to reduce bulkiness and improve proportions (approx 4:3)
-        float x0 = iconMin.X + size * 0.20f;
-        float x1 = iconMin.X + size * 0.80f;
-        float backTop = iconMin.Y + size * 0.38f;
-        float bottom = iconMin.Y + size * 0.75f;
-        float r = size * 0.04f; // Minimal corner rounding
-
-        // Tab on the back panel (top-left)
-        float tabW = (x1 - x0) * 0.38f;
-        float tabH = size * 0.08f;
-        dl.AddRectFilled(new Vector2(x0, backTop - tabH), new Vector2(x0 + tabW, backTop + r), back, r,
-            ImDrawFlags.RoundCornersTop);
-
-        // Back panel of the folder
-        dl.AddRectFilled(new Vector2(x0, backTop), new Vector2(x1, bottom), back, r);
-
-        float pocketTop = backTop + size * 0.10f;
-
-        // A single clean sheet peeking out signals that the folder is non-empty
-        if (hasContents)
+        string ext = Path.GetExtension(name);
+        if (ext.Length < 2 || ext.Length > 5)
         {
-            float sw = (x1 - x0) * 0.60f;
-            float sx = x0 + (x1 - x0 - sw) * 0.5f;
-            float sr = size * 0.02f; // Sharper paper edges
-            uint paper = ImGui.GetColorU32(FolderPaperColor);
-            
-            // Draw the paper sheet tucked behind the front pocket
-            dl.AddRectFilled(new Vector2(sx, backTop - size * 0.02f), new Vector2(sx + sw, pocketTop + r), paper, sr, ImDrawFlags.RoundCornersTop);
+            return null;
         }
 
-        // Front pocket
-        dl.AddRectFilled(new Vector2(x0, pocketTop), new Vector2(x1, bottom), front, r, ImDrawFlags.RoundCornersBottom);
-    }
-
-    private static Vector4 Scale(Vector4 c, float f) => new(c.X * f, c.Y * f, c.Z * f, c.W);
-
-    // Picks the Font Awesome glyph and tint for a non-preview asset kind.
-    private static (string Glyph, Vector4 Color) GlyphFor(AssetKind kind, EditorPalette palette) => kind switch
-    {
-        AssetKind.Folder => (EditorIcons.FolderOpen, palette.TextDisabled),
-        AssetKind.Script => (EditorIcons.Code, ScriptColor),
-        AssetKind.Scene => (EditorIcons.Cubes, SceneColor),
-        AssetKind.Image => (EditorIcons.Image, ImageColor),
-        AssetKind.Model => (EditorIcons.Cube, ModelColor),
-        AssetKind.Material => (EditorIcons.Palette, MaterialColor),
-        AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
-        AssetKind.Audio => (EditorIcons.Music, AudioColor),
-        AssetKind.Controller => (EditorIcons.Rotate, ControllerColor),
-        AssetKind.UIDocument => (EditorIcons.Image, UIDocumentColor),
-        _ => (EditorIcons.File, palette.TextDisabled),
-    };
-
-    // Draws a single icon-font glyph centered in the icon box, scaled to ~62% of it for breathing room.
-    private static void DrawGlyph(ImDrawListPtr dl, Vector2 iconMin, float size, string glyph, Vector4 color)
-    {
-        ImFontPtr font = EditorFonts.Icons;
-        float glyphPx = size * 0.62f;
-        Vector2 ts = font.CalcTextSizeA(glyphPx, float.MaxValue, 0.0f, glyph);
-        Vector2 center = iconMin + new Vector2(size * 0.5f, size * 0.5f);
-        dl.AddText(font, glyphPx, center - ts * 0.5f, ImGui.GetColorU32(color), glyph);
+        string label = ext[1..].ToUpperInvariant();
+        foreach (char ch in label)
+        {
+            if (!char.IsAsciiLetterOrDigit(ch))
+            {
+                return null;
+            }
+        }
+        return label;
     }
 
     private void DrawItemContextMenu(AssetEntry entry)
@@ -1285,7 +1299,7 @@ public class AssetBrowserPanel
         {
             fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
             var material = Spot.Engine.Assets.Material.Load(path);
-            Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb);
+            Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb, transparentBackground: true);
             _materialPreviews[path] = fb;
             return true;
         }
@@ -1319,7 +1333,7 @@ public class AssetBrowserPanel
 
             _modelPreviewsThisFrame++;
             fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
-            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb);
+            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb, transparentBackground: true);
             _modelPreviews[path] = fb;
             return true;
         }

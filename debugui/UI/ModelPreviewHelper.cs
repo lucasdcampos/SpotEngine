@@ -17,7 +17,13 @@ public static class ModelPreviewHelper
     // A neutral light-gray material so previews focus on the model's silhouette, not its authored colors.
     private static readonly Material s_previewMaterial = new() { Color = new Vector4(0.78f, 0.78f, 0.80f, 1.0f) };
 
-    public static void RenderToFramebuffer(Model model, Spot.Framework.Graphics.Framebuffer framebuffer)
+    /// <summary>
+    /// Renders <paramref name="model"/> into <paramref name="framebuffer"/>. With
+    /// <paramref name="transparentBackground"/> the backdrop is cleared to transparent so the model sits directly on
+    /// whatever the preview is drawn over (e.g. an asset-browser tile); otherwise it gets a dark gray backdrop.
+    /// </summary>
+    public static void RenderToFramebuffer(Model model, Spot.Framework.Graphics.Framebuffer framebuffer,
+        bool transparentBackground = false)
     {
         // Save and restore the target through the renderer's tracked state, never raw GL: creating the next
         // Framebuffer re-binds whatever the renderer believes is bound, so a raw restore would leave that belief
@@ -30,7 +36,7 @@ public static class ModelPreviewHelper
         try
         {
             framebuffer.Bind();
-            Renderer.SetClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+            Renderer.SetClearColor(0.15f, 0.15f, 0.15f, transparentBackground ? 0.0f : 1.0f);
             Renderer.Clear();
             Renderer.SetDepthTest(true);
             Renderer.SetFaceCulling(true);

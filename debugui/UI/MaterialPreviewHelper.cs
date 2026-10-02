@@ -34,7 +34,13 @@ public static class MaterialPreviewHelper
         return hash.ToHashCode();
     }
 
-    public static void RenderToFramebuffer(Material material, Spot.Framework.Graphics.Framebuffer framebuffer)
+    /// <summary>
+    /// Renders <paramref name="material"/> on a lit sphere into <paramref name="framebuffer"/>. With
+    /// <paramref name="transparentBackground"/> the backdrop is cleared to transparent so the sphere sits directly
+    /// on whatever the preview is drawn over (e.g. an asset-browser tile); otherwise it gets a dark gray backdrop.
+    /// </summary>
+    public static void RenderToFramebuffer(Material material, Spot.Framework.Graphics.Framebuffer framebuffer,
+        bool transparentBackground = false)
     {
         if (s_sphereModel == null)
         {
@@ -52,7 +58,7 @@ public static class MaterialPreviewHelper
         try
         {
             framebuffer.Bind();
-            Renderer.SetClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+            Renderer.SetClearColor(0.15f, 0.15f, 0.15f, transparentBackground ? 0.0f : 1.0f);
             Renderer.Clear();
             Renderer.SetDepthTest(true);
             Renderer.SetFaceCulling(true);
