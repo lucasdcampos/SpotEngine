@@ -465,7 +465,7 @@ public class AssetBrowserPanel
         try
         {
             StopAudioPreview();
-            _previewClip = AudioClip.Load(sourcePath); // a source path decodes directly, no cooking needed
+            _previewClip = AudioClip.FromFile(sourcePath); // a source path decodes directly, no cooking needed
             _previewVoice = AudioManager.Play(_previewClip, spatial: false);
         }
         catch (Exception ex)
@@ -1020,7 +1020,7 @@ public class AssetBrowserPanel
 
         try
         {
-            texture = new Texture2D(path);
+            texture = Texture2D.FromFile(path);
             _thumbnails[path] = texture;
             return true;
         }

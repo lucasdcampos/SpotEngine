@@ -221,7 +221,7 @@ public class GpuResourceTests
     }
 
     [Fact]
-    public void Texture_BindAndDispose()
+    public void Texture_BindAndDisposeOnce()
     {
         RecordingGraphicsDevice device = Install();
         var texture = new Texture2D(1, 1, new byte[4]);
@@ -229,8 +229,11 @@ public class GpuResourceTests
         texture.Bind(3);
         Assert.Equal(texture.Handle.Id, device.BoundTextures[3]);
 
+        uint id = texture.Handle.Id;
         texture.Dispose();
-        Assert.DoesNotContain(texture.Handle.Id, device.LiveTextures);
+        texture.Dispose();
+        Assert.DoesNotContain(id, device.LiveTextures);
+        Assert.Equal(1, device.Count(nameof(IGraphicsDevice.DeleteTexture)));
     }
 
     [Theory]

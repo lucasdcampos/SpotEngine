@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Assets;
 using Spot.Core;
+using Spot.IO;
 
 namespace Spot.Scenes;
 
@@ -379,7 +380,7 @@ public class SceneSerializer
 
     public bool Deserialize(string filepath)
     {
-        if (!AssetProvider.Current.Exists(filepath))
+        if (!FileSystem.Current.Exists(filepath))
         {
             return false;
         }
@@ -387,7 +388,7 @@ public class SceneSerializer
         string json;
         try
         {
-            json = AssetProvider.Current.ReadAllText(filepath);
+            json = FileSystem.Current.ReadAllText(filepath);
         }
         catch (Exception ex)
         {

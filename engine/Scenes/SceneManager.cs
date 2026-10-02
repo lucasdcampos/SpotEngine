@@ -1,6 +1,7 @@
 using System.IO;
 using Spot.Assets;
 using Spot.Core;
+using Spot.IO;
 
 namespace Spot.Scenes;
 
@@ -57,7 +58,7 @@ public static class SceneManager
         }
 
         string path = AssetPath.ResolveContent(sceneReference) ?? AssetPath.Resolve(sceneReference);
-        if (!AssetProvider.Current.Exists(path))
+        if (!FileSystem.Current.Exists(path))
         {
             Log.CoreError("Scene not found: {0}", sceneReference);
             return null;

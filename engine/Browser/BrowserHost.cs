@@ -8,6 +8,7 @@ using Spot.Core;
 using Spot.Events;
 using Spot.Rendering;
 using Spot.Scenes;
+using Spot.IO;
 
 namespace Spot.Browser;
 
@@ -76,7 +77,7 @@ public static partial class BrowserHost
             // Input.CursorLocked (e.g. the 3D character controller) in the browser just like on desktop.
             Input.CursorController = new BrowserCursorController();
 
-            AssetProvider.Current = s_assets;
+            FileSystem.Current = s_assets;
 
             // Run the same shared 3D-first RenderSystem the desktop uses. No IScenePostProcessor is installed,
             // so the scene renders straight to the screen (no HDR/bloom/post) — the browser's current limit.

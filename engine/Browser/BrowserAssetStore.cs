@@ -2,16 +2,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Spot.Assets;
+using Spot.IO;
 
 namespace Spot.Browser;
 
 /// <summary>
-/// The browser <see cref="IAssetProvider"/>: an in-memory store of cooked content the host preloads over HTTP
+/// The browser <see cref="IFileSystem"/>: an in-memory store of cooked content the host preloads over HTTP
 /// before the game starts. WebAssembly cannot read files synchronously over the network, but the engine's
 /// asset API is synchronous, so the host <c>fetch</c>es every cooked file up front (driven by a content index)
 /// and hands the bytes here; the engine then reads them synchronously, exactly as it would from disk on desktop.
 /// </summary>
-public sealed class BrowserAssetStore : IAssetProvider
+public sealed class BrowserAssetStore : IFileSystem
 {
     private readonly Dictionary<string, byte[]> _files = new(System.StringComparer.OrdinalIgnoreCase);
 

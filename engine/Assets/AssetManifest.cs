@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spot.Core;
+using Spot.IO;
 
 namespace Spot.Assets;
 
@@ -66,7 +67,7 @@ public sealed class AssetManifest
         ManifestDocument doc = new();
         try
         {
-            ManifestDocument? parsed = JsonSerializer.Deserialize<ManifestDocument>(AssetProvider.Current.ReadAllText(manifestPath), JsonOptions);
+            ManifestDocument? parsed = JsonSerializer.Deserialize<ManifestDocument>(FileSystem.Current.ReadAllText(manifestPath), JsonOptions);
             if (parsed is not null)
             {
                 doc = parsed;

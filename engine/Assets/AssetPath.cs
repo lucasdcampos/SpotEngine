@@ -1,3 +1,5 @@
+using Spot.IO;
+
 namespace Spot.Assets;
 
 /// <summary>
@@ -14,7 +16,22 @@ public static class AssetPath
     /// project's <c>Assets/</c> directory. The host (editor or game) sets this when a project loads.
     /// When empty, relative paths resolve against the current working directory (legacy behaviour).
     /// </summary>
-    public static string Root { get; set; } = string.Empty;
+    /// <remarks>
+    /// Setting it also installs <see cref="Resolve"/> as the framework's <see cref="FileSystem.PathResolver"/>, so
+    /// framework loaders called from game code (<c>Texture2D.FromFile</c>, <c>AudioClip.FromFile</c>, ...)
+    /// resolve project-relative paths exactly like the engine's own loaders.
+    /// </remarks>
+    public static string Root
+    {
+        get => s_root;
+        set
+        {
+            s_root = value ?? string.Empty;
+            FileSystem.PathResolver = Resolve;
+        }
+    }
+
+    private static string s_root = string.Empty;
 
     /// <summary>
     /// Returns <see langword="true"/> for references that are not filesystem paths and must never be treated as
@@ -44,6 +61,16 @@ public static class AssetPath
     /// <param name="storedRef">The stored reference from a scene, material, or component.</param>
     public static string? ResolveContent(string storedRef) =>
         AssetRef.IsGuidRef(storedRef) ? ContentResolver?.Invoke(storedRef) : null;
+
+    /// <summary>
+    /// Resolves a <c>guid:</c> reference to its cooked artifact path, or throws when nothing resolves it.
+    /// </summary>
+    /// <param name="storedRef">The <c>guid:</c> reference.</param>
+    /// <param name="kind">The asset kind, for the error message (e.g. "texture").</param>
+    /// <returns>The cooked artifact path.</returns>
+    /// <exception cref="FileNotFoundException">The reference has no cooked artifact.</exception>
+    internal static string ResolveCooked(string storedRef, string kind) =>
+        ResolveContent(storedRef) ?? throw new FileNotFoundException($"Unresolved {kind} reference '{storedRef}'.");
 
     /// <summary>
     /// Resolves a stored asset path to an absolute path suitable for loading. Pseudo-paths, absolute

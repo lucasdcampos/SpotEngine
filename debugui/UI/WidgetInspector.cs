@@ -5,6 +5,7 @@ using Spot.Assets;
 using Spot.Core;
 using Spot.Rendering;
 using Spot.UI;
+using Image = Spot.UI.Image;
 
 namespace Spot.DebugUI.UI;
 

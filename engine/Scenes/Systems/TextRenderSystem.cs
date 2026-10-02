@@ -1,4 +1,5 @@
 using System.Numerics;
+using Spot.Assets;
 using Spot.Core;
 using Spot.Rendering;
 

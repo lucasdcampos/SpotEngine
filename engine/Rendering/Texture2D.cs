@@ -1,38 +1,13 @@
-using Spot.Assets;
-using StbImageSharp;
-
 namespace Spot.Rendering;
 
 /// <summary>
-/// A 2D texture loaded onto the GPU.
+/// A 2D texture on the GPU, created from raw RGBA pixels. Loading image files is a framework feature
+/// (<c>Texture2D.FromFile</c>, <c>Image</c>); this core type only talks to the device.
 /// </summary>
 public sealed class Texture2D : IDisposable
 {
     private readonly IGraphicsDevice _device;
     private TextureHandle _handle;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Texture2D"/> class by loading an image from disk.
-    /// </summary>
-    /// <param name="path">The path to the image file (PNG, JPG, and other formats stb supports).</param>
-    public Texture2D(string path)
-    {
-        _device = Renderer.Device;
-
-        // Resolve project-relative paths against the active project's asset directory so scenes and
-        // materials committed with relative texture paths load on any machine.
-        path = Spot.Assets.AssetPath.Resolve(path);
-
-        // OpenGL's texture origin is the bottom-left, while image files start at the top-left,
-        // so flip vertically on load to keep textures upright.
-        StbImage.stbi_set_flip_vertically_on_load(1);
-        ImageResult image = ImageResult.FromMemory(File.ReadAllBytes(path), ColorComponents.RedGreenBlueAlpha);
-
-        Width = (uint)image.Width;
-        Height = (uint)image.Height;
-
-        Upload(image.Data, false);
-    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Texture2D"/> class from raw RGBA pixels in memory.
@@ -41,8 +16,18 @@ public sealed class Texture2D : IDisposable
     /// <param name="height">The texture height in pixels.</param>
     /// <param name="rgbaPixels">The pixel data, four bytes (R, G, B, A) per pixel.</param>
     /// <param name="pointFilter">If true, uses nearest neighbor filtering instead of linear.</param>
+    /// <exception cref="ArgumentException">The pixel data is not exactly <c>width * height * 4</c> bytes.</exception>
     public Texture2D(uint width, uint height, ReadOnlySpan<byte> rgbaPixels, bool pointFilter = false)
     {
+        // The driver reads width * height * 4 bytes from the span; a short buffer would be a native
+        // out-of-bounds read that takes the whole process down, so reject it here.
+        if ((ulong)rgbaPixels.Length != (ulong)width * height * 4)
+        {
+            throw new ArgumentException(
+                $"Expected {(ulong)width * height * 4} bytes for a {width}x{height} RGBA texture, got {rgbaPixels.Length}.",
+                nameof(rgbaPixels));
+        }
+
         _device = Renderer.Device;
         Width = width;
         Height = height;
@@ -89,36 +74,6 @@ public sealed class Texture2D : IDisposable
     }
 
     /// <summary>
-    /// Loads a cooked <c>.spttex</c> texture — raw RGBA decoded at import time — and uploads it verbatim, so no
-    /// image decoder runs at runtime. Mipmaps are generated on upload, as for a source texture.
-    /// </summary>
-    /// <param name="path">The absolute path to the cooked <c>.spttex</c> file.</param>
-    public static Texture2D FromSpTex(string path)
-    {
-        SpTexData tex = SpTex.ReadFile(path);
-        return new Texture2D(tex.Width, tex.Height, tex.Rgba, tex.PointFilter);
-    }
-
-    /// <summary>
-    /// Loads a texture from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.spttex</c>
-    /// through the content host, while any other value is loaded as a source image path. This is the single
-    /// entry point components and materials use, so they never care whether the project has been cooked.
-    /// </summary>
-    /// <param name="storedRef">The stored reference (a <c>guid:</c> reference or a source image path).</param>
-    /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
-    public static Texture2D Load(string storedRef)
-    {
-        if (AssetRef.IsGuidRef(storedRef))
-        {
-            string cooked = AssetPath.ResolveContent(storedRef)
-                ?? throw new FileNotFoundException($"Unresolved texture reference '{storedRef}'.");
-            return FromSpTex(cooked);
-        }
-
-        return new Texture2D(storedRef);
-    }
-
-    /// <summary>
     /// Gets the texture width in pixels.
     /// </summary>
     public uint Width { get; }
@@ -135,7 +90,14 @@ public sealed class Texture2D : IDisposable
     public void Bind(uint slot = 0) => _device.BindTexture(slot, _handle);
 
     /// <inheritdoc />
-    public void Dispose() => _device.DeleteTexture(_handle);
+    public void Dispose()
+    {
+        if (_handle.Id != 0)
+        {
+            _device.DeleteTexture(_handle);
+            _handle = default;
+        }
+    }
 
     private void Upload(ReadOnlySpan<byte> pixels, bool pointFilter)
     {

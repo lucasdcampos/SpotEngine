@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spot.Assets;
 using Spot.Core;
+using Spot.IO;
 
 namespace Spot.Animation;
 
@@ -233,7 +234,7 @@ public sealed class AnimatorController
         try
         {
             AnimatorController? data = JsonSerializer.Deserialize<AnimatorController>(
-                AssetProvider.Current.ReadAllText(full), s_options);
+                FileSystem.Current.ReadAllText(full), s_options);
             if (data != null)
             {
                 controller.Parameters = data.Parameters;

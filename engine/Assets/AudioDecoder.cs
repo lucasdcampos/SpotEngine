@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using Spot.IO;
 using StbVorbisSharp;
 
 namespace Spot.Assets;
@@ -8,26 +9,49 @@ namespace Spot.Assets;
 /// Decodes a source audio file (<c>.wav</c> or <c>.ogg</c>) into interleaved signed 16-bit PCM — the single
 /// format the engine cooks to and OpenAL uploads. WAV is parsed directly (no dependency); OGG/Vorbis is
 /// decoded with the managed <c>StbVorbisSharp</c> port. Decoding is pure computation with no device calls,
-/// so it runs during an import or off the render thread.
+/// so it runs during an import or off the render thread. Feed the result to an <c>AudioClip</c>, or straight
+/// to an audio backend buffer.
 /// </summary>
-internal static class AudioDecoder
+public static class AudioDecoder
 {
-    /// <summary>Decodes a source audio file to interleaved 16-bit PCM.</summary>
-    /// <param name="path">The absolute path to a <c>.wav</c> or <c>.ogg</c> file.</param>
+    /// <summary>
+    /// Decodes an audio file, read through <see cref="FileSystem"/>, to interleaved 16-bit PCM. The format is
+    /// detected from the file's contents, so the extension does not matter.
+    /// </summary>
+    /// <param name="path">The path to a WAV or OGG/Vorbis file.</param>
     /// <param name="channels">Receives the channel count (1 = mono, 2 = stereo).</param>
     /// <param name="sampleRate">Receives the sample rate in frames per second.</param>
     /// <returns>The interleaved signed 16-bit PCM samples.</returns>
-    /// <exception cref="NotSupportedException">The file extension or encoding is not supported.</exception>
+    /// <exception cref="NotSupportedException">The file is neither WAV nor OGG/Vorbis.</exception>
     /// <exception cref="InvalidDataException">The file is malformed.</exception>
-    public static short[] Decode(string path, out int channels, out int sampleRate)
+    public static short[] Decode(string path, out int channels, out int sampleRate) =>
+        Decode(FileSystem.ReadAllBytes(path), out channels, out sampleRate);
+
+    /// <summary>
+    /// Decodes an encoded WAV or OGG/Vorbis file held in memory to interleaved 16-bit PCM, detecting the format
+    /// from its header.
+    /// </summary>
+    /// <param name="encoded">The encoded file contents.</param>
+    /// <param name="channels">Receives the channel count (1 = mono, 2 = stereo).</param>
+    /// <param name="sampleRate">Receives the sample rate in frames per second.</param>
+    /// <returns>The interleaved signed 16-bit PCM samples.</returns>
+    /// <exception cref="NotSupportedException">The data is neither WAV nor OGG/Vorbis.</exception>
+    /// <exception cref="InvalidDataException">The data is malformed.</exception>
+    public static short[] Decode(byte[] encoded, out int channels, out int sampleRate)
     {
-        string ext = Path.GetExtension(path).ToLowerInvariant();
-        return ext switch
+        ArgumentNullException.ThrowIfNull(encoded);
+        ReadOnlySpan<byte> header = encoded;
+        if (header.Length >= 4 && header[..4].SequenceEqual("RIFF"u8))
         {
-            ".wav" => DecodeWav(File.ReadAllBytes(path), out channels, out sampleRate),
-            ".ogg" => DecodeOgg(File.ReadAllBytes(path), out channels, out sampleRate),
-            _ => throw new NotSupportedException($"Unsupported audio format '{ext}'."),
-        };
+            return DecodeWav(encoded, out channels, out sampleRate);
+        }
+
+        if (header.Length >= 4 && header[..4].SequenceEqual("OggS"u8))
+        {
+            return DecodeOgg(encoded, out channels, out sampleRate);
+        }
+
+        throw new NotSupportedException("Unsupported audio format: expected a WAV (RIFF) or OGG/Vorbis file.");
     }
 
     private static short[] DecodeOgg(byte[] bytes, out int channels, out int sampleRate)

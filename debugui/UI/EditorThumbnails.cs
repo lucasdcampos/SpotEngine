@@ -31,7 +31,7 @@ internal static class EditorThumbnails
 
         try
         {
-            tex = new Texture2D(path);
+            tex = Texture2D.FromFile(path);
             _cache[path] = tex;
             return tex;
         }

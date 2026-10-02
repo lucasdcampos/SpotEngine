@@ -4,9 +4,8 @@ namespace Spot.Audio;
 
 /// <summary>
 /// A fully-decoded sound: interleaved 16-bit PCM held in memory, ready to be uploaded to a backend audio
-/// buffer the first time it plays. This is the audio counterpart to <c>Texture2D</c> — the runtime asset that
-/// components reference. Loading follows the same rule as every other asset: a <c>guid:</c> reference
-/// resolves to its cooked <c>.sptaudio</c>, while any other value is decoded from a source <c>.wav</c>/<c>.ogg</c>.
+/// buffer the first time it plays. This is the audio counterpart to <c>Texture2D</c>: build one from PCM, or
+/// decode a file with <see cref="FromFile"/>.
 /// </summary>
 public sealed class AudioClip : IDisposable
 {
@@ -17,8 +16,13 @@ public sealed class AudioClip : IDisposable
     /// <param name="pcm">Interleaved signed 16-bit PCM samples.</param>
     /// <param name="channels">Channel count (1 = mono, 2 = stereo).</param>
     /// <param name="sampleRate">Sample rate in frames per second.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The channel count is not 1 or 2, or the sample rate is not positive.</exception>
     public AudioClip(short[] pcm, int channels, int sampleRate)
     {
+        ArgumentNullException.ThrowIfNull(pcm);
+        ArgumentOutOfRangeException.ThrowIfLessThan(channels, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(channels, 2);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sampleRate);
         Pcm = pcm;
         Channels = channels;
         SampleRate = sampleRate;
@@ -37,32 +41,30 @@ public sealed class AudioClip : IDisposable
     public float LengthInSeconds =>
         Channels > 0 && SampleRate > 0 ? (float)Pcm.Length / Channels / SampleRate : 0.0f;
 
-    /// <summary>Loads a cooked <c>.sptaudio</c> clip — PCM decoded at import time — with no audio decoder at runtime.</summary>
-    /// <param name="path">The absolute path to the cooked <c>.sptaudio</c> file.</param>
-    public static AudioClip FromSpAudio(string path)
+    /// <summary>
+    /// Decodes a WAV or OGG/Vorbis file, read through <see cref="Spot.IO.FileSystem"/>, into a new clip.
+    /// </summary>
+    /// <param name="path">The audio file path.</param>
+    /// <returns>The decoded clip.</returns>
+    /// <exception cref="FileNotFoundException">The file does not exist.</exception>
+    /// <exception cref="NotSupportedException">The file is neither WAV nor OGG/Vorbis.</exception>
+    /// <exception cref="InvalidDataException">The file is malformed.</exception>
+    public static AudioClip FromFile(string path)
     {
-        SpAudioData data = SpAudio.ReadFile(path);
-        return new AudioClip(data.Pcm, data.Channels, data.SampleRate);
+        short[] pcm = AudioDecoder.Decode(path, out int channels, out int sampleRate);
+        return new AudioClip(pcm, channels, sampleRate);
     }
 
     /// <summary>
-    /// Loads a clip from a stored reference: a <c>guid:</c> reference resolves to its cooked <c>.sptaudio</c>
-    /// through the content host, while any other value is decoded from a source audio path. This is the single
-    /// entry point components use, so they never care whether the project has been cooked.
+    /// Decodes an encoded WAV or OGG/Vorbis file held in memory into a new clip.
     /// </summary>
-    /// <param name="storedRef">The stored reference (a <c>guid:</c> reference or a source audio path).</param>
-    /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
-    public static AudioClip Load(string storedRef)
+    /// <param name="encoded">The encoded file contents.</param>
+    /// <returns>The decoded clip.</returns>
+    /// <exception cref="NotSupportedException">The data is neither WAV nor OGG/Vorbis.</exception>
+    /// <exception cref="InvalidDataException">The data is malformed.</exception>
+    public static AudioClip FromBytes(byte[] encoded)
     {
-        if (AssetRef.IsGuidRef(storedRef))
-        {
-            string cooked = AssetPath.ResolveContent(storedRef)
-                ?? throw new FileNotFoundException($"Unresolved audio reference '{storedRef}'.");
-            return FromSpAudio(cooked);
-        }
-
-        string resolved = AssetPath.Resolve(storedRef);
-        short[] pcm = AudioDecoder.Decode(resolved, out int channels, out int sampleRate);
+        short[] pcm = AudioDecoder.Decode(encoded, out int channels, out int sampleRate);
         return new AudioClip(pcm, channels, sampleRate);
     }
 

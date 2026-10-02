@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Assets;
 using Spot.Core;
+using Spot.IO;
 
 namespace Spot.Scenes;
 
@@ -78,7 +79,7 @@ public static class Prefab
     {
         try
         {
-            return InstantiateInto(scene, AssetProvider.Current.ReadAllText(path), parent);
+            return InstantiateInto(scene, FileSystem.Current.ReadAllText(path), parent);
         }
         catch (Exception ex)
         {

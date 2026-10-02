@@ -2,6 +2,7 @@ using System.IO;
 using System.Numerics;
 using Spot.Rendering;
 using Spot.UI;
+using Image = Spot.UI.Image;
 using Spot.UI.Serialization;
 using Xunit;
 

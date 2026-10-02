@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Spot.Animation;
 using Spot.Rendering;
+using Spot.IO;
 
 namespace Spot.Assets;
 
@@ -172,12 +173,12 @@ public static class SpMesh
     /// <summary>Reads and parses a <c>.sptmesh</c> file into CPU geometry. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked mesh file.</param>
     /// <returns>The decoded submeshes.</returns>
-    public static IReadOnlyList<MeshData> ReadFile(string path) => Read(AssetProvider.Current.ReadAllBytes(path));
+    public static IReadOnlyList<MeshData> ReadFile(string path) => Read(FileSystem.Current.ReadAllBytes(path));
 
     /// <summary>Reads and parses a <c>.sptmesh</c> file into a full cooked model. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked mesh file.</param>
     /// <returns>The decoded model (geometry, skinning and clips).</returns>
-    public static CookedModel ReadModelFile(string path) => ReadModel(AssetProvider.Current.ReadAllBytes(path));
+    public static CookedModel ReadModelFile(string path) => ReadModel(FileSystem.Current.ReadAllBytes(path));
 
     private static void WriteString(BinaryWriter w, string value)
     {
@@ -357,7 +358,7 @@ public static class SpTex
     /// <summary>Reads and parses a <c>.spttex</c> file.</summary>
     /// <param name="path">The absolute path to the cooked texture file.</param>
     /// <returns>The decoded texture.</returns>
-    public static SpTexData ReadFile(string path) => Read(AssetProvider.Current.ReadAllBytes(path));
+    public static SpTexData ReadFile(string path) => Read(FileSystem.Current.ReadAllBytes(path));
 }
 
 /// <summary>The decoded contents of a <c>.sptaudio</c>: interleaved 16-bit PCM plus its channel and rate.</summary>
@@ -457,7 +458,7 @@ public static class SpAudio
     /// <summary>Reads and parses a <c>.sptaudio</c> file. Safe to call off the render thread.</summary>
     /// <param name="path">The absolute path to the cooked audio file.</param>
     /// <returns>The decoded audio.</returns>
-    public static SpAudioData ReadFile(string path) => Read(AssetProvider.Current.ReadAllBytes(path));
+    public static SpAudioData ReadFile(string path) => Read(FileSystem.Current.ReadAllBytes(path));
 }
 
 /// <summary>The decoded contents of a <c>.sptfont</c>: the original font file bytes plus its name.</summary>
@@ -541,7 +542,7 @@ public static class SpFont
     /// <summary>Reads and parses a <c>.sptfont</c> file.</summary>
     /// <param name="path">The absolute path to the cooked font file.</param>
     /// <returns>The decoded font.</returns>
-    public static SpFontData ReadFile(string path) => Read(AssetProvider.Current.ReadAllBytes(path));
+    public static SpFontData ReadFile(string path) => Read(FileSystem.Current.ReadAllBytes(path));
 }
 
 /// <summary>A forward-only reader over a cooked-asset byte blob that validates bounds as it goes.</summary>

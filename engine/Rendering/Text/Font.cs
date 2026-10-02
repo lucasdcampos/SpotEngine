@@ -1,5 +1,4 @@
 using System.Numerics;
-using Spot.Assets;
 using StbTrueTypeSharp;
 
 namespace Spot.Rendering;
@@ -234,26 +233,14 @@ public sealed class Font : IFontMetrics, IDisposable
     }
 
     /// <summary>
-    /// Loads a font from a stored reference: a <c>guid:</c> reference resolves to its cooked
-    /// <c>.sptfont</c> through the content host, while any other value is loaded as a source
-    /// <c>.ttf</c>/<c>.otf</c> path. This mirrors <see cref="Texture2D.Load"/> and <c>AudioClip.Load</c>,
-    /// so callers never care whether the project has been cooked.
+    /// Loads a TrueType/OpenType font file, read through <see cref="Spot.IO.FileSystem"/>. The font is named after
+    /// the file (without its extension).
     /// </summary>
-    /// <param name="storedRef">A <c>guid:</c> reference or a source font path.</param>
-    /// <exception cref="FileNotFoundException">A <c>guid:</c> reference has no cooked artifact.</exception>
-    public static Font Load(string storedRef)
-    {
-        if (AssetRef.IsGuidRef(storedRef))
-        {
-            string cooked = AssetPath.ResolveContent(storedRef)
-                ?? throw new FileNotFoundException($"Unresolved font reference '{storedRef}'.");
-            SpFontData font = SpFont.ReadFile(cooked);
-            return new Font(font.Ttf, font.Name);
-        }
-
-        string path = AssetPath.Resolve(storedRef);
-        return new Font(File.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path));
-    }
+    /// <param name="path">The <c>.ttf</c>/<c>.otf</c> file path.</param>
+    /// <returns>The font, with its glyph atlas uploaded.</returns>
+    /// <exception cref="FileNotFoundException">The file does not exist.</exception>
+    public static Font FromFile(string path) =>
+        new(Spot.IO.FileSystem.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path));
 
     /// <inheritdoc />
     public bool TryGetGlyph(int codepoint, out GlyphInfo glyph) => _glyphs.TryGetValue(codepoint, out glyph);

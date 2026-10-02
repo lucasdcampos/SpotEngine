@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Text.Json;
 using Spot.Core;
 using Spot.Rendering;
+using Spot.IO;
 
 namespace Spot.Assets;
 
@@ -188,7 +189,7 @@ public sealed class Material
         var material = new Material { SourcePath = full };
         try
         {
-            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(AssetProvider.Current.ReadAllText(full));
+            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(FileSystem.Current.ReadAllText(full));
             if (data != null)
             {
                 if (data.Color.Length == 4)
