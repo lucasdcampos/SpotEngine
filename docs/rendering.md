@@ -58,8 +58,9 @@ throws is logged once and skipped, never taking the frame down.
 ## 3D content and lighting
 
 Spot imports 3D models from common formats (via Assimp) and draws them with **materials** and
-textures. It also ships simple built-in **primitives** (cube, plane, sphere, and friends) so you can
-block out scenes without external assets.
+textures. It also ships **built-in primitives** — cube, sphere, capsule, cylinder, cone, plane and quad,
+each sized and subdivided by parameters — plus checker and grid materials, so you can block out scenes
+without external assets. See [Assets](assets.md#built-in-assets).
 
 A mesh renderer points at a model and, optionally, a single **submesh** of it (its `SubmeshIndex`;
 the default of `-1` draws the whole model). This is what lets a model with many parts be spread

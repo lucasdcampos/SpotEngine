@@ -57,7 +57,7 @@ public class SceneSerializerBackCompatTests
     {
         var scene = new Scene();
         var ground = scene.Instantiate("Ground");
-        ground.AddComponent(new MeshComponent { ModelPath = "primitive:Plane", Color = new Vector4(0.5f, 0.6f, 0.7f, 1f) });
+        ground.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Plane", Color = new Vector4(0.5f, 0.6f, 0.7f, 1f) });
         ground.AddComponent(new SkyboxComponent { SkyColor = new Vector3(0.1f, 0.2f, 0.3f) });
         ground.AddComponent(new PostProcessingComponent { Exposure = 1.5f, EnableBloom = false });
 
@@ -72,7 +72,7 @@ public class SceneSerializerBackCompatTests
 
         Entity g = FindByName(loaded, "Ground");
         var mesh = g.GetComponent<MeshComponent>();
-        Assert.Equal("primitive:Plane", mesh.ModelPath);
+        Assert.Equal("builtin:Mesh/Plane", mesh.ModelPath);
         Assert.Equal(new Vector4(0.5f, 0.6f, 0.7f, 1f), mesh.Color);
         Assert.Equal(new Vector3(0.1f, 0.2f, 0.3f), g.GetComponent<SkyboxComponent>().SkyColor);
 

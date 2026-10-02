@@ -57,6 +57,25 @@ editor and in a build. Loading is asynchronous where it can be (models finish th
 the frame that needs them), and every loader catches and logs bad data rather than throwing — a
 missing or corrupt asset degrades gracefully instead of crashing.
 
+## Built-in assets
+
+Every project also has a small set of **built-in assets** it never imports: procedural **meshes** (cube,
+sphere, capsule, cylinder, cone, plane, quad), utility **textures** (white, black, flat normal, checker,
+grid, soft dot) and **materials** (default, checker, grid). They are generated in code rather than stored as
+files, so there is nothing to cook, ship or fetch, and they look the same on every platform.
+
+They are referenced like any other asset, by a stable `builtin:` reference — `builtin:Mesh/Capsule`,
+`builtin:Texture/Grid`, `builtin:Material/Checker` — and resolve the same in the editor and in a build. A
+mesh reference can carry parameters, so one shape covers every size and resolution:
+`builtin:Mesh/Capsule?radius=0.3&height=1.7` (only parameters that differ from the defaults are written).
+References from older projects keep working: `primitive:Cube` reads as `builtin:Mesh/Cube` and
+`editor:Checkerboard` as `builtin:Material/Checker`, and they are saved in the new form.
+
+Built-ins are **shared and read-only**: every user of `builtin:Material/Grid` gets the same instance. To
+customize one, copy it into the project (a mesh becomes an `.obj`, a texture a `.png`, a material an
+`.sptmat`) and edit the copy. The generators themselves are framework features (see [Levels](levels.md)),
+so code that uses only the framework can build the same meshes and images directly.
+
 ## Prefabs
 
 A **prefab** is a reusable entity template saved as an asset. You author an entity (with its

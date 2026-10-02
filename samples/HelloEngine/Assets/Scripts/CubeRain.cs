@@ -73,7 +73,7 @@ public sealed class CubeRain : EntityBehaviour
             transform.Rotation = new Vector3(Range(0, 360), Range(0, 360), Range(0, 360));
             transform.Scale = new Vector3(size);
 
-            cube.AddComponent(new MeshComponent { ModelPath = "primitive:Cube", Color = Palette[_random.Next(Palette.Length)] });
+            cube.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Cube", Color = Palette[_random.Next(Palette.Length)] });
             cube.AddComponent(new PhysicsBody3DComponent { Mass = 4.0f * size * size * size, Friction = 0.6f, Restitution = 0.2f });
             cube.AddComponent(new BoxCollider3DComponent());
             _cubes.Enqueue(cube);

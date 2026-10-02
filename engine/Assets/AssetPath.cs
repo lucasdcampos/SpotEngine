@@ -6,7 +6,7 @@ namespace Spot.Engine.Assets;
 /// Resolves asset paths stored in scenes and materials against the active project's asset directory,
 /// so committed <c>.sptscene</c>/<c>.sptmat</c> files stay portable across machines instead of baking
 /// in an absolute path from whoever authored them. Stored paths are relative to <see cref="Root"/>
-/// (normally the project's <c>Assets/</c> folder); absolute paths and the <c>primitive:</c>/<c>editor:</c>
+/// (normally the project's <c>Assets/</c> folder); absolute paths and the built-in (<c>builtin:</c>)
 /// pseudo-paths are passed through unchanged.
 /// </summary>
 public static class AssetPath
@@ -38,15 +38,13 @@ public static class AssetPath
 
     /// <summary>
     /// Returns <see langword="true"/> for references that are not filesystem paths and must never be treated as
-    /// one: built-in assets (<c>primitive:</c>, <c>editor:</c>) and asset-pipeline guid references
+    /// one: built-in assets (<c>builtin:</c>, and the legacy <c>primitive:</c>/<c>editor:</c>; see
+    /// <see cref="BuiltinAssets"/>) and asset-pipeline guid references
     /// (<c>guid:</c>). Keeping guid references here means the scene/material serializer and path-based loaders
     /// pass them through untouched, so no code below the resolver has to know the reference form.
     /// </summary>
     /// <param name="path">The path to test.</param>
-    public static bool IsPseudoPath(string path) =>
-        path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("editor:", StringComparison.OrdinalIgnoreCase) ||
-        AssetRef.IsGuidRef(path);
+    public static bool IsPseudoPath(string path) => BuiltinAssets.IsBuiltin(path) || AssetRef.IsGuidRef(path);
 
     /// <summary>
     /// Resolves a <c>guid:</c> reference to the absolute cooked artifact it names, or returns

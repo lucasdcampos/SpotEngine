@@ -847,7 +847,7 @@ public static class RenderSystem
     /// <summary>
     /// Lazily fills in a mesh renderer's <see cref="MeshComponent.Model"/> and <see cref="MeshComponent.Material"/>
     /// from their stored paths. Scene loading stores only the paths (so it never blocks startup on a heavy
-    /// asset); this resolves them at draw time. Primitives and materials load synchronously — they're cheap —
+    /// asset); this resolves them at draw time. Built-in meshes and materials load synchronously — they're cheap —
     /// while model files load asynchronously in the background and stay <see langword="null"/> (skipping the
     /// draw) until ready. Because it runs only after the render loops have skipped disabled entities, a
     /// disabled object never pays to load its assets.
@@ -856,26 +856,10 @@ public static class RenderSystem
     {
         if (meshRenderer.Model is null && !string.IsNullOrEmpty(meshRenderer.ModelPath))
         {
-            if (meshRenderer.ModelPath.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    meshRenderer.Model = Model.Load(meshRenderer.ModelPath);
-                }
-                catch (Exception ex)
-                {
-                    // An unknown primitive name can't be recovered; log once and drop the reference so we
-                    // don't retry (and re-log) it every frame.
-                    Spot.Framework.Log.CoreError("Failed to load model '{0}': {1}", meshRenderer.ModelPath, ex.Message);
-                    meshRenderer.ModelPath = null;
-                }
-            }
-            else
-            {
-                // Non-blocking: returns null while the file parses in the background, the ready model once
-                // its GPU upload has been finalized. RequestAsync tracks failures itself, so no spam here.
-                meshRenderer.Model = ModelImporter.RequestAsync(meshRenderer.ModelPath);
-            }
+            // Built-in meshes come back at once; files return null while they parse in the background and the
+            // ready model once its GPU upload has been finalized. RequestAsync logs a failure once and never
+            // retries it, so asking every frame is cheap.
+            meshRenderer.Model = ModelImporter.RequestAsync(meshRenderer.ModelPath);
         }
 
         if (meshRenderer.Material is null && !string.IsNullOrEmpty(meshRenderer.MaterialPath))

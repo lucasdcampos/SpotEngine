@@ -21,10 +21,17 @@ public static class TextureAssetLoading
         /// <param name="storedRef">A <c>guid:</c> reference or a source image path.</param>
         /// <returns>The texture.</returns>
         /// <exception cref="FileNotFoundException">The reference resolves to nothing.</exception>
-        public static Texture2D Load(string storedRef) =>
-            AssetRef.IsGuidRef(storedRef)
+        public static Texture2D Load(string storedRef)
+        {
+            if (BuiltinAssets.IsBuiltin(storedRef))
+            {
+                return BuiltinAssets.LoadTexture(storedRef);
+            }
+
+            return AssetRef.IsGuidRef(storedRef)
                 ? Texture2D.FromSpTex(AssetPath.ResolveCooked(storedRef, "texture"))
                 : Texture2D.FromFile(AssetPath.Resolve(storedRef));
+        }
 
         /// <summary>
         /// Loads a cooked <c>.spttex</c> texture — raw RGBA decoded at import time — and uploads it verbatim, so no

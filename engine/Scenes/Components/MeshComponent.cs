@@ -13,6 +13,9 @@ namespace Spot.Engine.Scenes;
 [SceneComponent("MeshRenderer")]
 public sealed class MeshComponent : Component
 {
+    private string? _modelPath;
+    private string? _materialPath;
+
     /// <summary>
     /// Gets or sets the model to draw. When <see langword="null"/>, nothing is drawn.
     /// </summary>
@@ -20,10 +23,16 @@ public sealed class MeshComponent : Component
     public Model? Model { get; set; }
 
     /// <summary>
-    /// Gets or sets the path to the model file, used for serialization.
+    /// Gets or sets the model reference, used for serialization: a model file, a <c>guid:</c> reference, or a
+    /// built-in mesh such as <c>builtin:Mesh/Capsule?radius=0.3</c>. Legacy built-in forms
+    /// (<c>primitive:Cube</c>) are stored in their current form.
     /// </summary>
     [HideInInspector]
-    public string? ModelPath { get; set; }
+    public string? ModelPath
+    {
+        get => _modelPath;
+        set => _modelPath = BuiltinAssets.Canonicalize(value);
+    }
 
     /// <summary>
     /// Gets or sets which submesh of the <see cref="Model"/> this renderer draws. A value of
@@ -50,10 +59,16 @@ public sealed class MeshComponent : Component
     public Material? Material { get; set; }
 
     /// <summary>
-    /// Gets or sets the path to the material file, used for serialization.
+    /// Gets or sets the material reference, used for serialization: a <c>.sptmat</c> file, a <c>guid:</c>
+    /// reference, or a built-in material such as <c>builtin:Material/Grid</c> (legacy forms are stored in their
+    /// current form).
     /// </summary>
     [HideInInspector]
-    public string? MaterialPath { get; set; }
+    public string? MaterialPath
+    {
+        get => _materialPath;
+        set => _materialPath = BuiltinAssets.Canonicalize(value);
+    }
 
     /// <summary>
     /// Gets or sets the fallback color used when no <see cref="Material"/> is assigned. Defaults to opaque white.

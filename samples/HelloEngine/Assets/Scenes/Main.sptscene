@@ -181,9 +181,9 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "primitive:Cube",
+        "ModelPath": "builtin:Mesh/Cube",
         "SubmeshIndex": -1,
-        "MaterialPath": "editor:Checkerboard",
+        "MaterialPath": "builtin:Material/Grid",
         "Color": [
           0.85,
           0.86,
@@ -250,7 +250,7 @@
       },
       "MeshRenderer": {
         "Enabled": true,
-        "ModelPath": "primitive:Cube",
+        "ModelPath": "builtin:Mesh/Cube",
         "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [

@@ -37,7 +37,7 @@ public readonly record struct CookedArtifact(byte[] Bytes, string Type);
 public interface IGuidResolver
 {
     /// <summary>Resolves a referenced source path to a <c>guid:</c> reference, or returns it unchanged when it
-    /// is already a reference (<c>guid:</c>/<c>primitive:</c>/<c>editor:</c>) or has no known guid.</summary>
+    /// is already a reference (<c>guid:</c> or <c>builtin:</c>) or has no known guid.</summary>
     /// <param name="sourcePathOrRef">The referenced source path or existing reference.</param>
     string? ToGuidRef(string sourcePathOrRef);
 }

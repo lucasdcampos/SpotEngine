@@ -135,7 +135,7 @@ public static class AssetDatabase
 
     /// <summary>
     /// Converts a referenced source path to a <c>guid:</c> reference. References that are already
-    /// <c>guid:</c>/<c>primitive:</c>/<c>editor:</c>, and paths with no known guid, are returned unchanged.
+    /// <c>guid:</c> or built-in (<c>builtin:</c>), and paths with no known guid, are returned unchanged.
     /// </summary>
     /// <param name="sourcePathOrRef">The referenced source path or existing reference.</param>
     public static string? ToGuidRef(string? sourcePathOrRef)
@@ -368,7 +368,7 @@ public static class AssetDatabase
     /// <summary>
     /// One-time migration: rewrites every scene (<c>.sptscene</c>) and material (<c>.sptmat</c>) under a
     /// project's assets so their asset references become stable <c>guid:</c> references instead of relative
-    /// source paths. Pseudo-paths (<c>primitive:</c>/<c>editor:</c>) and already-migrated references are left
+    /// source paths. Built-in references (<c>builtin:</c>) and already-migrated references are left
     /// untouched, so it is safe to run repeatedly. Returns the number of files changed. When
     /// <paramref name="dryRun"/> is true, nothing is written.
     /// </summary>

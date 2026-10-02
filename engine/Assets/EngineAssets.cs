@@ -35,6 +35,7 @@ public static class EngineAssets
         FileSystem.PathResolver ??= AssetPath.Resolve;
         ModelImporter.ReferenceResolver = ResolveModelReference;
         ModelImporter.Register(new SpMeshModelImporter());
+        ModelImporter.RegisterProvider(BuiltinAssets.Scheme, BuiltinAssets.LoadModel);
     }
 
     /// <summary>
