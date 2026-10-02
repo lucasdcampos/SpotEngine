@@ -40,7 +40,7 @@ public enum ShaderDataType
 /// <summary>
 /// Helpers that map a <see cref="ShaderDataType"/> to its size, component count, and graphics API type.
 /// </summary>
-internal static class ShaderDataTypeExtensions
+public static class ShaderDataTypeExtensions
 {
     /// <summary>
     /// Gets the total size of the attribute, in bytes.

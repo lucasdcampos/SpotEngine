@@ -800,7 +800,7 @@ public static class EditorGui
         if (IsImagePath(path))
         {
             Texture2D? tex = EditorThumbnails.Get(AssetPath.Resolve(path));
-            return tex != null ? (nint)tex.Handle : 0;
+            return tex != null ? (nint)tex.Handle.Id : 0;
         }
         if (path.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
             return MaterialThumbnails.Get(AssetPath.Resolve(path));

@@ -24,7 +24,23 @@ public sealed class VertexArray : IDisposable
     /// <summary>
     /// Gets the number of indices in the attached index buffer, or zero if none is set.
     /// </summary>
-    internal uint IndexCount => _indexBuffer?.Count ?? 0;
+    public uint IndexCount => _indexBuffer?.Count ?? 0;
+
+    /// <summary>
+    /// Gets the attached index buffer, or <see langword="null"/> if none is set.
+    /// </summary>
+    public IndexBuffer? IndexBuffer => _indexBuffer;
+
+    /// <summary>
+    /// Gets the number of vertex attributes configured so far; the next buffer added starts at this
+    /// attribute index (the <c>layout (location = N)</c> its shader inputs must use).
+    /// </summary>
+    public uint AttributeCount => _attributeIndex;
+
+    /// <summary>
+    /// Gets the raw device handle, for issuing commands the wrapper does not expose.
+    /// </summary>
+    public VertexArrayHandle Handle => _handle;
 
     /// <summary>
     /// Binds the vertex array.
@@ -35,33 +51,7 @@ public sealed class VertexArray : IDisposable
     /// Adds a vertex buffer, configuring a vertex attribute for each element of its layout.
     /// </summary>
     /// <param name="vertexBuffer">The vertex buffer to add.</param>
-    public void AddVertexBuffer(VertexBuffer vertexBuffer)
-    {
-        Bind();
-        vertexBuffer.Bind();
-
-        uint stride = 0;
-        foreach (ShaderDataType type in vertexBuffer.Layout)
-        {
-            stride += type.Size();
-        }
-
-        int offset = 0;
-        foreach (ShaderDataType type in vertexBuffer.Layout)
-        {
-            _device.EnableVertexAttribArray(_attributeIndex);
-            _device.VertexAttribPointer(
-                _attributeIndex,
-                type.ComponentCount(),
-                type.ToVertexAttribType(),
-                false,
-                stride,
-                offset);
-
-            offset += (int)type.Size();
-            _attributeIndex++;
-        }
-    }
+    public void AddVertexBuffer(VertexBuffer vertexBuffer) => AddAttributes(vertexBuffer, divisor: 0);
 
     /// <summary>
     /// Adds a per-instance vertex buffer: like <see cref="AddVertexBuffer"/>, but each attribute advances
@@ -70,17 +60,17 @@ public sealed class VertexArray : IDisposable
     /// </summary>
     /// <param name="vertexBuffer">The buffer of per-instance data.</param>
     /// <param name="divisor">The attribute advance rate: 1 per instance (the default), or every N instances.</param>
-    public void AddInstancedVertexBuffer(VertexBuffer vertexBuffer, uint divisor = 1)
+    public void AddInstancedVertexBuffer(VertexBuffer vertexBuffer, uint divisor = 1) =>
+        AddAttributes(vertexBuffer, divisor);
+
+    // Configures one attribute per layout element, packed tightly in layout order. A zero divisor leaves the
+    // attribute per-vertex (the device default), so only instanced buffers issue the divisor call.
+    private void AddAttributes(VertexBuffer vertexBuffer, uint divisor)
     {
         Bind();
         vertexBuffer.Bind();
 
-        uint stride = 0;
-        foreach (ShaderDataType type in vertexBuffer.Layout)
-        {
-            stride += type.Size();
-        }
-
+        uint stride = vertexBuffer.Stride;
         int offset = 0;
         foreach (ShaderDataType type in vertexBuffer.Layout)
         {
@@ -92,7 +82,10 @@ public sealed class VertexArray : IDisposable
                 false,
                 stride,
                 offset);
-            _device.VertexAttribDivisor(_attributeIndex, divisor);
+            if (divisor != 0)
+            {
+                _device.VertexAttribDivisor(_attributeIndex, divisor);
+            }
 
             offset += (int)type.Size();
             _attributeIndex++;

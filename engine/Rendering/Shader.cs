@@ -31,7 +31,9 @@ public sealed class Shader : IDisposable
 
         if (!_device.GetProgramLinkStatus(_handle))
         {
-            Log.CoreError("Shader program link failed: {0}", _device.GetProgramInfoLog(_handle));
+            string log = _device.GetProgramInfoLog(_handle);
+            Log.CoreError("Shader program link failed: {0}", log);
+            AppendError(log);
         }
 
         _device.DetachShader(_handle, vertex);
@@ -39,6 +41,22 @@ public sealed class Shader : IDisposable
         _device.DeleteShader(vertex);
         _device.DeleteShader(fragment);
     }
+
+    /// <summary>
+    /// Gets whether both stages compiled and the program linked. A failed shader logs its errors and stays
+    /// usable as a handle (drawing with it renders nothing), so check this when a shader is user-supplied.
+    /// </summary>
+    public bool IsValid => ErrorLog is null;
+
+    /// <summary>
+    /// Gets the combined compile/link error log, or <see langword="null"/> when the shader is valid.
+    /// </summary>
+    public string? ErrorLog { get; private set; }
+
+    /// <summary>
+    /// Gets the raw device handle of the linked program, for issuing commands the wrapper does not expose.
+    /// </summary>
+    public ProgramHandle Handle => _handle;
 
     /// <summary>
     /// Activates the shader program for subsequent draw calls.
@@ -163,9 +181,14 @@ public sealed class Shader : IDisposable
 
         if (!_device.GetShaderCompileStatus(shader))
         {
-            Log.CoreError("{0} shader compilation failed: {1}", stage, _device.GetShaderInfoLog(shader));
+            string log = _device.GetShaderInfoLog(shader);
+            Log.CoreError("{0} shader compilation failed: {1}", stage, log);
+            AppendError($"{stage}: {log}");
         }
 
         return shader;
     }
+
+    private void AppendError(string message) =>
+        ErrorLog = ErrorLog is null ? message : ErrorLog + Environment.NewLine + message;
 }

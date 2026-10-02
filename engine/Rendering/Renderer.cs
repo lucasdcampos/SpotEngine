@@ -15,18 +15,36 @@ public static partial class Renderer
     private static IGraphicsDevice? s_device;
 
     /// <summary>
-    /// Gets the active graphics device. Rendering resources issue all GPU commands through this so the
-    /// same code runs on the desktop OpenGL backend and the browser WebGL2 backend.
+    /// Gets the active graphics device: the lowest-level, backend-neutral GPU API. Every rendering resource
+    /// issues its commands through it, so the same code runs on the desktop OpenGL backend and the browser
+    /// WebGL2 backend. Use it directly for anything the higher-level wrappers do not cover — its handles
+    /// interoperate with theirs (see <see cref="Texture2D.Handle"/>, <see cref="Shader.Handle"/>,
+    /// <see cref="VertexArray.Handle"/> and <see cref="GraphicsBuffer{TData}.Handle"/>).
     /// </summary>
-    internal static IGraphicsDevice Device =>
+    /// <exception cref="InvalidOperationException">No device has been installed yet.</exception>
+    public static IGraphicsDevice Device =>
         s_device ?? throw new InvalidOperationException("The renderer has not been initialized.");
 
     /// <summary>
-    /// Initializes the renderer with a graphics device. Called once by the host (the desktop application
-    /// wraps a Silk.NET OpenGL context; the browser host wraps a WebGL2 context).
+    /// Gets whether a graphics device has been installed (see <see cref="Init(IGraphicsDevice)"/>).
+    /// </summary>
+    public static bool IsInitialized => s_device is not null;
+
+    /// <summary>
+    /// Installs the graphics device every draw call goes through. The engine host does this for you; call it
+    /// yourself only when you bring your own context (a custom window, an offscreen context, or a test double).
     /// </summary>
     /// <param name="device">The graphics device backing every draw call.</param>
-    internal static void Init(IGraphicsDevice device) => s_device = device;
+    public static void Init(IGraphicsDevice device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        s_device = device;
+        CurrentRenderTarget = FramebufferHandle.Default;
+        ViewportX = 0;
+        ViewportY = 0;
+        ViewportWidth = 0;
+        ViewportHeight = 0;
+    }
 
     /// <summary>
     /// Gets the framebuffer currently bound as the draw target (tracked here rather than queried from the GPU,

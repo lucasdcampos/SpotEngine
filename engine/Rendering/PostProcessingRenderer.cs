@@ -267,7 +267,7 @@ void main()
         s_shader.SetUniform("uLutIntensity", config.LutIntensity);
         s_shader.SetUniform("uLut", 2);
         Renderer.Gl.ActiveTexture(TextureUnit.Texture2);
-        Renderer.Gl.BindTexture(TextureTarget.Texture2D, lutEnabled ? config.LutTexture!.Handle : 0u);
+        Renderer.Gl.BindTexture(TextureTarget.Texture2D, lutEnabled ? config.LutTexture!.Handle.Id : 0u);
 
         Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
 

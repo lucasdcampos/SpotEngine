@@ -26,11 +26,11 @@ public static partial class Renderer
     public static GL Api => Gl;
 
     /// <summary>
-    /// Initializes the renderer with the active OpenGL context, wrapping it in the desktop graphics device.
-    /// Called once by the desktop application.
+    /// Initializes the renderer with an OpenGL context you created, wrapping it in the desktop graphics device.
+    /// The engine host does this for you; call it only when you bring your own Silk.NET context.
     /// </summary>
     /// <param name="gl">The OpenGL API for the current context.</param>
-    internal static void Init(GL gl)
+    public static void Init(GL gl)
     {
         s_gl = gl;
         Init(new OpenGLGraphicsDevice(gl));

@@ -494,7 +494,7 @@ public class AssetBrowserPanel
             float w = tex.Width * scale;
             float h = tex.Height * scale;
             Vector2 imgMin = iconMin + new Vector2((size - w) * 0.5f, (size - h) * 0.5f);
-            drawList.AddImage((IntPtr)tex.Handle, imgMin, imgMin + new Vector2(w, h), new Vector2(0, 1), new Vector2(1, 0));
+            drawList.AddImage((IntPtr)tex.Handle.Id, imgMin, imgMin + new Vector2(w, h), new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 

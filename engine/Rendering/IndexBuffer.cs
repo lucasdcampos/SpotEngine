@@ -5,7 +5,7 @@ namespace Spot.Rendering;
 /// </summary>
 public sealed class IndexBuffer : IDisposable
 {
-    private readonly BufferObject<uint> _buffer;
+    private readonly GraphicsBuffer<uint> _buffer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IndexBuffer"/> class and uploads the indices.
@@ -13,7 +13,7 @@ public sealed class IndexBuffer : IDisposable
     /// <param name="indices">The indices into the associated vertex buffer.</param>
     public IndexBuffer(ReadOnlySpan<uint> indices)
     {
-        _buffer = new BufferObject<uint>(indices, BufferKind.Index);
+        _buffer = new GraphicsBuffer<uint>(indices, BufferKind.Index);
         Count = (uint)indices.Length;
     }
 
@@ -21,6 +21,11 @@ public sealed class IndexBuffer : IDisposable
     /// Gets the number of indices in the buffer.
     /// </summary>
     public uint Count { get; }
+
+    /// <summary>
+    /// Gets the underlying GPU buffer, for direct access through <see cref="Renderer.Device"/>.
+    /// </summary>
+    public GraphicsBuffer<uint> Buffer => _buffer;
 
     /// <summary>
     /// Binds the index buffer.

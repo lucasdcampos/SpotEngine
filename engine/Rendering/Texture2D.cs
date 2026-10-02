@@ -51,10 +51,10 @@ public sealed class Texture2D : IDisposable
     }
 
     /// <summary>
-    /// Gets the native texture handle. Exposed so editor UI can display the texture through
-    /// ImGui (for example as an asset thumbnail via <c>ImGui.Image</c>).
+    /// Gets the raw device handle, for issuing commands the wrapper does not expose. Its <c>Id</c> is the native
+    /// texture name, which is what UI layers such as ImGui take to display the texture (<c>ImGui.Image</c>).
     /// </summary>
-    public uint Handle => _handle.Id;
+    public TextureHandle Handle => _handle;
 
     /// <summary>
     /// Creates a soft checkerboard texture for debugging. Rendered at a real resolution (not one texel

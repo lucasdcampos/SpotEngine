@@ -5,7 +5,7 @@ namespace Spot.Rendering;
 /// </summary>
 public sealed class VertexBuffer : IDisposable
 {
-    private readonly BufferObject<float> _buffer;
+    private readonly GraphicsBuffer<float> _buffer;
 
     /// <summary>
     /// Initializes a new static <see cref="VertexBuffer"/> and uploads the vertices once.
@@ -14,7 +14,7 @@ public sealed class VertexBuffer : IDisposable
     /// <param name="layout">The attributes that make up a single vertex, in order.</param>
     public VertexBuffer(ReadOnlySpan<float> vertices, params ShaderDataType[] layout)
     {
-        _buffer = new BufferObject<float>(vertices, BufferKind.Vertex);
+        _buffer = new GraphicsBuffer<float>(vertices, BufferKind.Vertex);
         Layout = layout;
     }
 
@@ -26,14 +26,36 @@ public sealed class VertexBuffer : IDisposable
     /// <param name="layout">The attributes that make up a single vertex, in order.</param>
     public VertexBuffer(uint capacityInFloats, params ShaderDataType[] layout)
     {
-        _buffer = new BufferObject<float>(capacityInFloats, BufferKind.Vertex);
+        _buffer = new GraphicsBuffer<float>(capacityInFloats, BufferKind.Vertex);
         Layout = layout;
     }
 
     /// <summary>
     /// Gets the attributes that make up a single vertex, in order.
     /// </summary>
-    internal ShaderDataType[] Layout { get; }
+    public IReadOnlyList<ShaderDataType> Layout { get; }
+
+    /// <summary>
+    /// Gets the size of one vertex in bytes (the sum of the <see cref="Layout"/> attribute sizes).
+    /// </summary>
+    public uint Stride
+    {
+        get
+        {
+            uint stride = 0;
+            foreach (ShaderDataType type in Layout)
+            {
+                stride += type.Size();
+            }
+
+            return stride;
+        }
+    }
+
+    /// <summary>
+    /// Gets the underlying GPU buffer, for direct access through <see cref="Renderer.Device"/>.
+    /// </summary>
+    public GraphicsBuffer<float> Buffer => _buffer;
 
     /// <summary>
     /// Binds the vertex buffer.
