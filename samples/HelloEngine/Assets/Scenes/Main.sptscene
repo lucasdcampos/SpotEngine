@@ -1,0 +1,440 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Sun",
+        "Enabled": true,
+        "Id": "855cfbbe095d4847a35eee9d3ac3138a"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          10,
+          0
+        ],
+        "Rotation": [
+          -50,
+          35,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Light": {
+        "Enabled": true,
+        "Type": 0,
+        "Color": [
+          1.0,
+          0.96,
+          0.88
+        ],
+        "Intensity": 1.1,
+        "AmbientIntensity": 0.35,
+        "CastShadows": true,
+        "Range": 10
+      },
+      "Skybox": {
+        "Enabled": true,
+        "SkyColor": [
+          0.216,
+          0.415,
+          0.602
+        ],
+        "GroundColor": [
+          0.259,
+          0.39,
+          0.469
+        ]
+      },
+      "DynamicClouds": {
+        "Enabled": true,
+        "ColorTop": [
+          1,
+          1,
+          1
+        ],
+        "ColorBottom": [
+          0.8,
+          0.85,
+          0.9
+        ],
+        "Speed": 1,
+        "Density": 0.5,
+        "Height": 0.3,
+        "Opacity": 0.5,
+        "Volume": 1.35
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Post Processing",
+        "Enabled": true,
+        "Id": "87f76817af3e49a59bc9502bbe0b3ee2"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "PostProcessing": {
+        "Enabled": true,
+        "Tonemap": 2,
+        "Exposure": 1,
+        "Gamma": 2.2,
+        "EnableVignette": true,
+        "VignetteIntensity": 0.05,
+        "EnableFXAA": true,
+        "EnableBloom": true,
+        "BloomThreshold": 1,
+        "BloomIntensity": 1
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Camera",
+        "Enabled": true,
+        "Id": "775242f22c92423ca9a937d7b4dd229e"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          7,
+          14
+        ],
+        "Rotation": [
+          -25,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Camera": {
+        "Enabled": true,
+        "Primary": true,
+        "FixedAspectRatio": false,
+        "BackgroundColor": [
+          0.1,
+          0.12,
+          0.16,
+          1
+        ],
+        "ProjectionType": 1,
+        "ZoomLevel": 5,
+        "FieldOfView": 50,
+        "NearClip": 0.1,
+        "FarClip": 500
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "CameraOrbit"
+          }
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Ground",
+        "Enabled": true,
+        "Id": "89c58c00594b4a29a84d50b59a6405a4"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          -0.5,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          20,
+          1,
+          20
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
+        "MaterialPath": "editor:Checkerboard",
+        "Color": [
+          0.85,
+          0.86,
+          0.9,
+          1
+        ],
+        "Occluder": true
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": false,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ],
+        "IsTrigger": false,
+        "Layer": 0
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Spinner",
+        "Enabled": true,
+        "Id": "0ee2842edae74dd3b0fa48b8b2358847"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          1.4,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1.6,
+          1.6,
+          1.6
+        ]
+      },
+      "MeshRenderer": {
+        "Enabled": true,
+        "ModelPath": "primitive:Cube",
+        "SubmeshIndex": -1,
+        "MaterialPath": null,
+        "Color": [
+          1.0,
+          0.55,
+          0.15,
+          1
+        ],
+        "Occluder": false
+      },
+      "PhysicsBody3D": {
+        "Enabled": true,
+        "Velocity": [
+          0,
+          0,
+          0
+        ],
+        "GravityScale": 1,
+        "LinearDrag": 0,
+        "IsDynamic": false,
+        "Mass": 1,
+        "Friction": 0.8,
+        "Restitution": 0,
+        "IsKinematic": true,
+        "FreezeRotation": false
+      },
+      "BoxCollider3D": {
+        "Enabled": true,
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "Offset": [
+          0,
+          0,
+          0
+        ],
+        "IsTrigger": false,
+        "Layer": 0
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "Spinner"
+          }
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Glow Ring",
+        "Enabled": true,
+        "Id": "101eaf896ca64d9ab9f09681d290591a"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "GlowRing"
+          }
+        ]
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Fountain",
+        "Enabled": true,
+        "Id": "50fcdce1a6d24212bf8548e2a85f97ac"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          -6,
+          0,
+          -5
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "ParticleSystem": {
+        "Enabled": true,
+        "PlayOnAwake": true,
+        "Looping": true,
+        "Duration": 5,
+        "MaxParticles": 400,
+        "EmissionRate": 120,
+        "Shape": 3,
+        "BoxSize": [
+          1,
+          1,
+          1
+        ],
+        "Radius": 0.2,
+        "ConeAngle": 18,
+        "StartLifetime": 1.6,
+        "StartSpeed": 7,
+        "StartSize": 0.45,
+        "SpinSpeed": 120,
+        "StartColor": [
+          1.0,
+          0.7,
+          0.25,
+          1
+        ],
+        "EndColor": [
+          1.0,
+          0.2,
+          0.05,
+          0
+        ],
+        "EndSize": 0.1,
+        "Gravity": 6,
+        "Damping": 0.3,
+        "Randomness": 0.5,
+        "Space": 1,
+        "RenderMode": 0,
+        "Blend": 1,
+        "TexturePath": null
+      }
+    },
+    {
+      "Tag": {
+        "Name": "Cube Rain",
+        "Enabled": true,
+        "Id": "54ace2f72b54464ca1a68fab6f0244e0"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "UICanvas": {
+        "Enabled": true,
+        "DocumentRef": "UI/Hud.sptui"
+      },
+      "Scripts": {
+        "Enabled": true,
+        "Items": [
+          {
+            "Type": "CubeRain"
+          }
+        ]
+      }
+    }
+  ]
+}

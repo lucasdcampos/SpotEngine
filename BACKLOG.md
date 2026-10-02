@@ -75,4 +75,4 @@ Check an item off when it ships.
 
 **Networking**
 - [ ] **Networking UI in editor** — host/connect only available through dev-console commands (`net_host`, `net_connect`); no panel in the editor
-- [ ] **Networking sandbox demo** — `Spot.Net.dll` is not committed to `sandbox/EngineBin`; no playable multiplayer example
+- [ ] **Networking sample** — no playable multiplayer example in `samples/`

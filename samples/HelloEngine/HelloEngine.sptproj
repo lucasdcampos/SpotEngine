@@ -1,0 +1,5 @@
+{
+  "Name": "HelloEngine",
+  "StartScene": "Scenes/Main.sptscene",
+  "AssetDirectory": "Assets"
+}

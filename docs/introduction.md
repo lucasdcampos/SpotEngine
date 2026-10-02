@@ -40,8 +40,8 @@ Spot is made up of a few cooperating parts:
 - **The build tooling** (`Spot.Build` and the `spot` CLI) turns a project into a standalone,
   self-contained application you can distribute. The same logic runs inside the editor and on the
   command line.
-- **The sandbox** is a real, data-driven showcase project used to exercise the engine, and the
-  **samples** are one small program per framework level.
+- **The samples** are small programs, one per level: framework programs that write their own loop,
+  and `HelloEngine`, an engine project you open in the editor or run with the `spot` CLI.
 
 ## How a game runs
 

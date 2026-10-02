@@ -88,12 +88,7 @@ public class AnimationTests
     [Fact]
     public void ImportModel_RiggedFbx_ProducesSkinnedSubmeshesWithBoneNames()
     {
-        string? path = FindRepoFile(Path.Combine("sandbox", "Assets", "Models", "ybot.fbx"));
-        if (path is null)
-        {
-            // The rigged fixture isn't present in this checkout; nothing to assert.
-            return;
-        }
+        string path = RiggedFixture;
 
         CookedModel model = new AssimpModelImporter().ImportModel(path);
 
@@ -109,11 +104,7 @@ public class AnimationTests
     [Fact]
     public void Skeleton_OnARealRig_InverseBindCancelsTheBindPose()
     {
-        string? path = FindRepoFile(Path.Combine("sandbox", "Assets", "Models", "ybot.fbx"));
-        if (path is null)
-        {
-            return; // the rigged fixture isn't present in this checkout
-        }
+        string path = RiggedFixture;
 
         var importer = new AssimpModelImporter();
         CookedModel model = importer.ImportModel(path);
@@ -145,20 +136,6 @@ public class AnimationTests
         Assert.True(matched > 10, "expected the rig's bones to be found in its skeleton");
     }
 
-    private static string? FindRepoFile(string relativePath)
-    {
-        string? dir = AppContext.BaseDirectory;
-        for (int i = 0; i < 8 && dir is not null; i++)
-        {
-            string candidate = Path.Combine(dir, relativePath);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            dir = Path.GetDirectoryName(dir);
-        }
-
-        return null;
-    }
+    // A Mixamo-rigged FBX (tests/Fixtures), copied beside the test assembly by the project file.
+    private static string RiggedFixture => Path.Combine(AppContext.BaseDirectory, "Fixtures", "ybot.fbx");
 }

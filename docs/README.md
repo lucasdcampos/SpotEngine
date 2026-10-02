@@ -41,12 +41,12 @@ or as little of it as you want.
 ## Quick start
 
 ```bash
-dotnet build SpotEngine.slnx                 # build the engine, editor, sandbox, and tools
+dotnet build SpotEngine.slnx                 # build the framework, engine, editor, samples, and tools
 dotnet test  SpotEngine.slnx                 # run the test suite
 dotnet run --project editor                  # launch the editor
-dotnet run --project sandbox/Sandbox.csproj  # run the sandbox showcase project
 dotnet run --project tools/Spot.Cli -- help  # the `spot` command-line tool
 dotnet run --project samples/HelloQuad       # a level-1 program: your own loop (also HelloTriangle, Hello2D, Hello3D)
+dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # cook and run the engine sample
 ```
 
 See the repository [README](../README.md) for build and run instructions.

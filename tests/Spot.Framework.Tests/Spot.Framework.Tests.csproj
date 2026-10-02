@@ -24,6 +24,11 @@
     <Compile Include="..\Shared\**\*.cs" LinkBase="Shared" />
   </ItemGroup>
 
+  <!-- Binary fixtures (e.g. a rigged FBX) shared by the test suites. -->
+  <ItemGroup>
+    <None Include="..\Fixtures\**" LinkBase="Fixtures" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

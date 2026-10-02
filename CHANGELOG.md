@@ -13,6 +13,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - **Spot is split into three levels**, each its own assembly with dependencies only pointing down: `Spot.Framework.Core` (level 1: window, events, raw input, graphics device and resources, minimal 2D batch, PCM audio device — no loop, no decoders), `Spot.Framework` (level 2: file loading and decoders, text, models, the animation mechanism, audio mixer, input actions) plus the optional `Spot.Framework.Assimp` module, and `Spot.Engine` (level 3). A game can reference just the framework and drive its own loop; architecture tests pin the layering
 - **Documentation of the levels** (`docs/levels.md`): what each level holds, the mechanism-versus-policy rule, escape hatches, a level-1 loop, and upgrading a 0.2 project
 - **Custom render passes in the engine**: `IRenderPass` (or `DelegateRenderPass`) registered with `Scene.AddRenderPass` draws at a fixed point of the scene pipeline — `BeforeOpaque`, `AfterOpaque`, `AfterTransparent` (inside the HDR capture), `AfterPostProcess` or `Overlay` — with the camera, the bound target and viewport in a `RenderContext`, using any framework renderer or the raw device; a faulty pass is logged once and skipped
+- `samples/HelloEngine`: a minimal engine project — a lit, shadowed scene with post-processing, physics, particles, a UI document, scripts and a custom render pass, using no binary assets — with tests that its scenes, UI and scripts keep loading
 - **Samples** (`samples/`): `HelloQuad` (core only: your own loop, 2D quads, raw input), `HelloTriangle` (a triangle straight through the graphics device), `Hello2D` (sprites, shapes, text, sound and input actions from code) and `Hello3D` (camera, lit primitives, instancing, and an optional source model loaded with Assimp and animated with `Skeleton`); each takes `--frames N` to exit on its own
 - `BillboardBatch` (blended camera-facing or oriented quads in 3D, alpha or additive, depth-tested without depth writes, with a soft-dot default texture) and `FullscreenPass` (run a fragment shader over the viewport, optionally sampling a source texture); the engine's particle and world-text pass is now built on `BillboardBatch`
 - `AudioManager.Init()` opens the platform's default audio device (OpenAL on desktop, Web Audio in the browser), plus `AudioManager.IsAvailable` and `CreateDefaultBackend()`
@@ -80,6 +81,9 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - `net_status` now reports the count of live networked objects
 - `net_host` prints a hint when `BindAddress` is `localhost` so remote-connection failures are obvious
 - Hierarchy `Ctrl+Shift+N` shortcut to create an empty entity (mirrors Unity convention)
+
+### Removed
+- The `sandbox/` project: `samples/` now holds the examples, with `samples/HelloEngine` as the engine-level project
 
 ### Fixed
 - `spot build <desktop> --project <relative path>` published into a nested `<project>/<project>/Build/...` folder while the cooked content went to the real `Build/` folder, leaving a build that could not find its content

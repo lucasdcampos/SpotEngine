@@ -12,9 +12,9 @@ Run from the repo root. The solution is `SpotEngine.slnx` (XML `.slnx` format, n
 dotnet build SpotEngine.slnx                 # build the whole solution
 dotnet test SpotEngine.slnx                  # run the xUnit test suite
 dotnet run --project editor                  # launch the ImGui editor
-dotnet run --project sandbox/Sandbox.csproj  # run the sandbox project (dir has >1 project file)
 dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/build/cook/migrate)
 dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, HelloTriangle (L1), Hello2D, Hello3D (L2); `-- --frames N` exits after N frames
+dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L3 sample project: generate + cook + run
 ```
 
 ## Projects
@@ -27,12 +27,11 @@ dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, Hel
 | `engine/Spot.Engine` | library (namespaces `Spot.Engine[.*]`) | L3: the opinionated engine (Application, scenes, rendering, physics, assets, UI, console) |
 | `debugui/Spot.DebugUI` | library (namespace `Spot.DebugUI`) | ImGui debug/authoring panels (hierarchy, inspector, theming); referenced by the editor and hostable as the runtime debug overlay. Kept out of the engine so the runtime carries no authoring UI |
 | `editor/Spot.Editor` | exe | ImGui docking editor |
-| `sandbox/Sandbox` | exe | data-driven showcase project |
 | `tools/Spot.Build` | library | `.sptproj` → buildable app (used by editor + CLI) |
 | `tools/Spot.Cli` | exe (`spot`) | thin CLI front-end over Spot.Build |
 | `net/Spot.Net` | library | WebSocket networking (server-authoritative) |
-| `samples/*` | exe | one small program per framework level (HelloQuad, HelloTriangle, Hello2D, Hello3D) |
-| `tests/*` | xUnit | `Spot.Framework.Tests` (framework only, no engine reference), `Spot.Engine.Tests` (includes the architecture tests that pin the layering), `Spot.Build.Tests`, `Spot.Net.Tests`; shared fakes (e.g. `RecordingGraphicsDevice`) in `tests/Shared` |
+| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and `samples/HelloEngine`, an L3 `.sptproj` project: only its source is committed (its `.csproj`/`.sln` are regenerated and gitignored, so it is not in the solution); keep it free of binary assets. `SampleProjectTests` check its scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
+| `tests/*` | xUnit | `Spot.Framework.Tests` (framework only, no engine reference), `Spot.Engine.Tests` (includes the architecture tests that pin the layering), `Spot.Build.Tests`, `Spot.Net.Tests`; shared fakes (e.g. `RecordingGraphicsDevice`) in `tests/Shared`, binary fixtures in `tests/Fixtures` |
 
 ## Rules
 

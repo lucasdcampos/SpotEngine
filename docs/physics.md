@@ -34,8 +34,7 @@ the XY plane. As with 3D, if the backend fails to initialize the engine falls ba
 solver so play mode never dies, and the simulation is built lazily on play and torn down on exit.
 
 Aether is metric (MKS), so keep 2D collider sizes in a sane range (roughly 0.1–10 units) for a stable,
-well-behaved solve — the same advice as any Box2D-family engine. The Sandbox's **Physics 2D** demo is a
-playground for it (stacking boxes, bouncing balls, and a jumping character).
+well-behaved solve — the same advice as any Box2D-family engine.
 
 ## Collisions and triggers
 

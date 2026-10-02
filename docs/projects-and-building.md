@@ -12,7 +12,7 @@ A project is a folder on disk containing:
   scene the game starts on.
 
 The editor and the command-line tool both read and write this format, so you can move between them
-freely.
+freely. `samples/HelloEngine` is a minimal example project.
 
 ## The build tooling
 

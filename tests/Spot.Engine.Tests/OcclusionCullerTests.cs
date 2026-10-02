@@ -148,7 +148,7 @@ public class OcclusionCullerTests
     [Fact]
     public void IsOccluded_GroundSlabUnderfoot_HidesOnlyWhatIsBuried()
     {
-        // The sandbox's third-person setup: a 1000x1x1000 ground slab with the camera standing just
+        // A third-person setup: a 1000x1x1000 ground slab with the camera standing just
         // above it, looking along it. The slab runs under and behind the viewer, so this also exercises
         // clipping an occluder against the camera plane.
         Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 1.9f, 5.4f), new Vector3(0, 1.9f, 0), Vector3.UnitY);

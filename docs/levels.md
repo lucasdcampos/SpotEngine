@@ -162,8 +162,8 @@ moved by `spot migrate`; see [Projects & Building](projects-and-building.md#upgr
 
 ## Samples
 
-The `samples/` folder has one small program per level, each run with `dotnet run --project samples/<Name>`
-(add `-- --frames N` to exit after N frames):
+The `samples/` folder has small programs for each level. The framework ones are plain programs, run with
+`dotnet run --project samples/<Name>` (add `-- --frames N` to exit after N frames):
 
 | Sample | Level | Shows |
 |---|---|---|
@@ -171,8 +171,12 @@ The `samples/` folder has one small program per level, each run with `dotnet run
 | `HelloTriangle` | 1 | a triangle straight through `IGraphicsDevice`: buffers, a vertex array, a shader |
 | `Hello2D` | 2 | sprites, shapes, text, a sound built from PCM, input actions |
 | `Hello3D` | 2 | `Camera3D`, lit primitives, instancing, and an optional model loaded with Assimp and animated with `Skeleton` |
+| `HelloEngine` | 3 | a project: a scene with lighting, shadows, sky and post-processing, physics, particles, a UI document, scripts, and a custom render pass |
 
-The sandbox (`sandbox/`) and the editor show level 3.
+`HelloEngine` is an engine project like any other: open `samples/HelloEngine/HelloEngine.sptproj` in the
+editor, or cook and run it with `spot run --project samples/HelloEngine` (and publish it with
+`spot build windows` or `spot build browser`). It uses no binary assets — primitives and generated textures
+only.
 
 ## Related
 

@@ -17,7 +17,6 @@
     <Project Path="samples/Hello2D/Hello2D.csproj" />
     <Project Path="samples/Hello3D/Hello3D.csproj" />
   </Folder>
-  <Folder Name="/sandbox/" />
   <Folder Name="/editor/">
     <Project Path="editor/Spot.Editor.csproj" />
   </Folder>

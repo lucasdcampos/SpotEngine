@@ -2,7 +2,7 @@
 
 Spot is a 2D/3D game engine written in C# (.NET 10), built on [Silk.NET](https://github.com/dotnet/Silk.NET)
 (windowing, OpenGL, input, Assimp) and [Dear ImGui](https://github.com/ocornut/imgui). It ships with an
-ImGui-based editor, a sample game, and a `spot` command-line tool for creating and building projects.
+ImGui-based editor, samples, and a `spot` command-line tool for creating and building projects.
 
 Spot comes in three levels, each usable on its own (see [docs/levels.md](docs/levels.md)):
 
@@ -43,8 +43,8 @@ dotnet build SpotEngine.slnx
 
 ```bash
 dotnet run --project editor                  # launch the editor
-dotnet run --project sandbox/Sandbox.csproj  # run the sandbox project
 dotnet run --project samples/HelloQuad       # a framework-only program (also HelloTriangle, Hello2D, Hello3D)
+dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # an engine project, cooked and run
 ```
 
 ## The `spot` CLI
@@ -74,8 +74,7 @@ spot help
 | `editor/` | The ImGui-based editor |
 | `debugui/` | Debug/authoring panels shared by the editor and the runtime overlay |
 | `net/` | Networking (`Spot.Net`) |
-| `sandbox/` | A sample game |
-| `samples/` | One small program per framework level |
+| `samples/` | Small programs for each level, including `HelloEngine`, an engine project |
 | `tools/` | `Spot.Build` (project/build library) and the `spot` CLI |
 | `tests/` | The xUnit test suites |
 | `docs/` | Documentation |

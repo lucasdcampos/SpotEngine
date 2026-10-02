@@ -47,7 +47,7 @@ public static class ProjectBuilder
     /// The absolute folder a desktop build publishes into: <c>Build/&lt;platform&gt;</c>, or <c>Build/play</c> for
     /// the editor's fast Play build. Absolute so <c>dotnet publish -o</c> is unambiguous — the publish runs with
     /// the project directory as its working directory, so a relative project path would otherwise nest
-    /// (<c>sandbox/sandbox/Build/...</c>) while the cooked content went to the real folder.
+    /// (<c>MyGame/MyGame/Build/...</c>) while the cooked content went to the real folder.
     /// </summary>
     /// <param name="projectDirectory">The project directory, absolute or relative to the current directory.</param>
     /// <param name="platform">The desktop platform.</param>
