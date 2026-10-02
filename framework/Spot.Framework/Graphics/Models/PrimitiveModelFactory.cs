@@ -1,210 +1,94 @@
-using System;
-using System.Collections.Generic;
-
 namespace Spot.Framework.Graphics;
 
+/// <summary>
+/// Builds drawable <see cref="Model"/>s of procedural primitives (see <see cref="PrimitiveShape"/>). Use
+/// <see cref="Get(PrimitiveSpec)"/> for a shared, cached model — every caller asking for the same spec gets the
+/// same instance, so identical primitives batch together — or <see cref="Create(PrimitiveSpec)"/> for a model of
+/// your own.
+/// </summary>
+/// <remarks>
+/// <see cref="ModelImporter"/> also loads primitives by reference: <c>primitive:</c> followed by a spec's text
+/// form, such as <c>primitive:Cube</c> or <c>primitive:Capsule?radius=0.3&amp;height=1.7</c>.
+/// </remarks>
 public static class PrimitiveModelFactory
 {
-    public static Model Create(string name)
+    /// <summary>The reference prefix <see cref="ModelImporter"/> loads primitives from.</summary>
+    public const string ReferencePrefix = "primitive:";
+
+    private static readonly Dictionary<PrimitiveSpec, Model> s_cache = new();
+    private static IGraphicsDevice? s_device;
+
+    /// <summary>Creates a new model of a primitive.</summary>
+    /// <param name="spec">The primitive.</param>
+    /// <returns>A model the caller owns.</returns>
+    public static Model Create(PrimitiveSpec spec)
     {
-        switch (name.ToLowerInvariant())
+        ArgumentNullException.ThrowIfNull(spec);
+        PrimitiveSpec normalized = spec.Normalize();
+        MeshData data = normalized.Build();
+        return new Model(new[] { new Mesh(data.Vertices, data.Indices) })
         {
-            case "cube": return CreateCube();
-            case "plane": return CreatePlane();
-            case "quad": return CreateQuad();
-            case "sphere": return CreateSphere();
-            default: throw new ArgumentException($"Unknown primitive: {name}");
-        }
-    }
-
-    private static Model CreateCube()
-    {
-        float[] vertices = {
-            // Front face (Z = 0.5f)
-            -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f, 1.0f,
-            -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f, 1.0f,
-
-            // Back face (Z = -0.5f)
-             0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-            -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-            -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-
-            // Left face (X = -0.5f)
-            -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-            -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-            -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-
-            // Right face (X = 0.5f)
-             0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-             0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-             0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-             0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-
-            // Top face (Y = 0.5f)
-            -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-             0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-             0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-            -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-
-            // Bottom face (Y = -0.5f)
-            -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-             0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-             0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-            -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+            SourcePath = ReferencePrefix + normalized,
         };
-
-        uint[] indices = {
-             0,  1,  2,  2,  3,  0,
-             4,  5,  6,  6,  7,  4,
-             8,  9, 10, 10, 11,  8,
-            12, 13, 14, 14, 15, 12,
-            16, 17, 18, 18, 19, 16,
-            20, 21, 22, 22, 23, 20
-        };
-
-        var mesh = new Mesh(vertices, indices);
-        return new Model(new[] { mesh });
     }
 
-    private static Model CreateQuad()
+    /// <summary>Creates a new model of a primitive from its text form, such as <c>cube</c> or <c>Capsule?radius=0.3</c>.</summary>
+    /// <param name="spec">The primitive's text form (see <see cref="PrimitiveSpec.TryParse"/>).</param>
+    /// <returns>A model the caller owns.</returns>
+    /// <exception cref="ArgumentException">The shape is not recognized.</exception>
+    public static Model Create(string spec) =>
+        PrimitiveSpec.TryParse(spec, out PrimitiveSpec parsed) ? Create(parsed) : throw new ArgumentException($"Unknown primitive: {spec}", nameof(spec));
+
+    /// <summary>
+    /// Gets the shared model of a primitive, building it on first use. The cache is dropped when the graphics
+    /// device changes.
+    /// </summary>
+    /// <param name="spec">The primitive.</param>
+    /// <returns>The shared model; do not dispose it.</returns>
+    public static Model Get(PrimitiveSpec spec)
     {
-        float[] vertices = {
-            -0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-             0.5f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-             0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
-            -0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f
-        };
-        uint[] indices = { 0, 1, 2, 2, 3, 0 };
-        var mesh = new Mesh(vertices, indices);
-        return new Model(new[] { mesh });
+        ArgumentNullException.ThrowIfNull(spec);
+        if (!ReferenceEquals(s_device, Renderer.Device))
+        {
+            s_cache.Clear();
+            s_device = Renderer.Device;
+        }
+
+        PrimitiveSpec normalized = spec.Normalize();
+        if (!s_cache.TryGetValue(normalized, out Model? model))
+        {
+            model = Create(normalized);
+            s_cache[normalized] = model;
+        }
+
+        return model;
     }
 
-    private static Model CreatePlane()
+    /// <summary>Gets the shared model of a primitive from its text form. See <see cref="Get(PrimitiveSpec)"/>.</summary>
+    /// <param name="spec">The primitive's text form.</param>
+    /// <returns>The shared model.</returns>
+    /// <exception cref="ArgumentException">The shape is not recognized.</exception>
+    public static Model Get(string spec) =>
+        PrimitiveSpec.TryParse(spec, out PrimitiveSpec parsed) ? Get(parsed) : throw new ArgumentException($"Unknown primitive: {spec}", nameof(spec));
+
+    /// <summary>Returns the canonical <c>primitive:</c> reference for a spec.</summary>
+    /// <param name="spec">The primitive.</param>
+    /// <returns>The reference, such as <c>primitive:Capsule?radius=0.3</c>.</returns>
+    public static string ReferenceOf(PrimitiveSpec spec) => ReferencePrefix + spec.Normalize();
+
+    // The ModelImporter provider for primitive: references.
+    internal static Model LoadReference(string reference) =>
+        TryParseReference(reference, out PrimitiveSpec spec) ? Get(spec) : throw new ArgumentException($"Unknown primitive reference '{reference}'.");
+
+    /// <summary>Tries to read a <c>primitive:</c> reference.</summary>
+    /// <param name="reference">The reference.</param>
+    /// <param name="spec">Receives the primitive.</param>
+    /// <returns><see langword="true"/> when the reference names a known primitive.</returns>
+    public static bool TryParseReference(string? reference, out PrimitiveSpec spec)
     {
-        int segments = 10;
-        float size = 10.0f;
-        float halfSize = size / 2.0f;
-        float step = size / segments;
-        float uvStep = 1.0f / segments;
-
-        var vertices = new List<float>();
-        var indices = new List<uint>();
-
-        for (int z = 0; z <= segments; z++)
-        {
-            for (int x = 0; x <= segments; x++)
-            {
-                vertices.Add(-halfSize + x * step); // px
-                vertices.Add(0.0f);                 // py
-                vertices.Add(-halfSize + z * step); // pz
-
-                vertices.Add(0.0f);                 // nx
-                vertices.Add(1.0f);                 // ny
-                vertices.Add(0.0f);                 // nz
-
-                vertices.Add(x * uvStep);           // u
-                vertices.Add(z * uvStep);           // v
-            }
-        }
-
-        for (int z = 0; z < segments; z++)
-        {
-            for (int x = 0; x < segments; x++)
-            {
-                uint tl = (uint)(z * (segments + 1) + x);
-                uint tr = tl + 1;
-                uint bl = (uint)((z + 1) * (segments + 1) + x);
-                uint br = bl + 1;
-
-                indices.Add(tl);
-                indices.Add(bl);
-                indices.Add(tr);
-
-                indices.Add(tr);
-                indices.Add(bl);
-                indices.Add(br);
-            }
-        }
-
-        var mesh = new Mesh(vertices.ToArray(), indices.ToArray());
-        return new Model(new[] { mesh });
-    }
-
-    private static Model CreateSphere()
-    {
-        float radius = 0.5f;
-        int sectorCount = 32;
-        int stackCount = 16;
-        var vertices = new List<float>();
-        var indices = new List<uint>();
-
-        float x, y, z, xy;
-        float nx, ny, nz, lengthInv = 1.0f / radius;
-        float s, t;
-
-        float sectorStep = 2.0f * MathF.PI / sectorCount;
-        float stackStep = MathF.PI / stackCount;
-        float sectorAngle, stackAngle;
-
-        for (int i = 0; i <= stackCount; ++i)
-        {
-            stackAngle = MathF.PI / 2.0f - i * stackStep;
-            xy = radius * MathF.Cos(stackAngle);
-            y = radius * MathF.Sin(stackAngle);
-
-            for (int j = 0; j <= sectorCount; ++j)
-            {
-                sectorAngle = j * sectorStep;
-
-                x = xy * MathF.Cos(sectorAngle);
-                z = xy * MathF.Sin(sectorAngle);
-                vertices.Add(x);
-                vertices.Add(y);
-                vertices.Add(z);
-
-                nx = x * lengthInv;
-                ny = y * lengthInv;
-                nz = z * lengthInv;
-                vertices.Add(nx);
-                vertices.Add(ny);
-                vertices.Add(nz);
-
-                s = (float)j / sectorCount;
-                t = (float)i / stackCount;
-                vertices.Add(s);
-                vertices.Add(t);
-            }
-        }
-
-        int k1, k2;
-        for (int i = 0; i < stackCount; ++i)
-        {
-            k1 = i * (sectorCount + 1);
-            k2 = k1 + sectorCount + 1;
-
-            for (int j = 0; j < sectorCount; ++j, ++k1, ++k2)
-            {
-                if (i != 0)
-                {
-                    indices.Add((uint)k1);
-                    indices.Add((uint)k2);
-                    indices.Add((uint)(k1 + 1));
-                }
-
-                if (i != (stackCount - 1))
-                {
-                    indices.Add((uint)(k1 + 1));
-                    indices.Add((uint)k2);
-                    indices.Add((uint)(k2 + 1));
-                }
-            }
-        }
-
-        var mesh = new Mesh(vertices.ToArray(), indices.ToArray());
-        return new Model(new[] { mesh });
+        spec = PrimitiveSpec.For(PrimitiveShape.Cube);
+        return reference is not null
+            && reference.StartsWith(ReferencePrefix, StringComparison.OrdinalIgnoreCase)
+            && PrimitiveSpec.TryParse(reference[ReferencePrefix.Length..], out spec);
     }
 }

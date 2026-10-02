@@ -126,6 +126,48 @@ public sealed class Image
     /// <param name="pointFilter">Use nearest-neighbor filtering (pixel art) instead of trilinear.</param>
     /// <returns>The new texture.</returns>
     public Texture2D ToTexture(bool pointFilter = false) => new((uint)Width, (uint)Height, Pixels, pointFilter);
+
+    /// <summary>
+    /// Encodes the image as a PNG file in memory.
+    /// </summary>
+    /// <param name="flipVertically">
+    /// Write the rows in reverse, matching <see cref="FromFile"/>'s default: images bound for textures keep their
+    /// rows bottom-up, while PNG stores them top-down. Encoding and decoding with the same setting round-trips.
+    /// </param>
+    /// <returns>The PNG bytes.</returns>
+    public byte[] EncodePng(bool flipVertically = true)
+    {
+        if (!flipVertically)
+        {
+            return PngEncoder.Encode(Width, Height, Pixels);
+        }
+
+        int stride = Width * 4;
+        var topDown = new byte[Pixels.Length];
+        for (int y = 0; y < Height; y++)
+        {
+            Array.Copy(Pixels, (Height - 1 - y) * stride, topDown, y * stride, stride);
+        }
+
+        return PngEncoder.Encode(Width, Height, topDown);
+    }
+
+    /// <summary>
+    /// Saves the image as a PNG file, creating its folder if needed.
+    /// </summary>
+    /// <param name="path">The destination path.</param>
+    /// <param name="flipVertically">See <see cref="EncodePng"/>.</param>
+    public void SavePng(string path, bool flipVertically = true)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        string? directory = Path.GetDirectoryName(Path.GetFullPath(path));
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        File.WriteAllBytes(path, EncodePng(flipVertically));
+    }
 }
 
 /// <summary>

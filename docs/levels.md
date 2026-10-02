@@ -84,7 +84,9 @@ enough to build a whole game on, or your own engine.
   reads through, with an optional path resolver.
 - **Graphics** — `Image` (PNG/JPG/BMP/TGA/GIF decoding into CPU pixels) and `Texture2D.FromFile`; fonts and text;
   shapes and sprites on top of the core batch (triangles, circles, polygons, atlas regions); a screen
-  batch with blending and scissor clipping; `Camera3D`; meshes, models and primitives;
+  batch with blending and scissor clipping; `Camera3D`; meshes and models; procedural primitives (cube,
+  sphere, capsule, cylinder, cone, plane, quad — sized and subdivided by parameters) and utility images
+  (solid, flat normal, checkerboard, grid, soft dot), with PNG and OBJ export;
   `BasicRenderer3D` (one directional light and ambient — lit, unlit, textured, instanced, skinned, or
   through your own shader); `BillboardBatch` for blended camera-facing quads; `FullscreenPass` for
   running a shader over the screen; and a pluggable model importer.

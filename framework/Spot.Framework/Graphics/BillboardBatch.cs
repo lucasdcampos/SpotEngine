@@ -127,7 +127,7 @@ public static class BillboardBatch
         s_ibo = new IndexBuffer(indices);
         s_vao.SetIndexBuffer(s_ibo);
         s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
-        s_softDot = CreateSoftDotTexture(64);
+        s_softDot = ProceduralImages.SoftDot(64).ToTexture();
     }
 
     /// <summary>Releases the batch resources. The next use recreates them.</summary>
@@ -289,35 +289,5 @@ public static class BillboardBatch
         s_shader.SetUniform("uViewProjection", s_viewProjection);
         s_shader.SetUniform("uTexture", 0);
         Renderer.DrawIndexed(s_vao, s_indexCount);
-    }
-
-    // A soft round dot: white with a smooth radial alpha falloff.
-    private static Texture2D CreateSoftDotTexture(int size)
-    {
-        var pixels = new byte[size * size * 4];
-        float center = (size - 1) * 0.5f;
-        float radius = center;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dx = (x - center) / radius;
-                float dy = (y - center) / radius;
-                float d = MathF.Sqrt(dx * dx + dy * dy);
-
-                // smoothstep(1, 0, d): opaque at the center, fading to nothing at the edge.
-                float t = Math.Clamp(1.0f - d, 0.0f, 1.0f);
-                float alpha = t * t * (3.0f - 2.0f * t);
-
-                int i = (y * size + x) * 4;
-                pixels[i + 0] = 255;
-                pixels[i + 1] = 255;
-                pixels[i + 2] = 255;
-                pixels[i + 3] = (byte)(alpha * 255.0f);
-            }
-        }
-
-        return new Texture2D((uint)size, (uint)size, pixels);
     }
 }

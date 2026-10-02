@@ -22,6 +22,10 @@ public static class ModelImporter
 {
     private static readonly Dictionary<string, IModelImporter> s_importers = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, Model> s_cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly List<(string Prefix, Func<string, Model> Provider)> s_providers = new()
+    {
+        (PrimitiveModelFactory.ReferencePrefix, PrimitiveModelFactory.LoadReference),
+    };
 
     // Async loading state. File parsing (the expensive part) runs on a background worker; the resulting
     // CPU geometry is queued back to the render thread, which owns the GL context, to build the GPU
@@ -81,7 +85,41 @@ public static class ModelImporter
     /// </summary>
     /// <param name="path">The model file path.</param>
     /// <returns><see langword="true"/> if an importer is registered for the file's extension.</returns>
-    public static bool CanLoad(string path) => s_importers.ContainsKey(Path.GetExtension(path));
+    public static bool CanLoad(string path) => FindProvider(path) is not null || s_importers.ContainsKey(Path.GetExtension(path));
+
+    /// <summary>
+    /// Registers a provider for model references that start with a prefix — models that are generated or built in
+    /// rather than read from a file, such as the <c>primitive:</c> references the framework provides itself. The
+    /// provider runs synchronously on the render thread, receives the whole reference, should cache the models it
+    /// returns, and throws for a reference it does not know. Registering a prefix again replaces its provider.
+    /// </summary>
+    /// <param name="prefix">The reference prefix, such as <c>builtin:</c> (matched ignoring case).</param>
+    /// <param name="provider">Returns the model a reference names.</param>
+    public static void RegisterProvider(string prefix, Func<string, Model> provider)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(prefix);
+        ArgumentNullException.ThrowIfNull(provider);
+        s_providers.RemoveAll(p => string.Equals(p.Prefix, prefix, StringComparison.OrdinalIgnoreCase));
+        s_providers.Add((prefix, provider));
+    }
+
+    /// <summary>Gets whether a reference is served by a registered provider rather than read from a file.</summary>
+    /// <param name="reference">The model reference.</param>
+    /// <returns><see langword="true"/> when a provider's prefix matches.</returns>
+    public static bool IsProvided(string reference) => FindProvider(reference) is not null;
+
+    private static Func<string, Model>? FindProvider(string reference)
+    {
+        foreach ((string prefix, Func<string, Model> provider) in s_providers)
+        {
+            if (reference.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return provider;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Gets or sets the mapping from a model reference (what <see cref="Load"/> and <see cref="RequestAsync"/>
@@ -119,17 +157,9 @@ public static class ModelImporter
     /// <exception cref="NotSupportedException">No importer is registered for the file's extension.</exception>
     public static Model Load(string path)
     {
-        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
+        if (FindProvider(path) is { } provider)
         {
-            if (s_cache.TryGetValue(path, out Model? primitiveCached))
-            {
-                return primitiveCached;
-            }
-            string typeName = path.Substring(10);
-            Model primitive = PrimitiveModelFactory.Create(typeName);
-            primitive.SourcePath = path;
-            s_cache[path] = primitive;
-            return primitive;
+            return provider(path);
         }
 
         if (!TryResolveModelPath(path, out string fullPath))
@@ -183,10 +213,24 @@ public static class ModelImporter
             }
         }
 
-        // Primitives are trivial to build; there's nothing to gain from deferring them.
-        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
+        // Provided models (primitives, built-ins) are cheap to build; there's nothing to gain from deferring them.
+        if (FindProvider(path) is { } provider)
         {
-            return Load(path);
+            if (s_failed.Contains(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                return provider(path);
+            }
+            catch (Exception ex)
+            {
+                s_failed.Add(path);
+                Log.CoreError("Failed to load model '{0}': {1}", path, ex.Message);
+                return null;
+            }
         }
 
         if (!TryResolveModelPath(path, out string fullPath))
