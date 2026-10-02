@@ -9,7 +9,7 @@ namespace Spot.Framework;
 /// <remarks>
 /// The smoothed value is an exponential moving average, which is cheaper and allocation-free compared to
 /// keeping a ring buffer of samples, and steady enough to read on a HUD. To measure the engine's true
-/// headroom, turn VSync off (<see cref="Spot.Engine.Rendering.RenderSettings.VSync"/> or the <c>vsync</c>
+/// headroom, turn VSync off (<see cref="Window.VSync"/>, the engine's <c>RenderSettings.VSync</c>, or the <c>vsync</c>
 /// command) first — otherwise the blocking buffer swap caps the frame rate at the refresh rate and this
 /// reports the cap, not the cost.
 /// </remarks>

@@ -75,7 +75,7 @@ public sealed class Mesh : IDisposable
     private readonly VertexArray _vao;
     private readonly VertexBuffer _vbo;
     private readonly IndexBuffer _ibo;
-    private VertexArray? _instancedVao;
+    private Dictionary<VertexBuffer, VertexArray>? _instancedVaos;
 
     /// <summary>
     /// Initializes a new rigid <see cref="Mesh"/> and uploads its data to the GPU.
@@ -159,34 +159,45 @@ public sealed class Mesh : IDisposable
     public VertexArray VertexArray => _vao;
 
     /// <summary>
-    /// Lazily builds (once, then cached) a vertex array that pairs this mesh's geometry with a shared
-    /// per-instance buffer, so a batch of identical meshes can be drawn in a single instanced call. Only
-    /// meaningful for rigid meshes: the instance attributes occupy locations 3+, which the skinned layout
-    /// already uses for bone data.
+    /// Lazily builds (once per instance buffer, then cached) a vertex array that pairs this mesh's geometry with a
+    /// per-instance buffer, so a batch of identical meshes can be drawn in a single instanced call. Each renderer
+    /// that instances meshes keeps its own buffer, and gets its own vertex array. Only meaningful for rigid
+    /// meshes: the instance attributes occupy locations 3+, which the skinned layout already uses for bone data.
     /// </summary>
     /// <param name="instanceBuffer">
-    /// The shared per-instance buffer (model matrix rows + color). Its GPU handle must stay stable for the
-    /// life of the mesh, since the returned VAO records it — the renderer keeps one fixed-capacity buffer.
+    /// The per-instance buffer. Its GPU handle must stay stable for the life of the mesh, since the returned
+    /// vertex array records it — keep one fixed-capacity buffer and refill it.
     /// </param>
-    /// <returns>The cached instanced vertex array.</returns>
+    /// <returns>The cached instanced vertex array for that buffer.</returns>
     public VertexArray GetInstancedVertexArray(VertexBuffer instanceBuffer)
     {
-        if (_instancedVao is null)
+        ArgumentNullException.ThrowIfNull(instanceBuffer);
+        _instancedVaos ??= new Dictionary<VertexBuffer, VertexArray>(ReferenceEqualityComparer.Instance);
+        if (!_instancedVaos.TryGetValue(instanceBuffer, out VertexArray? vao))
         {
-            var vao = new VertexArray();
+            vao = new VertexArray();
             vao.AddVertexBuffer(_vbo);                       // locations 0-2: position, normal, texcoord
-            vao.AddInstancedVertexBuffer(instanceBuffer, 1); // locations 3-6: model matrix, 7: color
+            vao.AddInstancedVertexBuffer(instanceBuffer, 1); // locations 3+: the buffer's per-instance layout
             vao.SetIndexBuffer(_ibo);
-            _instancedVao = vao;
+            _instancedVaos[instanceBuffer] = vao;
         }
 
-        return _instancedVao;
+        return vao;
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-        _instancedVao?.Dispose();
+        if (_instancedVaos is not null)
+        {
+            foreach (VertexArray vao in _instancedVaos.Values)
+            {
+                vao.Dispose();
+            }
+
+            _instancedVaos = null;
+        }
+
         _vao.Dispose();
         _vbo.Dispose();
         _ibo.Dispose();

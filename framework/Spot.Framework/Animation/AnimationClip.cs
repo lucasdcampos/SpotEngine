@@ -161,9 +161,8 @@ public sealed class AnimationChannel
 
 /// <summary>
 /// A named animation: a set of per-node <see cref="AnimationChannel"/> tracks with a fixed duration. Clips
-/// come baked into a model file (FBX/glTF) or from a separate animation-only file; either way the
-/// <see cref="AnimatorComponent"/> plays them by name and the <see cref="AnimationSystem"/> applies each
-/// channel to the bone entity of the matching name.
+/// come baked into a model file (FBX/glTF) or from a separate animation-only file. A <see cref="Skeleton"/> samples
+/// one into a pose; the engine's animator plays them by name on a model's bone entities.
 /// </summary>
 public sealed class AnimationClip
 {
