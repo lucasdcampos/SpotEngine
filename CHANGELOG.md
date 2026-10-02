@@ -93,6 +93,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The `sandbox/` project: `samples/` now holds the examples, with `samples/HelloEngine` as the engine-level project
 
 ### Fixed
+- The editor could not find a project's script assembly when a `Directory.Build.props` more than one folder up redirected its build output (as the repo's does for `samples/HelloEngine`), so Play ran without scripts
 - Editor thumbnails (model and material previews) showed fragments of the editor UI, such as console text, when several rendered in the same frame: previews and the FXAA pass restored the render target behind the renderer's back, so the next framebuffer created re-bound the previous preview and the rest of the frame drew into it. Previews also no longer leave face culling on
 - The generated sphere was wound inside out (so `BasicRenderer3D` culled its outside and lit it from the wrong side) and mapped its texture upside down; the generated plane mirrored its texture
 - `spot build <desktop> --project <relative path>` published into a nested `<project>/<project>/Build/...` folder while the cooked content went to the real `Build/` folder, leaving a build that could not find its content

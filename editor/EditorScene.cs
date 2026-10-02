@@ -408,37 +408,42 @@ public class EditorScene : Scene
     }
 
     // The newest built <Name>.dll under the project's bin tree, or null when the project hasn't been built.
-    // Checks two locations because a project inside a solution whose Directory.Build.props sets
-    // BaseOutputPath may redirect builds to a sibling repo-level bin/<ProjectName>/ folder rather
-    // than the project-local bin/.
+    // Besides the project-local bin/ (standalone projects), checks bin/<Name>/ under every ancestor directory:
+    // a Directory.Build.props anywhere above the project that sets BaseOutputPath =
+    // $(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\ redirects the build there (this repo's does, for
+    // samples/HelloEngine). The newest match across all of them wins, so a stale build elsewhere never shadows it.
     private static string? FindProjectAssembly(Project project)
     {
-        string dllName = project.Config.Name + ".dll";
-
-        // 1. Project-local bin/ (standard layout for standalone projects).
-        string? found = FindNewestDll(System.IO.Path.Combine(project.ProjectDirectory, "bin"), dllName);
-        if (found != null) return found;
-
-        // 2. Sibling repo-level bin/<ProjectName>/ (Directory.Build.props with BaseOutputPath
-        //    = $(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\ redirects there).
-        string? parent = System.IO.Path.GetDirectoryName(
-            project.ProjectDirectory.TrimEnd(
-                System.IO.Path.DirectorySeparatorChar,
-                System.IO.Path.AltDirectorySeparatorChar));
-        if (parent != null)
+        string name = project.Config.Name;
+        var searchDirs = new List<string> { System.IO.Path.Combine(project.ProjectDirectory, "bin") };
+        for (var dir = new System.IO.DirectoryInfo(project.ProjectDirectory).Parent; dir != null; dir = dir.Parent)
         {
-            found = FindNewestDll(System.IO.Path.Combine(parent, "bin", project.Config.Name), dllName);
+            searchDirs.Add(System.IO.Path.Combine(dir.FullName, "bin", name));
         }
 
-        return found;
-    }
+        var dlls = new List<string>();
+        foreach (string dir in searchDirs)
+        {
+            dlls.AddRange(FindDlls(dir, name + ".dll"));
+        }
 
-    private static string? FindNewestDll(string dir, string dllName)
-    {
-        if (!System.IO.Directory.Exists(dir)) return null;
-        var dlls = System.IO.Directory.GetFiles(dir, dllName, System.IO.SearchOption.AllDirectories);
         return System.Linq.Enumerable.FirstOrDefault(
             System.Linq.Enumerable.OrderByDescending(dlls, f => System.IO.File.GetLastWriteTimeUtc(f)));
+    }
+
+    private static string[] FindDlls(string dir, string dllName)
+    {
+        if (!System.IO.Directory.Exists(dir)) return [];
+        try
+        {
+            return System.IO.Directory.GetFiles(dir, dllName, System.IO.SearchOption.AllDirectories);
+        }
+        catch (System.Exception ex) when (ex is System.IO.IOException or System.UnauthorizedAccessException)
+        {
+            // An unreadable folder up the tree must not stop Play; it just isn't a candidate.
+            Spot.Framework.Log.CoreWarn("Could not search '{0}' for the script assembly: {1}", dir, ex.Message);
+            return [];
+        }
     }
 
     // Set by the script file watcher when a .cs under Assets changes, so the editor can offer (or perform) a
