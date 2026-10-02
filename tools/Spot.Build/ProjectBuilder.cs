@@ -44,6 +44,20 @@ public static class ProjectBuilder
     };
 
     /// <summary>
+    /// The absolute folder a desktop build publishes into: <c>Build/&lt;platform&gt;</c>, or <c>Build/play</c> for
+    /// the editor's fast Play build. Absolute so <c>dotnet publish -o</c> is unambiguous — the publish runs with
+    /// the project directory as its working directory, so a relative project path would otherwise nest
+    /// (<c>sandbox/sandbox/Build/...</c>) while the cooked content went to the real folder.
+    /// </summary>
+    /// <param name="projectDirectory">The project directory, absolute or relative to the current directory.</param>
+    /// <param name="platform">The desktop platform.</param>
+    /// <param name="fastDebug">Whether this is the editor's fast Play build.</param>
+    /// <returns>The absolute output folder.</returns>
+    public static string OutputDirectory(string projectDirectory, BuildPlatform platform, bool fastDebug = false) =>
+        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Core.ProjectStructure.BuildFolder,
+            fastDebug ? "play" : FolderName(platform)));
+
+    /// <summary>
     /// Regenerates the build files, then runs <c>dotnet publish</c> for <paramref name="platform"/>
     /// as a self-contained build into <c>Build/&lt;platform&gt;</c> under the project directory.
     /// Blocks until the build finishes; callers that need to stay responsive should run this off the
@@ -76,8 +90,7 @@ public static class ProjectBuilder
         // the self-contained runtime copy and single-file bundling, cutting Play iteration time from
         // tens of seconds to a normal incremental build. It lives in its own folder so it never
         // clobbers a distributable build.
-        string outputDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder,
-            fastDebug ? "play" : FolderName(platform));
+        string outputDir = OutputDirectory(project.ProjectDirectory, platform, fastDebug);
         string csprojFile = project.Config.Name + ".csproj";
 
         string publishArgs = fastDebug

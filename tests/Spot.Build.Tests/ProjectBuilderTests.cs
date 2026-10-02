@@ -13,6 +13,20 @@ public class ProjectBuilderTests
         Assert.Equal(expected, ProjectBuilder.RuntimeIdentifier(platform));
     }
 
+    [Theory]
+    [InlineData(BuildPlatform.Windows, false, "windows")]
+    [InlineData(BuildPlatform.Linux, false, "linux")]
+    [InlineData(BuildPlatform.Mac, false, "mac")]
+    [InlineData(BuildPlatform.Windows, true, "play")]
+    public void OutputDirectory_IsAbsoluteEvenForARelativeProject(BuildPlatform platform, bool fastDebug, string folder)
+    {
+        string output = ProjectBuilder.OutputDirectory("sandbox", platform, fastDebug);
+
+        // A relative path here used to nest under the publish working directory (sandbox/sandbox/Build/...).
+        Assert.True(Path.IsPathRooted(output));
+        Assert.Equal(Path.GetFullPath(Path.Combine("sandbox", "Build", folder)), output);
+    }
+
     [Fact]
     public void BuildResult_CarriesItsValues()
     {
