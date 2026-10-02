@@ -6,6 +6,7 @@ using Spot.Animation;
 using Spot.Assets;
 using Spot.Rendering;
 using Xunit;
+using Spot.Tests;
 
 namespace Spot.Engine.Tests;
 

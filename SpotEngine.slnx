@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/framework/">
+    <Project Path="framework/Spot.Framework.Core/Spot.Framework.Core.csproj" />
+    <Project Path="framework/Spot.Framework/Spot.Framework.csproj" />
+    <Project Path="framework/Spot.Framework.Assimp/Spot.Framework.Assimp.csproj" />
+  </Folder>
   <Folder Name="/engine/">
     <Project Path="engine/Spot.Engine.csproj" />
     <Project Path="debugui/Spot.DebugUI.csproj" />
@@ -16,6 +21,7 @@
     <Project Path="tools/Spot.ScriptGen/Spot.ScriptGen.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Spot.Framework.Tests/Spot.Framework.Tests.csproj" />
     <Project Path="tests/Spot.Engine.Tests/Spot.Engine.Tests.csproj" />
     <Project Path="tests/Spot.Build.Tests/Spot.Build.Tests.csproj" />
     <Project Path="tests/Spot.Net.Tests/Spot.Net.Tests.csproj" />

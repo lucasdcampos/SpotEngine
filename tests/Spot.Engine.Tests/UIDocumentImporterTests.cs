@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Assets;
 using Xunit;
+using Spot.Tests;
 
 namespace Spot.Engine.Tests;
 

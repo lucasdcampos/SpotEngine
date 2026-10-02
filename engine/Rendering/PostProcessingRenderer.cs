@@ -238,9 +238,9 @@ void main()
         // depth. If it did, the full-screen quad (clip z = 0) would stamp its depth across the whole
         // target buffer and anything drawn afterwards into the same buffer that sits behind that
         // depth — most visibly the editor grid and world axes — would fail the depth test and vanish.
-        bool depthTest = Renderer.Gl.IsEnabled(EnableCap.DepthTest);
-        Renderer.Gl.Disable(EnableCap.DepthTest);
-        Renderer.Gl.DepthMask(false);
+        bool depthTest = Renderer.Api.IsEnabled(EnableCap.DepthTest);
+        Renderer.Api.Disable(EnableCap.DepthTest);
+        Renderer.Api.DepthMask(false);
 
         // Route the composite into the LDR intermediate (its Bind sets the viewport to its own size).
         if (fxaa) s_ldrFramebuffer!.Bind();
@@ -255,26 +255,26 @@ void main()
         s_shader.SetUniform("uBloomIntensity", config.BloomIntensity);
 
         s_shader.SetUniform("uScreenTexture", 0);
-        Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
-        Renderer.Gl.BindTexture(TextureTarget.Texture2D, screenTexture);
+        Renderer.Api.ActiveTexture(TextureUnit.Texture0);
+        Renderer.Api.BindTexture(TextureTarget.Texture2D, screenTexture);
 
         s_shader.SetUniform("uBloom", 1);
-        Renderer.Gl.ActiveTexture(TextureUnit.Texture1);
-        Renderer.Gl.BindTexture(TextureTarget.Texture2D, bloomEnabled ? bloomTexture : 0u);
+        Renderer.Api.ActiveTexture(TextureUnit.Texture1);
+        Renderer.Api.BindTexture(TextureTarget.Texture2D, bloomEnabled ? bloomTexture : 0u);
 
         bool lutEnabled = config.EnableLut && config.LutTexture != null;
         s_shader.SetUniform("uEnableLut", lutEnabled ? 1 : 0);
         s_shader.SetUniform("uLutIntensity", config.LutIntensity);
         s_shader.SetUniform("uLut", 2);
-        Renderer.Gl.ActiveTexture(TextureUnit.Texture2);
-        Renderer.Gl.BindTexture(TextureTarget.Texture2D, lutEnabled ? config.LutTexture!.Handle.Id : 0u);
+        Renderer.Api.ActiveTexture(TextureUnit.Texture2);
+        Renderer.Api.BindTexture(TextureTarget.Texture2D, lutEnabled ? config.LutTexture!.Handle.Id : 0u);
 
-        Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
+        Renderer.Api.ActiveTexture(TextureUnit.Texture0);
 
         s_quadVAO.Bind();
-        Renderer.Gl.DrawArrays(PrimitiveType.Triangles, 0, 6);
+        Renderer.Api.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
-        Renderer.Gl.BindTexture(TextureTarget.Texture2D, 0);
+        Renderer.Api.BindTexture(TextureTarget.Texture2D, 0);
 
         // FXAA resolve: read the LDR composite back onto the caller's target with the original viewport.
         if (fxaa)
@@ -285,14 +285,14 @@ void main()
             s_fxaaShader!.Use();
             s_fxaaShader.SetUniform("uImage", 0);
             s_fxaaShader.SetUniform("uTexelSize", new System.Numerics.Vector2(1.0f / Math.Max(1, vp[2]), 1.0f / Math.Max(1, vp[3])));
-            Renderer.Gl.ActiveTexture(TextureUnit.Texture0);
-            Renderer.Gl.BindTexture(TextureTarget.Texture2D, s_ldrFramebuffer!.ColorAttachment);
-            Renderer.Gl.DrawArrays(PrimitiveType.Triangles, 0, 6);
-            Renderer.Gl.BindTexture(TextureTarget.Texture2D, 0);
+            Renderer.Api.ActiveTexture(TextureUnit.Texture0);
+            Renderer.Api.BindTexture(TextureTarget.Texture2D, s_ldrFramebuffer!.ColorAttachment);
+            Renderer.Api.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            Renderer.Api.BindTexture(TextureTarget.Texture2D, 0);
         }
 
         // Restore the caller's depth state; depth writes default to on, so re-enable the mask.
-        Renderer.Gl.DepthMask(true);
-        if (depthTest) Renderer.Gl.Enable(EnableCap.DepthTest);
+        Renderer.Api.DepthMask(true);
+        if (depthTest) Renderer.Api.Enable(EnableCap.DepthTest);
     }
 }

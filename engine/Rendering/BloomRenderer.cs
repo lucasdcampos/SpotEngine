@@ -125,7 +125,7 @@ void main()
 
         (Framebuffer bright, Framebuffer pingA, Framebuffer pingB) = AcquireTargets(w, h);
 
-        GL gl = Renderer.Gl;
+        GL gl = Renderer.Api;
         bool depthTest = gl.IsEnabled(EnableCap.DepthTest);
         gl.Disable(EnableCap.DepthTest);
         gl.DepthMask(false);

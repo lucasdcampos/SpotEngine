@@ -12,15 +12,14 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
+  <!-- Only the framework levels: these tests prove the core and framework work with no engine at all. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
-    <!-- The editor's undo core lives in Spot.DebugUI. It makes no ImGui call on any path a test
-         exercises (the one interaction probe sits behind an injectable delegate), so it is tested
-         here rather than in a separate project. -->
-    <ProjectReference Include="..\..\debugui\Spot.DebugUI.csproj" />
+    <ProjectReference Include="..\..\framework\Spot.Framework.Core\Spot.Framework.Core.csproj" />
+    <ProjectReference Include="..\..\framework\Spot.Framework\Spot.Framework.csproj" />
+    <ProjectReference Include="..\..\framework\Spot.Framework.Assimp\Spot.Framework.Assimp.csproj" />
   </ItemGroup>
 
-  <!-- Test doubles shared with the framework tests (recording graphics device, log sink, media fixtures). -->
+  <!-- Test doubles shared with the engine tests (recording graphics device, log sink, media fixtures). -->
   <ItemGroup>
     <Compile Include="..\Shared\**\*.cs" LinkBase="Shared" />
   </ItemGroup>

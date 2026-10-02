@@ -56,7 +56,7 @@ import { dotnet } from './_framework/dotnet.js';
 
 // The engine host boots the game; the platform layer (canvas, input, frames) lives in the core assembly.
 const ENGINE_ASSEMBLY = 'Spot.Engine';
-const CORE_ASSEMBLY = 'Spot.Engine';
+const CORE_ASSEMBLY = 'Spot.Framework.Core';
 const CONTENT_BASE = 'content';
 const MANIFEST_PATH = 'manifest.json';
 const START_SCENE = '__START_SCENE__';

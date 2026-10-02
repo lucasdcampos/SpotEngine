@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Level 3 of Spot: the opinionated engine built on the framework — application host and services, scenes
+       and components, systems, scripting, serialization, the asset pipeline, the lit 3D renderer and post
+       pipeline, particles, the animator, runtime UI, physics, and the developer console. -->
   <PropertyGroup>
     <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
     <RootNamespace>Spot</RootNamespace>
@@ -9,64 +12,49 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Built-in default UI font (Inter Medium, OFL), embedded so in-game text renders with zero setup. -->
-    <EmbeddedResource Include="Resources\DefaultFont.ttf" LogicalName="Spot.DefaultFont.ttf" />
+    <ProjectReference Include="..\framework\Spot.Framework.Core\Spot.Framework.Core.csproj" />
+    <ProjectReference Include="..\framework\Spot.Framework\Spot.Framework.csproj" />
   </ItemGroup>
 
-  <!-- Browser-only source: the WebGL2/[JSImport] backends and RAF host. Excluded from the desktop target,
-       which uses Silk.NET instead and has no JavaScript interop. -->
+  <!-- Source-model import (Assimp) is desktop-only: the browser loads cooked meshes. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <ProjectReference Include="..\framework\Spot.Framework.Assimp\Spot.Framework.Assimp.csproj" />
+  </ItemGroup>
+
+  <!-- Browser-only source: the engine's browser host. Excluded from the desktop target. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <Compile Remove="Browser\**\*.cs" />
   </ItemGroup>
 
-  <!-- Managed dependencies shared by both targets: physics, logging, and the Stb* asset decoders are all
-       pure managed and link under wasm just as they do on desktop. -->
+  <!-- Managed dependencies shared by both targets: physics and logging. -->
   <ItemGroup>
     <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
     <PackageReference Include="BepuPhysics" Version="2.4.0" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="StbImageSharp" Version="2.30.15" />
-    <PackageReference Include="StbTrueTypeSharp" Version="1.26.13" />
-    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
   </ItemGroup>
 
-  <!-- Desktop-only native/interop dependencies: Silk.NET windowing, OpenGL, OpenAL, Assimp, and the ImGui
-       GL extension. The browser target drives WebGL2/Web Audio/DOM through [JSImport] instead and never
-       references Silk.NET. -->
+  <!-- Desktop-only: the ImGui GL extension behind the developer console, the editor and the debug overlay. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="Silk.NET.Assimp" Version="2.23.0" />
-    <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
-    <PackageReference Include="Silk.NET.OpenAL" Version="2.23.0" />
-    <PackageReference Include="Silk.NET.OpenAL.Soft.Native" Version="1.23.1" />
-    <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.23.0" />
-    <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
   </ItemGroup>
 
-  <!-- Desktop-only source: the Silk.NET windowing/host, the OpenGL/3D/post/particle render pipeline, the
-       OpenAL audio backend, the Assimp importer, and the ImGui services. The browser target compiles only
-       the neutral engine core (ECS, scenes, scripting, 2D physics, input, audio seam, assets, the 2D/UI
-       renderers driven through IGraphicsDevice) plus its own [JSImport] backends. -->
+  <!-- Desktop-only source: the application host, the HDR/bloom/post pipeline (Silk-backed shaders and queries),
+       the ImGui services and console, and the authoring-time model/asset tooling. The browser target compiles
+       the neutral engine core plus its own host. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
-    <Compile Remove="Core\Window.cs" />
     <Compile Remove="Core\Application.cs" />
     <Compile Remove="Core\IEngineService.cs" />
     <Compile Remove="Core\IDebugOverlay.cs" />
     <Compile Remove="Core\Services\GraphicsService.cs" />
     <Compile Remove="Core\Services\AudioService.cs" />
     <Compile Remove="Core\Services\ImGuiService.cs" />
-    <Compile Remove="Rendering\OpenGLGraphicsDevice.cs" />
-    <Compile Remove="Rendering\Renderer.Silk.cs" />
-    <!-- The HDR/bloom/post pipeline stays desktop-only for now (Silk-backed offscreen targets + shaders); the
-         browser runs the shared RenderSystem with no post-processor installed (see IScenePostProcessor). -->
+    <!-- The HDR/bloom/post pipeline stays desktop-only for now; the browser runs the shared RenderSystem with no
+         post-processor installed (see IScenePostProcessor). -->
     <Compile Remove="Rendering\PostProcessingRenderer.cs" />
     <Compile Remove="Rendering\BloomRenderer.cs" />
     <Compile Remove="Scenes\Systems\DesktopScenePostProcessor.cs" />
-    <Compile Remove="Audio\AudioDevice.cs" />
-    <Compile Remove="Audio\OpenAlAudioBackend.cs" />
-    <Compile Remove="Assets\AssimpModelImporter.cs" />
     <Compile Remove="Assets\ModelMaterials.cs" />
     <Compile Remove="Scenes\ModelInstantiator.cs" />
     <!-- Dear ImGui developer console (authoring/debug overlay). -->

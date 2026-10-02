@@ -47,6 +47,45 @@ public class ProjectGeneratorTests
     }
 
     [Fact]
+    public void Generate_ReferencesAndBundlesTheFrameworkLevels()
+    {
+        using var temp = new TempDir();
+        var project = NewProjectAt(temp.Path, "Layers");
+
+        ProjectGenerator.Generate(project);
+
+        string csproj = File.ReadAllText(Path.Combine(temp.Path, "Layers.csproj"));
+        Assert.Contains(@"EngineBin\Spot.Framework.Core.dll", csproj);
+        Assert.Contains(@"EngineBin\Spot.Framework.dll", csproj);
+        Assert.Contains(@"Exists('EngineBin\Spot.Framework.Assimp.dll')", csproj);
+
+        // The engine's output carries the framework levels beside it, so Generate bundles them.
+        string engineBin = Path.Combine(temp.Path, ProjectStructure.EngineBinFolder);
+        foreach (string dll in new[] { "Spot.Engine.dll", "Spot.Framework.Core.dll", "Spot.Framework.dll" })
+        {
+            Assert.True(File.Exists(Path.Combine(engineBin, dll)), $"{dll} was not bundled into EngineBin");
+        }
+    }
+
+    [Fact]
+    public void GenerateBrowser_ReferencesTheFrameworkLevelsAndBindsTheCorePlatform()
+    {
+        using var temp = new TempDir();
+        var project = NewProjectAt(temp.Path, "Web");
+
+        string webDir = ProjectGenerator.GenerateBrowser(project);
+
+        string csproj = File.ReadAllText(Path.Combine(webDir, "Web.Browser.csproj"));
+        Assert.Contains(@"EngineBin\Spot.Framework.Core.dll", csproj);
+        Assert.Contains(@"EngineBin\Spot.Framework.dll", csproj);
+        Assert.Contains(@"EngineBin\Spot.Engine.dll", csproj);
+
+        string mainJs = File.ReadAllText(Path.Combine(webDir, "wwwroot", "main.js"));
+        Assert.Contains("const CORE_ASSEMBLY = 'Spot.Framework.Core';", mainJs);
+        Assert.Contains("const ENGINE_ASSEMBLY = 'Spot.Engine';", mainJs);
+    }
+
+    [Fact]
     public void WriteManifest_WritesIntoOutputDirAndAlwaysOverwrites()
     {
         using var temp = new TempDir();

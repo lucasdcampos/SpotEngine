@@ -4,6 +4,7 @@ using System.Linq;
 using Spot.Assets;
 using Spot.Scenes;
 using Xunit;
+using Spot.Tests;
 
 namespace Spot.Engine.Tests;
 
