@@ -221,17 +221,18 @@ void main()
         bool fxaa = config.EnableFXAA && s_fxaaShader != null;
 
         // When FXAA is on, the composite renders into an LDR intermediate instead of the target, and a
-        // second pass resolves it back. Capture the caller's target FBO + viewport so we can restore
-        // them, and size the intermediate to the render region.
-        int targetFbo = 0;
-        int* vp = stackalloc int[4];
+        // second pass resolves it back. Capture the caller's target + viewport from the renderer's tracked
+        // state (restoring through it too keeps that state true for whatever draws next), and size the
+        // intermediate to the render region.
+        FramebufferHandle target = Renderer.CurrentRenderTarget;
+        int targetX = Renderer.ViewportX;
+        int targetY = Renderer.ViewportY;
+        uint targetWidth = Math.Max(1u, Renderer.ViewportWidth);
+        uint targetHeight = Math.Max(1u, Renderer.ViewportHeight);
         if (fxaa)
         {
-            Renderer.Api.GetInteger(GLEnum.FramebufferBinding, &targetFbo);
-            Renderer.Api.GetInteger(GLEnum.Viewport, vp);
-
-            uint w = (uint)Math.Max(1, vp[2]);
-            uint h = (uint)Math.Max(1, vp[3]);
+            uint w = targetWidth;
+            uint h = targetHeight;
             if (s_ldrFramebuffer == null)
                 s_ldrFramebuffer = new Framebuffer(w, h, FramebufferFormat.RGBA8);
             else
@@ -283,12 +284,11 @@ void main()
         // FXAA resolve: read the LDR composite back onto the caller's target with the original viewport.
         if (fxaa)
         {
-            Renderer.Api.BindFramebuffer(FramebufferTarget.Framebuffer, (uint)targetFbo);
-            Renderer.Api.Viewport(vp[0], vp[1], (uint)vp[2], (uint)vp[3]);
+            Renderer.BindRenderTarget(target, targetX, targetY, targetWidth, targetHeight);
 
             s_fxaaShader!.Use();
             s_fxaaShader.SetUniform("uImage", 0);
-            s_fxaaShader.SetUniform("uTexelSize", new System.Numerics.Vector2(1.0f / Math.Max(1, vp[2]), 1.0f / Math.Max(1, vp[3])));
+            s_fxaaShader.SetUniform("uTexelSize", new System.Numerics.Vector2(1.0f / targetWidth, 1.0f / targetHeight));
             Renderer.Api.ActiveTexture(TextureUnit.Texture0);
             Renderer.Api.BindTexture(TextureTarget.Texture2D, s_ldrFramebuffer!.ColorAttachment);
             Renderer.Api.DrawArrays(PrimitiveType.Triangles, 0, 6);

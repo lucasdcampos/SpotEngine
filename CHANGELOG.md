@@ -93,6 +93,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The `sandbox/` project: `samples/` now holds the examples, with `samples/HelloEngine` as the engine-level project
 
 ### Fixed
+- Editor thumbnails (model and material previews) showed fragments of the editor UI, such as console text, when several rendered in the same frame: previews and the FXAA pass restored the render target behind the renderer's back, so the next framebuffer created re-bound the previous preview and the rest of the frame drew into it. Previews also no longer leave face culling on
 - The generated sphere was wound inside out (so `BasicRenderer3D` culled its outside and lit it from the wrong side) and mapped its texture upside down; the generated plane mirrored its texture
 - `spot build <desktop> --project <relative path>` published into a nested `<project>/<project>/Build/...` folder while the cooked content went to the real `Build/` folder, leaving a build that could not find its content
 - The `'` key in the editor no longer opens a duplicate console: the editor claims ownership of the console window (`DevConsole.SetHost`), so the engine stops drawing its floating overlay — ImGui merged the two by name and drew the whole console body, command prompt included, twice. `'` now reveals and focuses the docked **Console** panel from anywhere in the editor, and from the Game panel it also releases game input and the cursor (as `Esc` does) instead of leaving the game's input dead with no way to dismiss the capture
