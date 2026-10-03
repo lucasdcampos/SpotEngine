@@ -97,7 +97,8 @@ The runtime UI is the **final** pass, drawn after post-processing directly to th
 screen space (an orthographic projection over the window), so the interface stays crisp and is never
 tone-mapped or bloomed. It renders the scene's UI tree — HUDs, menus — with alpha blending and scissor
 clipping, which is why small text and soft widget edges look clean where the alpha-tested sprite pass
-would not. Scenes with no widgets skip the pass entirely. See [Runtime UI](ui.md).
+would not. It also turns face culling off, which a 3D scene leaves on: the y-down projection winds its quads the
+other way round. Scenes with no widgets skip the pass entirely. See [Runtime UI](ui.md).
 
 ## Post-processing and quality
 

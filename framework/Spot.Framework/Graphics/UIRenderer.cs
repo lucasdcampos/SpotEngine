@@ -168,6 +168,10 @@ public static class UIRenderer
         Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
         Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
 
+        // The y-down projection mirrors the quads, so they wind clockwise on screen: a 3D scene's back-face culling,
+        // still on when its UI is drawn, would discard every one of them.
+        Renderer.Device.SetCapability(GraphicsCapability.CullFace, false);
+
         StartBatch();
     }
 

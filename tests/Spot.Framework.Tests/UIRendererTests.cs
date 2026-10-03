@@ -49,6 +49,17 @@ public class UIRendererTests
     }
 
     [Fact]
+    public void Pass_TurnsOffFaceCullingLeftOnByA3DScene()
+    {
+        RecordingGraphicsDevice device = Install();
+        device.SetCapability(GraphicsCapability.CullFace, true);
+
+        UIRenderer.Begin(100, 100);
+        Assert.False(device.Capabilities[GraphicsCapability.CullFace]);
+        UIRenderer.End();
+    }
+
+    [Fact]
     public void Pass_UsesATopLeftOriginProjection()
     {
         RecordingGraphicsDevice device = Install();
