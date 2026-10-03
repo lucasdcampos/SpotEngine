@@ -6,8 +6,8 @@ networked objects, replicate their transforms, and send RPCs and synchronized va
 the game-specific decisions to you. It is deliberately basic: there is no prediction, rollback, or lag
 compensation. Think of it as the base you build a game on, not a finished netcode stack.
 
-`Spot.Net` is a separate project so the runtime stays lean; reference it from your game (the sandbox and
-editor already do).
+`Spot.Net` is a separate project so the runtime stays lean; reference it from your game (the editor already
+does, and `spot generate` bundles `Spot.Net.dll` into a project's `EngineBin/` and references it).
 
 ## Quick start (5 steps)
 

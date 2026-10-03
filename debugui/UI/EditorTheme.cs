@@ -75,28 +75,34 @@ public sealed class EditorPalette
 /// </summary>
 public sealed class EditorStyleMetrics
 {
-    public float WindowRounding = 6.0f;
-    public float ChildRounding = 5.0f;
-    public float FrameRounding = 4.0f;
-    public float PopupRounding = 5.0f;
-    public float TabRounding = 5.0f;
-    public float GrabRounding = 4.0f;
-    public float ScrollbarRounding = 4.0f;
+    // One small rounding scale for the whole editor: 2 for grabs, 3 for controls, 4 for surfaces
+    // (windows, popups, cards, tabs). Scrollbars are pills.
+    public float WindowRounding = 4.0f;
+    public float ChildRounding = 4.0f;
+    public float FrameRounding = 3.0f;
+    public float PopupRounding = 4.0f;
+    public float TabRounding = 4.0f;
+    public float GrabRounding = 2.0f;
+    public float ScrollbarRounding = 8.0f;
 
     public float WindowBorderSize = 1.0f;
     public float FrameBorderSize = 0.0f;
     public float PopupBorderSize = 1.0f;
     public float TabBorderSize = 0.0f;
+    public float TabBarBorderSize = 1.0f;
+
+    /// <summary>Width of the splitter between docked panels; drawn in the palette's separator tone.</summary>
+    public float DockingSeparatorSize = 2.0f;
 
     public Vector2 WindowPadding = new(10.0f, 8.0f);
-    public Vector2 FramePadding = new(9.0f, 5.0f);
-    public Vector2 ItemSpacing = new(8.0f, 6.0f);
-    public Vector2 ItemInnerSpacing = new(6.0f, 4.0f);
-    public Vector2 CellPadding = new(6.0f, 4.0f);
+    public Vector2 FramePadding = new(8.0f, 4.0f);
+    public Vector2 ItemSpacing = new(8.0f, 5.0f);
+    public Vector2 ItemInnerSpacing = new(5.0f, 4.0f);
+    public Vector2 CellPadding = new(6.0f, 3.0f);
 
-    public float ScrollbarSize = 11.0f;
+    public float ScrollbarSize = 10.0f;
     public float GrabMinSize = 10.0f;
-    public float IndentSpacing = 20.0f;
+    public float IndentSpacing = 16.0f;
 }
 
 /// <summary>
@@ -146,45 +152,63 @@ public sealed class EditorTheme
 
         Set(ImGuiCol.ScrollbarBg, p.ScrollbarBg);
         Set(ImGuiCol.ScrollbarGrab, p.ScrollbarGrab);
-        Set(ImGuiCol.ScrollbarGrabHovered, Lighten(p.ScrollbarGrab, 0.1f));
-        Set(ImGuiCol.ScrollbarGrabActive, Lighten(p.ScrollbarGrab, 0.2f));
+        Set(ImGuiCol.ScrollbarGrabHovered, Lighten(p.ScrollbarGrab, 0.08f));
+        Set(ImGuiCol.ScrollbarGrabActive, Lighten(p.ScrollbarGrab, 0.16f));
 
         Set(ImGuiCol.CheckMark, p.CheckMark);
         Set(ImGuiCol.SliderGrab, p.SliderGrab);
-        Set(ImGuiCol.SliderGrabActive, p.AccentActive);
+        Set(ImGuiCol.SliderGrabActive, p.AccentHovered);
 
         Set(ImGuiCol.Button, p.Button);
         Set(ImGuiCol.ButtonHovered, p.ButtonHovered);
         Set(ImGuiCol.ButtonActive, p.ButtonActive);
 
-        // Header slots drive selectables, tree nodes and collapsing headers. A solid accent marks the
-        // selected row (hierarchy, menus) while hover stays a soft accent tint so it reads as feedback,
-        // not a second selection.
-        Set(ImGuiCol.Header, WithAlpha(p.Accent, 0.85f));
-        Set(ImGuiCol.HeaderHovered, WithAlpha(p.Accent, 0.28f));
-        Set(ImGuiCol.HeaderActive, p.Accent);
+        // Header slots drive selectables, tree nodes, menus and combos. The selected row is a muted
+        // accent wash rather than a solid fill, and hover is a neutral lift, so a selection reads as
+        // "this one" without shouting and hovering never looks like a second selection.
+        Set(ImGuiCol.Header, WithAlpha(p.Accent, 0.40f));
+        Set(ImGuiCol.HeaderHovered, WithAlpha(p.Text, 0.08f));
+        Set(ImGuiCol.HeaderActive, WithAlpha(p.Accent, 0.55f));
 
+        // The separator tone also paints the splitters between docked panels (DockingSeparatorSize wide),
+        // which light up in the accent while hovered or dragged.
         Set(ImGuiCol.Separator, p.Separator);
-        Set(ImGuiCol.SeparatorHovered, WithAlpha(p.Accent, 0.6f));
+        Set(ImGuiCol.SeparatorHovered, WithAlpha(p.Accent, 0.70f));
         Set(ImGuiCol.SeparatorActive, p.Accent);
 
-        Set(ImGuiCol.ResizeGrip, WithAlpha(p.Accent, 0.20f));
+        Set(ImGuiCol.ResizeGrip, new Vector4(0, 0, 0, 0));
         Set(ImGuiCol.ResizeGripHovered, WithAlpha(p.Accent, 0.55f));
         Set(ImGuiCol.ResizeGripActive, WithAlpha(p.Accent, 0.85f));
 
-        // Tabs: the focused, selected tab lifts to the header tone; everything else recedes into the
-        // dock so the active document is unmistakable without a heavy outline.
+        // Tabs: inactive tabs recede into the tab strip; the selected tab takes the panel's own tone so it
+        // reads as one surface with its content. Which panel has focus is marked by an accent line on its
+        // tab (EditorGui.MarkFocusedTab), since this ImGui version has no tab overline of its own.
         Set(ImGuiCol.Tab, p.TabBg);
         Set(ImGuiCol.TabHovered, p.TabHovered);
         Set(ImGuiCol.TabActive, p.TabActive);
         Set(ImGuiCol.TabUnfocused, p.TabBg);
-        Set(ImGuiCol.TabUnfocusedActive, Lighten(p.TabBg, 0.05f));
+        Set(ImGuiCol.TabUnfocusedActive, p.TabActive);
 
         Set(ImGuiCol.DockingPreview, WithAlpha(p.Accent, 0.35f));
         Set(ImGuiCol.DockingEmptyBg, p.TitleBg);
 
         Set(ImGuiCol.PlotLines, p.Accent);
+        Set(ImGuiCol.PlotLinesHovered, p.AccentHovered);
         Set(ImGuiCol.PlotHistogram, p.Accent);
+        Set(ImGuiCol.PlotHistogramHovered, p.AccentHovered);
+
+        Set(ImGuiCol.TableHeaderBg, p.HeaderBg);
+        Set(ImGuiCol.TableBorderStrong, p.Border);
+        Set(ImGuiCol.TableBorderLight, p.Separator);
+        Set(ImGuiCol.TableRowBg, new Vector4(0, 0, 0, 0));
+        Set(ImGuiCol.TableRowBgAlt, WithAlpha(p.Text, 0.025f));
+
+        // Without these the stock dark preset's yellow drop outline and white nav frame leak through.
+        Set(ImGuiCol.DragDropTarget, p.AccentHovered);
+        Set(ImGuiCol.NavHighlight, p.Accent);
+        Set(ImGuiCol.NavWindowingHighlight, WithAlpha(p.Accent, 0.70f));
+        Set(ImGuiCol.NavWindowingDimBg, new Vector4(0, 0, 0, 0.35f));
+        Set(ImGuiCol.ModalWindowDimBg, new Vector4(0, 0, 0, 0.45f));
 
         // Metrics.
         style.WindowRounding = Metrics.WindowRounding;
@@ -200,6 +224,8 @@ public sealed class EditorTheme
         style.ChildBorderSize = 0.0f;   // component cards paint their own hairline; avoid doubled lines
         style.PopupBorderSize = Metrics.PopupBorderSize;
         style.TabBorderSize = Metrics.TabBorderSize;
+        style.TabBarBorderSize = Metrics.TabBarBorderSize;
+        style.DockingSeparatorSize = Metrics.DockingSeparatorSize;
         style.SeparatorTextBorderSize = 1.0f;
 
         style.WindowPadding = Metrics.WindowPadding;
@@ -214,15 +240,16 @@ public sealed class EditorTheme
 
         style.WindowTitleAlign = new Vector2(0.0f, 0.5f);
         style.ButtonTextAlign = new Vector2(0.5f, 0.5f);
+        style.SelectableTextAlign = new Vector2(0.0f, 0.5f);
         style.WindowMenuButtonPosition = ImGuiDir.None;
 
         // Mirror the log colors onto the engine-owned developer console (the engine does not
         // reference the editor, so the theme pushes these values instead of the console pulling them).
         // The monospaced font is handed over the same way so the console reads like a terminal.
-        Spot.Console.DevConsole.DefaultTextColor = p.LogText;
-        Spot.Console.DevConsole.CommandColor = p.LogCommand;
-        Spot.Console.DevConsole.ErrorColor = p.LogError;
-        Spot.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
+        Spot.Engine.Console.DevConsole.DefaultTextColor = p.LogText;
+        Spot.Engine.Console.DevConsole.CommandColor = p.LogCommand;
+        Spot.Engine.Console.DevConsole.ErrorColor = p.LogError;
+        Spot.Engine.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);

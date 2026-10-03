@@ -1,0 +1,208 @@
+{
+  "ScaleMode": "ScaleWithHeight",
+  "ReferenceHeight": 1080,
+  "Widgets": [
+    {
+      "Type": "Panel",
+      "Name": "HudPanel",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          32,
+          32
+        ],
+        "Size": [
+          520,
+          176
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Color": [
+        0.07,
+        0.08,
+        0.11,
+        0.82
+      ],
+      "SpriteRef": "",
+      "Border": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "Children": [
+        {
+          "Type": "Text",
+          "Name": "Title",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              24,
+              18
+            ],
+            "Size": [
+              472,
+              44
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Hello, Engine",
+          "FontRef": "",
+          "FontSize": 38,
+          "Color": [
+            0.95,
+            0.96,
+            0.98,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Text",
+          "Name": "Hint",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              24,
+              68
+            ],
+            "Size": [
+              472,
+              28
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "Space or the button drops cubes. Right-drag orbits, scroll zooms.",
+          "FontRef": "",
+          "FontSize": 19,
+          "Color": [
+            0.62,
+            0.66,
+            0.74,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Text",
+          "Name": "Counter",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              24,
+              124
+            ],
+            "Size": [
+              240,
+              32
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Content": "0 cubes",
+          "FontRef": "",
+          "FontSize": 24,
+          "Color": [
+            0.95,
+            0.96,
+            0.98,
+            1
+          ],
+          "Align": 0,
+          "Wrap": false
+        },
+        {
+          "Type": "Button",
+          "Name": "DropButton",
+          "Rect": {
+            "Anchor": [
+              0,
+              0
+            ],
+            "Pivot": [
+              0,
+              0
+            ],
+            "Position": [
+              316,
+              116
+            ],
+            "Size": [
+              180,
+              44
+            ]
+          },
+          "Visible": true,
+          "Enabled": true,
+          "Label": "Drop 10",
+          "FontRef": "",
+          "FontSize": 22,
+          "TextColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "NormalColor": [
+            0.2,
+            0.42,
+            0.85,
+            1
+          ],
+          "HoverColor": [
+            0.28,
+            0.52,
+            0.95,
+            1
+          ],
+          "PressedColor": [
+            0.15,
+            0.32,
+            0.68,
+            1
+          ],
+          "SpriteRef": "",
+          "Border": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

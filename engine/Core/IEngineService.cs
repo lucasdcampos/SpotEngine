@@ -1,4 +1,5 @@
-namespace Spot.Core;
+
+namespace Spot.Engine;
 
 /// <summary>
 /// Defines a service that hooks into the application's lifecycle.

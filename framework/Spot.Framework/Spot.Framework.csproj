@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Level 2 of Spot: the friendly, code-only framework on top of the core — file loading and decoders, text,
+       2D/3D drawing helpers, models, the animation mechanism, the audio mixer and input actions. Generic: it
+       picks no physics or UI library for you. -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <RootNamespace>Spot</RootNamespace>
+    <AssemblyName>Spot.Framework</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spot.Framework.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spot.Framework.Core\Spot.Framework.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Pure managed decoders: images, TrueType fonts and Vorbis audio. They link under wasm as on desktop. -->
+  <ItemGroup>
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
+    <PackageReference Include="StbTrueTypeSharp" Version="1.26.13" />
+    <PackageReference Include="StbVorbisSharp" Version="1.22.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Built-in default font (Inter Medium, OFL), embedded so text renders with zero setup. -->
+    <EmbeddedResource Include="Resources\DefaultFont.ttf" LogicalName="Spot.DefaultFont.ttf" />
+  </ItemGroup>
+
+  <!-- Browser-only source: the in-memory store of fetched content (IO/Browser). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="IO\Browser\**\*.cs" />
+  </ItemGroup>
+
+</Project>

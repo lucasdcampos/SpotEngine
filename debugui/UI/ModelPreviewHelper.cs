@@ -1,9 +1,9 @@
 using System;
 using System.Numerics;
-using Silk.NET.OpenGL;
-using Spot.Assets;
-using Spot.Physics;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Engine.Rendering;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
 namespace Spot.DebugUI.UI;
 
@@ -17,71 +17,82 @@ public static class ModelPreviewHelper
     // A neutral light-gray material so previews focus on the model's silhouette, not its authored colors.
     private static readonly Material s_previewMaterial = new() { Color = new Vector4(0.78f, 0.78f, 0.80f, 1.0f) };
 
-    public static void RenderToFramebuffer(Model model, Spot.Rendering.Framebuffer framebuffer)
+    /// <summary>
+    /// Renders <paramref name="model"/> into <paramref name="framebuffer"/>. With
+    /// <paramref name="transparentBackground"/> the backdrop is cleared to transparent so the model sits directly on
+    /// whatever the preview is drawn over (e.g. an asset-browser tile); otherwise it gets a dark gray backdrop.
+    /// </summary>
+    public static void RenderToFramebuffer(Model model, Spot.Framework.Graphics.Framebuffer framebuffer,
+        bool transparentBackground = false)
     {
-        Renderer.Api.GetInteger(GLEnum.FramebufferBinding, out int prevFb);
-        int[] prevViewport = new int[4];
-        unsafe
+        // Save and restore the target through the renderer's tracked state, never raw GL: creating the next
+        // Framebuffer re-binds whatever the renderer believes is bound, so a raw restore would leave that belief
+        // pointing at this preview and the rest of the frame (the editor UI included) would draw into it.
+        FramebufferHandle previousTarget = Renderer.CurrentRenderTarget;
+        int previousX = Renderer.ViewportX;
+        int previousY = Renderer.ViewportY;
+        uint previousWidth = Renderer.ViewportWidth;
+        uint previousHeight = Renderer.ViewportHeight;
+        try
         {
-            fixed (int* vp = prevViewport)
+            framebuffer.Bind();
+            Renderer.SetClearColor(0.15f, 0.15f, 0.15f, transparentBackground ? 0.0f : 1.0f);
+            Renderer.Clear();
+            Renderer.SetDepthTest(true);
+            Renderer.SetFaceCulling(true);
+
+            // Frame the model by its bounding sphere: distance so the sphere just fits the vertical FOV, plus padding.
+            Aabb3d bounds = model.LocalBounds;
+            Vector3 center = bounds.Center;
+            float radius = bounds.HalfExtents.Length();
+            if (radius < 1e-4f)
             {
-                Renderer.Api.GetInteger(GLEnum.Viewport, vp);
+                radius = 1.0f;
             }
+
+            const float fov = MathF.PI / 4f;
+            float dist = radius / MathF.Sin(fov * 0.5f) * 1.25f;
+            Vector3 dir = Vector3.Normalize(new Vector3(1.0f, 0.7f, 1.0f));
+            Vector3 cameraPos = center + dir * dist;
+
+            Matrix4x4 view = Matrix4x4.CreateLookAt(cameraPos, center, Vector3.UnitY);
+            float near = MathF.Max(0.01f, dist - radius * 2.0f);
+            float far = dist + radius * 2.0f;
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(fov, (float)framebuffer.Width / framebuffer.Height, near, far);
+
+            Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[1];
+            pointLights[0] = new Renderer3D.PointLightData
+            {
+                Position = cameraPos,
+                Color = Vector3.One,
+                Intensity = 0.6f,
+                Range = dist * 4.0f
+            };
+
+            Renderer3D.BeginScene(
+                view * proj,
+                true,
+                Vector3.Normalize(new Vector3(-0.5f, -1.0f, -0.5f)),
+                Vector3.One,
+                0.3f,
+                Matrix4x4.Identity,
+                false,
+                pointLights,
+                cameraPos);
+
+            foreach (Mesh mesh in model.Meshes)
+            {
+                Renderer3D.DrawMesh(Matrix4x4.Identity, mesh, s_previewMaterial.Color, null, (int)s_previewMaterial.ShaderType, s_previewMaterial);
+            }
+
+            Renderer3D.EndScene();
         }
-
-        framebuffer.Bind();
-        Renderer.SetClearColor(0.15f, 0.15f, 0.15f, 1.0f);
-        Renderer.Clear();
-        Renderer.SetDepthTest(true);
-        Renderer.SetFaceCulling(true);
-
-        // Frame the model by its bounding sphere: distance so the sphere just fits the vertical FOV, plus padding.
-        Aabb3d bounds = model.LocalBounds;
-        Vector3 center = bounds.Center;
-        float radius = bounds.HalfExtents.Length();
-        if (radius < 1e-4f)
+        finally
         {
-            radius = 1.0f;
+            // Culling is only for the preview (the engine renders double-sided), and a failed render must not
+            // leave the preview bound either.
+            Renderer.SetFaceCulling(false);
+            Renderer.BindRenderTarget(previousTarget, previousX, previousY, previousWidth, previousHeight);
         }
-
-        const float fov = MathF.PI / 4f;
-        float dist = radius / MathF.Sin(fov * 0.5f) * 1.25f;
-        Vector3 dir = Vector3.Normalize(new Vector3(1.0f, 0.7f, 1.0f));
-        Vector3 cameraPos = center + dir * dist;
-
-        Matrix4x4 view = Matrix4x4.CreateLookAt(cameraPos, center, Vector3.UnitY);
-        float near = MathF.Max(0.01f, dist - radius * 2.0f);
-        float far = dist + radius * 2.0f;
-        Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(fov, (float)framebuffer.Width / framebuffer.Height, near, far);
-
-        Span<Renderer3D.PointLightData> pointLights = stackalloc Renderer3D.PointLightData[1];
-        pointLights[0] = new Renderer3D.PointLightData
-        {
-            Position = cameraPos,
-            Color = Vector3.One,
-            Intensity = 0.6f,
-            Range = dist * 4.0f
-        };
-
-        Renderer3D.BeginScene(
-            view * proj,
-            true,
-            Vector3.Normalize(new Vector3(-0.5f, -1.0f, -0.5f)),
-            Vector3.One,
-            0.3f,
-            Matrix4x4.Identity,
-            false,
-            pointLights,
-            cameraPos);
-
-        foreach (Mesh mesh in model.Meshes)
-        {
-            Renderer3D.DrawMesh(Matrix4x4.Identity, mesh, s_previewMaterial.Color, null, (int)s_previewMaterial.ShaderType, s_previewMaterial);
-        }
-
-        Renderer3D.EndScene();
-
-        Renderer.Api.BindFramebuffer(FramebufferTarget.Framebuffer, (uint)prevFb);
-        Renderer.Api.Viewport(prevViewport[0], prevViewport[1], (uint)prevViewport[2], (uint)prevViewport[3]);
     }
 }

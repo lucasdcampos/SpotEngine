@@ -4,8 +4,10 @@ using System.Runtime.InteropServices;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.OpenGL.Extensions.ImGui;
+using Spot.Engine;
+using Spot.Framework;
 
-namespace Spot.Core.Services;
+namespace Spot.Engine.Services;
 
 /// <summary>
 /// Manages the ImGui context and rendering loop.
@@ -67,7 +69,7 @@ public class ImGuiService : IEngineService
 
         _input = app.Window.Input;
         _controller = new ImGuiController(
-            Spot.Rendering.Renderer.Api, app.Window.NativeWindow, app.Window.Input,
+            Spot.Framework.Graphics.Renderer.Api, app.Window.NativeWindow, app.Window.Input,
             fontConfig, () => ConfigureExtraFonts(havePrimary));
 
         ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
@@ -231,7 +233,7 @@ public class ImGuiService : IEngineService
     // reports the physical LeftCtrl/RightCtrl keys, which ImGui does not fold into io.KeyMods on its own;
     // without this, io.KeyMods stays 0 and every InputText shortcut that tests it — Ctrl+A (select all),
     // Ctrl+C/V/X, Ctrl+Z, word-wise navigation — silently does nothing while plain typing still works.
-    // Reads the raw keyboards (not Spot.Core.Input) so shortcuts keep working even while the engine has
+    // Reads the raw keyboards (not Spot.Framework.Input) so shortcuts keep working even while the engine has
     // captured input, e.g. editing in the developer console.
     private void UpdateModifierKeys()
     {

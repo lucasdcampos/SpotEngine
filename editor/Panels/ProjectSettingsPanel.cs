@@ -1,5 +1,5 @@
 using ImGuiNET;
-using Spot.Core;
+using Spot.Engine;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 
@@ -17,6 +17,7 @@ public class ProjectSettingsPanel
 
         if (ImGui.Begin("Project Settings", ref isOpen))
         {
+            EditorGui.MarkFocusedTab();
             if (Project.Active != null)
             {
                 var config = Project.Active.Config;

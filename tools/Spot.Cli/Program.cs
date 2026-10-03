@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Spot.Build;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Cli;
 
@@ -26,8 +26,8 @@ internal static class Program
             return 0;
         }
 
-        // Engine paths (asset cook, migration) log through Serilog, which throws if never initialized.
-        Log.Init();
+        // Engine paths (asset cook, migration) log; persist them like the editor does.
+        EngineLogging.Init();
 
         string command = args[0].ToLowerInvariant();
         try
@@ -134,10 +134,10 @@ internal static class Program
         {
             throw new DirectoryNotFoundException($"No assets directory to cook: '{assetDir}'. Create it (or check the project's AssetDirectory) and try again.");
         }
-        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.ContentFolder);
+        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.ContentFolder);
 
         Console.WriteLine($"Cooking assets for '{project.Config.Name}' -> {outDir}");
-        var result = Spot.Assets.AssetDatabase.CookAll(assetDir, outDir);
+        var result = Spot.Engine.Assets.AssetDatabase.CookAll(assetDir, outDir);
         if (result.Failed > 0)
         {
             Console.Error.WriteLine($"Cooked {result.Cooked} asset(s) with {result.Failed} failure(s); the manifest is missing those entries. See the log above. Manifest: {result.ManifestPath}");
@@ -160,10 +160,15 @@ internal static class Program
             throw new DirectoryNotFoundException($"No assets directory to migrate: '{assetDir}'. Create it (or check the project's AssetDirectory) and try again.");
         }
 
-        int changed = Spot.Assets.AssetDatabase.MigrateReferences(assetDir, dryRun);
+        int changed = Spot.Engine.Assets.AssetDatabase.MigrateReferences(assetDir, dryRun);
         Console.WriteLine(dryRun
             ? $"{changed} file(s) would be migrated to guid references."
             : $"Migrated {changed} file(s) to guid references.");
+
+        int scripts = ScriptNamespaceMigrator.MigrateProject(project.ProjectDirectory, assetDir, dryRun);
+        Console.WriteLine(dryRun
+            ? $"{scripts} script(s) would be moved to the Spot.Framework/Spot.Engine namespaces."
+            : $"Moved {scripts} script(s) to the Spot.Framework/Spot.Engine namespaces.");
         return 0;
     }
 
@@ -290,8 +295,10 @@ Usage:
       Cook source assets into engine-native artifacts + a manifest (defaults to Content/).
 
   spot migrate [--project <path>] [--dry-run]
-      Rewrite scene/material asset references to stable guid: references and generate
-      missing .meta sidecars. --dry-run reports changes without writing.
+      Rewrite scene/material asset references to stable guid: references, generate
+      missing .meta sidecars, and move scripts written against the pre-0.4 namespaces
+      (Spot.Core, Spot.Scenes, ...) to Spot.Framework.* / Spot.Engine.*.
+      --dry-run reports changes without writing.
 
   spot help
       Show this help.");

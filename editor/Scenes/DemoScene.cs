@@ -1,6 +1,5 @@
 using System.Numerics;
-using Spot.Scenes;
-using Spot.Rendering;
+using Spot.Engine.Scenes;
 
 namespace Spot.Editor.Scenes;
 

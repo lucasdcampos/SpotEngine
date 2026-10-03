@@ -1,4 +1,5 @@
-namespace Spot.Rendering;
+
+namespace Spot.Engine.Rendering;
 
 // Shared GLSL utility functions injected via C# string concatenation into the shaders that need them.
 // Each snippet is a self-contained GLSL block (no surrounding version/layout declarations).

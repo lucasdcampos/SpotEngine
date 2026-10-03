@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using Spot.Build;
+using Spot.Engine;
 
 namespace Spot.Build.Tests;
 

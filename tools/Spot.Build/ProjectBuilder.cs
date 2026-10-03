@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build;
 
@@ -44,6 +44,20 @@ public static class ProjectBuilder
     };
 
     /// <summary>
+    /// The absolute folder a desktop build publishes into: <c>Build/&lt;platform&gt;</c>, or <c>Build/play</c> for
+    /// the editor's fast Play build. Absolute so <c>dotnet publish -o</c> is unambiguous — the publish runs with
+    /// the project directory as its working directory, so a relative project path would otherwise nest
+    /// (<c>MyGame/MyGame/Build/...</c>) while the cooked content went to the real folder.
+    /// </summary>
+    /// <param name="projectDirectory">The project directory, absolute or relative to the current directory.</param>
+    /// <param name="platform">The desktop platform.</param>
+    /// <param name="fastDebug">Whether this is the editor's fast Play build.</param>
+    /// <returns>The absolute output folder.</returns>
+    public static string OutputDirectory(string projectDirectory, BuildPlatform platform, bool fastDebug = false) =>
+        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.BuildFolder,
+            fastDebug ? "play" : FolderName(platform)));
+
+    /// <summary>
     /// Regenerates the build files, then runs <c>dotnet publish</c> for <paramref name="platform"/>
     /// as a self-contained build into <c>Build/&lt;platform&gt;</c> under the project directory.
     /// Blocks until the build finishes; callers that need to stay responsive should run this off the
@@ -76,8 +90,7 @@ public static class ProjectBuilder
         // the self-contained runtime copy and single-file bundling, cutting Play iteration time from
         // tens of seconds to a normal incremental build. It lives in its own folder so it never
         // clobbers a distributable build.
-        string outputDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder,
-            fastDebug ? "play" : FolderName(platform));
+        string outputDir = OutputDirectory(project.ProjectDirectory, platform, fastDebug);
         string csprojFile = project.Config.Name + ".csproj";
 
         string publishArgs = fastDebug
@@ -141,11 +154,11 @@ public static class ProjectBuilder
     internal static bool StageRuntimePayload(Project project, string outputDir,
                                              Action<string>? onOutput, Action<string>? onError)
     {
-        string contentRoot = Path.Combine(outputDir, Spot.Core.ProjectStructure.ContentFolder);
+        string contentRoot = Path.Combine(outputDir, Spot.Engine.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            var cook = Spot.Engine.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
             if (cook.Failed > 0)
             {
                 // Don't abort (a single bad asset shouldn't block Play), but make the gap loud: the payload is
@@ -171,11 +184,11 @@ public static class ProjectBuilder
     {
         // Cook into a Build/ staging folder (not the project root) and copy it into wwwroot below.
         string contentRoot = Path.Combine(project.ProjectDirectory,
-            Spot.Core.ProjectStructure.BuildFolder, Spot.Core.ProjectStructure.ContentFolder);
+            Spot.Engine.ProjectStructure.BuildFolder, Spot.Engine.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
-            var cook = Spot.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
+            var cook = Spot.Engine.Assets.AssetDatabase.CookAll(project.GetAssetDirectory(), contentRoot);
             if (cook.Failed > 0)
             {
                 onError?.Invoke($"Warning: {cook.Failed} asset(s) failed to cook; the build is missing those entries.");
@@ -217,7 +230,7 @@ public static class ProjectBuilder
         // Absolute so `-o` is unambiguous: the publish runs with the WebAssembly project (webDir) as its
         // working directory, which is deeper than the project root, so a relative output path would nest.
         string outputDir = Path.GetFullPath(
-            Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "browser"));
+            Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "browser"));
         string csprojFile = project.Config.Name + ".Browser.csproj";
         string publishArgs = $"publish \"{csprojFile}\" -c Release -o \"{outputDir}\"";
 

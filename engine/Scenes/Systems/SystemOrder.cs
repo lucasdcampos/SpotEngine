@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The execution-order slots of the engine's built-in play-mode systems, spaced so custom

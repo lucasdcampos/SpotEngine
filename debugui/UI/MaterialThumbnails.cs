@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using ImGuiNET;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Graphics;
 
 namespace Spot.DebugUI.UI;
 

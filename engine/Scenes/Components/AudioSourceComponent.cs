@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Audio;
+using Spot.Framework.Audio;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Marks an entity as a sound emitter: it carries what to play (a clip) and how (volume, pitch, looping,

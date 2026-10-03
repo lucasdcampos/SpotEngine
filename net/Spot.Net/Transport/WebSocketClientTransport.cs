@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.Net;
 

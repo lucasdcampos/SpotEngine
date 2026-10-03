@@ -9,8 +9,6 @@ namespace Spot.Net.Tests;
 [Collection("network-loopback")]
 public class HeartbeatTests
 {
-    static HeartbeatTests() => NetTest.EnsureLogging();
-
     [Fact]
     public void Silent_Client_Times_Out_On_Server()
     {

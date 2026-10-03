@@ -1,7 +1,8 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A component to define a simple 3D box for AABB collisions.

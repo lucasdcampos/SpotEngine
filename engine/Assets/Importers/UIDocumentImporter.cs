@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks a <c>.sptui</c> UI document by rewriting its texture and font references — on any widget, at any

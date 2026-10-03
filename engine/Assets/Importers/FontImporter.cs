@@ -1,4 +1,5 @@
-namespace Spot.Assets;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks font files (<c>.ttf</c>, <c>.otf</c>) into <c>.sptfont</c>. The runtime rasterizes glyphs to an atlas

@@ -5,13 +5,14 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using ImGuiNET;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Audio;
-using Spot.Core;
+using Spot.Engine.Animation;
+using Spot.Engine.Assets;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
+using Spot.Framework;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.Undo;
-using Spot.Rendering;
-using Spot.Scenes;
 
 namespace Spot.DebugUI.UI;
 
@@ -141,6 +142,29 @@ internal static class ComponentInspector
             {
                 ImGui.PopID();
             }
+        }
+
+        if (component is Collider3DComponent collider)
+            DrawFitToMesh(entity, collider);
+    }
+
+    // A 3D collider can size itself to the mesh its entity draws.
+    private static void DrawFitToMesh(Entity entity, Collider3DComponent collider)
+    {
+        if (collider is not (BoxCollider3DComponent or SphereCollider3DComponent or CapsuleCollider3DComponent))
+            return;
+
+        bool hasMesh = entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null;
+        ImGui.Spacing();
+        ImGui.BeginDisabled(!hasMesh);
+        if (ImGui.Button("Fit to Mesh", new Vector2(-1.0f, 0.0f)) && hasMesh && !ColliderFitting.FitToMesh(collider, mesh!))
+            Log.Warn("The mesh on '{0}' has no geometry to fit to yet.", entity.Name);
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            ImGui.SetTooltip(hasMesh
+                ? "Sizes and centers this collider on the entity's mesh (exactly, for a built-in shape)."
+                : "Add a Mesh Renderer to this entity to fit the collider to it.");
         }
     }
 
@@ -505,7 +529,7 @@ internal static class ComponentInspector
         string? display = AssetDatabase.ToDisplayPath(stored);
 
         string[] patterns = { "*.png", "*.jpg", "*.jpeg", "*.tga", "*.bmp" };
-        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, display, out string? newPath))
+        if (EditorGui.AssetSlot(meta.Label, "IMAGE_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Texture))
         {
             try
             {
@@ -513,7 +537,10 @@ internal static class ComponentInspector
                 // so what the editor shows matches what a build ships.
                 string? storedRef = AssetDatabase.ToGuidRef(newPath);
                 var newTexture = storedRef != null ? Texture2D.Load(storedRef) : null;
-                texture?.Dispose();
+
+                // Built-in textures are shared by everything that uses them, so only a texture of our own is freed.
+                if (!BuiltinAssets.IsBuiltin(stored))
+                    texture?.Dispose();
                 meta.Prop.SetValue(component, newTexture);
                 meta.AssetPathProp!.SetValue(component, storedRef);
             }
@@ -557,31 +584,7 @@ internal static class ComponentInspector
 
         string[] patterns = { "*.obj", "*.fbx", "*.gltf", "*.glb", "*.dae" };
 
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
-        {
-            if (ImGui.MenuItem("Cube", "", stored == "primitive:Cube"))
-            {
-                selectedPath = "primitive:Cube";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Plane", "", stored == "primitive:Plane"))
-            {
-                selectedPath = "primitive:Plane";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Quad", "", stored == "primitive:Quad"))
-            {
-                selectedPath = "primitive:Quad";
-                changed = true;
-            }
-            if (ImGui.MenuItem("Sphere", "", stored == "primitive:Sphere"))
-            {
-                selectedPath = "primitive:Sphere";
-                changed = true;
-            }
-        };
-
-        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, display, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MODEL_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Mesh))
         {
             try
             {
@@ -595,6 +598,138 @@ internal static class ComponentInspector
                 Log.Error("Failed to load model: {0}", ex.Message);
             }
         }
+
+        if (component is MeshComponent mesh)
+            DrawPrimitiveParameters(entity, mesh);
+    }
+
+    // ----- Built-in shape parameters ----------------------------------------------------------------
+
+    // The in-progress edit of a built-in mesh's parameters. While a field is dragged, the renderer shows a
+    // throwaway model of each intermediate shape (so the shared primitive cache only ever holds the shapes that
+    // were kept); when the field is released the reference is committed and recorded as one undo step.
+    private static MeshComponent? s_shapeMesh;
+    private static PrimitiveSpec? s_shapeSpec;
+    private static Model? s_shapePreview;
+    private static string? s_shapeBefore;
+    private static Entity s_shapeEntity;
+    private static string s_shapeLabel = string.Empty;
+
+    // Undo/redo writes a mesh renderer's model reference and reloads the model to match.
+    private static readonly MemberAccessor MeshReferenceAccessor = MemberAccessor.FromDelegates(
+        "ModelPath", typeof(string), "MeshComponent.SetModel",
+        target => ((MeshComponent)target).ModelPath,
+        (target, value) => ((MeshComponent)target).SetModel((string?)value));
+
+    private static void DrawPrimitiveParameters(Entity entity, MeshComponent mesh)
+    {
+        // An edit left open on another renderer (selection moved mid-drag) is committed first.
+        if (s_shapeMesh != null && !ReferenceEquals(s_shapeMesh, mesh))
+            CommitShapeEdit();
+
+        PrimitiveSpec? spec = ReferenceEquals(s_shapeMesh, mesh) ? s_shapeSpec : null;
+        if (spec is null && !BuiltinAssets.TryGetPrimitive(mesh.ModelPath, out spec))
+            return;
+
+        ImGui.Spacing();
+        ImGui.TextDisabled($"{spec.Shape} Shape");
+        ImGui.Separator();
+
+        PrimitiveSpec edited = spec;
+        string? changedLabel = null;
+        foreach (PrimitiveParameter parameter in PrimitiveSpec.ParametersOf(spec.Shape))
+        {
+            string label = parameter.ToString();
+            float value = spec.Get(parameter);
+            bool changed = PrimitiveSpec.IsCount(parameter)
+                ? EditorGui.DragFloat(label, ref value, 0.2f, 1.0f, 256.0f, "%.0f")
+                : EditorGui.DragFloat(label, ref value, 0.01f, 0.001f, 10000.0f, "%.3f");
+            if (changed)
+            {
+                edited = edited.With(parameter, value);
+                changedLabel = label;
+            }
+        }
+
+        if (ImGui.Button("Reset Shape", new Vector2(-1.0f, 0.0f)))
+        {
+            edited = PrimitiveSpec.For(spec.Shape);
+            changedLabel = "Shape";
+        }
+
+        if (changedLabel != null && edited != spec)
+            PreviewShapeEdit(entity, mesh, edited, $"Set {spec.Shape} {changedLabel}");
+
+        // Released (or confirmed by typing): keep the shape.
+        if (ReferenceEquals(s_shapeMesh, mesh) && !ImGui.IsAnyItemActive())
+            CommitShapeEdit();
+    }
+
+    private static void PreviewShapeEdit(Entity entity, MeshComponent mesh, PrimitiveSpec spec, string label)
+    {
+        if (!ReferenceEquals(s_shapeMesh, mesh))
+        {
+            s_shapeMesh = mesh;
+            s_shapeEntity = entity;
+            s_shapeBefore = mesh.ModelPath;
+        }
+
+        s_shapeSpec = spec;
+        s_shapeLabel = label;
+        try
+        {
+            Model preview = PrimitiveModelFactory.Create(spec);
+            mesh.Model = preview;
+            DisposePreview();
+            s_shapePreview = preview;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to build the {0} preview: {1}", spec.Shape, ex.Message);
+        }
+    }
+
+    private static void CommitShapeEdit()
+    {
+        MeshComponent? mesh = s_shapeMesh;
+        PrimitiveSpec? spec = s_shapeSpec;
+        string? before = s_shapeBefore;
+        Entity entity = s_shapeEntity;
+        string label = s_shapeLabel;
+        s_shapeMesh = null;
+        s_shapeSpec = null;
+        s_shapeBefore = null;
+        if (mesh is null || spec is null)
+        {
+            DisposePreview();
+            return;
+        }
+
+        mesh.SetModel(BuiltinAssets.MeshReference(spec));
+        DisposePreview();
+        if (!entity.IsValid || before == mesh.ModelPath)
+            return;
+
+        Scene scene = entity.Scene;
+        string entityId = entity.EnsurePersistentId();
+        object? document = EditorHistory.DocumentFor(scene);
+        UndoTracker.Track(
+            UndoKey.For(mesh, "Shape"),
+            label,
+            before,
+            () => mesh.ModelPath,
+            (b, a) => new ComponentValueAction(label, scene, entityId, typeof(MeshComponent), MeshReferenceAccessor, b, a, document),
+            changed: true);
+    }
+
+    private static void DisposePreview()
+    {
+        if (s_shapePreview is null)
+            return;
+
+        foreach (Mesh part in s_shapePreview.Meshes)
+            part.Dispose();
+        s_shapePreview = null;
     }
 
     private static void DrawControllerSlot(Entity entity, object component, PropertyMeta meta)
@@ -628,16 +763,7 @@ internal static class ComponentInspector
 
         string[] patterns = { "*.sptmat" };
 
-        EditorGui.AssetSlotCustomItems customItems = (ref string? selectedPath, ref bool changed) =>
-        {
-            if (ImGui.MenuItem("Checkerboard", "", stored == "editor:Checkerboard"))
-            {
-                selectedPath = "editor:Checkerboard";
-                changed = true;
-            }
-        };
-
-        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, display, out string? newPath, customItems))
+        if (EditorGui.AssetSlot(meta.Label, "MATERIAL_FILE", patterns, display, out string? newPath, builtins: BuiltinAssetKind.Material))
         {
             try
             {

@@ -1,7 +1,8 @@
 using System;
-using Spot.Core;
+using Spot.Framework;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// A framebuffer backed by a depth cubemap, used for real-time point/spot light shadow maps.

@@ -6,8 +6,9 @@ using BepuPhysics.Collidables;
 using BepuPhysics.CollisionDetection;
 using BepuPhysics.Constraints;
 using BepuUtilities;
+using Spot.Engine.Physics;
 
-namespace Spot.Physics.Bepu;
+namespace Spot.Engine.Physics.Bepu;
 
 /// <summary>
 /// Per-body contact material data, indexed by <c>BodyHandle.Value</c>. Populated single-threaded by

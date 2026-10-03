@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Level 1 of Spot: the bare core a framework or engine is built on — window, events, raw input, the
+       graphics device and its resources, minimal immediate 2D drawing, and the PCM audio device. No loop,
+       no decoders, no engine types. -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-browser</TargetFrameworks>
+    <RootNamespace>Spot</RootNamespace>
+    <AssemblyName>Spot.Framework.Core</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spot.Framework.Tests" />
+  </ItemGroup>
+
+  <!-- Browser-only source: the canvas window, WebGL2/Web Audio backends and the page's [JSExport] entry points. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="Browser\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Desktop-only native/interop dependencies: Silk.NET windowing, input, OpenGL and OpenAL. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.OpenAL" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.OpenAL.Soft.Native" Version="1.23.1" />
+    <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
+  </ItemGroup>
+
+  <!-- Desktop-only source: the Silk.NET window, the OpenGL device and the OpenAL backend. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser'">
+    <Compile Remove="Platform\Window.cs" />
+    <Compile Remove="Graphics\OpenGLGraphicsDevice.cs" />
+    <Compile Remove="Graphics\Renderer.Silk.cs" />
+    <Compile Remove="Audio\AudioDevice.cs" />
+    <Compile Remove="Audio\OpenAlAudioBackend.cs" />
+  </ItemGroup>
+
+</Project>

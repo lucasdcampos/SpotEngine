@@ -3,7 +3,7 @@ using BepuPhysics;
 using BepuPhysics.Collidables;
 using BepuPhysics.Trees;
 
-namespace Spot.Physics.Bepu;
+namespace Spot.Engine.Physics.Bepu;
 
 /// <summary>Records the closest collidable a ray intersects.</summary>
 internal struct ClosestRayHandler : IRayHitHandler

@@ -1,8 +1,7 @@
 using System.Numerics;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The play-mode system that advances every <see cref="ParticleSystemComponent"/>: it refreshes each

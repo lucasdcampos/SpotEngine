@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks a <c>.sptprefab</c> prefab by rewriting any asset references it contains — on its entities'

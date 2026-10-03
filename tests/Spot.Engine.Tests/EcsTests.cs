@@ -1,6 +1,5 @@
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 

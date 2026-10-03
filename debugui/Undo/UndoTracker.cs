@@ -1,5 +1,5 @@
 using ImGuiNET;
-using Spot.Core;
+using Spot.Framework;
 
 namespace Spot.DebugUI.Undo;
 

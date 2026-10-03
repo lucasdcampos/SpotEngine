@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
-namespace Spot.UI;
+namespace Spot.Engine.UI;
 
 /// <summary>
 /// A clickable button: a background that tints on hover and press, with a centered label. Subscribe to

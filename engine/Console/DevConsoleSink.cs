@@ -1,14 +1,12 @@
-using System.Globalization;
 using System.Numerics;
-using Serilog.Core;
-using Serilog.Events;
+using Spot.Framework;
 
-namespace Spot.Console;
+namespace Spot.Engine.Console;
 
 /// <summary>
-/// A Serilog sink that mirrors log events into the developer console.
+/// A log sink that mirrors log entries into the developer console.
 /// </summary>
-public sealed class DevConsoleSink : ILogEventSink
+public sealed class DevConsoleSink : ILogSink
 {
     private static readonly Vector4 DefaultColor = new(0.7f, 0.7f, 0.7f, 1.0f);
     private static readonly Vector4 WarningColor = new(0.9f, 0.9f, 0.3f, 1.0f);
@@ -26,23 +24,12 @@ public sealed class DevConsoleSink : ILogEventSink
     }
 
     /// <inheritdoc />
-    public void Emit(LogEvent logEvent)
+    public void Write(in LogEntry entry) => _console.Print(entry.ToString(), ColorFor(entry.Level));
+
+    private static Vector4 ColorFor(LogLevel level) => level switch
     {
-        string name = logEvent.Properties.TryGetValue("Name", out LogEventPropertyValue? value)
-                      && value is ScalarValue { Value: string scalar }
-            ? scalar
-            : "SPOT";
-
-        string message = logEvent.RenderMessage(CultureInfo.InvariantCulture);
-        string line = $"[{logEvent.Timestamp:HH:mm:ss}] {name}: {message}";
-
-        _console.Print(line, ColorFor(logEvent.Level));
-    }
-
-    private static Vector4 ColorFor(LogEventLevel level) => level switch
-    {
-        LogEventLevel.Error or LogEventLevel.Fatal => ErrorColor,
-        LogEventLevel.Warning => WarningColor,
+        LogLevel.Error => ErrorColor,
+        LogLevel.Warn => WarningColor,
         _ => DefaultColor,
     };
 }

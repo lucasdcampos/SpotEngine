@@ -1,7 +1,7 @@
 using System.Collections;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Per-script bookkeeping for coroutines and delayed invocations. Created lazily by an

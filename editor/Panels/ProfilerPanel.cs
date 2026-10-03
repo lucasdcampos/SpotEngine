@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using ImGuiNET;
 using System.Numerics;
-using Spot.Core;
+using Spot.Engine.Rendering;
+using Spot.Framework;
+using Spot.Framework.Mathematics;
 using Spot.DebugUI.UI;
-using Spot.Rendering;
 
 namespace Spot.Editor.Panels;
 
@@ -32,6 +33,7 @@ public sealed class ProfilerPanel
             ImGui.End();
             return;
         }
+        EditorGui.MarkFocusedTab();
 
         if (!_paused)
         {
@@ -53,9 +55,12 @@ public sealed class ProfilerPanel
         // ---- Controls row ----
         if (_paused)
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.7f, 0.3f, 0.2f, 1f));
+            // Lit in the accent while capture is paused, like any other toggled-on state.
+            ImGui.PushStyleColor(ImGuiCol.Button, palette.Accent);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, palette.AccentHovered);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, palette.AccentActive);
             if (ImGui.Button("Resume")) { _paused = false; }
-            ImGui.PopStyleColor();
+            ImGui.PopStyleColor(3);
         }
         else
         {

@@ -1,4 +1,6 @@
-namespace Spot.Assets;
+using Spot.Framework.Audio;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks audio files (<c>.wav</c>, <c>.ogg</c>) into <c>.sptaudio</c>: interleaved 16-bit PCM decoded once here so

@@ -1,8 +1,8 @@
 using System.IO;
 using System.Numerics;
-using Spot.Rendering;
-using Spot.UI;
-using Spot.UI.Serialization;
+using Spot.Engine.UI;
+using Spot.Framework.Graphics;
+using Image = Spot.Engine.UI.Image;
 using Xunit;
 
 namespace Spot.Engine.Tests;

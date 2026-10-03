@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Selects which 3D physics backend a scene uses for its runtime simulation.

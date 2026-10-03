@@ -1,7 +1,8 @@
 using System.Numerics;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework.Mathematics;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A rectangular 2D collider. Provides AABB bounds for the legacy solver and a box fixture for the

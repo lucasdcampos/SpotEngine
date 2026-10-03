@@ -1,6 +1,6 @@
 using System;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Marks a <see cref="Component"/> type as user-facing and tells the editor how to present it: the

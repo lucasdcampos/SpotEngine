@@ -28,6 +28,7 @@ public sealed class HistoryPanel(UndoHistory history)
             ImGui.End();
             return;
         }
+        EditorGui.MarkFocusedTab();
 
         var palette = EditorThemeManager.Current.Palette;
         int count = history.Count;

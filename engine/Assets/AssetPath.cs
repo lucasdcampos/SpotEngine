@@ -1,32 +1,50 @@
-namespace Spot.Assets;
+using Spot.Framework.IO;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Resolves asset paths stored in scenes and materials against the active project's asset directory,
 /// so committed <c>.sptscene</c>/<c>.sptmat</c> files stay portable across machines instead of baking
 /// in an absolute path from whoever authored them. Stored paths are relative to <see cref="Root"/>
-/// (normally the project's <c>Assets/</c> folder); absolute paths and the <c>primitive:</c>/<c>editor:</c>
+/// (normally the project's <c>Assets/</c> folder); absolute paths and the built-in (<c>builtin:</c>)
 /// pseudo-paths are passed through unchanged.
 /// </summary>
 public static class AssetPath
 {
+    // The first use of the engine's asset paths plugs the pipeline into the framework's loaders.
+    static AssetPath() => EngineAssets.Install();
+
     /// <summary>
     /// Gets or sets the directory that relative asset paths resolve against — normally the active
     /// project's <c>Assets/</c> directory. The host (editor or game) sets this when a project loads.
     /// When empty, relative paths resolve against the current working directory (legacy behaviour).
     /// </summary>
-    public static string Root { get; set; } = string.Empty;
+    /// <remarks>
+    /// Setting it also installs <see cref="Resolve"/> as the framework's <see cref="FileSystem.PathResolver"/>, so
+    /// framework loaders called from game code (<c>Texture2D.FromFile</c>, <c>AudioClip.FromFile</c>, ...)
+    /// resolve project-relative paths exactly like the engine's own loaders.
+    /// </remarks>
+    public static string Root
+    {
+        get => s_root;
+        set
+        {
+            s_root = value ?? string.Empty;
+            FileSystem.PathResolver = Resolve;
+        }
+    }
+
+    private static string s_root = string.Empty;
 
     /// <summary>
     /// Returns <see langword="true"/> for references that are not filesystem paths and must never be treated as
-    /// one: built-in assets (<c>primitive:</c>, <c>editor:</c>) and asset-pipeline guid references
+    /// one: built-in assets (<c>builtin:</c>, and the legacy <c>primitive:</c>/<c>editor:</c>; see
+    /// <see cref="BuiltinAssets"/>) and asset-pipeline guid references
     /// (<c>guid:</c>). Keeping guid references here means the scene/material serializer and path-based loaders
     /// pass them through untouched, so no code below the resolver has to know the reference form.
     /// </summary>
     /// <param name="path">The path to test.</param>
-    public static bool IsPseudoPath(string path) =>
-        path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith("editor:", StringComparison.OrdinalIgnoreCase) ||
-        AssetRef.IsGuidRef(path);
+    public static bool IsPseudoPath(string path) => BuiltinAssets.IsBuiltin(path) || AssetRef.IsGuidRef(path);
 
     /// <summary>
     /// Resolves a <c>guid:</c> reference to the absolute cooked artifact it names, or returns
@@ -44,6 +62,16 @@ public static class AssetPath
     /// <param name="storedRef">The stored reference from a scene, material, or component.</param>
     public static string? ResolveContent(string storedRef) =>
         AssetRef.IsGuidRef(storedRef) ? ContentResolver?.Invoke(storedRef) : null;
+
+    /// <summary>
+    /// Resolves a <c>guid:</c> reference to its cooked artifact path, or throws when nothing resolves it.
+    /// </summary>
+    /// <param name="storedRef">The <c>guid:</c> reference.</param>
+    /// <param name="kind">The asset kind, for the error message (e.g. "texture").</param>
+    /// <returns>The cooked artifact path.</returns>
+    /// <exception cref="FileNotFoundException">The reference has no cooked artifact.</exception>
+    internal static string ResolveCooked(string storedRef, string kind) =>
+        ResolveContent(storedRef) ?? throw new FileNotFoundException($"Unresolved {kind} reference '{storedRef}'.");
 
     /// <summary>
     /// Resolves a stored asset path to an absolute path suitable for loading. Pseudo-paths, absolute

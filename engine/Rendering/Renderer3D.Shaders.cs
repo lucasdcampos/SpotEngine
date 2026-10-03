@@ -1,4 +1,5 @@
-namespace Spot.Rendering;
+
+namespace Spot.Engine.Rendering;
 
 // GLSL shader program sources for Renderer3D, split out of Renderer3D.cs to keep the renderer
 // logic readable. This partial holds only the embedded shader text; the C# rendering logic and
@@ -808,111 +809,6 @@ public static partial class Renderer3D
             float fade = smoothstep(0.02, 0.2, rayDir.y);
             
             fragColor = vec4(color, cloudMask * fade * uOpacity);
-        }
-        """;
-
-    private const string GridVertexShaderSource =
-        """
-        #version 330 core
-        
-        out vec3 vNearPoint;
-        out vec3 vFarPoint;
-
-        uniform mat4 uInverseViewProjection;
-
-        vec3 UnprojectPoint(float x, float y, float z) {
-            vec4 unprojectedPoint = uInverseViewProjection * vec4(x, y, z, 1.0);
-            return unprojectedPoint.xyz / unprojectedPoint.w;
-        }
-
-        void main() 
-        {
-            float x = -1.0 + float((gl_VertexID & 1) << 2);
-            float y = -1.0 + float((gl_VertexID & 2) << 1);
-            gl_Position = vec4(x, y, 0.0, 1.0);
-            
-            vNearPoint = UnprojectPoint(x, y, 0.0);
-            vFarPoint = UnprojectPoint(x, y, 1.0);
-        }
-        """;
-
-    private const string GridFragmentShaderSource =
-        """
-        #version 330 core
-        
-        in vec3 vNearPoint;
-        in vec3 vFarPoint;
-        out vec4 fragColor;
-
-        uniform mat4 uViewProjection;
-        uniform vec3 uCameraPos;
-
-        vec4 grid(vec3 fragPos3D, float scale, bool drawAxis) {
-            vec2 coord = fragPos3D.xz * scale;
-            vec2 derivative = max(fwidth(coord), vec2(1e-5));
-            vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
-            float line = min(grid.x, grid.y);
-            vec4 color = vec4(0.3, 0.3, 0.3, 1.0 - min(line, 1.0));
-            
-            if (drawAxis) {
-                // z axis (blue)
-                float zAxis = abs(coord.x) / derivative.x;
-                if (zAxis < 1.0) {
-                    color.xyz = mix(vec3(0.0, 0.0, 1.0), color.xyz, zAxis);
-                }
-                // x axis (red)
-                float xAxis = abs(coord.y) / derivative.y;
-                if (xAxis < 1.0) {
-                    color.xyz = mix(vec3(1.0, 0.0, 0.0), color.xyz, xAxis);
-                }
-            }
-            return color;
-        }
-
-        void main() {
-            float t = -vNearPoint.y / (vFarPoint.y - vNearPoint.y);
-            if (t < 0.0) discard;
-
-            vec3 fragPos3D = vNearPoint + t * (vFarPoint - vNearPoint);
-            
-            vec4 clip_space_pos = uViewProjection * vec4(fragPos3D, 1.0);
-            float clip_depth = clip_space_pos.z / clip_space_pos.w;
-            gl_FragDepth = clip_depth * 0.5 + 0.5;
-
-            // distance from camera for fading
-            float distance = length(fragPos3D - uCameraPos);
-            // Height based LOD
-            float height = max(abs(uCameraPos.y), 1.0);
-            
-            // Fading at the horizon
-            float fadeEnd = height * 20.0;
-            float fadeStart = height * 5.0;
-            float fading = 1.0 - smoothstep(fadeStart, fadeEnd, distance);
-            
-            // Grid LOD (power of 10)
-            float logHeight = log(height * 0.2) / log(10.0);
-            float lod = floor(logHeight);
-            float lodFade = fract(logHeight); // 0.0 (near) to 1.0 (far)
-            
-            float scale0 = 1.0 / pow(10.0, lod);
-            float scale1 = 1.0 / pow(10.0, lod + 1.0);
-            float scale2 = 1.0 / pow(10.0, lod + 2.0);
-            
-            vec4 grid0 = grid(fragPos3D, scale0, true);
-            vec4 grid1 = grid(fragPos3D, scale1, true);
-            vec4 grid2 = grid(fragPos3D, scale2, true);
-            
-            // grid2 is the most coarse, grid0 is the finest.
-            // As we go higher, grid0 fades out (multiplied by 1.0 - lodFade)
-            grid0.a *= (1.0 - lodFade);
-            
-            vec4 c = grid0;
-            c = mix(c, grid1, grid1.a);
-            c = mix(c, grid2, grid2.a);
-
-            fragColor = c;
-            fragColor.a *= fading;
-            if (fragColor.a <= 0.0) discard;
         }
         """;
 

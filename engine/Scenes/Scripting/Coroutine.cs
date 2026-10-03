@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A handle to a running coroutine, returned by <see cref="EntityBehaviour.StartCoroutine"/>. Hold it

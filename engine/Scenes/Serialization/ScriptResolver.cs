@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Resolves script references to <see cref="EntityBehaviour"/> types and instances. A reference is a stable

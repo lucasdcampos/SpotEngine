@@ -1,8 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spot.Core;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 /// <summary>One manifest record: where a cooked artifact lives (relative to Content) and what type it is.</summary>
 public sealed class ManifestEntry
@@ -66,7 +67,7 @@ public sealed class AssetManifest
         ManifestDocument doc = new();
         try
         {
-            ManifestDocument? parsed = JsonSerializer.Deserialize<ManifestDocument>(AssetProvider.Current.ReadAllText(manifestPath), JsonOptions);
+            ManifestDocument? parsed = JsonSerializer.Deserialize<ManifestDocument>(FileSystem.Current.ReadAllText(manifestPath), JsonOptions);
             if (parsed is not null)
             {
                 doc = parsed;

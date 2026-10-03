@@ -1,9 +1,9 @@
 using System;
 using System.Numerics;
-using Spot.Assets;
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
+using Spot.Framework.Mathematics;
 
 namespace Spot.Editor.UI;
 
@@ -33,26 +33,160 @@ public static class ScenePicker
     /// <param name="viewportSize">The size of the viewport image, in pixels.</param>
     public static Entity? Pick(Scene scene, Matrix4x4 viewProjection, Vector2 mouse, Vector2 viewportPos, Vector2 viewportSize)
     {
+        if (!TryGetRay(viewProjection, mouse, viewportPos, viewportSize, out Vector3 rayOrigin, out Vector3 rayDir))
+            return null;
+
+        Entity? best = RaycastDrawables(scene, rayOrigin, rayDir, ignoreEnclosing: false, out _);
+        if (best != null)
+            return best;
+
+        // Pass 3: fallback for entities with no drawable (empties, cameras). Pick the one whose origin
+        // projects nearest to the cursor within a small pixel radius.
+        Entity? bestIcon = null;
+        float bestPix = IconRadiusPx;
+
+        foreach (Entity entity in scene.View<TransformComponent>())
+        {
+            if (entity.HasComponent<Sprite2DComponent>())
+                continue;
+
+            TransformComponent t = entity.GetComponent<TransformComponent>();
+            if (!TryProject(t.WorldPosition, viewProjection, viewportPos, viewportSize, out Vector2 screen))
+                continue;
+
+            float d = Vector2.Distance(mouse, screen);
+            if (d < bestPix)
+            {
+                bestPix = d;
+                bestIcon = entity;
+            }
+        }
+
+        return bestIcon;
+    }
+
+    /// <summary>
+    /// The mesh entity under the cursor, for dropping a material on it; <see langword="null"/> when nothing is
+    /// there or the nearest thing is not a mesh (a sprite in front of it). Meshes whose bounds enclose the camera
+    /// are passed over, as for <see cref="DropPoint"/>: from inside a room, the room itself is not "under" the
+    /// cursor, what you point at in it is.
+    /// </summary>
+    public static Entity? PickMesh(Scene scene, Matrix4x4 viewProjection, Vector2 mouse, Vector2 viewportPos, Vector2 viewportSize)
+    {
+        if (!TryGetRay(viewProjection, mouse, viewportPos, viewportSize, out Vector3 rayOrigin, out Vector3 rayDir))
+            return null;
+
+        Entity? hit = RaycastDrawables(scene, rayOrigin, rayDir, ignoreEnclosing: true, out _);
+        return hit is Entity entity && entity.HasComponent<MeshComponent>() ? entity : null;
+    }
+
+    /// <summary>
+    /// A mesh entity's bounding box in its local space — the box picking tests and the editor outlines.
+    /// Returns <see langword="false"/> while its model is not loaded.
+    /// </summary>
+    public static bool TryGetMeshBounds(Entity entity, out Aabb3d bounds)
+    {
+        bounds = default;
+        if (!entity.HasComponent<MeshComponent>())
+            return false;
+
+        MeshComponent mesh = entity.GetComponent<MeshComponent>();
+        Model? model = mesh.Model;
+        if (model is null || model.Meshes.Count == 0)
+            return false;
+
+        // A single submesh part (imported models spread one submesh per entity) uses that submesh's box; a
+        // whole-model renderer (SubmeshIndex == -1, e.g. primitives) uses the union of them all.
+        bounds = mesh.SubmeshIndex >= 0 && mesh.SubmeshIndex < model.Meshes.Count
+            ? model.Meshes[mesh.SubmeshIndex].Bounds
+            : model.LocalBounds;
+
+        // Skinned parts are posed by bones, not this transform, so pad the bind-pose box the same way the render
+        // culling does, keeping animated geometry inside the box.
+        if (entity.HasComponent<SkinnedMeshComponent>())
+            bounds = bounds.Expanded(2.0f);
+
+        return true;
+    }
+
+    // Surfaces farther than this are out of reach for a drop: the asset lands FallbackDropDistance ahead
+    // instead, the same distance the camera keeps from what it frames with F.
+    private const float MaxDropDistance = 200f;
+    private const float FallbackDropDistance = 10f;
+
+    /// <summary>
+    /// Where an asset dropped at the cursor should land. In 3D it is the nearest of the first surface under the
+    /// cursor (a sprite quad, or the bounds of a mesh the camera is outside of) and the ground plane (y = 0);
+    /// when neither is within reach (looking at the sky, or at something far off) it is a point a short way in
+    /// front of the camera along the cursor ray. In 2D it is the cursor's spot on the z = 0 plane.
+    /// </summary>
+    /// <param name="scene">The scene being displayed, or <see langword="null"/> to place against the ground only.</param>
+    /// <param name="viewProjection">The camera's view-projection.</param>
+    /// <param name="is3D">Whether the camera is the 3D perspective one.</param>
+    /// <param name="mouse">The cursor position, in screen pixels.</param>
+    /// <param name="viewportPos">The top-left of the viewport image, in screen pixels.</param>
+    /// <param name="viewportSize">The size of the viewport image, in pixels.</param>
+    public static Vector3 DropPoint(Scene? scene, Matrix4x4 viewProjection, bool is3D, Vector2 mouse, Vector2 viewportPos, Vector2 viewportSize)
+    {
+        if (!TryGetRay(viewProjection, mouse, viewportPos, viewportSize, out Vector3 rayOrigin, out Vector3 rayDir))
+            return Vector3.Zero;
+
+        // The orthographic camera looks straight down -Z, so the ray's origin already is the cursor's world point.
+        if (!is3D)
+            return new Vector3(rayOrigin.X, rayOrigin.Y, 0f);
+
+        float best = MaxDropDistance;
+        if (scene != null && RaycastDrawables(scene, rayOrigin, rayDir, ignoreEnclosing: true, out float surface) != null)
+            best = MathF.Min(best, surface);
+
+        if (MathF.Abs(rayDir.Y) > 1e-6f)
+        {
+            float ground = -rayOrigin.Y / rayDir.Y;
+            if (ground > 0f)
+                best = MathF.Min(best, ground);
+        }
+
+        float distance = best < MaxDropDistance ? best : FallbackDropDistance;
+        return rayOrigin + rayDir * distance;
+    }
+
+    /// <summary>
+    /// Builds the world-space ray under the cursor: from the near plane through the cursor, normalized.
+    /// Returns <see langword="false"/> for an empty viewport or a degenerate camera.
+    /// </summary>
+    public static bool TryGetRay(Matrix4x4 viewProjection, Vector2 mouse, Vector2 viewportPos, Vector2 viewportSize, out Vector3 origin, out Vector3 direction)
+    {
+        origin = default;
+        direction = default;
         if (viewportSize.X <= 0f || viewportSize.Y <= 0f)
-            return null;
+            return false;
         if (!Matrix4x4.Invert(viewProjection, out Matrix4x4 invVp))
-            return null;
+            return false;
 
         // Cursor -> normalized device coordinates (y flipped: screen y grows downward).
         float ndcX = (mouse.X - viewportPos.X) / viewportSize.X * 2f - 1f;
         float ndcY = 1f - (mouse.Y - viewportPos.Y) / viewportSize.Y * 2f;
 
-        if (!Unproject(ndcX, ndcY, 0f, invVp, out Vector3 rayOrigin) ||
-            !Unproject(ndcX, ndcY, 1f, invVp, out Vector3 rayFar))
+        if (!Unproject(ndcX, ndcY, 0f, invVp, out Vector3 near) ||
+            !Unproject(ndcX, ndcY, 1f, invVp, out Vector3 far))
         {
-            return null;
+            return false;
         }
 
-        Vector3 rayDir = rayFar - rayOrigin;
-        if (rayDir.LengthSquared() < 1e-12f)
-            return null;
-        rayDir = Vector3.Normalize(rayDir);
+        Vector3 dir = far - near;
+        if (dir.LengthSquared() < 1e-12f)
+            return false;
 
+        origin = near;
+        direction = Vector3.Normalize(dir);
+        return true;
+    }
+
+    // The nearest drawable (sprite quad or mesh bounds) along the ray, and the distance to it. With
+    // ignoreEnclosing set, a mesh whose bounds contain the ray origin is skipped rather than hit at distance
+    // zero: when placing, the camera sitting inside a big model (a room, a level) must not mean "drop here".
+    private static Entity? RaycastDrawables(Scene scene, Vector3 rayOrigin, Vector3 rayDir, bool ignoreEnclosing, out float distance)
+    {
         // Pass 1: the drawable quads. Keep the hit nearest to the camera; on ties (overlapping quads
         // at the same depth, common in 2D) prefer the one drawn later, i.e. on top.
         Entity? best = null;
@@ -91,21 +225,8 @@ public static class ScenePicker
         // handled for free. Competes with the quad pass on depth so the nearest thing under the cursor wins.
         foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
         {
-            MeshComponent mesh = entity.GetComponent<MeshComponent>();
-            Model? model = mesh.Model;
-            if (model is null || model.Meshes.Count == 0)
+            if (!TryGetMeshBounds(entity, out Aabb3d local))
                 continue;
-
-            // A single submesh part (imported models spread one submesh per entity) uses that submesh's
-            // box; a whole-model renderer (SubmeshIndex == -1, e.g. primitives) uses the union of them all.
-            Aabb3d local = mesh.SubmeshIndex >= 0 && mesh.SubmeshIndex < model.Meshes.Count
-                ? model.Meshes[mesh.SubmeshIndex].Bounds
-                : model.LocalBounds;
-
-            // Skinned parts are posed by bones, not this transform, so pad the bind-pose box the same way
-            // the render culling does, keeping animated geometry inside the tested volume.
-            if (entity.HasComponent<SkinnedMeshComponent>())
-                local = local.Expanded(2.0f);
 
             TransformComponent t = entity.GetComponent<TransformComponent>();
             if (!Matrix4x4.Invert(t.Matrix, out Matrix4x4 invModel))
@@ -115,6 +236,8 @@ public static class ScenePicker
             Vector3 localDir = Vector3.TransformNormal(rayDir, invModel);
             if (!RayAabb(localOrigin, localDir, local.Min, local.Max, out float tHit))
                 continue;
+            if (ignoreEnclosing && tHit <= 0f)
+                continue; // the ray starts inside these bounds
 
             Vector3 localHit = localOrigin + localDir * tHit;
             Vector3 worldHit = Vector3.Transform(localHit, t.Matrix);
@@ -128,32 +251,8 @@ public static class ScenePicker
             }
         }
 
-        if (best != null)
-            return best;
-
-        // Pass 3: fallback for entities with no drawable (empties, cameras). Pick the one whose origin
-        // projects nearest to the cursor within a small pixel radius.
-        Entity? bestIcon = null;
-        float bestPix = IconRadiusPx;
-
-        foreach (Entity entity in scene.View<TransformComponent>())
-        {
-            if (entity.HasComponent<Sprite2DComponent>())
-                continue;
-
-            TransformComponent t = entity.GetComponent<TransformComponent>();
-            if (!Project(t.WorldPosition, viewProjection, viewportPos, viewportSize, out Vector2 screen))
-                continue;
-
-            float d = Vector2.Distance(mouse, screen);
-            if (d < bestPix)
-            {
-                bestPix = d;
-                bestIcon = entity;
-            }
-        }
-
-        return bestIcon;
+        distance = bestDist;
+        return best;
     }
 
     // Slab test of a ray against an axis-aligned box, all in the same (local) space. Returns the entry
@@ -210,7 +309,10 @@ public static class ScenePicker
         return true;
     }
 
-    private static bool Project(Vector3 world, Matrix4x4 vp, Vector2 viewportPos, Vector2 viewportSize, out Vector2 screen)
+    /// <summary>
+    /// Projects a world point to screen pixels. Returns <see langword="false"/> when it is behind the camera.
+    /// </summary>
+    public static bool TryProject(Vector3 world, Matrix4x4 vp, Vector2 viewportPos, Vector2 viewportSize, out Vector2 screen)
     {
         Vector4 clip = Vector4.Transform(new Vector4(world, 1f), vp);
         if (clip.W <= 1e-5f)

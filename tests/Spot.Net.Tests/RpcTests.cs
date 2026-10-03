@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Numerics;
 using Spot.Net;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
 namespace Spot.Net.Tests;
 
@@ -16,7 +16,6 @@ public class RpcTests
 
     static RpcTests()
     {
-        NetTest.EnsureLogging();
         NetworkPrefabs.Register("RpcPlayer", scene =>
         {
             Entity e = scene.Instantiate("RpcPlayer");

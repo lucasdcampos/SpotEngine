@@ -1,4 +1,5 @@
-namespace Spot.Rendering;
+
+namespace Spot.Engine.Rendering;
 
 /// <summary>How particle pixels combine with what's already on screen.</summary>
 /// <remarks>

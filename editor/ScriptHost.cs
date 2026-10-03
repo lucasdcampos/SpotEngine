@@ -5,8 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
 namespace Spot.Editor;
 

@@ -1,11 +1,13 @@
 # Architecture
 
-This page describes the runtime model: what drives a running game and how the parts cooperate each
-frame.
+This page describes the engine's runtime model (level 3): what drives a running game and how the parts
+cooperate each frame. With only the framework there is no application — you write the loop around a
+`Window` yourself; see [Levels](levels.md).
 
 ## The application and the main loop
 
-An **application** owns the window and the main loop. You create one, optionally hand it a starting
+An **application** owns the window (the framework's `Window`, exposed as `Application.Window`) and the
+main loop. You create one, optionally hand it a starting
 scene, and call run; it then loops until the window closes (a close request can be vetoed — for
 example to confirm unsaved work). Each frame the loop does three things:
 
@@ -45,6 +47,9 @@ own simulation, implement `ISystem` (or wrap a callback in `DelegateSystem`) and
 Every system runs inside a guard, so a faulty one is logged once and skipped rather than taking the
 frame down. See [Entities & Components](entities-and-components.md).
 
+Systems are the update-side extension point; the render-side one is a **render pass**, which draws into
+the scene's frame at a fixed point of the pipeline. See [Rendering](rendering.md#custom-render-passes).
+
 ## Time
 
 The engine publishes a frame clock each update. Two things matter:
@@ -61,7 +66,8 @@ The engine publishes a frame clock each update. Two things matter:
 Input is polled each frame (keyboard, mouse, cursor state) rather than delivered only as events, so
 gameplay reads the current state in its update. A built-in **developer console** overlays the game
 for logging and commands; while it (or a text field) is focused, the engine withholds game input so
-typing doesn't leak into gameplay.
+typing doesn't leak into gameplay. The withholding itself is a framework mechanism (the input
+*capture* switch); deciding when to use it is the engine's policy. See [Input](input.md).
 
 The console renders through a single `DevConsole` but supports two visual skins via
 `DrawContents(ConsolePresentation)`. `Runtime` (the default, used by the floating in-game overlay)
@@ -71,9 +77,11 @@ input frame derive from the active editor theme (inset `ChildBg`, hairline `Bord
 `FrameBg`) and there is no Submit button — Enter submits — so it reads as a native dockable panel.
 The editor's `ConsolePanel` requests the `Editor` skin.
 
-Logging goes through `Log` (Serilog under the hood, with a core `SPOT` logger and a client `APP`
-logger). Besides the console and the in-app developer console, everything at `Information` and above is
-persisted to a **rolling log file** so a bad session or a shipped-build crash leaves something to
+Logging goes through the framework's `Log`: dependency-free, with a core `SPOT` source and a client
+`APP` source, writing to the terminal until something else is configured, and never throwing. Its
+destinations are pluggable sinks. The engine (`EngineLogging`) installs its own at startup — a Serilog
+terminal and file output plus the in-app developer console. Besides the terminal and the developer
+console, everything at `Information` and above is persisted to a **rolling log file** so a bad session or a shipped-build crash leaves something to
 diagnose after the process is gone. The file lives in a `logs/` folder next to the executable
 (`logs/spot.log`, rolled daily, capped at 50 MB with the last 7 files kept). If the folder can't be
 created, file logging is skipped and the app keeps running — logging never takes the process down.

@@ -1,6 +1,6 @@
 using System;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Marks a <see cref="Component"/> type as serializable to and from a <c>.sptscene</c> file and gives

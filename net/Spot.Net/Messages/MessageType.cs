@@ -1,3 +1,4 @@
+
 namespace Spot.Net;
 
 /// <summary>

@@ -1,7 +1,8 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// A simple 3D mesh renderer. Draws individual <see cref="Mesh"/> instances through a camera, with a
@@ -49,7 +50,6 @@ public static partial class Renderer3D
     private static Shader? s_waterShader;
     private static Shader? s_skyboxShader;
     private static Shader? s_cloudsShader;
-    private static Shader? s_gridShader;
     private static Shader? s_shadowShader;
     private static Shader? s_skinnedShader;
     private static Shader? s_skinnedShadowShader;
@@ -157,7 +157,6 @@ public static partial class Renderer3D
         s_waterShader = new Shader(WaterVertexShaderSource, WaterFragmentShaderSource);
         s_skyboxShader = new Shader(SkyboxVertexShaderSource, SkyboxFragmentShaderSource);
         s_cloudsShader = new Shader(CloudsVertexShaderSource, CloudsFragmentShaderSource);
-        s_gridShader = new Shader(GridVertexShaderSource, GridFragmentShaderSource);
         s_shadowShader = new Shader(ShadowVertexShaderSource, ShadowFragmentShaderSource);
         s_skinnedShader = new Shader(SkinnedVertexShaderSource, FragmentShaderSource);
         s_skinnedShadowShader = new Shader(SkinnedShadowVertexShaderSource, ShadowFragmentShaderSource);
@@ -196,7 +195,7 @@ public static partial class Renderer3D
         s_lightsSupported = device.SupportsUniformBuffers;
         if (!s_lightsSupported)
         {
-            Spot.Core.Log.CoreWarn("Uniform buffers unavailable; point lights are disabled on this backend.");
+            Spot.Framework.Log.CoreWarn("Uniform buffers unavailable; point lights are disabled on this backend.");
             return;
         }
 
@@ -291,7 +290,7 @@ public static partial class Renderer3D
         s_lastNormalTexture = null;
 
         s_viewProjection = viewProjection;
-        // Invert once per scene: the skybox, clouds and grid all need the inverse view-projection, and
+        // Invert once per scene: the skybox and clouds need the inverse view-projection, and
         // recomputing it per draw was pure waste. The camera position is supplied by the caller (the
         // camera's world position) rather than derived from the matrix, which is only approximate.
         Matrix4x4.Invert(viewProjection, out s_inverseViewProjection);
@@ -423,7 +422,7 @@ public static partial class Renderer3D
     /// <param name="mesh">The mesh to draw.</param>
     /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
     /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
-    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null, int shaderType = 0, Spot.Assets.Material? material = null)
+    public static void DrawMesh(Matrix4x4 model, Mesh mesh, Vector4 color, Texture2D? texture = null, int shaderType = 0, Spot.Engine.Assets.Material? material = null)
     {
         Shader? activeShader = shaderType == 1 ? s_waterShader : s_shader;
         
@@ -491,7 +490,7 @@ public static partial class Renderer3D
         }
         else if (shaderType == 1) // Water
         {
-            activeShader.SetUniform("uTime", Spot.Core.Time.UnscaledTime);
+            activeShader.SetUniform("uTime", Spot.Framework.Time.UnscaledTime);
             
             float speed = material?.WaveSpeed ?? 1.0f;
             float scale = material?.WaveScale ?? 1.0f;
@@ -521,7 +520,7 @@ public static partial class Renderer3D
     /// <param name="instances">The per-instance world matrices and colors.</param>
     /// <param name="texture">The shared surface texture, or <see langword="null"/> for a solid color.</param>
     /// <param name="material">The shared surface material, or <see langword="null"/> for defaults.</param>
-    public static void DrawMeshInstanced(Mesh mesh, ReadOnlySpan<InstanceData> instances, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    public static void DrawMeshInstanced(Mesh mesh, ReadOnlySpan<InstanceData> instances, Texture2D? texture = null, Spot.Engine.Assets.Material? material = null)
     {
         if (instances.IsEmpty || s_instancedShader is null || s_whiteTexture is null || s_instanceBuffer is null)
         {
@@ -582,7 +581,7 @@ public static partial class Renderer3D
     /// <param name="color">A color multiplied into the shaded result (and into the texture, when set).</param>
     /// <param name="texture">The surface texture, or <see langword="null"/> for a solid color.</param>
     /// <param name="material">The surface material, or <see langword="null"/> for defaults.</param>
-    public static void DrawSkinnedMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones, Vector4 color, Texture2D? texture = null, Spot.Assets.Material? material = null)
+    public static void DrawSkinnedMesh(Mesh mesh, ReadOnlySpan<Matrix4x4> bones, Vector4 color, Texture2D? texture = null, Spot.Engine.Assets.Material? material = null)
     {
         Shader? activeShader = s_skinnedShader;
         if (activeShader is null || s_whiteTexture is null)
@@ -657,7 +656,7 @@ public static partial class Renderer3D
             return bones;
         }
 
-        Spot.Core.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
+        Spot.Framework.Log.CoreWarn("Skeleton has {0} bones but the shader supports at most {1}; extra bones are ignored.", bones.Length, MaxBones);
         return bones[..MaxBones];
     }
 
@@ -814,25 +813,5 @@ public static partial class Renderer3D
         Renderer.SetDepthTest(false);
         Renderer.DrawArrays(s_emptyVao, 3);
         Renderer.SetDepthTest(true);
-    }
-
-    /// <summary>
-    /// Draws an infinite anti-aliased 3D grid plane for the editor.
-    /// </summary>
-    public static void DrawEditorGrid(Vector3 cameraPos)
-    {
-        if (s_gridShader == null || s_emptyVao == null) return;
-
-        s_gridShader.Use();
-        s_gridShader.SetUniform("uViewProjection", s_viewProjection);
-        s_gridShader.SetUniform("uInverseViewProjection", s_inverseViewProjection);
-        s_gridShader.SetUniform("uCameraPos", cameraPos);
-
-        Renderer.Device.SetCapability(GraphicsCapability.Blend, true);
-        Renderer.Device.SetBlendFunc(BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha);
-
-        Renderer.DrawArrays(s_emptyVao, 3);
-        
-        // Editor will reset or disable blending later if needed, but standard UI and transparent sprites need it too.
     }
 }

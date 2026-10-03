@@ -1,9 +1,8 @@
 using System.Collections;
 using System.Numerics;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Base class for per-entity scripts (the counterpart to Unity's MonoBehaviour). Derive from it,
@@ -48,9 +47,9 @@ public abstract class EntityBehaviour
     /// <summary>
     /// Gets the scene's screen-space UI root. Build HUDs and menus from here — for example
     /// <c>UI.Button("Play").OnClick += StartGame;</c>. The engine lays it out, routes pointer input and
-    /// draws it every frame; see <see cref="Spot.UI.UIRoot"/>.
+    /// draws it every frame; see <see cref="Spot.Engine.UI.UIRoot"/>.
     /// </summary>
-    protected Spot.UI.UIRoot UI => Scene.UI;
+    protected Spot.Engine.UI.UIRoot UI => Scene.UI;
 
     /// <summary>
     /// Gets the attached entity's component of the given type.

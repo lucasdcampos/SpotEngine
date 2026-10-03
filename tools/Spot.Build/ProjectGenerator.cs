@@ -1,16 +1,22 @@
 using System;
 using System.IO;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build;
 
 /// <summary>
-/// Generates the buildable IDE artifacts for a Spot project: copies the engine DLL into
+/// Generates the buildable IDE artifacts for a Spot project: copies the engine and framework DLLs into
 /// <c>EngineBin/</c>, and writes <c>&lt;Name&gt;.csproj</c>, <c>&lt;Name&gt;.sln</c> and
 /// <c>Program.cs</c>. Shared by the editor and the <c>spot</c> CLI so both stay in sync.
 /// </summary>
 public static class ProjectGenerator
 {
+    // The framework levels every Spot game references, desktop and browser alike (core, then framework).
+    internal static readonly string[] FrameworkAssemblies = { "Spot.Framework.Core", "Spot.Framework" };
+
+    // The optional source-model import module (desktop only; Assimp is a native dependency).
+    internal const string AssimpAssembly = "Spot.Framework.Assimp";
+
     /// <summary>
     /// (Re)generates the build files for <paramref name="project"/>. <c>Program.cs</c> is only
     /// (re)written when <paramref name="overwriteProgram"/> is true or the file does not exist,
@@ -21,7 +27,7 @@ public static class ProjectGenerator
         if (string.IsNullOrEmpty(project.ProjectDirectory)) return;
 
         CopyEngineDll(project.ProjectDirectory);
-        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.EngineBinFolder));
+        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder));
         WriteCsproj(project);
         WriteSolution(project);
         WriteProgram(project, overwriteProgram);
@@ -29,20 +35,22 @@ public static class ProjectGenerator
 
     /// <summary>
     /// Generates the browser (WebAssembly) build project under <c>Build/web</c>: a
-    /// <c>Microsoft.NET.Sdk.WebAssembly</c> <c>.csproj</c> referencing the browser build of the engine, a
-    /// minimal entry point (JavaScript drives <see cref="Spot.Browser.BrowserHost"/>), and the
+    /// <c>Microsoft.NET.Sdk.WebAssembly</c> <c>.csproj</c> referencing the browser builds of the engine and the
+    /// framework, a minimal entry point (JavaScript boots the engine's <c>BrowserHost</c> and drives frames and
+    /// input through the core's <c>BrowserPlatform</c>), and the
     /// <c>wwwroot</c> host page and bridge script. Cooked content and its index are copied in by
     /// <see cref="ProjectBuilder"/> at build time. Returns the generated project directory.
     /// </summary>
     public static string GenerateBrowser(Project project)
     {
-        string webDir = Path.Combine(project.ProjectDirectory, Spot.Core.ProjectStructure.BuildFolder, "web");
+        string webDir = Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "web");
         string wwwroot = Path.Combine(webDir, "wwwroot");
         string engineBin = Path.Combine(webDir, "EngineBin");
         Directory.CreateDirectory(wwwroot);
         Directory.CreateDirectory(engineBin);
 
         CopyBrowserEngineDll(engineBin);
+        CopyBrowserFrameworkDlls(engineBin);
         CopyBrowserNetDll(engineBin);
         CopyScriptGenDll(engineBin);
 
@@ -91,7 +99,14 @@ public static class ProjectGenerator
     <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
+  <!-- The engine and the framework levels it is built on, all in their net10.0-browser builds. -->
   <ItemGroup>
+    <Reference Include=""Spot.Framework.Core"">
+      <HintPath>EngineBin\Spot.Framework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include=""Spot.Framework"">
+      <HintPath>EngineBin\Spot.Framework.dll</HintPath>
+    </Reference>
     <Reference Include=""Spot.Engine"">
       <HintPath>EngineBin\Spot.Engine.dll</HintPath>
     </Reference>
@@ -124,7 +139,7 @@ public static class ProjectGenerator
 
         // The runtime boots this assembly's entry point; main.js then drives the engine's browser host.
         string program = @"// Browser build entry point. Rendering and the loop are driven from wwwroot/main.js
-// through Spot.Browser.BrowserHost; this Main just boots the WebAssembly runtime.
+// through Spot.Engine.Browser.BrowserHost; this Main just boots the WebAssembly runtime.
 System.Console.WriteLine(""Spot browser runtime started."");
 ";
         File.WriteAllText(Path.Combine(webDir, "Program.cs"), program);
@@ -150,6 +165,20 @@ System.Console.WriteLine(""Spot browser runtime started."");
         string target = Path.Combine(engineBinDir, "Spot.Engine.dll");
         CopyIfPresent(browserDll, target);
         return File.Exists(target) ? target : null;
+    }
+
+    // Copies the browser (net10.0-browser) builds of the framework levels next to the generated browser project.
+    // Required alongside the engine: the page binds its input/frame entry points to the core assembly.
+    private static void CopyBrowserFrameworkDlls(string engineBinDir)
+    {
+        foreach (string framework in FrameworkAssemblies)
+        {
+            string? dll = FindBrowserSibling(typeof(Project).Assembly.Location, framework, framework + ".dll");
+            if (dll is not null)
+            {
+                CopyIfPresent(dll, Path.Combine(engineBinDir, framework + ".dll"));
+            }
+        }
     }
 
     // Copies the browser (net10.0-browser) build of Spot.Net next to the generated browser project, so the
@@ -305,16 +334,23 @@ System.Console.WriteLine(""Spot browser runtime started."");
 
     private static void CopyEngineDll(string projectDirectory)
     {
-        string engineBinDir = Path.Combine(projectDirectory, Spot.Core.ProjectStructure.EngineBinFolder);
+        string engineBinDir = Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder);
         Directory.CreateDirectory(engineBinDir);
 
         string sourceDllPath = typeof(Project).Assembly.Location;
         string engineDir = Path.GetDirectoryName(sourceDllPath) ?? string.Empty;
 
-        // Always bundle the engine. Also bundle Spot.DebugUI when it ships beside the engine (the editor and
-        // any host that references it), so the built game can host the in-runtime debug overlay; it is
-        // optional, so a host without it simply produces a game without the overlay.
+        // Always bundle the engine and the framework levels it is built on (core, framework, and the Assimp
+        // model-import module). Also bundle Spot.DebugUI when it ships beside the engine (the editor and any host
+        // that references it), so the built game can host the in-runtime debug overlay; it is optional, so a
+        // host without it simply produces a game without the overlay.
         CopyIfPresent(sourceDllPath, Path.Combine(engineBinDir, "Spot.Engine.dll"));
+        foreach (string framework in FrameworkAssemblies)
+        {
+            CopyIfPresent(Path.Combine(engineDir, framework + ".dll"), Path.Combine(engineBinDir, framework + ".dll"));
+        }
+
+        CopyIfPresent(Path.Combine(engineDir, AssimpAssembly + ".dll"), Path.Combine(engineBinDir, AssimpAssembly + ".dll"));
         CopyIfPresent(Path.Combine(engineDir, "Spot.DebugUI.dll"), Path.Combine(engineBinDir, "Spot.DebugUI.dll"));
 
         // Also bundle Spot.Net when it ships beside the engine, so the built game can use networking; like the
@@ -350,9 +386,23 @@ System.Console.WriteLine(""Spot browser runtime started."");
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!-- The engine and the framework levels it is built on (core, framework). -->
   <ItemGroup>
+    <Reference Include=""Spot.Framework.Core"">
+      <HintPath>EngineBin\Spot.Framework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include=""Spot.Framework"">
+      <HintPath>EngineBin\Spot.Framework.dll</HintPath>
+    </Reference>
     <Reference Include=""Spot.Engine"">
       <HintPath>EngineBin\Spot.Engine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Source-model import (Assimp), used by the engine when it loads .fbx/.gltf/... directly. -->
+  <ItemGroup Condition=""Exists('EngineBin\Spot.Framework.Assimp.dll')"">
+    <Reference Include=""Spot.Framework.Assimp"">
+      <HintPath>EngineBin\Spot.Framework.Assimp.dll</HintPath>
     </Reference>
   </ItemGroup>
 
@@ -461,7 +511,7 @@ EndGlobal
         var spec = new ApplicationSpec
         {
             Name = project.Config.Name,
-            ContentDirectory = Spot.Core.ProjectStructure.ContentFolder,
+            ContentDirectory = Spot.Engine.ProjectStructure.ContentFolder,
             ManifestPath = "manifest.json",
             StartScene = project.Config.StartScene.Replace("\\", "/"),
 
@@ -485,8 +535,7 @@ EndGlobal
         string name = project.Config.Name;
 
         string programContent = $@"using System;
-using Spot;
-using Spot.Core;
+using Spot.Engine;
 
 namespace {name.Replace(" ", "")};
 

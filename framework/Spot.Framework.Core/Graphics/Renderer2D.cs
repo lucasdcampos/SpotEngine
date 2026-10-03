@@ -1,0 +1,374 @@
+using System.Numerics;
+
+namespace Spot.Framework.Graphics;
+
+/// <summary>
+/// A batched 2D renderer. Quads submitted between <see cref="BeginScene"/> and <see cref="EndScene"/>
+/// are accumulated into a single buffer and drawn together, so many sprites cost few draw calls.
+/// </summary>
+/// <remarks>
+/// This is the mid-level renderer: it consumes high-level draw requests and delegates the actual
+/// draw calls to <see cref="Renderer"/>. Quads are batched while they share a texture; changing
+/// texture (or filling the batch) triggers a flush. Colored quads use a built-in 1x1 white texture,
+/// so they batch together too.
+/// </remarks>
+public static class Renderer2D
+{
+    private const int MaxQuads = 10_000;
+    private const int MaxVertices = MaxQuads * 4;
+    private const int MaxIndices = MaxQuads * 6;
+    private const int FloatsPerVertex = 3 + 4 + 2; // position, color, texture coordinate
+
+    private static readonly Vector4[] QuadPositions =
+    {
+        new Vector4(-0.5f, -0.5f, 0.0f, 1.0f),
+        new Vector4(0.5f, -0.5f, 0.0f, 1.0f),
+        new Vector4(0.5f, 0.5f, 0.0f, 1.0f),
+        new Vector4(-0.5f, 0.5f, 0.0f, 1.0f),
+    };
+
+    private const string VertexShaderSource =
+        """
+        #version 330 core
+        layout (location = 0) in vec3 aPosition;
+        layout (location = 1) in vec4 aColor;
+        layout (location = 2) in vec2 aTexCoord;
+
+        uniform mat4 uViewProjection;
+
+        out vec4 vColor;
+        out vec2 vTexCoord;
+
+        void main()
+        {
+            vColor = aColor;
+            vTexCoord = aTexCoord;
+            gl_Position = uViewProjection * vec4(aPosition, 1.0);
+        }
+        """;
+
+    private const string FragmentShaderSource =
+        """
+        #version 330 core
+        in vec4 vColor;
+        in vec2 vTexCoord;
+
+        uniform sampler2D uTexture;
+
+        out vec4 fragColor;
+
+        void main()
+        {
+            vec4 sampled = texture(uTexture, vTexCoord) * vColor;
+            // Alpha cut-out so textured sprites (circles, triangles, ...) render as their shape even
+            // when the 2D pass runs without alpha blending. Opaque quads (alpha 1) are unaffected.
+            if (sampled.a < 0.5) discard;
+            fragColor = sampled;
+        }
+        """;
+
+    private static VertexArray? s_vao;
+    private static VertexBuffer? s_vbo;
+    private static IndexBuffer? s_ibo;
+    private static Shader? s_shader;
+    private static Texture2D? s_whiteTexture;
+    private static IGraphicsDevice? s_device;
+
+    private static float[] s_vertices = Array.Empty<float>();
+    private static int s_vertexCursor;
+    private static uint s_indexCount;
+    private static Texture2D? s_currentTexture;
+    private static Matrix4x4 s_viewProjection = Matrix4x4.Identity;
+
+    /// <summary>
+    /// Gets the view-projection matrix of the current batch (set by <see cref="BeginScene"/>).
+    /// </summary>
+    public static Matrix4x4 ViewProjection => s_viewProjection;
+
+    /// <summary>
+    /// Creates the shared batch resources on the current <see cref="Renderer.Device"/>. Happens automatically on
+    /// first use; call it to pay the cost up front.
+    /// </summary>
+    public static void Init()
+    {
+        s_device = Renderer.Device;
+        s_vertices = new float[MaxVertices * FloatsPerVertex];
+
+        s_vao = new VertexArray();
+        s_vbo = new VertexBuffer(
+            (uint)s_vertices.Length,
+            ShaderDataType.Float3,
+            ShaderDataType.Float4,
+            ShaderDataType.Float2);
+        s_vao.AddVertexBuffer(s_vbo);
+
+        uint[] indices = new uint[MaxIndices];
+        uint offset = 0;
+        for (int i = 0; i < MaxIndices; i += 6)
+        {
+            indices[i + 0] = offset + 0;
+            indices[i + 1] = offset + 1;
+            indices[i + 2] = offset + 2;
+            indices[i + 3] = offset + 2;
+            indices[i + 4] = offset + 3;
+            indices[i + 5] = offset + 0;
+            offset += 4;
+        }
+
+        s_ibo = new IndexBuffer(indices);
+        s_vao.SetIndexBuffer(s_ibo);
+
+        s_shader = new Shader(VertexShaderSource, FragmentShaderSource);
+
+        // A 1x1 white texture lets colored quads reuse the textured path: texture * color == color.
+        ReadOnlySpan<byte> white = stackalloc byte[] { 255, 255, 255, 255 };
+        s_whiteTexture = new Texture2D(1, 1, white);
+    }
+
+    /// <summary>
+    /// Releases the shared batch resources. The next draw recreates them.
+    /// </summary>
+    public static void Shutdown()
+    {
+        s_shader?.Dispose();
+        s_whiteTexture?.Dispose();
+        s_vbo?.Dispose();
+        s_ibo?.Dispose();
+        s_vao?.Dispose();
+        s_shader = null;
+        s_whiteTexture = null;
+        s_vbo = null;
+        s_ibo = null;
+        s_vao = null;
+        s_device = null;
+        s_vertices = Array.Empty<float>();
+    }
+
+    /// <summary>
+    /// Begins a batch of 2D geometry rendered with the given view-projection matrix.
+    /// </summary>
+    /// <param name="viewProjection">The view-projection matrix to use for this batch.</param>
+    public static void BeginScene(Matrix4x4 viewProjection)
+    {
+        EnsureInitialized();
+        s_viewProjection = viewProjection;
+        StartBatch();
+    }
+
+    /// <summary>
+    /// Ends the current batch, drawing any quads submitted since <see cref="BeginScene"/>.
+    /// </summary>
+    public static void EndScene() => Flush();
+
+    /// <summary>
+    /// Draws everything submitted so far and starts a new, empty batch with the same view-projection — for
+    /// interleaving custom drawing (your own shader, state changes) between batched quads.
+    /// </summary>
+    public static void Flush()
+    {
+        Submit();
+        StartBatch();
+    }
+
+    /// <summary>
+    /// Draws a solid-colored quad at the given position and size.
+    /// </summary>
+    /// <param name="position">The center of the quad, in world units.</param>
+    /// <param name="size">The width and height of the quad, in world units.</param>
+    /// <param name="color">The RGBA color.</param>
+    public static void DrawQuad(Vector2 position, Vector2 size, Vector4 color) =>
+        DrawQuad(TransformFor(position, size), color);
+
+    /// <summary>
+    /// Draws a textured quad at the given position and size.
+    /// </summary>
+    /// <param name="position">The center of the quad, in world units.</param>
+    /// <param name="size">The width and height of the quad, in world units.</param>
+    /// <param name="texture">The texture to map onto the quad.</param>
+    public static void DrawQuad(Vector2 position, Vector2 size, Texture2D texture) =>
+        DrawQuad(TransformFor(position, size), texture);
+
+    /// <summary>
+    /// Draws a solid-colored quad with the given transform.
+    /// </summary>
+    /// <param name="transform">The model matrix applied to a unit quad.</param>
+    /// <param name="color">The RGBA color.</param>
+    public static void DrawQuad(Matrix4x4 transform, Vector4 color) => DrawQuad(transform, WhiteTexture, color);
+
+    /// <summary>
+    /// Draws a textured quad with the given transform.
+    /// </summary>
+    /// <param name="transform">The model matrix applied to a unit quad.</param>
+    /// <param name="texture">The texture to map onto the quad.</param>
+    public static void DrawQuad(Matrix4x4 transform, Texture2D texture) => DrawQuad(transform, texture, Vector4.One);
+
+    /// <summary>
+    /// Draws a textured quad with the given transform and color tint.
+    /// </summary>
+    /// <param name="transform">The model matrix applied to a unit quad.</param>
+    /// <param name="texture">The texture to map onto the quad.</param>
+    /// <param name="tint">The color multiplied with the sampled texture.</param>
+    public static void DrawQuad(Matrix4x4 transform, Texture2D texture, Vector4 tint)
+    {
+        Span<Vector3> corners = stackalloc Vector3[4];
+        for (int i = 0; i < 4; i++)
+        {
+            Vector4 p = Vector4.Transform(QuadPositions[i], transform);
+            corners[i] = new Vector3(p.X, p.Y, p.Z);
+        }
+
+        Submit(corners[0], corners[1], corners[2], corners[3], tint, texture, FullUv);
+    }
+
+    /// <summary>
+    /// Draws a quad from its four corners — any convex quad; repeat the third corner as the fourth to draw a
+    /// triangle. The building block for custom shapes, sprites from an atlas and anything else made of quads.
+    /// </summary>
+    /// <param name="bottomLeft">The first corner (UV <c>(u0, v0)</c>).</param>
+    /// <param name="bottomRight">The second corner (UV <c>(u1, v0)</c>).</param>
+    /// <param name="topRight">The third corner (UV <c>(u1, v1)</c>).</param>
+    /// <param name="topLeft">The fourth corner (UV <c>(u0, v1)</c>).</param>
+    /// <param name="color">The color, multiplied with the texture.</param>
+    /// <param name="texture">The texture, or <see langword="null"/> for a solid color.</param>
+    /// <param name="uv">The texture rectangle as <c>(u0, v0, u1, v1)</c>; <see langword="null"/> maps the whole texture.</param>
+    public static void DrawQuad(Vector3 bottomLeft, Vector3 bottomRight, Vector3 topRight, Vector3 topLeft,
+        Vector4 color, Texture2D? texture = null, Vector4? uv = null) =>
+        Submit(bottomLeft, bottomRight, topRight, topLeft, color, texture ?? WhiteTexture, uv ?? FullUv);
+
+    /// <summary>
+    /// Draws a hollow rectangle (wireframe) at the given position and size using 4 thin quads.
+    /// </summary>
+    /// <param name="position">The center of the rectangle, in world units.</param>
+    /// <param name="size">The width and height of the rectangle, in world units.</param>
+    /// <param name="color">The RGBA color.</param>
+    /// <param name="thickness">The thickness of the lines.</param>
+    public static void DrawRect(Vector2 position, Vector2 size, Vector4 color, float thickness = 0.05f)
+    {
+        // Top
+        DrawQuad(position + new Vector2(0, size.Y / 2), new Vector2(size.X + thickness, thickness), color);
+        // Bottom
+        DrawQuad(position - new Vector2(0, size.Y / 2), new Vector2(size.X + thickness, thickness), color);
+        // Left
+        DrawQuad(position - new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
+        // Right
+        DrawQuad(position + new Vector2(size.X / 2, 0), new Vector2(thickness, size.Y + thickness), color);
+    }
+
+    /// <summary>
+    /// Draws a line between two points in 3D space using a stretched quad.
+    /// </summary>
+    public static void DrawLine(Vector3 p0, Vector3 p1, Vector4 color, float thickness = 0.05f)
+    {
+        Vector3 dir = p1 - p0;
+        float length = dir.Length();
+        if (length == 0.0f) return;
+        dir /= length;
+
+        Vector3 center = (p0 + p1) * 0.5f;
+
+        Vector3 right = Vector3.UnitX;
+        float dot = Vector3.Dot(right, dir);
+        
+        Matrix4x4 rotation;
+        if (dot > 0.9999f)
+            rotation = Matrix4x4.Identity;
+        else if (dot < -0.9999f)
+            rotation = Matrix4x4.CreateRotationZ(MathF.PI);
+        else
+        {
+            Vector3 axis = Vector3.Normalize(Vector3.Cross(right, dir));
+            float angle = MathF.Acos(dot);
+            rotation = Matrix4x4.CreateFromAxisAngle(axis, angle);
+        }
+
+        Matrix4x4 transform1 = Matrix4x4.CreateScale(length, thickness, thickness) * rotation * Matrix4x4.CreateTranslation(center);
+        DrawQuad(transform1, color);
+
+        Matrix4x4 transform2 = Matrix4x4.CreateScale(length, thickness, thickness) * Matrix4x4.CreateRotationX(MathF.PI / 2.0f) * rotation * Matrix4x4.CreateTranslation(center);
+        DrawQuad(transform2, color);
+    }
+
+    /// <summary>
+    /// Gets the 1x1 white texture colored quads are drawn with — handy for drawing solid shapes through your own
+    /// code paths while still batching with them.
+    /// </summary>
+    public static Texture2D WhiteTexture
+    {
+        get
+        {
+            EnsureInitialized();
+            return s_whiteTexture!;
+        }
+    }
+
+    private static readonly Vector4 FullUv = new(0.0f, 0.0f, 1.0f, 1.0f);
+
+    // Appends one quad to the batch, flushing first when the batch is full or the texture changes.
+    private static void Submit(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Vector4 tint, Texture2D texture, Vector4 uv)
+    {
+        EnsureInitialized();
+        if (s_indexCount >= MaxIndices || (s_currentTexture is not null && s_currentTexture != texture))
+        {
+            Flush();
+        }
+
+        s_currentTexture = texture;
+        Emit(p0, tint, uv.X, uv.Y);
+        Emit(p1, tint, uv.Z, uv.Y);
+        Emit(p2, tint, uv.Z, uv.W);
+        Emit(p3, tint, uv.X, uv.W);
+        s_indexCount += 6;
+    }
+
+    private static void Emit(Vector3 position, Vector4 tint, float u, float v)
+    {
+        s_vertices[s_vertexCursor++] = position.X;
+        s_vertices[s_vertexCursor++] = position.Y;
+        s_vertices[s_vertexCursor++] = position.Z;
+        s_vertices[s_vertexCursor++] = tint.X;
+        s_vertices[s_vertexCursor++] = tint.Y;
+        s_vertices[s_vertexCursor++] = tint.Z;
+        s_vertices[s_vertexCursor++] = tint.W;
+        s_vertices[s_vertexCursor++] = u;
+        s_vertices[s_vertexCursor++] = v;
+    }
+
+    private static Matrix4x4 TransformFor(Vector2 position, Vector2 size) =>
+        Matrix4x4.CreateScale(size.X, size.Y, 1.0f)
+        * Matrix4x4.CreateTranslation(position.X, position.Y, 0.0f);
+
+    private static void StartBatch()
+    {
+        s_vertexCursor = 0;
+        s_indexCount = 0;
+        s_currentTexture = null;
+    }
+
+    // Creates the batch resources on first use, and again whenever a different device has been installed
+    // (their handles belong to the device that created them).
+    private static void EnsureInitialized()
+    {
+        if (s_vao is null || !ReferenceEquals(s_device, Renderer.Device))
+        {
+            Init();
+        }
+    }
+
+    private static void Submit()
+    {
+        if (s_indexCount == 0 || s_shader is null || s_vbo is null || s_vao is null || s_currentTexture is null)
+        {
+            return;
+        }
+
+        s_vbo.SetData(s_vertices.AsSpan(0, s_vertexCursor));
+
+        s_currentTexture.Bind(0);
+        s_shader.Use();
+        s_shader.SetUniform("uViewProjection", s_viewProjection);
+        s_shader.SetUniform("uTexture", 0);
+
+        Renderer.DrawIndexed(s_vao, s_indexCount);
+    }
+}
+

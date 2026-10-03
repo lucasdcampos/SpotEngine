@@ -5,12 +5,12 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Text.Json.Nodes;
-using Spot.Assets;
-using Spot.Audio;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Reflection-driven conversion of components to and from JSON, so the scene serializer needs no

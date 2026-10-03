@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The callback that draws a scene's entities through a camera — the seam between the neutral scene layer

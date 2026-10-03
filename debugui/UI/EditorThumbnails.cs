@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -31,7 +31,7 @@ internal static class EditorThumbnails
 
         try
         {
-            tex = new Texture2D(path);
+            tex = Texture2D.FromFile(path);
             _cache[path] = tex;
             return tex;
         }

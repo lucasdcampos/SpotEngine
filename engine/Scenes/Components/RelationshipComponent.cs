@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 public class RelationshipComponent : Component
 {

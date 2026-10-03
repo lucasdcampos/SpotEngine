@@ -1,8 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 

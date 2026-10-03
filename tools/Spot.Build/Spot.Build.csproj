@@ -11,4 +11,9 @@
     <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The generated browser bootstrap (BrowserTemplate) is internal; its runtime contract is pinned by tests. -->
+    <InternalsVisibleTo Include="Spot.Build.Tests" />
+  </ItemGroup>
+
 </Project>

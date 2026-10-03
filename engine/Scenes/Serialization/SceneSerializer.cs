@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Reads and writes a <see cref="Scene"/> as <c>.sptscene</c> JSON. Component data is handled entirely
@@ -379,7 +379,7 @@ public class SceneSerializer
 
     public bool Deserialize(string filepath)
     {
-        if (!AssetProvider.Current.Exists(filepath))
+        if (!FileSystem.Current.Exists(filepath))
         {
             return false;
         }
@@ -387,7 +387,7 @@ public class SceneSerializer
         string json;
         try
         {
-            json = AssetProvider.Current.ReadAllText(filepath);
+            json = FileSystem.Current.ReadAllText(filepath);
         }
         catch (Exception ex)
         {

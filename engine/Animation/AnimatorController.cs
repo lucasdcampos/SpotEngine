@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Animation;
+namespace Spot.Engine.Animation;
 
 /// <summary>The kind of a controller parameter, which decides how conditions compare against it.</summary>
 public enum AnimatorParameterType
@@ -119,10 +120,10 @@ public sealed class AnimatorTransition
 
 /// <summary>
 /// A reusable animation state machine asset: parameters, states (each a clip by name), and the transitions
-/// between them. Assign one to an <see cref="Spot.Scenes.AnimatorComponent"/> to drive which clip plays from
+/// between them. Assign one to an <see cref="Spot.Engine.Scenes.AnimatorComponent"/> to drive which clip plays from
 /// parameters instead of calling <c>Play</c> by hand; because states reference clips by name, one controller
 /// drives any model whose clips share those names. Stored on disk as ".sptcontroller" JSON, this class mirrors
-/// <see cref="Spot.Assets.Material"/>: <see cref="Load"/> caches by path so edits show up everywhere live.
+/// <see cref="Spot.Engine.Assets.Material"/>: <see cref="Load"/> caches by path so edits show up everywhere live.
 /// </summary>
 public sealed class AnimatorController
 {
@@ -233,7 +234,7 @@ public sealed class AnimatorController
         try
         {
             AnimatorController? data = JsonSerializer.Deserialize<AnimatorController>(
-                AssetProvider.Current.ReadAllText(full), s_options);
+                FileSystem.Current.ReadAllText(full), s_options);
             if (data != null)
             {
                 controller.Parameters = data.Parameters;

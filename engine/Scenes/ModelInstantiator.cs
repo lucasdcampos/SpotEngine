@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
-using Spot.Animation;
-using Spot.Assets;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.Animation;
+using Spot.Framework.Assimp;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Turns a model file (FBX, OBJ, glTF, ...) into a live entity hierarchy: it rebuilds the source's node
@@ -32,7 +33,10 @@ public static class ModelInstantiator
     /// if the model could not be read.
     /// </summary>
     /// <param name="scene">The scene to add the entities to.</param>
-    /// <param name="modelPath">The path to the source model file.</param>
+    /// <param name="modelPath">
+    /// The path to the source model file, or a built-in mesh reference (<c>builtin:Mesh/…</c>), which becomes a
+    /// single entity drawing that shape.
+    /// </param>
     /// <param name="parent">The entity to parent the new root under, or <see langword="null"/> for a root object.</param>
     /// <param name="extractMaterials">
     /// When <see langword="true"/> (the default), the model's materials are extracted next to it (into a
@@ -44,6 +48,15 @@ public static class ModelInstantiator
         if (scene is null || string.IsNullOrWhiteSpace(modelPath))
         {
             return null;
+        }
+
+        // A built-in mesh is one entity drawing the shape, named after it.
+        if (BuiltinAssets.TryGetPrimitive(modelPath, out PrimitiveSpec primitive))
+        {
+            Entity shape = scene.Instantiate(primitive.Shape.ToString());
+            shape.SetParent(parent);
+            shape.AddComponent(new MeshComponent { ModelPath = BuiltinAssets.MeshReference(primitive) });
+            return shape;
         }
 
         try
@@ -70,7 +83,7 @@ public static class ModelInstantiator
             string dir = Path.GetDirectoryName(modelPath) ?? string.Empty;
             string name = Path.GetFileNameWithoutExtension(modelPath);
             string outDir = Path.Combine(dir, name + "_Materials");
-            return AssimpModelImporter.ExtractMaterialsPerSlot(modelPath, outDir);
+            return ModelMaterials.ExtractPerSlot(modelPath, outDir);
         }
         catch (Exception ex)
         {

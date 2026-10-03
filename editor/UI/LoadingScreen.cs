@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Rendering;
+using Spot.Framework.Graphics;
 
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;

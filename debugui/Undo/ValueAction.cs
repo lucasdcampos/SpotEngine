@@ -1,3 +1,4 @@
+
 namespace Spot.DebugUI.Undo;
 
 /// <summary>
@@ -7,7 +8,7 @@ namespace Spot.DebugUI.Undo;
 /// <remarks>
 /// <b>Only for targets that outlive the history.</b> The setter is a closure, so it captures whatever
 /// object it writes to — which makes this the right tool for statics, for the path-cached singletons
-/// (<see cref="Spot.Assets.Material"/>, <c>AnimatorController</c>), for <c>ProjectConfig</c>, and for
+/// (<see cref="Spot.Engine.Assets.Material"/>, <c>AnimatorController</c>), for <c>ProjectConfig</c>, and for
 /// an audio bus resolved by name. It is the <em>wrong</em> tool for scene data: component instances
 /// are replaced wholesale by a delete-undo, a script reload, or leaving play mode, and a captured one
 /// would silently become a write into a dead object. Use <see cref="ComponentValueAction"/> there,

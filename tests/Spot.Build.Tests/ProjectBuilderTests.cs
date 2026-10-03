@@ -1,5 +1,5 @@
 using Spot.Build;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Build.Tests;
 
@@ -11,6 +11,20 @@ public class ProjectBuilderTests
     public void RuntimeIdentifier_MapsPlatformToRid(BuildPlatform platform, string expected)
     {
         Assert.Equal(expected, ProjectBuilder.RuntimeIdentifier(platform));
+    }
+
+    [Theory]
+    [InlineData(BuildPlatform.Windows, false, "windows")]
+    [InlineData(BuildPlatform.Linux, false, "linux")]
+    [InlineData(BuildPlatform.Mac, false, "mac")]
+    [InlineData(BuildPlatform.Windows, true, "play")]
+    public void OutputDirectory_IsAbsoluteEvenForARelativeProject(BuildPlatform platform, bool fastDebug, string folder)
+    {
+        string output = ProjectBuilder.OutputDirectory("MyGame", platform, fastDebug);
+
+        // A relative path here used to nest under the publish working directory (MyGame/MyGame/Build/...).
+        Assert.True(Path.IsPathRooted(output));
+        Assert.Equal(Path.GetFullPath(Path.Combine("MyGame", "Build", folder)), output);
     }
 
     [Fact]

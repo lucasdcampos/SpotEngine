@@ -2,10 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Spot.Core;
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 

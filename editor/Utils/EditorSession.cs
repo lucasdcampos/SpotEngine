@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using Spot.Core;
+using Spot.Engine;
 
 namespace Spot.Editor.Utils;
 
@@ -35,7 +35,6 @@ public sealed class EditorSessionState
     public List<SceneCameraState> Cameras { get; set; } = new();
 
     // Panel visibility (View > Panels).
-    public bool ShowGame { get; set; } = true;
     public bool ShowHierarchy { get; set; } = true;
     public bool ShowInspector { get; set; } = true;
     public bool ShowConsole { get; set; } = true;

@@ -1,4 +1,5 @@
-namespace Spot.Assets;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Helpers for the <c>guid:&lt;hex&gt;</c> reference form that scenes, materials, and components store instead of

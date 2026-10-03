@@ -1,6 +1,5 @@
 using ImGuiNET;
-using Spot.Console;
-using Spot.Core;
+using Spot.Engine.Console;
 
 namespace Spot.Editor.Panels;
 
@@ -21,7 +20,7 @@ public class ConsolePanel
             ImGui.Begin("Console", flags);
         }
         
-        Spot.Core.Application.Instance.Console.DrawContents(ConsolePresentation.Editor);
+        Spot.Engine.Application.Instance.Console.DrawContents(ConsolePresentation.Editor);
         
         if (asWindow)
         {

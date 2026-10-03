@@ -1,5 +1,5 @@
-using Spot.Scenes;
-using Spot.UI;
+using Spot.Engine.Scenes;
+using Spot.Engine.UI;
 
 namespace Spot.DebugUI.Undo;
 

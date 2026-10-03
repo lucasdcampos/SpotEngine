@@ -1,4 +1,7 @@
-namespace Spot.Assets;
+using Spot.Framework.Assimp;
+using Spot.Framework.Graphics;
+
+namespace Spot.Engine.Assets;
 
 /// <summary>
 /// Cooks 3D model files (FBX, OBJ, glTF, ...) into <c>.sptmesh</c> by running the Assimp parser once at import

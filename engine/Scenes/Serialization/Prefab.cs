@@ -2,10 +2,11 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Reads and writes a single entity subtree as a <c>.sptprefab</c> asset — a reusable blueprint that can be
@@ -78,7 +79,7 @@ public static class Prefab
     {
         try
         {
-            return InstantiateInto(scene, AssetProvider.Current.ReadAllText(path), parent);
+            return InstantiateInto(scene, FileSystem.Current.ReadAllText(path), parent);
         }
         catch (Exception ex)
         {

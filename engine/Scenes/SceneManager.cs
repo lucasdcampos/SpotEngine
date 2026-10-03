@@ -1,8 +1,9 @@
 using System.IO;
-using Spot.Assets;
-using Spot.Core;
+using Spot.Engine.Assets;
+using Spot.Framework;
+using Spot.Framework.IO;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Holds the active <see cref="Scene"/> and switches between scenes. The application drives the
@@ -57,7 +58,7 @@ public static class SceneManager
         }
 
         string path = AssetPath.ResolveContent(sceneReference) ?? AssetPath.Resolve(sceneReference);
-        if (!AssetProvider.Current.Exists(path))
+        if (!FileSystem.Current.Exists(path))
         {
             Log.CoreError("Scene not found: {0}", sceneReference);
             return null;
@@ -93,7 +94,7 @@ public static class SceneManager
         s_current.OnEnter();
     }
 
-    internal static void DispatchEvent(Spot.Events.Event e) => s_current?.OnEvent(e);
+    internal static void DispatchEvent(Spot.Framework.Events.Event e) => s_current?.OnEvent(e);
 
     internal static void Update(float deltaTime)
     {

@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Base class for the objects a coroutine can <c>yield return</c> to suspend itself until some

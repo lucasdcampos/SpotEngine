@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
-using Spot.Physics;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
 using Xunit;
 
 namespace Spot.Engine.Tests;
@@ -51,14 +51,16 @@ public class ComponentSerializationTests
     [Fact]
     public void PreservesAssetPathProperty()
     {
-        // primitive:/editor: pseudo-paths pass through MakeRelative unchanged, so this needs no asset root.
-        var mesh = new MeshComponent { ModelPath = "primitive:Cube", Color = Vector4.One };
+        // Built-in references pass through MakeRelative unchanged, so this needs no asset root.
+        var mesh = new MeshComponent { ModelPath = "builtin:Mesh/Capsule?radius=0.3", MaterialPath = "builtin:Material/Grid", Color = Vector4.One };
 
         JsonObject json = ComponentSerialization.Serialize(mesh);
-        Assert.Equal("primitive:Cube", json["ModelPath"]!.GetValue<string>());
+        Assert.Equal("builtin:Mesh/Capsule?radius=0.3", json["ModelPath"]!.GetValue<string>());
+        Assert.Equal("builtin:Material/Grid", json["MaterialPath"]!.GetValue<string>());
 
         var loaded = (MeshComponent)ComponentSerialization.Deserialize(typeof(MeshComponent), json);
-        Assert.Equal("primitive:Cube", loaded.ModelPath);
+        Assert.Equal("builtin:Mesh/Capsule?radius=0.3", loaded.ModelPath);
+        Assert.Equal("builtin:Material/Grid", loaded.MaterialPath);
     }
 
     [Fact]
@@ -66,7 +68,7 @@ public class ComponentSerializationTests
     {
         // SubmeshIndex is [HideInInspector] but [SerializeHidden] — authored in code (by ModelInstantiator for
         // a multi-part model) and must survive save/load, or a skinned part loses which submesh it draws.
-        var mesh = new MeshComponent { ModelPath = "primitive:Cube", SubmeshIndex = 2 };
+        var mesh = new MeshComponent { ModelPath = "builtin:Mesh/Cube", SubmeshIndex = 2 };
 
         JsonObject json = ComponentSerialization.Serialize(mesh);
         Assert.Equal(2, json["SubmeshIndex"]!.GetValue<int>());

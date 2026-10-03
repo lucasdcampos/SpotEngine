@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A unit of per-frame play-mode logic that runs over a scene's components. Systems are registered on a

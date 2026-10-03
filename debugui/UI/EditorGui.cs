@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Assets;
-using Spot.Rendering;
-using Spot.Scenes;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -18,17 +18,21 @@ namespace Spot.DebugUI.UI;
 /// </summary>
 public static class EditorGui
 {
-    /// <summary>Default width, in pixels, reserved for a property's label column.</summary>
-    public const float LabelColumnWidth = 110.0f;
+    /// <summary>
+    /// Width, in pixels, of a property's label column for a row <paramref name="rowWidth"/> wide: about a third of
+    /// the row, clamped so a narrow panel keeps room for values and a wide one doesn't strand labels far from
+    /// their fields. Every row of a panel gets the same width, so the value column lines up down the panel.
+    /// </summary>
+    public static float LabelColumnWidth(float rowWidth) => Math.Clamp(MathF.Round(rowWidth * 0.36f), 88.0f, 160.0f);
 
     private static EditorPalette Palette => EditorThemeManager.Current.Palette;
 
     // ----- Property rows ---------------------------------------------------------------------------
 
     /// <summary>
-    /// A three-axis field (position/rotation/scale, or any <see cref="Vector3"/>). Each axis has a
-    /// colored badge — red X, green Y, blue Z — that resets that component to <paramref name="resetValue"/>
-    /// when clicked, matching the axis colors used by the viewport gizmo.
+    /// A three-axis field (position/rotation/scale, or any <see cref="Vector3"/>). Each number box carries a
+    /// colored cap — red X, green Y, blue Z, matching the viewport gizmo — that resets that component to
+    /// <paramref name="resetValue"/> when clicked.
     /// </summary>
     public static bool Vector3Control(string label, ref Vector3 value, float resetValue = 0.0f, float speed = 0.1f)
     {
@@ -38,8 +42,8 @@ public static class EditorGui
         bool changed = false;
         var p = Palette;
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(AxisSpacing, 0.0f));
-        Vector2 badge = BadgeSize();
-        float dragWidth = AxisDragWidth(3, badge.X);
+        float badge = BadgeWidth();
+        float dragWidth = AxisDragWidth(3, badge);
 
         changed |= Axis("X", p.AxisX, badge, dragWidth, ref value.X, resetValue, speed);
         ImGui.SameLine();
@@ -52,7 +56,7 @@ public static class EditorGui
         return changed;
     }
 
-    /// <summary>A two-axis field for any <see cref="Vector2"/>, with color-coded X/Y badges.</summary>
+    /// <summary>A two-axis field for any <see cref="Vector2"/>, with color-coded X/Y caps.</summary>
     public static bool Vector2Control(string label, ref Vector2 value, float resetValue = 0.0f, float speed = 0.1f)
     {
         ImGui.PushID(label);
@@ -61,8 +65,8 @@ public static class EditorGui
         bool changed = false;
         var p = Palette;
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(AxisSpacing, 0.0f));
-        Vector2 badge = BadgeSize();
-        float dragWidth = AxisDragWidth(2, badge.X);
+        float badge = BadgeWidth();
+        float dragWidth = AxisDragWidth(2, badge);
 
         changed |= Axis("X", p.AxisX, badge, dragWidth, ref value.X, resetValue, speed);
         ImGui.SameLine();
@@ -170,45 +174,59 @@ public static class EditorGui
 
         // Each component is its own card: a rounded, hairline-bordered surface that auto-sizes to its
         // content, with a little air between cards so sections read as distinct groups rather than one
-        // continuous list. A child window (not a draw-list channel split) is used deliberately — the
-        // property rows below use ImGui.Columns, which owns the window's draw-list splitter, so wrapping
-        // them in our own split would corrupt rendering. The child gives each card its own draw list.
-        ImGui.Dummy(new Vector2(0.0f, 3.0f));
+        // continuous list. A child window is used deliberately — the property rows below use
+        // ImGui.Columns, which owns the window's draw-list splitter, so wrapping them in our own split
+        // would corrupt rendering. The child gives each card its own draw list.
+        ImGui.Dummy(new Vector2(0.0f, 2.0f));
 
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, Lighten(p.WindowBg, 0.02f));
+        Vector4 cardBg = Lighten(p.WindowBg, 0.02f);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, cardBg);
         ImGui.PushStyleColor(ImGuiCol.Border, p.Border);
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6.0f);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(10.0f, 8.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(CardPadding.X, CardHeaderInset));
 
         ImGui.BeginChild("card", new Vector2(0.0f, 0.0f),
             ImGuiChildFlags.AutoResizeY | ImGuiChildFlags.Border);
 
-        // Header row: a plain (unframed) collapsing node so the title sits on the card surface, with a
-        // hairline divider under it — matching the "▼ Title / ---- / fields" layout of pro inspectors.
+        // Header: a title strip a step lighter than the card body, edge to edge, holding an unframed
+        // collapsing node and the "⋮" menu. The strip's corners depend on whether the node is open, so the
+        // header is drawn on the front channel and the strip filled in behind it afterwards. No Columns run
+        // inside this split; the property rows below come after the merge.
+        var dl = ImGui.GetWindowDrawList();
+        Vector2 cardMin = ImGui.GetWindowPos();
+        float cardWidth = ImGui.GetWindowWidth();
+        dl.ChannelsSplit(2);
+        dl.ChannelsSetCurrent(1);
+
+        // NoTreePushOnOpen: the properties sit flush with the card padding instead of a tree indent, which
+        // would only eat into the value column.
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.AllowOverlap
-            | ImGuiTreeNodeFlags.FramePadding;
+            | ImGuiTreeNodeFlags.FramePadding | ImGuiTreeNodeFlags.NoTreePushOnOpen;
         if (defaultOpen) flags |= ImGuiTreeNodeFlags.DefaultOpen;
 
         ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0, 0, 0, 0));
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, WithAlpha(p.Text, 0.06f));
-        ImGui.PushStyleColor(ImGuiCol.HeaderActive, WithAlpha(p.Text, 0.10f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, WithAlpha(p.Text, 0.05f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, WithAlpha(p.Text, 0.09f));
         EditorFonts.PushTitle();
         bool opened = ImGui.TreeNodeEx(title, flags);
         EditorFonts.Pop();
         ImGui.PopStyleColor(3);
+        float headerBottom = ImGui.GetItemRectMax().Y;
 
         bool removeRequested = false;
         if (removable)
         {
             float size = ImGui.GetFrameHeight();
-            ImGui.SameLine(ImGui.GetWindowWidth() - size - ImGui.GetStyle().WindowPadding.X);
+            ImGui.SameLine(ImGui.GetWindowWidth() - size - ImGui.GetStyle().WindowPadding.X + 4.0f);
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, WithAlpha(p.Text, 0.10f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, WithAlpha(p.Text, 0.16f));
+            ImGui.PushStyleColor(ImGuiCol.Text, WithAlpha(p.Text, 0.7f));
             if (ImGui.Button(EditorIcons.EllipsisV, new Vector2(size, size)))
                 ImGui.OpenPopup("ComponentSettings");
-            ImGui.PopStyleColor(3);
+            ImGui.PopStyleColor(4);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+                ImGui.SetTooltip("Component options");
             if (ImGui.BeginPopup("ComponentSettings"))
             {
                 if (ImGui.MenuItem("Remove component"))
@@ -217,24 +235,32 @@ public static class EditorGui
             }
         }
 
+        dl.ChannelsSetCurrent(0);
+        float stripBottom = headerBottom + CardHeaderInset;
+        var stripMin = cardMin + new Vector2(1.0f, 1.0f);   // inside the card's 1px border
+        var stripMax = new Vector2(cardMin.X + cardWidth - 1.0f, stripBottom);
+        dl.PushClipRect(cardMin, new Vector2(cardMin.X + cardWidth, stripBottom + 1.0f), false);
+        dl.AddRectFilled(stripMin, stripMax, ImGui.GetColorU32(Lighten(cardBg, 0.025f)),
+            MathF.Max(ImGui.GetStyle().ChildRounding - 1.0f, 0.0f),
+            opened ? ImDrawFlags.RoundCornersTop : ImDrawFlags.RoundCornersAll);
+        if (opened)
+            dl.AddLine(new Vector2(stripMin.X, stripBottom), new Vector2(stripMax.X, stripBottom),
+                ImGui.GetColorU32(WithAlpha(p.Border, 0.6f)), 1.0f);
+        dl.PopClipRect();
+        dl.ChannelsMerge();
+
         if (opened)
         {
-            // Divider between the header and the properties, inset to the card's padding.
-            ImGui.Spacing();
-            var dl = ImGui.GetWindowDrawList();
-            Vector2 lineStart = ImGui.GetCursorScreenPos();
-            float innerWidth = ImGui.GetContentRegionAvail().X;
-            dl.AddLine(lineStart, lineStart + new Vector2(innerWidth, 0.0f),
-                ImGui.GetColorU32(p.Separator), 1.0f);
-            ImGui.Dummy(new Vector2(0.0f, 4.0f));
-
+            // The properties start a little below the strip, inset by the card padding.
+            ImGui.SetCursorScreenPos(new Vector2(ImGui.GetCursorScreenPos().X, stripBottom + CardPadding.Y));
             drawContents();
-            ImGui.TreePop();
+            // Matches the gap above the properties: the last row's item spacing plus the window padding.
+            ImGui.Dummy(new Vector2(0.0f, MathF.Max(CardPadding.Y - CardHeaderInset - ImGui.GetStyle().ItemSpacing.Y, 0.0f)));
         }
 
         ImGui.EndChild();
 
-        ImGui.PopStyleVar(3);
+        ImGui.PopStyleVar(2);
         ImGui.PopStyleColor(2);
 
         if (removeRequested)
@@ -285,6 +311,27 @@ public static class EditorGui
         EntityIcon.Particles => EditorIcons.Fire,
         _ => EditorIcons.Circle,
     };
+
+    /// <summary>
+    /// A quiet per-kind tint for an entity's glyph in lists: each hue is blended halfway into the theme's text
+    /// color, so icons tell kinds apart at a glance without competing with the names beside them, on dark and
+    /// light themes alike.
+    /// </summary>
+    public static Vector4 EntityGlyphColor(Entity entity)
+    {
+        var p = Palette;
+        Vector4 hue = IconFor(entity) switch
+        {
+            EntityIcon.Mesh => new Vector4(0.48f, 0.68f, 0.96f, 1.0f),
+            EntityIcon.Camera => new Vector4(0.62f, 0.86f, 0.80f, 1.0f),
+            EntityIcon.Light => new Vector4(0.98f, 0.80f, 0.38f, 1.0f),
+            EntityIcon.Sprite => new Vector4(0.56f, 0.84f, 0.56f, 1.0f),
+            EntityIcon.Skybox => new Vector4(0.62f, 0.80f, 1.00f, 1.0f),
+            EntityIcon.Particles => new Vector4(0.96f, 0.58f, 0.40f, 1.0f),
+            _ => p.TextDisabled,
+        };
+        return Vector4.Lerp(p.Text, hue, 0.6f);
+    }
 
     /// <summary>
     /// A string of spaces at least <paramref name="width"/> pixels wide, used to reserve room at the
@@ -397,20 +444,149 @@ public static class EditorGui
 
     // ----- Internals -------------------------------------------------------------------------------
 
+    // ----- Floating toolbars and overlays ---------------------------------------------------------
+
+    /// <summary>Padding between a floating toolbar cluster's edge and its buttons.</summary>
+    public const float ClusterInset = 3.0f;
+
+    // Where the open cluster started; clusters don't nest, so one slot is enough.
+    private static Vector2 s_clusterMin;
+
+    /// <summary>
+    /// Paints the light, translucent rounded surface used by everything that floats over a viewport —
+    /// toolbars, readouts, hints, drop labels — so overlays read as chrome laid over the scene rather than
+    /// opaque black bars cut out of it.
+    /// </summary>
+    public static void OverlayPanel(ImDrawListPtr dl, Vector2 min, Vector2 max, float rounding = 5.0f)
+    {
+        var p = Palette;
+        dl.AddRectFilled(min, max, ImGui.GetColorU32(WithAlpha(p.HeaderBg, 0.80f)), rounding);
+        dl.AddRect(min, max, ImGui.GetColorU32(WithAlpha(p.Text, 0.08f)), rounding, ImDrawFlags.None, 1.0f);
+    }
+
+    /// <summary>
+    /// Draws <paramref name="text"/> with a soft one-pixel shadow, for readouts painted straight onto a
+    /// viewport where the scene behind them can be any brightness.
+    /// </summary>
+    public static void OverlayText(ImDrawListPtr dl, Vector2 pos, Vector4 color, string text)
+    {
+        dl.AddText(pos + new Vector2(1.0f, 1.0f), ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f * color.W)), text);
+        dl.AddText(pos, ImGui.GetColorU32(color), text);
+    }
+
+    /// <summary>
+    /// Starts a floating toolbar cluster whose top-left corner is <paramref name="min"/>: submit compact
+    /// buttons (<see cref="ToolbarButton"/>) on one line, then call <see cref="EndToolbarCluster"/>, which
+    /// paints the cluster's <see cref="OverlayPanel"/> behind them at their measured size. Uses a draw-list
+    /// channel split, so don't open one inside ImGui columns or another split.
+    /// </summary>
+    public static void BeginToolbarCluster(Vector2 min)
+    {
+        var dl = ImGui.GetWindowDrawList();
+        dl.ChannelsSplit(2);
+        dl.ChannelsSetCurrent(1);
+        s_clusterMin = min;
+        ImGui.SetCursorScreenPos(min + new Vector2(ClusterInset, ClusterInset));
+        ImGui.BeginGroup();
+    }
+
+    /// <summary>Closes the cluster opened by <see cref="BeginToolbarCluster"/>; returns its bottom-right corner.</summary>
+    public static Vector2 EndToolbarCluster()
+    {
+        ImGui.EndGroup();
+        Vector2 max = ImGui.GetItemRectMax() + new Vector2(ClusterInset, ClusterInset);
+        var dl = ImGui.GetWindowDrawList();
+        dl.ChannelsSetCurrent(0);
+        OverlayPanel(dl, s_clusterMin, max);
+        dl.ChannelsMerge();
+        return max;
+    }
+
+    /// <summary>
+    /// A thin vertical rule between groups of buttons inside a toolbar cluster; continues the line with a
+    /// matching gap on both sides.
+    /// </summary>
+    public static void ToolbarDivider()
+    {
+        const float Gap = 9.0f;
+        Vector2 min = ImGui.GetItemRectMin();
+        Vector2 max = ImGui.GetItemRectMax();
+        float x = MathF.Round(max.X + Gap * 0.5f);
+        ImGui.GetWindowDrawList().AddLine(new Vector2(x, min.Y + 4.0f), new Vector2(x, max.Y - 4.0f),
+            ImGui.GetColorU32(WithAlpha(Palette.Text, 0.14f)), 1.0f);
+        ImGui.SameLine(0.0f, Gap);
+    }
+
+    /// <summary>
+    /// A compact toolbar button with three clear states: transparent at rest, a neutral lift under the
+    /// cursor (deeper while pressed), and an accent fill while <paramref name="active"/> — the selected tool
+    /// or an enabled toggle. Shows <paramref name="tooltip"/> after a short hover. Returns true when clicked.
+    /// </summary>
+    public static bool ToolbarButton(string label, bool active, string? tooltip, Vector2 size)
+    {
+        var p = Palette;
+        ImGui.PushStyleColor(ImGuiCol.Button, active ? WithAlpha(p.Accent, 0.90f) : new Vector4(0, 0, 0, 0));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, active ? p.AccentHovered : WithAlpha(p.Text, 0.11f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, active ? p.AccentActive : WithAlpha(p.Text, 0.18f));
+        ImGui.PushStyleColor(ImGuiCol.Text, active ? new Vector4(1.0f, 1.0f, 1.0f, 1.0f) : WithAlpha(p.Text, 0.86f));
+        bool clicked = ImGui.Button(label, size);
+        ImGui.PopStyleColor(4);
+        if (tooltip != null && ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+            ImGui.SetTooltip(tooltip);
+        return clicked;
+    }
+
+    /// <summary>
+    /// Call right after <c>ImGui.Begin</c> of a dockable panel. While the panel is docked and has focus, a
+    /// thin accent line runs along the top of its tab, which is how the editor shows where keyboard input goes
+    /// (ImGui 1.90 has no tab overline of its own). It relies on Begin leaving a docked window's tab as the
+    /// last item; the line is drawn on the panel's own draw list, which renders above its dock node's tabs.
+    /// </summary>
+    public static void MarkFocusedTab()
+    {
+        if (!ImGui.IsWindowDocked() || !ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows))
+            return;
+
+        Vector2 min = ImGui.GetItemRectMin();
+        Vector2 max = ImGui.GetItemRectMax();
+        if (max.X - min.X < 4.0f || max.Y - min.Y < 4.0f)
+            return;
+
+        var dl = ImGui.GetWindowDrawList();
+        dl.PushClipRect(min, max, false);
+        dl.AddRectFilled(new Vector2(min.X + 1.0f, min.Y), new Vector2(max.X - 1.0f, min.Y + 2.0f),
+            ImGui.GetColorU32(Palette.Accent), 1.0f, ImDrawFlags.RoundCornersTop);
+        dl.PopClipRect();
+    }
+
+    // ----- Internals -------------------------------------------------------------------------------
+
     private const float AxisSpacing = 4.0f;
+
+    // Inner padding of a component card, and the smaller inset of its header row inside the title strip.
+    private static readonly Vector2 CardPadding = new(10.0f, 8.0f);
+    private const float CardHeaderInset = 4.0f;
 
     // Opens a two-column row: label on the left, the following widget filling the right column. The
     // caller is responsible for the item width (scalar helpers request the full column via
     // ImGui.SetNextItemWidth(-1); vector controls size their fields explicitly).
     private static void BeginLabel(string label)
     {
+        float labelWidth = LabelColumnWidth(ImGui.GetContentRegionAvail().X);
         ImGui.Columns(2, "row", false);
-        ImGui.SetColumnWidth(0, LabelColumnWidth);
+        ImGui.SetColumnWidth(0, labelWidth);
         ImGui.AlignTextToFramePadding();
-        // Labels sit one notch below the value text so the eye lands on the editable field first.
-        ImGui.PushStyleColor(ImGuiCol.Text, WithAlpha(Palette.Text, 0.82f));
-        ImGui.TextUnformatted(label);
+
+        // Labels sit one notch below the value text so the eye lands on the editable field first. One that
+        // doesn't fit its column is cut short with an ellipsis and shown whole on hover, rather than running
+        // under the field.
+        float room = ImGui.GetContentRegionAvail().X - 4.0f;
+        string shown = FitText(label, room);
+        ImGui.PushStyleColor(ImGuiCol.Text, WithAlpha(Palette.Text, 0.74f));
+        ImGui.TextUnformatted(shown);
         ImGui.PopStyleColor();
+        if (!ReferenceEquals(shown, label) && ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+            ImGui.SetTooltip(label);
         ImGui.NextColumn();
     }
 
@@ -420,42 +596,74 @@ public static class EditorGui
         ImGui.PopID();
     }
 
-    // A colored, clickable axis badge followed by its drag field. Clicking the badge resets the value.
-    private static bool Axis(string name, Vector4 color, Vector2 size, float dragWidth, ref float value, float resetValue, float speed)
+    // The text itself when it fits in `width` pixels, otherwise its longest prefix that fits with "..."
+    // appended. Returns the same instance when nothing was cut.
+    private static string FitText(string text, float width)
+    {
+        if (ImGui.CalcTextSize(text).X <= width)
+            return text;
+
+        const string Ellipsis = "...";
+        float budget = width - ImGui.CalcTextSize(Ellipsis).X;
+        int length = text.Length;
+        while (length > 1 && ImGui.CalcTextSize(text.Substring(0, length)).X > budget)
+            length--;
+        return text.Substring(0, length).TrimEnd() + Ellipsis;
+    }
+
+    // One axis of a vector field: a colored cap fused to the left of its number box. Clicking the cap resets
+    // the component. The cap is drawn after the field and overlaps it by the frame rounding, hiding the
+    // field's rounded left corners so the pair reads as a single control.
+    private static bool Axis(string name, Vector4 color, float badgeWidth, float dragWidth, ref float value, float resetValue, float speed)
     {
         bool changed = false;
-        ImGui.PushStyleColor(ImGuiCol.Button, color);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Lighten(color, 0.1f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-        if (ImGui.Button(name, size))
+        float h = ImGui.GetFrameHeight();
+        float rounding = ImGui.GetStyle().FrameRounding;
+        Vector2 capMin = ImGui.GetCursorScreenPos();
+
+        if (ImGui.InvisibleButton(name, new Vector2(badgeWidth, h)))
         {
             value = resetValue;
             changed = true;
         }
-        ImGui.PopStyleColor(4);
+        bool capHovered = ImGui.IsItemHovered();
+        bool capHeld = ImGui.IsItemActive();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+            ImGui.SetTooltip($"Reset {name} to {resetValue.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}");
 
-        ImGui.SameLine();
+        ImGui.SameLine(0.0f, 0.0f);
         ImGui.SetNextItemWidth(dragWidth);
         if (ImGui.DragFloat("##" + name, ref value, speed, 0.0f, 0.0f, "%.2f"))
             changed = true;
+
+        Vector4 fill = capHeld ? Darken(color, 0.06f) : capHovered ? Lighten(color, 0.08f) : color;
+        var dl = ImGui.GetWindowDrawList();
+        dl.AddRectFilled(capMin, capMin + new Vector2(badgeWidth + rounding, h), ImGui.GetColorU32(fill),
+            rounding, ImDrawFlags.RoundCornersLeft);
+        Vector2 textSize = ImGui.CalcTextSize(name);
+        dl.AddText(capMin + new Vector2((badgeWidth + rounding - textSize.X) * 0.5f, (h - textSize.Y) * 0.5f),
+            ImGui.GetColorU32(ReadableOn(fill)), name);
         return changed;
     }
 
-    // Width of each drag field so that N badges + N drags + the spacing between them fill the column.
+    // Width of each number box so that N caps + N boxes + the gaps between axes fill the column.
     private static float AxisDragWidth(int axes, float badgeWidth)
     {
         float avail = ImGui.GetContentRegionAvail().X;
-        float spacings = (2 * axes - 1) * AxisSpacing;
+        float spacings = (axes - 1) * AxisSpacing;
         float width = (avail - axes * badgeWidth - spacings) / axes;
         return MathF.Max(width, 1.0f);
     }
 
-    // A square badge sized to match the current frame height so it lines up with the drag field.
-    private static Vector2 BadgeSize()
+    // A narrow cap: room for one capital letter.
+    private static float BadgeWidth() => MathF.Round(ImGui.GetFontSize() * 1.05f);
+
+    // Near-black or white, whichever reads better on `background` (by relative luminance).
+    private static Vector4 ReadableOn(Vector4 background)
     {
-        float h = ImGui.GetFontSize() + ImGui.GetStyle().FramePadding.Y * 2.0f;
-        return new Vector2(h + 2.0f, h);
+        static float Linear(float c) => c <= 0.04045f ? c / 12.92f : MathF.Pow((c + 0.055f) / 1.055f, 2.4f);
+        float luminance = 0.2126f * Linear(background.X) + 0.7152f * Linear(background.Y) + 0.0722f * Linear(background.Z);
+        return luminance > 0.18f ? new Vector4(0.06f, 0.06f, 0.06f, 0.88f) : new Vector4(1.0f, 1.0f, 1.0f, 0.95f);
     }
 
     private static Vector4 Lighten(Vector4 c, float amount) => new(
@@ -463,6 +671,8 @@ public static class EditorGui
         Math.Clamp(c.Y + amount, 0.0f, 1.0f),
         Math.Clamp(c.Z + amount, 0.0f, 1.0f),
         c.W);
+
+    private static Vector4 Darken(Vector4 c, float amount) => Lighten(c, -amount);
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);
 
@@ -492,7 +702,8 @@ public static class EditorGui
         string[] searchPatterns,
         string? currentPath,
         out string? outPath,
-        AssetSlotCustomItems? drawCustomItems = null)
+        AssetSlotCustomItems? drawCustomItems = null,
+        BuiltinAssetKind? builtins = null)
     {
         outPath = currentPath;
         bool changed = false;
@@ -530,7 +741,7 @@ public static class EditorGui
             ImGui.OpenPopup(popupName);
         }
 
-        DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems);
+        DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems, builtins);
 
         EndLabel();
         ImGui.PopID();
@@ -684,7 +895,8 @@ public static class EditorGui
         string? currentPath,
         ref string? outPath,
         ref bool changed,
-        AssetSlotCustomItems? drawCustomItems)
+        AssetSlotCustomItems? drawCustomItems,
+        BuiltinAssetKind? builtins)
     {
         if (!ImGui.BeginPopup(popupName))
             return;
@@ -710,6 +922,44 @@ public static class EditorGui
 
         drawCustomItems?.Invoke(ref outPath, ref changed);
         if (changed) ImGui.CloseCurrentPopup();
+
+        // The engine's built-in assets of the slot's kind, ahead of the project's files.
+        if (builtins is { } kind && !changed)
+        {
+            bool listed = false;
+            bool hasCurrent = BuiltinAssets.TryGet(currentPath, out BuiltinAsset current);
+            foreach (BuiltinAsset asset in BuiltinAssets.OfKind(kind))
+            {
+                if (!string.IsNullOrEmpty(_assetSearchFilter) &&
+                    !asset.Name.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!listed)
+                {
+                    ImGui.Separator();
+                    listed = true;
+                }
+
+                bool isSelected = hasCurrent && ReferenceEquals(current, asset);
+                (string glyph, Vector4 color) = AssetGlyph(asset.Reference);
+                if (PickerRow(glyph, color, asset.Name, "Built-in", isSelected, ResolveThumbnail(asset.Reference)))
+                {
+                    // Picking the shape already in the slot keeps its parameters.
+                    if (!isSelected)
+                    {
+                        outPath = asset.Reference;
+                        changed = true;
+                    }
+
+                    ImGui.CloseCurrentPopup();
+                }
+
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(asset.Description);
+            }
+        }
 
         var assets = EnumerateProjectAssets(searchPatterns);
         if (assets.Count > 0)
@@ -797,10 +1047,27 @@ public static class EditorGui
     // material sphere, or 0 to fall back to a kind glyph.
     private static nint ResolveThumbnail(string path)
     {
+        if (BuiltinAssets.TryGet(path, out BuiltinAsset builtin))
+        {
+            try
+            {
+                return builtin.Kind switch
+                {
+                    BuiltinAssetKind.Texture => (nint)BuiltinAssets.LoadTexture(builtin.Reference).Handle.Id,
+                    BuiltinAssetKind.Material => MaterialThumbnails.Get(builtin.Reference),
+                    _ => 0,
+                };
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         if (IsImagePath(path))
         {
             Texture2D? tex = EditorThumbnails.Get(AssetPath.Resolve(path));
-            return tex != null ? (nint)tex.Handle : 0;
+            return tex != null ? (nint)tex.Handle.Id : 0;
         }
         if (path.EndsWith(".sptmat", StringComparison.OrdinalIgnoreCase))
             return MaterialThumbnails.Get(AssetPath.Resolve(path));
@@ -978,8 +1245,8 @@ public static class EditorGui
 
             try
             {
-                string metaPath = Spot.Assets.AssetMeta.MetaPathFor(path);
-                Spot.Assets.AssetMeta meta = Spot.Assets.AssetMeta.ReadOrCreate(path, "script");
+                string metaPath = Spot.Engine.Assets.AssetMeta.MetaPathFor(path);
+                Spot.Engine.Assets.AssetMeta meta = Spot.Engine.Assets.AssetMeta.ReadOrCreate(path, "script");
                 if (!System.IO.File.Exists(metaPath))
                 {
                     meta.Save(path);
@@ -999,6 +1266,27 @@ public static class EditorGui
 
     // ----- Asset helpers ---------------------------------------------------------------------------
 
+    /// <summary>
+    /// A readable label for a built-in reference: its catalog name, followed by any mesh parameters that differ
+    /// from the shape's defaults, such as <c>Capsule (radius 0.3, height 1.7)</c>.
+    /// </summary>
+    /// <param name="reference">The built-in reference.</param>
+    /// <returns>The label, or the reference itself when it is not a known built-in.</returns>
+    public static string BuiltinLabel(string reference)
+    {
+        if (!BuiltinAssets.TryGet(reference, out BuiltinAsset asset))
+            return reference;
+        if (asset.Kind != BuiltinAssetKind.Mesh || !BuiltinAssets.TryGetPrimitive(reference, out PrimitiveSpec spec))
+            return asset.Name;
+
+        PrimitiveSpec defaults = PrimitiveSpec.For(spec.Shape);
+        var changed = PrimitiveSpec.ParametersOf(spec.Shape)
+            .Where(p => spec.Get(p) != defaults.Get(p))
+            .Select(p => $"{PrimitiveSpec.KeyOf(p)} {spec.Get(p).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}")
+            .ToList();
+        return changed.Count == 0 ? asset.Name : $"{asset.Name} ({string.Join(", ", changed)})";
+    }
+
     private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif" };
 
     private static bool IsImagePath(string path)
@@ -1009,9 +1297,13 @@ public static class EditorGui
         return Array.IndexOf(ImageExtensions, System.IO.Path.GetExtension(path).ToLowerInvariant()) >= 0;
     }
 
-    // The display name for a slot value: the tail of a pseudo path ("primitive:Cube" -> "Cube") or the file name.
+    // The display name for a slot value: a built-in's name (with any mesh parameters), the tail of another pseudo
+    // path, or the file name.
     private static string AssetDisplayName(string path)
     {
+        if (BuiltinAssets.TryGet(path, out _))
+            return BuiltinLabel(path);
+
         int colon = path.IndexOf(':');
         if (colon > 0 && !System.IO.Path.IsPathRooted(path))
             return path[(colon + 1)..];
@@ -1021,10 +1313,15 @@ public static class EditorGui
     // The kind glyph + tint for an asset path, matching the asset browser's color coding.
     private static (string Glyph, Vector4 Color) AssetGlyph(string path)
     {
-        if (path.StartsWith("primitive:", StringComparison.OrdinalIgnoreCase))
-            return (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f));
-        if (path.StartsWith("editor:", StringComparison.OrdinalIgnoreCase))
-            return (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f));
+        if (BuiltinAssets.TryGet(path, out BuiltinAsset builtin))
+        {
+            return builtin.Kind switch
+            {
+                BuiltinAssetKind.Mesh => (EditorIcons.Cube, new Vector4(0.98f, 0.62f, 0.26f, 1.0f)),
+                BuiltinAssetKind.Texture => (EditorIcons.Image, new Vector4(0.30f, 0.80f, 0.55f, 1.0f)),
+                _ => (EditorIcons.Palette, new Vector4(0.42f, 0.72f, 1.00f, 1.0f)),
+            };
+        }
 
         string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
         return ext switch

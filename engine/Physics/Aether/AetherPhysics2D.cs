@@ -1,11 +1,12 @@
 using System.Numerics;
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine.Physics;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 using nkast.Aether.Physics2D.Dynamics;
 using nkast.Aether.Physics2D.Dynamics.Contacts;
 using AVec = nkast.Aether.Physics2D.Common.Vector2;
 
-namespace Spot.Physics.Aether;
+namespace Spot.Engine.Physics.Aether;
 
 /// <summary>
 /// An Aether.Physics2D backend for the engine's 2D physics. Owns a <see cref="World"/> and mirrors the

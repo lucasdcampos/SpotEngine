@@ -1,7 +1,8 @@
 using System.Numerics;
-using Spot.Assets;
+using Spot.Engine.Assets;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2DComponent"/> it is
@@ -12,6 +13,9 @@ namespace Spot.Scenes;
 [SceneComponent("MeshRenderer")]
 public sealed class MeshComponent : Component
 {
+    private string? _modelPath;
+    private string? _materialPath;
+
     /// <summary>
     /// Gets or sets the model to draw. When <see langword="null"/>, nothing is drawn.
     /// </summary>
@@ -19,10 +23,38 @@ public sealed class MeshComponent : Component
     public Model? Model { get; set; }
 
     /// <summary>
-    /// Gets or sets the path to the model file, used for serialization.
+    /// Gets or sets the model reference, used for serialization: a model file, a <c>guid:</c> reference, or a
+    /// built-in mesh such as <c>builtin:Mesh/Capsule?radius=0.3</c>. Legacy built-in forms
+    /// (<c>primitive:Cube</c>) are stored in their current form.
     /// </summary>
     [HideInInspector]
-    public string? ModelPath { get; set; }
+    public string? ModelPath
+    {
+        get => _modelPath;
+        set => _modelPath = BuiltinAssets.Canonicalize(value);
+    }
+
+    /// <summary>
+    /// Points the renderer at another model reference and drops the loaded <see cref="Model"/> so the new one is
+    /// used: a built-in mesh loads at once, anything else resolves the next time the renderer draws.
+    /// </summary>
+    /// <param name="reference">The model reference, or <see langword="null"/> to draw nothing.</param>
+    public void SetModel(string? reference)
+    {
+        ModelPath = reference;
+        Model = null;
+        if (BuiltinAssets.TryGetPrimitive(ModelPath, out PrimitiveSpec spec))
+        {
+            try
+            {
+                Model = PrimitiveModelFactory.Get(spec);
+            }
+            catch (InvalidOperationException)
+            {
+                // No graphics device yet (headless tools); the renderer resolves the reference when it draws.
+            }
+        }
+    }
 
     /// <summary>
     /// Gets or sets which submesh of the <see cref="Model"/> this renderer draws. A value of
@@ -49,10 +81,16 @@ public sealed class MeshComponent : Component
     public Material? Material { get; set; }
 
     /// <summary>
-    /// Gets or sets the path to the material file, used for serialization.
+    /// Gets or sets the material reference, used for serialization: a <c>.sptmat</c> file, a <c>guid:</c>
+    /// reference, or a built-in material such as <c>builtin:Material/Grid</c> (legacy forms are stored in their
+    /// current form).
     /// </summary>
     [HideInInspector]
-    public string? MaterialPath { get; set; }
+    public string? MaterialPath
+    {
+        get => _materialPath;
+        set => _materialPath = BuiltinAssets.Canonicalize(value);
+    }
 
     /// <summary>
     /// Gets or sets the fallback color used when no <see cref="Material"/> is assigned. Defaults to opaque white.

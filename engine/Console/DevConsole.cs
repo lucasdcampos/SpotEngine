@@ -1,9 +1,10 @@
 using System.Numerics;
 using System.Text;
 using ImGuiNET;
-using Spot.Core;
+using Spot.Engine;
+using Spot.Framework;
 
-namespace Spot.Console;
+namespace Spot.Engine.Console;
 
 /// <summary>
 /// Executes a registered console command.
@@ -597,13 +598,13 @@ public sealed class DevConsole
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
             {
-                Spot.Physics.PhysicsDebug.ShowColliders = val;
+                Spot.Engine.Physics.PhysicsDebug.ShowColliders = val;
                 Print($"Physics debug colliders set to {val}");
             }
             else
             {
-                Spot.Physics.PhysicsDebug.ShowColliders = !Spot.Physics.PhysicsDebug.ShowColliders;
-                Print($"Physics debug colliders toggled to {Spot.Physics.PhysicsDebug.ShowColliders}");
+                Spot.Engine.Physics.PhysicsDebug.ShowColliders = !Spot.Engine.Physics.PhysicsDebug.ShowColliders;
+                Print($"Physics debug colliders toggled to {Spot.Engine.Physics.PhysicsDebug.ShowColliders}");
             }
         }, "Toggles global debug rendering of colliders (e.g., 'physics_debug' or 'physics_debug true')");
 
@@ -611,13 +612,13 @@ public sealed class DevConsole
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
             {
-                Spot.Rendering.RendererDebug.Fullbright = val;
+                Spot.Engine.Rendering.RendererDebug.Fullbright = val;
                 Print($"Fullbright set to {val}");
             }
             else
             {
-                Spot.Rendering.RendererDebug.Fullbright = !Spot.Rendering.RendererDebug.Fullbright;
-                Print($"Fullbright toggled to {Spot.Rendering.RendererDebug.Fullbright}");
+                Spot.Engine.Rendering.RendererDebug.Fullbright = !Spot.Engine.Rendering.RendererDebug.Fullbright;
+                Print($"Fullbright toggled to {Spot.Engine.Rendering.RendererDebug.Fullbright}");
             }
         }, "Toggles fullbright rendering mode (disables lighting)");
 
@@ -625,13 +626,13 @@ public sealed class DevConsole
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
             {
-                Spot.Rendering.RendererDebug.Wireframe = val;
+                Spot.Engine.Rendering.RendererDebug.Wireframe = val;
                 Print($"Wireframe set to {val}");
             }
             else
             {
-                Spot.Rendering.RendererDebug.Wireframe = !Spot.Rendering.RendererDebug.Wireframe;
-                Print($"Wireframe toggled to {Spot.Rendering.RendererDebug.Wireframe}");
+                Spot.Engine.Rendering.RendererDebug.Wireframe = !Spot.Engine.Rendering.RendererDebug.Wireframe;
+                Print($"Wireframe toggled to {Spot.Engine.Rendering.RendererDebug.Wireframe}");
             }
         }, "Toggles wireframe rendering for 3D meshes");
 
@@ -639,41 +640,41 @@ public sealed class DevConsole
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
             {
-                Spot.Rendering.RenderSettings.OcclusionCulling = val;
+                Spot.Engine.Rendering.RenderSettings.OcclusionCulling = val;
             }
             else
             {
-                Spot.Rendering.RenderSettings.OcclusionCulling = !Spot.Rendering.RenderSettings.OcclusionCulling;
+                Spot.Engine.Rendering.RenderSettings.OcclusionCulling = !Spot.Engine.Rendering.RenderSettings.OcclusionCulling;
             }
 
-            Spot.Rendering.RendererDebug.DisableOcclusionCulling = false;
-            Print($"Occlusion culling {(Spot.Rendering.RenderSettings.OcclusionCulling ? "on" : "off")}");
-            Print($"Last pass: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
-                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
-                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} behind {Spot.Rendering.RendererDebug.OccluderCount} occluder(s)");
+            Spot.Engine.Rendering.RendererDebug.DisableOcclusionCulling = false;
+            Print($"Occlusion culling {(Spot.Engine.Rendering.RenderSettings.OcclusionCulling ? "on" : "off")}");
+            Print($"Last pass: {Spot.Engine.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Engine.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Engine.Rendering.RendererDebug.OccludedMeshCount} behind {Spot.Engine.Rendering.RendererDebug.OccluderCount} occluder(s)");
         }, "Toggles occlusion culling and prints what the last 3D pass culled (e.g., 'occlusion', 'occlusion off')");
 
         Register("vsync", args =>
         {
             if (args.Count > 0 && bool.TryParse(args[0], out bool val))
             {
-                Spot.Rendering.RenderSettings.VSync = val;
+                Spot.Engine.Rendering.RenderSettings.VSync = val;
             }
             else
             {
-                Spot.Rendering.RenderSettings.VSync = !Spot.Rendering.RenderSettings.VSync;
+                Spot.Engine.Rendering.RenderSettings.VSync = !Spot.Engine.Rendering.RenderSettings.VSync;
             }
 
-            Print($"VSync {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")} (use 'vsync off' to uncap and profile true frame time)");
+            Print($"VSync {(Spot.Engine.Rendering.RenderSettings.VSync ? "on" : "off")} (use 'vsync off' to uncap and profile true frame time)");
         }, "Toggles vertical sync (e.g., 'vsync', 'vsync off'); off uncaps the frame rate for profiling");
 
         Register("stats", _ =>
         {
-            Print($"Frame: {Spot.Core.FrameStats.FrameTimeMs:0.00} ms ({Spot.Core.FrameStats.Fps:0} FPS); last {Spot.Core.FrameStats.LastFrameMs:0.00} ms");
-            Print($"VSync: {(Spot.Rendering.RenderSettings.VSync ? "on" : "off")}");
-            Print($"Meshes: {Spot.Rendering.RendererDebug.VisibleMeshCount} drawn, "
-                + $"{Spot.Rendering.RendererDebug.CulledMeshCount} off screen, "
-                + $"{Spot.Rendering.RendererDebug.OccludedMeshCount} occluded");
+            Print($"Frame: {Spot.Framework.FrameStats.FrameTimeMs:0.00} ms ({Spot.Framework.FrameStats.Fps:0} FPS); last {Spot.Framework.FrameStats.LastFrameMs:0.00} ms");
+            Print($"VSync: {(Spot.Engine.Rendering.RenderSettings.VSync ? "on" : "off")}");
+            Print($"Meshes: {Spot.Engine.Rendering.RendererDebug.VisibleMeshCount} drawn, "
+                + $"{Spot.Engine.Rendering.RendererDebug.CulledMeshCount} off screen, "
+                + $"{Spot.Engine.Rendering.RendererDebug.OccludedMeshCount} occluded");
         }, "Prints the current smoothed frame time / FPS, VSync state, and what the last 3D pass culled");
 
         Register("bind", args =>
@@ -756,10 +757,10 @@ public sealed class DevConsole
                 return;
             }
 
-            string busName = args.Count >= 2 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
+            string busName = args.Count >= 2 ? args[0] : Spot.Framework.Audio.AudioMixer.MasterBus;
             string value = args.Count >= 2 ? args[1] : args[0];
 
-            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            Spot.Framework.Audio.AudioBus? bus = Spot.Framework.Audio.AudioMixer.Find(busName);
             if (bus == null)
             {
                 Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
@@ -779,8 +780,8 @@ public sealed class DevConsole
 
         Register("mute", args =>
         {
-            string busName = args.Count >= 1 ? args[0] : Spot.Audio.AudioMixer.MasterBus;
-            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(busName);
+            string busName = args.Count >= 1 ? args[0] : Spot.Framework.Audio.AudioMixer.MasterBus;
+            Spot.Framework.Audio.AudioBus? bus = Spot.Framework.Audio.AudioMixer.Find(busName);
             if (bus == null)
             {
                 Print($"[error] Unknown audio bus: '{busName}' (try 'buses')");
@@ -795,12 +796,12 @@ public sealed class DevConsole
         {
             if (args.Count == 0)
             {
-                Spot.Audio.AudioMixer.ClearSolos();
+                Spot.Framework.Audio.AudioMixer.ClearSolos();
                 Print("Cleared all solos.");
                 return;
             }
 
-            Spot.Audio.AudioBus? bus = Spot.Audio.AudioMixer.Find(args[0]);
+            Spot.Framework.Audio.AudioBus? bus = Spot.Framework.Audio.AudioMixer.Find(args[0]);
             if (bus == null)
             {
                 Print($"[error] Unknown audio bus: '{args[0]}' (try 'buses')");
@@ -819,17 +820,17 @@ public sealed class DevConsole
     private void PrintBuses()
     {
         Print("Audio buses:");
-        foreach (Spot.Audio.AudioBus bus in Spot.Audio.AudioMixer.Buses)
+        foreach (Spot.Framework.Audio.AudioBus bus in Spot.Framework.Audio.AudioMixer.Buses)
         {
             int depth = 0;
-            for (Spot.Audio.AudioBus? p = Spot.Audio.AudioMixer.ParentOf(bus); p != null && depth < 8; p = Spot.Audio.AudioMixer.ParentOf(p))
+            for (Spot.Framework.Audio.AudioBus? p = Spot.Framework.Audio.AudioMixer.ParentOf(bus); p != null && depth < 8; p = Spot.Framework.Audio.AudioMixer.ParentOf(p))
             {
                 depth++;
             }
 
             string flags = (bus.Mute ? " [muted]" : string.Empty) + (bus.Solo ? " [solo]" : string.Empty);
             Print($"  {new string(' ', depth * 2)}{bus.Name}: {bus.Volume:0.00} " +
-                  $"(effective {Spot.Audio.AudioMixer.GetGain(bus.Name):0.00}, {bus.ActiveVoices} voice(s)){flags}");
+                  $"(effective {Spot.Framework.Audio.AudioMixer.GetGain(bus.Name):0.00}, {bus.ActiveVoices} voice(s)){flags}");
         }
     }
 

@@ -1,6 +1,6 @@
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
-namespace Spot.Physics;
+namespace Spot.Engine.Physics;
 
 /// <summary>
 /// A circular 2D collider for the Aether backend. Inherits <see cref="Collider2DComponent.Offset"/>,

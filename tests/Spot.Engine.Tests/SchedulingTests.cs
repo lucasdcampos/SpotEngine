@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Numerics;
-using Spot.Core;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
+using Spot.Framework;
 
 namespace Spot.Engine.Tests;
 

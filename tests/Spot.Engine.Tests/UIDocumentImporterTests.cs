@@ -1,8 +1,10 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spot.Assets;
+using Spot.Engine.Assets;
+using Spot.Framework.Graphics;
 using Xunit;
+using Spot.Tests;
 
 namespace Spot.Engine.Tests;
 

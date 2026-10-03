@@ -1,4 +1,4 @@
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The seam through which <see cref="RenderSystem"/> applies full-screen post-processing (HDR capture, bloom,

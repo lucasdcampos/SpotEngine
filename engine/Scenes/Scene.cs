@@ -1,12 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using Spot.Core;
-using Spot.Events;
-using Spot.Physics;
-using Spot.Rendering;
-using Spot.UI;
+using Spot.Engine.Physics;
+using Spot.Engine.UI;
+using Spot.Framework;
+using Spot.Framework.Events;
+using Spot.Framework.Graphics;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// A game scene: both a container of entities/components and a switchable screen with its own
@@ -28,6 +28,12 @@ public class Scene
     /// to add your own. See <see cref="ISystem"/> and <see cref="SystemOrder"/>.
     /// </summary>
     public SystemRegistry Systems { get; } = new();
+
+    /// <summary>
+    /// The custom render passes drawn into this scene's frame at fixed points of the pipeline. See
+    /// <see cref="IRenderPass"/> and <see cref="AddRenderPass"/>.
+    /// </summary>
+    public RenderPassRegistry RenderPasses { get; } = new();
 
     private UIRoot? _ui;
 
@@ -70,6 +76,18 @@ public class Scene
     public void RegisterSystem(ISystem system) => Systems.Add(system);
 
     /// <summary>
+    /// Adds custom drawing to this scene's frame at the pass's <see cref="IRenderPass.Stage"/> — for rendering the
+    /// engine has no component for. See <see cref="IRenderPass"/>.
+    /// </summary>
+    /// <param name="pass">The render pass.</param>
+    public void AddRenderPass(IRenderPass pass) => RenderPasses.Add(pass);
+
+    /// <summary>Removes a render pass added with <see cref="AddRenderPass"/>.</summary>
+    /// <param name="pass">The render pass.</param>
+    /// <returns><see langword="true"/> if it was registered.</returns>
+    public bool RemoveRenderPass(IRenderPass pass) => RenderPasses.Remove(pass);
+
+    /// <summary>
     /// Called once when the scene becomes active. Create resources and entities here.
     /// </summary>
     public virtual void OnEnter()
@@ -81,7 +99,7 @@ public class Scene
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
-                cc.SetViewportSize(Spot.Core.Display.Width, Spot.Core.Display.Height);
+                cc.SetViewportSize(Spot.Framework.Display.Width, Spot.Framework.Display.Height);
             }
         }
     }
@@ -112,8 +130,8 @@ public class Scene
         if (_ui is null || _ui.Children.Count == 0) return;
 
         _ui.Update(
-            Spot.Core.Display.Width,
-            Spot.Core.Display.Height,
+            Spot.Framework.Display.Width,
+            Spot.Framework.Display.Height,
             Input.MousePosition,
             Input.GetMouseButton(MouseButton.Left),
             Input.GetMouseButtonDown(MouseButton.Left),
@@ -198,9 +216,15 @@ public class Scene
     /// <summary>
     /// Returns true if the scene has a primary camera that would actually render this frame — active in
     /// the hierarchy, enabled, and carrying an enabled transform (the same conditions <see cref="OnRender"/>
-    /// uses to pick a camera). The editor uses this to warn when the Game view would otherwise be blank.
+    /// uses to pick a camera). The editor uses this to warn when its game view would otherwise be blank.
     /// </summary>
-    public bool HasActivePrimaryCamera()
+    public bool HasActivePrimaryCamera() => TryGetActivePrimaryCamera(out _);
+
+    /// <summary>
+    /// Finds the primary camera that would actually render this frame (see <see cref="HasActivePrimaryCamera"/>).
+    /// The returned entity always carries a <see cref="CameraComponent"/> and a <see cref="TransformComponent"/>.
+    /// </summary>
+    public bool TryGetActivePrimaryCamera(out Entity camera)
     {
         foreach (var entity in View<CameraComponent>())
         {
@@ -209,9 +233,11 @@ public class Scene
             if (!cc.Enabled || !cc.Primary) continue;
             if (!HasComponent<TransformComponent>(entity)) continue;
             if (!GetComponent<TransformComponent>(entity).Enabled) continue;
+            camera = entity;
             return true;
         }
 
+        camera = default;
         return false;
     }
 

@@ -1,4 +1,5 @@
-namespace Spot.Core;
+
+namespace Spot.Engine;
 
 /// <summary>
 /// A hostable in-game debug overlay: the runtime hierarchy/inspector/time-control panels a build can toggle

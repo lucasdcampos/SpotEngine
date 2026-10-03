@@ -2,8 +2,9 @@ using System;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Scenes;
-using Spot.Rendering;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;
@@ -59,11 +60,9 @@ public class HierarchyPanel
     /// </summary>
     public void DrawContents()
     {
-        // Deeper child indentation and a little extra row spacing make the nesting readable at a glance
-        // without changing any behavior.
-        var style = ImGui.GetStyle();
-        ImGui.PushStyleVar(ImGuiStyleVar.IndentSpacing, 24.0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(style.ItemSpacing.X, 5.0f));
+        // The indent matches the guide lines drawn between parents and children (see DrawEntityNode). It stays
+        // pushed for the whole tree because TreePop unindents by whatever IndentSpacing is current.
+        ImGui.PushStyleVar(ImGuiStyleVar.IndentSpacing, RowIndent);
 
         if (_context.ActiveScene != null)
         {
@@ -116,7 +115,8 @@ public class HierarchyPanel
                 }
             }
 
-            // Allow dropping on the empty space to clear parent, or to instantiate a prefab at the root.
+            // Allow dropping on the empty space to clear parent, or to add dragged assets (a prefab, a model, a
+            // sprite from an image, ...) as root entities.
             if (ImGui.BeginDragDropTarget())
             {
                 unsafe
@@ -127,22 +127,9 @@ public class HierarchyPanel
                         int payloadId = *(int*)payload.Data;
                         ReparentDragged(payloadId, null);
                     }
-
-                    var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
-                    if (prefabPayload.NativePtr != null)
-                    {
-                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
-                        if (path != null) InstantiatePrefab(path, null);
-                    }
-
-                    // Dropping a model file imports it as a root entity hierarchy with materials applied.
-                    var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                    if (modelPayload.NativePtr != null)
-                    {
-                        string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
-                        if (path != null) InstantiateModel(path, null);
-                    }
                 }
+
+                if (AssetSpawner.AcceptDrop(out var paths, out _)) SpawnAssets(paths, null);
                 ImGui.EndDragDropTarget();
             }
 
@@ -168,10 +155,10 @@ public class HierarchyPanel
                 }
                 if (ImGui.BeginMenu("3D Object"))
                 {
-                    if (ImGui.MenuItem("Cube")) CreatePrimitive("Cube");
-                    if (ImGui.MenuItem("Plane")) CreatePrimitive("Plane");
-                    if (ImGui.MenuItem("Quad")) CreatePrimitive("Quad");
-                    if (ImGui.MenuItem("Sphere")) CreatePrimitive("Sphere");
+                    foreach (PrimitiveShape shape in PrimitiveSpec.Shapes)
+                    {
+                        if (ImGui.MenuItem(shape.ToString())) CreatePrimitive(shape);
+                    }
                     ImGui.EndMenu();
                 }
                 ImGui.Separator();
@@ -183,7 +170,7 @@ public class HierarchyPanel
             }
         }
 
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar();
     }
 
     /// <summary>Creates an empty entity, selects it, and returns it.</summary>
@@ -227,18 +214,21 @@ public class HierarchyPanel
         return entity;
     }
 
-    /// <summary>Creates an entity with a procedural primitive <see cref="MeshComponent"/>, selects it, and returns it.</summary>
-    public Entity CreatePrimitive(string typeName)
+    /// <summary>
+    /// Creates an entity drawing a built-in mesh (<c>builtin:Mesh/…</c>) with its default parameters, selects it,
+    /// and returns it.
+    /// </summary>
+    public Entity CreatePrimitive(PrimitiveShape shape)
     {
-        var entity = CreateEntity(typeName);
-        var meshRenderer = new MeshComponent { ModelPath = $"primitive:{typeName}" };
+        var entity = CreateEntity(shape.ToString());
+        var meshRenderer = new MeshComponent { ModelPath = BuiltinAssets.MeshReference(PrimitiveSpec.For(shape)) };
         try
         {
-            meshRenderer.Model = Spot.Assets.Model.Load(meshRenderer.ModelPath);
+            meshRenderer.Model = BuiltinAssets.LoadModel(meshRenderer.ModelPath!);
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Error("Failed to load primitive '{0}': {1}", typeName, ex.Message);
+            Spot.Framework.Log.Error("Failed to load primitive '{0}': {1}", shape, ex.Message);
         }
         entity.AddComponent(meshRenderer);
         return entity;
@@ -254,41 +244,28 @@ public class HierarchyPanel
         var meshRenderer = new MeshComponent { ModelPath = modelPath };
         try
         {
-            meshRenderer.Model = Spot.Assets.Model.Load(modelPath);
+            meshRenderer.Model = Spot.Framework.Graphics.Model.Load(modelPath);
         }
         catch (System.Exception ex)
         {
-            Spot.Core.Log.Error("Failed to load model '{0}': {1}", modelPath, ex.Message);
+            Spot.Framework.Log.Error("Failed to load model '{0}': {1}", modelPath, ex.Message);
         }
         entity.AddComponent(meshRenderer);
         return entity;
     }
 
-    // Instantiates a prefab file into the active scene under an optional parent, marks the new root as an
-    // instance of that prefab, and selects it. Failures are logged by the loader and leave the scene unchanged.
-    private void InstantiatePrefab(string path, Entity? parent)
+    // Adds the entities the dropped assets stand for (see AssetSpawner) to the active scene under an optional
+    // parent, and selects them. Failures are logged by the spawner and leave the scene unchanged.
+    private void SpawnAssets(System.Collections.Generic.IReadOnlyList<string> paths, Entity? parent)
     {
         var scene = _context.ActiveScene;
         if (scene == null) return;
 
-        Entity? root = Prefab.InstantiateFile(scene, path, parent);
-        if (root == null) return;
+        var spawned = AssetSpawner.SpawnAll(scene, paths, parent);
+        if (spawned.Count == 0) return;
 
-        string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
-        root.Value.AddComponent(new PrefabComponent { PrefabRef = reference });
-        _context.Selection = root.Value;
-    }
-
-    // Imports a model file as a faithful entity hierarchy (one entity per part, with the model's materials
-    // extracted and applied) under an optional parent, and selects the new root. Failures are logged by the
-    // instantiator and leave the scene unchanged.
-    private void InstantiateModel(string path, Entity? parent)
-    {
-        var scene = _context.ActiveScene;
-        if (scene == null) return;
-
-        Entity? root = ModelInstantiator.Instantiate(scene, path, parent);
-        if (root != null) _context.Selection = root.Value;
+        _context.SetSelectedEntities(spawned);
+        Spot.DebugUI.Undo.EditorHistory.RecordSceneEdit(scene, AssetSpawner.AddLabel(paths));
     }
 
     // Creates a new root entity, selects it, triggers inline rename, and returns it.
@@ -303,13 +280,23 @@ public class HierarchyPanel
         return entity;
     }
 
-    private void DrawEntityNode(Entity entity)
+    // Tree geometry. A row is a frame-padded line (RowPaddingX on either side of the arrow), and children sit
+    // RowIndent to the right of their parent, so the guide line through a parent's arrow lands just left of
+    // the children's arrows.
+    private const float RowIndent = 18.0f;
+    private const float RowPaddingX = 4.0f;
+
+    // Draws one entity row and, when expanded, its subtree. Returns the row's left edge (where its arrow
+    // starts), its vertical middle and whether it has children, which the parent's guide lines need.
+    private (float RowX, float MidY, bool HasChildren) DrawEntityNode(Entity entity)
     {
         string name = entity.Name;
         bool isRenaming = _renamingEntityId == entity.Id;
 
-        ImGuiTreeNodeFlags flags = (IsSelected(entity) ? ImGuiTreeNodeFlags.Selected : 0) | ImGuiTreeNodeFlags.OpenOnArrow;
-        if (!isRenaming) flags |= ImGuiTreeNodeFlags.SpanAvailWidth;
+        // Rows span the panel's full width (indent area included) so hover and selection read as list bands.
+        ImGuiTreeNodeFlags flags = (IsSelected(entity) ? ImGuiTreeNodeFlags.Selected : 0)
+            | ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.FramePadding;
+        if (!isRenaming) flags |= ImGuiTreeNodeFlags.SpanFullWidth;
 
         bool hasChildren = entity.Children.Any();
         if (!hasChildren)
@@ -317,21 +304,39 @@ public class HierarchyPanel
             flags |= ImGuiTreeNodeFlags.Leaf;
         }
 
-        // When renaming, the tree node only shows the glyph; the InputText takes the name's place on the same line.
-        string glyphPrefix = EditorGui.EntityGlyph(entity) + "   ";
-        string label = isRenaming ? glyphPrefix : glyphPrefix + name;
+        // The label reserves room for the kind glyph, which is painted over it in its own tint. When renaming,
+        // the tree node shows only the glyph; the InputText takes the name's place on the same line.
+        float fontSize = ImGui.GetFontSize();
+        string glyphRoom = EditorGui.IconPadding(fontSize + 6.0f);
+        string label = isRenaming ? glyphRoom : glyphRoom + name;
 
         // Prefab instances read in a distinct color; a disabled entity is dimmed and takes precedence.
         bool active = entity.IsActiveInHierarchy();
         bool isPrefab = entity.HasComponent<PrefabComponent>();
-        Vector4? textColor = !active ? new Vector4(0.5f, 0.5f, 0.5f, 1.0f)
+        Vector4? textColor = !active ? ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]
                            : isPrefab ? PrefabColor
                            : null;
+
+        // Uniform rows with no gap between them; scoped to the row so menus and popups keep the normal rhythm.
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(RowPaddingX, 3.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(ImGui.GetStyle().ItemSpacing.X, 0.0f));
+
+        float rowX = ImGui.GetCursorScreenPos().X;
         if (textColor != null) ImGui.PushStyleColor(ImGuiCol.Text, textColor.Value);
-
         bool opened = ImGui.TreeNodeEx((IntPtr)entity.GetHashCode(), flags, label);
-
         if (textColor != null) ImGui.PopStyleColor();
+
+        Vector2 rowMin = ImGui.GetItemRectMin();
+        Vector2 rowMax = ImGui.GetItemRectMax();
+        float midY = (rowMin.Y + rowMax.Y) * 0.5f;
+
+        string glyph = EditorGui.EntityGlyph(entity);
+        Vector4 glyphColor = EditorGui.EntityGlyphColor(entity);
+        if (!active) glyphColor.W *= 0.5f;
+        float glyphX = rowX + RowPaddingX * 2.0f + fontSize; // where the label text starts, past the arrow
+        Vector2 glyphSize = ImGui.CalcTextSize(glyph);
+        ImGui.GetWindowDrawList().AddText(new Vector2(glyphX + (fontSize - glyphSize.X) * 0.5f, midY - glyphSize.Y * 0.5f),
+            ImGui.GetColorU32(glyphColor), glyph);
 
         if (isRenaming)
         {
@@ -390,6 +395,8 @@ public class HierarchyPanel
             }
         }
 
+        ImGui.PopStyleVar(2);
+
         // Drag Source
         if (ImGui.BeginDragDropSource())
         {
@@ -416,22 +423,18 @@ public class HierarchyPanel
                     int payloadId = *(int*)payload.Data;
                     ReparentDragged(payloadId, entity);
                 }
+            }
 
-                // Dropping a prefab onto an entity instantiates it as a child of that entity.
-                var prefabPayload = ImGui.AcceptDragDropPayload("PREFAB_FILE");
-                if (prefabPayload.NativePtr != null)
-                {
-                    string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(prefabPayload.Data);
-                    if (path != null) InstantiatePrefab(path, entity);
-                }
+            // Dropping assets onto an entity adds what they stand for as children of that entity.
+            if (AssetSpawner.AcceptDrop(out var paths, out _)) SpawnAssets(paths, entity);
 
-                // Dropping a model onto an entity imports its hierarchy as a child of that entity.
-                var modelPayload = ImGui.AcceptDragDropPayload("MODEL_FILE");
-                if (modelPayload.NativePtr != null)
-                {
-                    string? path = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(modelPayload.Data);
-                    if (path != null) InstantiateModel(path, entity);
-                }
+            // A material paints the entity's mesh, or every mesh under it (a model's root). Only offered (and
+            // highlighted) where there is a mesh to take it.
+            if (MaterialDrop.IsDragging())
+            {
+                var targets = MaterialDrop.TargetsFor(entity);
+                if (targets.Count > 0 && MaterialDrop.Accept(out string material, out _))
+                    MaterialDrop.Apply(targets, material);
             }
             ImGui.EndDragDropTarget();
         }
@@ -496,15 +499,27 @@ public class HierarchyPanel
                     children.Add(child);
                 }
 
+                // Guide lines: a vertical rule down from this row's arrow, with a short tick into each child
+                // (reaching past the empty arrow slot of a leaf, stopping short of a parent's arrow).
+                var drawList = ImGui.GetWindowDrawList();
+                uint guideColor = ImGui.GetColorU32(ImGuiCol.Text, 0.13f);
+                float guideX = MathF.Round(rowX + RowPaddingX + fontSize * 0.5f) + 0.5f;
+                float lastMidY = rowMax.Y;
                 foreach (Entity child in children)
                 {
-                    DrawEntityNode(child);
+                    (float childX, float childMidY, bool childIsParent) = DrawEntityNode(child);
+                    float tickEnd = childX + RowPaddingX + (childIsParent ? -1.0f : fontSize * 0.75f);
+                    drawList.AddLine(new Vector2(guideX, childMidY), new Vector2(tickEnd, childMidY), guideColor, 1.0f);
+                    lastMidY = childMidY;
                 }
+                drawList.AddLine(new Vector2(guideX, rowMax.Y), new Vector2(guideX, lastMidY + 0.5f), guideColor, 1.0f);
 
                 ReturnEntityList(children);
             }
             ImGui.TreePop();
         }
+
+        return (rowX, midY, hasChildren);
     }
 
     private void CopyEntity(Entity entity)
@@ -516,7 +531,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to copy entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to copy entity: {0}", ex.Message);
         }
     }
 
@@ -529,7 +544,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to cut entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to cut entity: {0}", ex.Message);
         }
     }
 
@@ -551,7 +566,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to duplicate entity: {0}", ex.Message);
         }
     }
 
@@ -586,7 +601,7 @@ public class HierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to paste entity: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to paste entity: {0}", ex.Message);
         }
     }
 
@@ -870,7 +885,7 @@ public class HierarchyPanel
             }
             catch (Exception ex)
             {
-                Spot.Core.Log.Error("Failed to duplicate entity: {0}", ex.Message);
+                Spot.Framework.Log.Error("Failed to duplicate entity: {0}", ex.Message);
             }
         }
 

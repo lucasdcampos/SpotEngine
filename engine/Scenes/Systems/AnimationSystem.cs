@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Spot.Core;
+using Spot.Framework;
 
-namespace Spot.Scenes;
+namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Advances every <see cref="AnimatorComponent"/> each frame in play mode, sampling its current clip and
@@ -49,7 +49,7 @@ public static class AnimationSystem
     /// <summary>Canonicalizes a bone/node name so animation channels retarget across Mixamo exports.</summary>
     /// <param name="name">The raw node or bone name.</param>
     /// <returns>The name with its Mixamo skeleton namespace canonicalized to <c>mixamorig:</c>.</returns>
-    internal static string NormalizeBoneName(string name) => Spot.Animation.BoneName.Normalize(name);
+    internal static string NormalizeBoneName(string name) => Spot.Framework.Animation.BoneName.Normalize(name);
 
     private static void Collect(Entity entity, Dictionary<string, Entity> map)
     {

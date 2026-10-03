@@ -12,6 +12,9 @@
     <!-- Referenced so Spot.Net.dll ships beside the engine in the CLI's output; the project generator then
          bundles it into a game's EngineBin (see ProjectGenerator.CopyEngineDll). -->
     <ProjectReference Include="..\..\net\Spot.Net\Spot.Net.csproj" />
+    <!-- Likewise for the runtime debug overlay, so `spot build` bundles the current Spot.DebugUI.dll exactly as
+         the editor does, instead of leaving a stale copy in EngineBin that no longer matches the engine. -->
+    <ProjectReference Include="..\..\debugui\Spot.DebugUI.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,10 @@
 using System.Numerics;
 using System.Text.Json;
-using Spot.Core;
-using Spot.Rendering;
+using Spot.Framework;
+using Spot.Framework.Graphics;
+using Spot.Framework.IO;
 
-namespace Spot.Assets;
+namespace Spot.Engine.Assets;
 
 public enum MaterialShaderType
 {
@@ -92,13 +93,24 @@ public sealed class Material
     public string? SourcePath { get; internal set; }
 
     /// <summary>
+    /// Gets whether this is a shared built-in material (see <see cref="BuiltinAssets"/>), which must not be edited
+    /// or saved over — copy it into the project instead.
+    /// </summary>
+    public bool IsBuiltin => BuiltinAssets.IsBuiltin(SourcePath);
+
+    /// <summary>
     /// Sets the material's texture from an image file, replacing and disposing any previous texture.
     /// Pass <see langword="null"/> or an empty path to clear the texture.
     /// </summary>
     /// <param name="path">The image file path, or <see langword="null"/> to clear.</param>
     public void SetTexture(string? path)
     {
-        Texture?.Dispose();
+        // Built-in textures are shared, so only a texture this material loaded itself is released.
+        if (!BuiltinAssets.IsBuiltin(TexturePath))
+        {
+            Texture?.Dispose();
+        }
+
         if (string.IsNullOrEmpty(path))
         {
             Texture = null;
@@ -117,7 +129,11 @@ public sealed class Material
     /// <param name="path">The image file path, or <see langword="null"/> to clear.</param>
     public void SetNormalMap(string? path)
     {
-        NormalMap?.Dispose();
+        if (!BuiltinAssets.IsBuiltin(NormalMapPath))
+        {
+            NormalMap?.Dispose();
+        }
+
         if (string.IsNullOrEmpty(path))
         {
             NormalMap = null;
@@ -137,21 +153,24 @@ public sealed class Material
     /// <returns>The loaded (or cached) material.</returns>
     public static Material Load(string path)
     {
-        if (path == "editor:Checkerboard")
+        // Built-in materials are shared and generated in code (see BuiltinAssets).
+        if (BuiltinAssets.IsBuiltin(path))
         {
-            if (s_cache.TryGetValue(path, out Material? checkerCached))
-                return checkerCached;
-                
-            var checker = new Material { SourcePath = path };
-            checker.Texture = Texture2D.CreateCheckerboard();
-            checker.TexturePath = path;
-            // Auto-tile so the checker squares keep a constant world size instead of stretching across
-            // scaled objects (e.g. a 100x100 ground). Tiling 0.25 over the 8-square texture yields
-            // ~0.5-unit squares; tweak Tiling in the inspector for a finer/coarser grid.
-            checker.AutoTile = true;
-            checker.Tiling = new Vector2(0.25f, 0.25f);
-            s_cache[path] = checker;
-            return checker;
+            try
+            {
+                return BuiltinAssets.LoadMaterial(path);
+            }
+            catch (Exception ex)
+            {
+                if (!s_cache.TryGetValue(path, out Material? fallback))
+                {
+                    Log.CoreError("Failed to load material '{0}': {1}", path, ex.Message);
+                    fallback = new Material { SourcePath = path };
+                    s_cache[path] = fallback;
+                }
+
+                return fallback;
+            }
         }
 
         // Cache by the original reference too, so repeated loads of a guid reference skip re-resolution.
@@ -188,7 +207,7 @@ public sealed class Material
         var material = new Material { SourcePath = full };
         try
         {
-            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(AssetProvider.Current.ReadAllText(full));
+            MaterialData? data = JsonSerializer.Deserialize<MaterialData>(FileSystem.Current.ReadAllText(full));
             if (data != null)
             {
                 if (data.Color.Length == 4)

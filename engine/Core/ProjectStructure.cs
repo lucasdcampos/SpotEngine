@@ -1,4 +1,5 @@
-namespace Spot.Core;
+
+namespace Spot.Engine;
 
 /// <summary>
 /// The well-known folder names that make up a Spot project on disk. Centralized so the build pipeline,

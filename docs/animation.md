@@ -151,6 +151,15 @@ Everything degrades gracefully: a model with no clips still shows and skins in i
 missing clip file is logged and skipped, and a throwing animator is quarantined rather than taking the
 frame down.
 
+## Without the engine
+
+The Animator, its controllers and bone entities are engine *policy*; the *mechanism* underneath lives in
+the framework (see [Levels](levels.md)). There, a `Skeleton` is built from a model's node tree, samples
+an `AnimationClip` at any time into a pose, and turns that pose into a skinning palette — no scene, no
+entities, no components. Draw the result with the framework's basic 3D renderer, which skins on the GPU
+just like the engine. The `Hello3D` sample loads a rigged source model with Assimp and plays its first clip
+this way.
+
 ## Related
 
 - [Rendering](rendering.md) — how meshes (skinned and rigid) are drawn

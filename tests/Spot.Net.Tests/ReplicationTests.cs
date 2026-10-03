@@ -1,6 +1,6 @@
 using System.Numerics;
 using Spot.Net;
-using Spot.Scenes;
+using Spot.Engine.Scenes;
 
 namespace Spot.Net.Tests;
 
@@ -15,7 +15,6 @@ public class ReplicationTests
 
     static ReplicationTests()
     {
-        NetTest.EnsureLogging();
         NetworkPrefabs.Register("Cube", scene =>
         {
             Entity e = scene.Instantiate("Cube");

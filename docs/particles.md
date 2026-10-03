@@ -34,7 +34,10 @@ The `Space` property controls whether particles are attached to the emitter or t
 
 ## Rendering
 
-The particle renderer uses a highly efficient dynamic batcher.
+The particle renderer is built on the framework's `BillboardBatch` — a dynamic batch of blended quads,
+camera-facing or oriented, depth-tested without writing depth. The particle *system* (emitters, simulation,
+the component) is engine policy; the batch is a framework mechanism, so a program built on the framework
+alone can draw its own particles with it (see [Levels](levels.md)).
 - **Render Mode**: `Billboard3D` makes every quad face the camera (ideal for 3D games). `Flat2D` makes them lay flat on the XY plane (ideal for orthographic 2D games).
 - **Blend Mode**: Choose between `Alpha` (standard transparency, good for smoke) and `Additive` (adds color to the scene, good for fire, sparks, and glow).
 - **Texture**: Assign a `Texture2D` to customize the look. If left empty, Spot automatically uses a soft, round dot.

@@ -4,11 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using ImGuiNET;
-using Spot.Audio;
+using Spot.Engine.Assets;
+using Spot.Engine.Scenes;
+using Spot.Framework.Audio;
+using Spot.Framework.Graphics;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
-using Spot.Rendering;
-using Spot.Scenes;
 
 namespace Spot.Editor.Panels;
 
@@ -40,9 +41,22 @@ public class AssetBrowserPanel
     private static readonly string[] AudioExtensions = { ".wav", ".ogg" };
     private const int MaxThumbnails = 128;
 
+    // The engine's built-in assets appear as a read-only virtual folder at the project root: "builtin:" lists one
+    // subfolder per kind ("builtin:Mesh/", ...), and each entry's path is its builtin: reference.
+    private const string BuiltinRoot = BuiltinAssets.Scheme;
+    private static readonly (string Path, string Name, BuiltinAssetKind Kind)[] BuiltinFolders =
+    {
+        (BuiltinRoot + "Mesh/", "Meshes", BuiltinAssetKind.Mesh),
+        (BuiltinRoot + "Texture/", "Textures", BuiltinAssetKind.Texture),
+        (BuiltinRoot + "Material/", "Materials", BuiltinAssetKind.Material),
+    };
+
     private readonly EditorContext _context;
     private string _currentDirectory;
     private string _baseDirectory;
+
+    // The last real project folder visited: where copies of built-in assets go.
+    private string _lastProjectDirectory;
 
     private string _searchQuery = "";
     private float _iconSize = 84.0f;
@@ -80,8 +94,8 @@ public class AssetBrowserPanel
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
-    private readonly Dictionary<string, Spot.Rendering.Framebuffer> _materialPreviews = new();
-    private readonly Dictionary<string, Spot.Rendering.Framebuffer> _modelPreviews = new();
+    private readonly Dictionary<string, Spot.Framework.Graphics.Framebuffer> _materialPreviews = new();
+    private readonly Dictionary<string, Spot.Framework.Graphics.Framebuffer> _modelPreviews = new();
     private readonly HashSet<string> _modelFailed = new();
 
     // Rendering a model preview costs a load + offscreen draw; cap how many first-time renders happen per
@@ -105,22 +119,29 @@ public class AssetBrowserPanel
     public AssetBrowserPanel(EditorContext context)
     {
         _context = context;
-        _baseDirectory = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        _baseDirectory = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         EnsureDirectory(_baseDirectory);
         _currentDirectory = _baseDirectory;
+        _lastProjectDirectory = _baseDirectory;
     }
+
+    private static bool IsBuiltinPath(string? path) =>
+        path is not null && path.StartsWith(BuiltinRoot, StringComparison.OrdinalIgnoreCase);
+
+    private bool InBuiltin => IsBuiltinPath(_currentDirectory);
 
     public string CurrentDirectory => _currentDirectory;
 
     public void OnImGuiRender(bool asWindow = false)
     {
         // Track project changes and reset to its asset directory.
-        var currentProjectAssetDir = Spot.Core.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        var currentProjectAssetDir = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         if (_baseDirectory != currentProjectAssetDir)
         {
             _baseDirectory = currentProjectAssetDir;
             EnsureDirectory(_baseDirectory);
             SetDirectory(_baseDirectory);
+            _lastProjectDirectory = _baseDirectory;
         }
 
         if (asWindow)
@@ -180,7 +201,29 @@ public class AssetBrowserPanel
             ImGui.EndDragDropTarget();
         }
 
-        string rel = Path.GetRelativePath(_baseDirectory, _currentDirectory);
+        if (InBuiltin)
+        {
+            ImGui.SameLine(0, 2);
+            ImGui.TextDisabled(">");
+            ImGui.SameLine(0, 2);
+            if (ImGui.Button("Built-in##crumb"))
+            {
+                _pendingNavigate = BuiltinRoot;
+            }
+
+            foreach ((string path, string name, _) in BuiltinFolders)
+            {
+                if (string.Equals(_currentDirectory, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    ImGui.SameLine(0, 2);
+                    ImGui.TextDisabled(">");
+                    ImGui.SameLine(0, 2);
+                    ImGui.Button(name + "##crumb");
+                }
+            }
+        }
+
+        string rel = InBuiltin ? "." : Path.GetRelativePath(_baseDirectory, _currentDirectory);
         if (rel != ".")
         {
             string accum = _baseDirectory;
@@ -250,7 +293,7 @@ public class AssetBrowserPanel
 
         float pad = 10.0f;
         float cellW = _iconSize + pad * 2;
-        float cellH = _iconSize + pad * 2 + ImGui.GetTextLineHeight() + 4;
+        float cellH = TileTextTop(pad) + ImGui.GetTextLineHeight() + TileCaptionGap + EditorFonts.Small.FontSize + pad - 2;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         float availW = ImGui.GetContentRegionAvail().X;
         int columns = Math.Max(1, (int)((availW + spacing) / (cellW + spacing)));
@@ -275,13 +318,28 @@ public class AssetBrowserPanel
         if (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && _inlineRenamePath == null && !ImGui.IsAnyItemActive())
         {
             bool hasSelection = _selectedPath != null;
+            bool builtinSelected = IsBuiltinPath(_selectedPath);
             if (ImGui.GetIO().KeyCtrl)
             {
                 // Copy/cut/duplicate act on the primary selection; multi-asset clipboard isn't supported yet.
+                // A built-in can be copied (and pasted into a project folder) but not cut; duplicating one saves an
+                // editable copy into the project.
                 if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.C)) CopySelected(cut: false);
-                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
-                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D)) DuplicateAsset(_selectedPath!);
-                else if (ImGui.IsKeyPressed(ImGuiKey.V)) PasteClipboardInto(_currentDirectory);
+                else if (hasSelection && !builtinSelected && ImGui.IsKeyPressed(ImGuiKey.X)) CopySelected(cut: true);
+                else if (hasSelection && ImGui.IsKeyPressed(ImGuiKey.D))
+                {
+                    if (builtinSelected) CopyBuiltinsInto(_lastProjectDirectory);
+                    else DuplicateAsset(_selectedPath!);
+                }
+                else if (!InBuiltin && ImGui.IsKeyPressed(ImGuiKey.V)) PasteClipboardInto(_currentDirectory);
+            }
+            else if (hasSelection && builtinSelected)
+            {
+                if (ImGui.IsKeyPressed(ImGuiKey.Enter) && !Directory.Exists(_selectedPath!) && !IsBuiltinFolder(_selectedPath!))
+                {
+                    _context.Selection = null;
+                    _context.SelectedAssetPath = _selectedPath;
+                }
             }
             else if (hasSelection)
             {
@@ -330,6 +388,12 @@ public class AssetBrowserPanel
             {
                 _pendingNavigate = entry.FullPath;
             }
+            else if (IsBuiltinPath(entry.FullPath))
+            {
+                // Built-ins open read-only in the Inspector, with a way to copy them into the project.
+                _context.Selection = null;
+                _context.SelectedAssetPath = entry.FullPath;
+            }
             else if (entry.Kind == AssetKind.Material || entry.Kind == AssetKind.Prefab)
             {
                 // Open the material/prefab in the Inspector for editing (mirrors how scenes open on double-click).
@@ -351,21 +415,23 @@ public class AssetBrowserPanel
         // Drag as a typed payload (consumed by the Inspector and by folder tiles for moving). Folders drag
         // too, so a whole folder can be dropped into another. _dragPath records the real source path so the
         // move target doesn't have to reparse the (kind-specific) payload data.
-        if (ImGui.BeginDragDropSource())
+        bool virtualFolder = entry.IsDirectory && IsBuiltinPath(entry.FullPath);
+        if (!virtualFolder && ImGui.BeginDragDropSource())
         {
             _dragPath = entry.FullPath;
             (string payloadType, string payloadData) = DragPayloadFor(entry);
             SetDragPayload(payloadType, payloadData);
-            // Dragging one of several selected assets carries the whole selection; label reflects that.
-            ImGui.Text(_selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1
-                ? $"{_selectedPaths.Count} items"
-                : entry.Name);
+            // Dragging one of several selected assets carries the whole selection; label reflects that. The
+            // payload holds one path, so the scene drop targets read the rest from AssetSpawner.DraggedPaths.
+            bool dragsSelection = _selectedPaths.Contains(entry.FullPath) && _selectedPaths.Count > 1;
+            AssetSpawner.DraggedPaths = dragsSelection ? _selectedPaths.ToArray() : new[] { entry.FullPath };
+            ImGui.Text(dragsSelection ? $"{_selectedPaths.Count} items" : entry.Name);
             _pendingClickPath = null; // this press became a drag, so don't collapse the selection on release
             ImGui.EndDragDropSource();
         }
 
         // Drop onto a folder tile to move the dragged asset (or the whole selection) into it.
-        if (entry.IsDirectory && ImGui.BeginDragDropTarget())
+        if (entry.IsDirectory && !virtualFolder && ImGui.BeginDragDropTarget())
         {
             if (TryAcceptAssetMove())
             {
@@ -376,23 +442,53 @@ public class AssetBrowserPanel
 
         DrawItemContextMenu(entry);
 
-        // Backgrounds: subtle card, brighter on hover, accent when selected.
-        uint bg = selected
-            ? ImGui.GetColorU32(WithAlpha(palette.Accent, 0.35f))
-            : hovered
-                ? ImGui.GetColorU32(palette.FrameBgHovered)
-                : ImGui.GetColorU32(WithAlpha(palette.FrameBg, 0.5f));
-        drawList.AddRectFilled(p0, p0 + new Vector2(cellW, cellH), bg, 5.0f);
+        // Backgrounds: files sit on a soft, barely lifted card; folders have none until hovered or selected.
+        Vector4? card = selected ? WithAlpha(palette.Accent, 0.16f)
+            : hovered ? new Vector4(1, 1, 1, 0.06f)
+            : entry.IsDirectory ? null
+            : new Vector4(1, 1, 1, 0.03f);
+        if (card is Vector4 cardColor)
+        {
+            drawList.AddRectFilled(p0, p0 + new Vector2(cellW, cellH), ImGui.GetColorU32(cardColor), 6.0f);
+        }
+        if (selected)
+        {
+            drawList.AddRect(p0, p0 + new Vector2(cellW, cellH), ImGui.GetColorU32(WithAlpha(palette.Accent, 0.65f)),
+                6.0f, ImDrawFlags.None, 1.0f);
+        }
 
         Vector2 iconMin = p0 + new Vector2(pad, pad);
-        DrawIcon(drawList, iconMin, _iconSize, entry, palette);
+        DrawIcon(drawList, iconMin, _iconSize, entry);
+
+        // Under the icon, a divider in the asset kind's color (fading out toward the tile's edges) and a caption naming
+        // the type tell assets apart even when their previews look alike (a material sphere and a sphere model).
+        // Folders need neither.
+        float textTop = p0.Y + TileTextTop(pad);
+        if (!entry.IsDirectory)
+        {
+            float dividerY = p0.Y + pad + _iconSize + TileDividerGap;
+            Vector4 accent = KindColor(entry.Kind);
+            uint on = ImGui.GetColorU32(WithAlpha(accent, 0.9f));
+            uint off = ImGui.GetColorU32(WithAlpha(accent, 0.0f));
+            float mid = p0.X + cellW * 0.5f;
+            Vector2 lo = new(p0.X + 6, dividerY);
+            Vector2 hi = new(p0.X + cellW - 6, dividerY + TileDividerThickness);
+            drawList.AddRectFilledMultiColor(lo, new Vector2(mid, hi.Y), off, on, on, off);
+            drawList.AddRectFilledMultiColor(new Vector2(mid, lo.Y), hi, on, off, off, on);
+
+            ImFontPtr small = EditorFonts.Small;
+            string caption = Ellipsize(TypeLabel(entry), cellW - 6, small, small.FontSize);
+            Vector2 cs = small.CalcTextSizeA(small.FontSize, float.MaxValue, 0.0f, caption);
+            Vector2 captionPos = new Vector2(p0.X + (cellW - cs.X) * 0.5f, textTop + ImGui.GetTextLineHeight() + TileCaptionGap);
+            drawList.AddText(small, small.FontSize, captionPos, ImGui.GetColorU32(palette.TextDisabled), caption);
+        }
 
         bool isInlineRenaming = _inlineRenamePath == entry.FullPath;
 
         if (isInlineRenaming)
         {
-            // Draw an InputText below the icon instead of the static label.
-            Vector2 inputPos = new Vector2(p0.X + 4, p0.Y + pad + _iconSize + 1);
+            // Draw an InputText in place of the static label, its text on the label's line.
+            Vector2 inputPos = new Vector2(p0.X + 4, textTop - ImGui.GetStyle().FramePadding.Y);
             ImGui.SetCursorScreenPos(inputPos);
             ImGui.SetNextItemWidth(cellW - 8);
             bool focusThisFrame = _inlineRenameFocusPending;
@@ -420,42 +516,80 @@ public class AssetBrowserPanel
         else
         {
             // Filename label, centered and truncated with an ellipsis (full name in tooltip).
-            string label = entry.Name;
-            if (ImGui.CalcTextSize(label).X > cellW - 6)
-            {
-                float eWidth = ImGui.CalcTextSize("...").X;
-                for (int i = label.Length - 1; i > 0; i--)
-                {
-                    if (ImGui.CalcTextSize(label.Substring(0, i)).X + eWidth <= cellW - 6)
-                    {
-                        label = label.Substring(0, i) + "...";
-                        break;
-                    }
-                }
-            }
+            string label = Ellipsize(entry.Name, cellW - 6, ImGui.GetFont(), ImGui.GetFontSize());
             Vector2 ts = ImGui.CalcTextSize(label);
-            Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, p0.Y + pad + _iconSize + 3);
+            Vector2 labelPos = new Vector2(p0.X + (cellW - ts.X) * 0.5f, textTop);
             drawList.AddText(labelPos, ImGui.GetColorU32(palette.Text), label);
 
             if (hovered)
             {
-                ImGui.SetTooltip(entry.Name);
+                ImGui.SetTooltip(BuiltinAssets.TryGet(entry.FullPath, out BuiltinAsset builtin)
+                    ? $"{builtin.Name}\n{builtin.Description}"
+                    : entry.Name);
             }
         }
 
         ImGui.PopID();
     }
 
-    // Per-kind accent colors for the asset icons.
-    private static readonly Vector4 ScriptColor = new(0.36f, 0.66f, 0.98f, 1.0f);
-    private static readonly Vector4 SceneColor = new(0.66f, 0.40f, 0.98f, 1.0f);
-    private static readonly Vector4 ImageColor = new(0.30f, 0.80f, 0.55f, 1.0f);
-    private static readonly Vector4 ModelColor = new(0.98f, 0.62f, 0.26f, 1.0f);
-    private static readonly Vector4 MaterialColor = new(0.42f, 0.72f, 1.00f, 1.0f);
-    private static readonly Vector4 PrefabColor = new(0.40f, 0.82f, 0.92f, 1.0f);
-    private static readonly Vector4 AudioColor = new(0.95f, 0.55f, 0.75f, 1.0f);
-    private static readonly Vector4 ControllerColor = new(0.98f, 0.78f, 0.30f, 1.0f);
-    private static readonly Vector4 UIDocumentColor = new(0.55f, 0.85f, 0.95f, 1.0f);
+    // Tile layout below the icon box: the divider, then the name and the type caption.
+    private const float TileDividerGap = 4.0f;
+    private const float TileDividerThickness = 2.0f;
+    private const float TileCaptionGap = 1.0f;
+
+    // Offset of the name line from the top of a tile.
+    private float TileTextTop(float pad) => pad + _iconSize + TileDividerGap + TileDividerThickness + 4.0f;
+
+    // Truncates text with an ellipsis so it fits maxWidth when drawn with the given font and size.
+    private static string Ellipsize(string text, float maxWidth, ImFontPtr font, float fontSize)
+    {
+        if (font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, text).X <= maxWidth)
+        {
+            return text;
+        }
+
+        float eWidth = font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, "...").X;
+        for (int i = text.Length - 1; i > 0; i--)
+        {
+            if (font.CalcTextSizeA(fontSize, float.MaxValue, 0.0f, text.Substring(0, i)).X + eWidth <= maxWidth)
+            {
+                return text.Substring(0, i) + "...";
+            }
+        }
+        return "...";
+    }
+
+    // The caption under a tile naming what kind of asset it is.
+    private static string TypeLabel(AssetEntry entry) => entry.Kind switch
+    {
+        AssetKind.Folder => "Folder",
+        AssetKind.Script => "C# Script",
+        AssetKind.Scene => "Scene",
+        AssetKind.Image => "Texture",
+        AssetKind.Model => "Model",
+        AssetKind.Material => "Material",
+        AssetKind.Prefab => "Prefab",
+        AssetKind.Audio => "Audio",
+        AssetKind.Controller => "Animator",
+        AssetKind.UIDocument => "UI Document",
+        _ => Path.GetExtension(entry.Name) is { Length: > 1 } ext ? $"{ext[1..].ToUpperInvariant()} File" : "File",
+    };
+
+    // The asset kind's accent color, shared with its painted icon.
+    private static Vector4 KindColor(AssetKind kind) => kind switch
+    {
+        AssetKind.Folder => AssetIcons.FolderAccent,
+        AssetKind.Script => AssetIcons.ScriptAccent,
+        AssetKind.Scene => AssetIcons.SceneAccent,
+        AssetKind.Image => AssetIcons.ImageAccent,
+        AssetKind.Model => AssetIcons.ModelAccent,
+        AssetKind.Material => AssetIcons.MaterialAccent,
+        AssetKind.Prefab => AssetIcons.PrefabAccent,
+        AssetKind.Audio => AssetIcons.AudioAccent,
+        AssetKind.Controller => AssetIcons.ControllerAccent,
+        AssetKind.UIDocument => AssetIcons.UIAccent,
+        _ => AssetIcons.FileAccent,
+    };
 
     private static AudioClip? _previewClip;
     private static Voice _previewVoice;
@@ -465,12 +599,12 @@ public class AssetBrowserPanel
         try
         {
             StopAudioPreview();
-            _previewClip = AudioClip.Load(sourcePath); // a source path decodes directly, no cooking needed
+            _previewClip = AudioClip.FromFile(sourcePath); // a source path decodes directly, no cooking needed
             _previewVoice = AudioManager.Play(_previewClip, spatial: false);
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to preview audio '{0}': {1}", sourcePath, ex.Message);
+            Spot.Framework.Log.Error("Failed to preview audio '{0}': {1}", sourcePath, ex.Message);
         }
     }
 
@@ -482,123 +616,98 @@ public class AssetBrowserPanel
         _previewClip = null;
     }
 
-    private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry, EditorPalette palette)
+    private void DrawIcon(ImDrawListPtr drawList, Vector2 iconMin, float size, AssetEntry entry)
     {
         Vector2 iconMax = iconMin + new Vector2(size, size);
 
-        // Dynamic previews take priority and keep their existing look (thumbnail / rendered material).
+        // Dynamic previews take priority, drawn straight onto the tile with no backdrop: the image itself, or a
+        // material/model rendered over a transparent background.
+        if (entry.Kind == AssetKind.Image && TryGetBuiltinTexture(entry.FullPath, out Texture2D? builtinTex))
+        {
+            drawList.AddImage((IntPtr)builtinTex.Handle.Id, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
+            return;
+        }
+
         if (entry.Kind == AssetKind.Image && TryGetThumbnail(entry.FullPath, out var tex))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             float scale = Math.Min(size / tex.Width, size / tex.Height);
             float w = tex.Width * scale;
             float h = tex.Height * scale;
             Vector2 imgMin = iconMin + new Vector2((size - w) * 0.5f, (size - h) * 0.5f);
-            drawList.AddImage((IntPtr)tex.Handle, imgMin, imgMin + new Vector2(w, h), new Vector2(0, 1), new Vector2(1, 0));
+            drawList.AddImage((IntPtr)tex.Handle.Id, imgMin, imgMin + new Vector2(w, h), new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
         if (entry.Kind == AssetKind.Material && TryGetMaterialPreview(entry.FullPath, out var matFb))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             drawList.AddImage((IntPtr)matFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
         // Models render a live 3D thumbnail; while the model is still loading (or if it fails) we fall
-        // through to the cube glyph below.
+        // through to the painted cube below.
         if (entry.Kind == AssetKind.Model && TryGetModelPreview(entry.FullPath, out var mdlFb))
         {
-            drawList.AddRectFilled(iconMin, iconMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.35f)), 4.0f);
             drawList.AddImage((IntPtr)mdlFb.ColorAttachment, iconMin, iconMax, new Vector2(0, 1), new Vector2(1, 0));
             return;
         }
 
-        // Folders are drawn as a vector shape (rather than a font glyph) so they can read as a modern folder
-        // and visibly distinguish an empty folder from one that holds assets.
-        if (entry.Kind == AssetKind.Folder)
+        // Everything else is a painted icon (see AssetIcons).
+        ImFontPtr labelFont = EditorFonts.IconText;
+        switch (entry.Kind)
         {
-            DrawFolderIcon(drawList, iconMin, size, entry.HasContents);
-            return;
+            case AssetKind.Folder: AssetIcons.Folder(drawList, iconMin, size, entry.HasContents); break;
+            case AssetKind.Script: AssetIcons.Script(drawList, iconMin, size, labelFont); break;
+            case AssetKind.Scene: AssetIcons.Scene(drawList, iconMin, size); break;
+            case AssetKind.Image: AssetIcons.Image(drawList, iconMin, size); break;
+            case AssetKind.Model: AssetIcons.Model(drawList, iconMin, size); break;
+            case AssetKind.Material: AssetIcons.Material(drawList, iconMin, size); break;
+            case AssetKind.Prefab: AssetIcons.Prefab(drawList, iconMin, size); break;
+            case AssetKind.Audio: AssetIcons.Audio(drawList, iconMin, size); break;
+            case AssetKind.Controller: AssetIcons.AnimatorController(drawList, iconMin, size); break;
+            case AssetKind.UIDocument: AssetIcons.UIDocument(drawList, iconMin, size, labelFont); break;
+            default: AssetIcons.File(drawList, iconMin, size, labelFont, ExtensionBadge(entry.Name)); break;
         }
-
-        // Everything else is a centered icon-font glyph tinted per kind — the same font the Hierarchy and
-        // viewport use, drawn from the large icon atlas so it stays crisp at tile sizes (48–128px).
-        (string glyph, Vector4 color) = GlyphFor(entry.Kind, palette);
-        DrawGlyph(drawList, iconMin, size, glyph, color);
     }
 
-    // Folders use a muted, professional warm yellow/orange to fit a modern dark editor.
-    private static readonly Vector4 FolderColor = new(0.80f, 0.65f, 0.35f, 1.0f);
-    private static readonly Vector4 FolderPaperColor = new(0.88f, 0.88f, 0.88f, 1.0f);
-
-    // Draws a clean, minimal folder scaled into the square icon box.
-    // The design is flatter and smaller to reduce visual weight.
-    private static void DrawFolderIcon(ImDrawListPtr dl, Vector2 iconMin, float size, bool hasContents)
+    // A short extension (up to four letters or digits, e.g. "JSON") for the generic file icon's badge; null otherwise.
+    private static string? ExtensionBadge(string name)
     {
-        uint back = ImGui.GetColorU32(Scale(FolderColor, 0.70f)); // Subtle tonal variation
-        uint front = ImGui.GetColorU32(FolderColor);
-
-        // Tighter bounds to reduce bulkiness and improve proportions (approx 4:3)
-        float x0 = iconMin.X + size * 0.20f;
-        float x1 = iconMin.X + size * 0.80f;
-        float backTop = iconMin.Y + size * 0.38f;
-        float bottom = iconMin.Y + size * 0.75f;
-        float r = size * 0.04f; // Minimal corner rounding
-
-        // Tab on the back panel (top-left)
-        float tabW = (x1 - x0) * 0.38f;
-        float tabH = size * 0.08f;
-        dl.AddRectFilled(new Vector2(x0, backTop - tabH), new Vector2(x0 + tabW, backTop + r), back, r,
-            ImDrawFlags.RoundCornersTop);
-
-        // Back panel of the folder
-        dl.AddRectFilled(new Vector2(x0, backTop), new Vector2(x1, bottom), back, r);
-
-        float pocketTop = backTop + size * 0.10f;
-
-        // A single clean sheet peeking out signals that the folder is non-empty
-        if (hasContents)
+        string ext = Path.GetExtension(name);
+        if (ext.Length < 2 || ext.Length > 5)
         {
-            float sw = (x1 - x0) * 0.60f;
-            float sx = x0 + (x1 - x0 - sw) * 0.5f;
-            float sr = size * 0.02f; // Sharper paper edges
-            uint paper = ImGui.GetColorU32(FolderPaperColor);
-            
-            // Draw the paper sheet tucked behind the front pocket
-            dl.AddRectFilled(new Vector2(sx, backTop - size * 0.02f), new Vector2(sx + sw, pocketTop + r), paper, sr, ImDrawFlags.RoundCornersTop);
+            return null;
         }
 
-        // Front pocket
-        dl.AddRectFilled(new Vector2(x0, pocketTop), new Vector2(x1, bottom), front, r, ImDrawFlags.RoundCornersBottom);
+        string label = ext[1..].ToUpperInvariant();
+        foreach (char ch in label)
+        {
+            if (!char.IsAsciiLetterOrDigit(ch))
+            {
+                return null;
+            }
+        }
+        return label;
     }
 
-    private static Vector4 Scale(Vector4 c, float f) => new(c.X * f, c.Y * f, c.Z * f, c.W);
-
-    // Picks the Font Awesome glyph and tint for a non-preview asset kind.
-    private static (string Glyph, Vector4 Color) GlyphFor(AssetKind kind, EditorPalette palette) => kind switch
+    // "Add to Scene" for anything that stands for an entity (a prefab, a model, an image, an audio clip, a UI
+    // document): adds it to the active scene, exactly as dropping it on the Hierarchy does. Acts on every selected
+    // asset, so right-clicking within a multi-selection adds all of it.
+    private void DrawAddToSceneItem(AssetEntry entry)
     {
-        AssetKind.Folder => (EditorIcons.FolderOpen, palette.TextDisabled),
-        AssetKind.Script => (EditorIcons.Code, ScriptColor),
-        AssetKind.Scene => (EditorIcons.Cubes, SceneColor),
-        AssetKind.Image => (EditorIcons.Image, ImageColor),
-        AssetKind.Model => (EditorIcons.Cube, ModelColor),
-        AssetKind.Material => (EditorIcons.Palette, MaterialColor),
-        AssetKind.Prefab => (EditorIcons.Sitemap, PrefabColor),
-        AssetKind.Audio => (EditorIcons.Music, AudioColor),
-        AssetKind.Controller => (EditorIcons.Rotate, ControllerColor),
-        AssetKind.UIDocument => (EditorIcons.Image, UIDocumentColor),
-        _ => (EditorIcons.File, palette.TextDisabled),
-    };
+        if (AssetSpawner.KindOf(entry.FullPath) == AssetSpawnKind.None) return;
 
-    // Draws a single icon-font glyph centered in the icon box, scaled to ~62% of it for breathing room.
-    private static void DrawGlyph(ImDrawListPtr dl, Vector2 iconMin, float size, string glyph, Vector4 color)
-    {
-        ImFontPtr font = EditorFonts.Icons;
-        float glyphPx = size * 0.62f;
-        Vector2 ts = font.CalcTextSizeA(glyphPx, float.MaxValue, 0.0f, glyph);
-        Vector2 center = iconMin + new Vector2(size * 0.5f, size * 0.5f);
-        dl.AddText(font, glyphPx, center - ts * 0.5f, ImGui.GetColorU32(color), glyph);
+        Scene? scene = _context.ActiveScene;
+        if (ImGui.MenuItem("Add to Scene", "", false, scene != null) && scene != null)
+        {
+            IEnumerable<string> paths = _selectedPaths.Contains(entry.FullPath) ? _selectedPaths : new[] { entry.FullPath };
+            List<Entity> spawned = AssetSpawner.SpawnAll(scene, paths);
+            if (spawned.Count > 0)
+            {
+                _context.SetSelectedEntities(spawned);
+                Spot.DebugUI.Undo.EditorHistory.RecordSceneEdit(scene, AssetSpawner.AddLabel(paths));
+            }
+        }
     }
 
     private void DrawItemContextMenu(AssetEntry entry)
@@ -615,24 +724,24 @@ public class AssetBrowserPanel
             SelectSingle(entry.FullPath);
         }
 
+        if (IsBuiltinPath(entry.FullPath))
+        {
+            DrawBuiltinContextMenu(entry);
+            ImGui.EndPopup();
+            return;
+        }
+
         if (entry.Kind == AssetKind.Material && ImGui.MenuItem("Edit Material"))
         {
             _context.Selection = null;
             _context.SelectedAssetPath = entry.FullPath;
         }
 
-        if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Add to Scene (with materials)"))
-        {
-            if (_context.ActiveScene != null)
-            {
-                var root = Spot.Scenes.ModelInstantiator.Instantiate(_context.ActiveScene, entry.FullPath);
-                if (root != null) _context.Selection = root.Value;
-            }
-        }
+        DrawAddToSceneItem(entry);
 
         if (entry.Kind == AssetKind.Model && ImGui.MenuItem("Extract Materials (Embedded)"))
         {
-            Spot.Assets.AssimpModelImporter.ExtractMaterials(entry.FullPath);
+            Spot.Engine.Assets.ModelMaterials.ExtractEmbedded(entry.FullPath);
         }
 
         if (entry.Kind == AssetKind.Audio)
@@ -706,6 +815,17 @@ public class AssetBrowserPanel
     {
         if (!ImGui.BeginPopupContextWindow("AssetBrowserContext", ImGuiPopupFlags.MouseButtonRight | ImGuiPopupFlags.NoOpenOverItems))
         {
+            return;
+        }
+
+        if (InBuiltin)
+        {
+            ImGui.TextDisabled("Built-in assets are read-only.");
+            if (ImGui.MenuItem("Back to Assets"))
+            {
+                _pendingNavigate = _lastProjectDirectory;
+            }
+            ImGui.EndPopup();
             return;
         }
 
@@ -836,8 +956,8 @@ public class AssetBrowserPanel
     private void RequestDeleteSelection()
     {
         _deleteTargets.Clear();
-        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths);
-        else if (_selectedPath != null) _deleteTargets.Add(_selectedPath);
+        if (_selectedPaths.Count > 0) _deleteTargets.AddRange(_selectedPaths.Where(p => !IsBuiltinPath(p)));
+        else if (_selectedPath != null && !IsBuiltinPath(_selectedPath)) _deleteTargets.Add(_selectedPath);
         if (_deleteTargets.Count > 0) _isDeleting = true;
     }
 
@@ -846,6 +966,15 @@ public class AssetBrowserPanel
     private void MoveDraggedInto(string destDir)
     {
         if (string.IsNullOrEmpty(_dragPath)) return;
+        if (IsBuiltinPath(destDir)) return;
+        if (IsBuiltinPath(_dragPath))
+        {
+            // Built-ins can't move; dropping them on a project folder saves editable copies there instead.
+            CopyBuiltinsInto(destDir, _selectedPaths.Contains(_dragPath) ? _selectedPaths.ToList() : new List<string> { _dragPath });
+            _dragPath = null;
+            return;
+        }
+
         if (_selectedPaths.Contains(_dragPath) && _selectedPaths.Count > 1)
         {
             foreach (string p in _selectedPaths.ToList()) MoveEntryInto(p, destDir);
@@ -929,7 +1058,7 @@ public class AssetBrowserPanel
     // InvalidateEntries; and the refresh window bounds how long an external change can go unseen.
     private List<AssetEntry> GetEntries()
     {
-        double now = Spot.Core.Application.Instance.Time;
+        double now = Spot.Engine.Application.Instance.Time;
         if (_entriesCache != null
             && _entriesCacheDir == _currentDirectory
             && _entriesCacheQuery == _searchQuery
@@ -951,7 +1080,20 @@ public class AssetBrowserPanel
 
     private List<AssetEntry> GatherEntries()
     {
+        if (InBuiltin)
+        {
+            return GatherBuiltinEntries();
+        }
+
         var result = new List<AssetEntry>();
+
+        // The read-only Built-in folder leads the project root.
+        if (_currentDirectory == _baseDirectory
+            && (string.IsNullOrEmpty(_searchQuery) || "Built-in".Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)))
+        {
+            result.Add(new AssetEntry(BuiltinRoot, "Built-in", true, AssetKind.Folder, hasContents: true));
+        }
+
         var dirInfo = new DirectoryInfo(_currentDirectory);
         if (!dirInfo.Exists)
         {
@@ -982,6 +1124,127 @@ public class AssetBrowserPanel
             }
         }
         return result;
+    }
+
+    // The Built-in folder: one subfolder per kind at its root (or, while searching, every matching asset), and
+    // a kind's assets inside its subfolder.
+    private List<AssetEntry> GatherBuiltinEntries()
+    {
+        var result = new List<AssetEntry>();
+        bool Matches(string name) =>
+            string.IsNullOrEmpty(_searchQuery) || name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase);
+
+        bool atRoot = string.Equals(_currentDirectory, BuiltinRoot, StringComparison.OrdinalIgnoreCase);
+        if (atRoot && string.IsNullOrEmpty(_searchQuery))
+        {
+            foreach ((string path, string name, _) in BuiltinFolders)
+            {
+                result.Add(new AssetEntry(path, name, true, AssetKind.Folder, hasContents: true));
+            }
+
+            return result;
+        }
+
+        foreach ((string path, _, BuiltinAssetKind kind) in BuiltinFolders)
+        {
+            if (!atRoot && !string.Equals(_currentDirectory, path, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (BuiltinAsset asset in BuiltinAssets.OfKind(kind).Where(a => Matches(a.Name)))
+            {
+                AssetKind assetKind = kind switch
+                {
+                    BuiltinAssetKind.Mesh => AssetKind.Model,
+                    BuiltinAssetKind.Texture => AssetKind.Image,
+                    _ => AssetKind.Material,
+                };
+                result.Add(new AssetEntry(asset.Reference, asset.Name, false, assetKind));
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsBuiltinFolder(string path) =>
+        string.Equals(path, BuiltinRoot, StringComparison.OrdinalIgnoreCase)
+        || BuiltinFolders.Any(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase));
+
+    // A built-in texture is drawn straight from its shared instance rather than loaded as a file thumbnail.
+    private static bool TryGetBuiltinTexture(string path, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Texture2D? texture)
+    {
+        texture = null;
+        if (!BuiltinAssets.TryGet(path, out BuiltinAsset asset) || asset.Kind != BuiltinAssetKind.Texture)
+        {
+            return false;
+        }
+
+        try
+        {
+            texture = BuiltinAssets.LoadTexture(asset.Reference);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // The context menu of a built-in asset or folder: no rename, delete or move — just ways to use or copy it.
+    private void DrawBuiltinContextMenu(AssetEntry entry)
+    {
+        if (entry.IsDirectory)
+        {
+            if (ImGui.MenuItem("Open")) _pendingNavigate = entry.FullPath;
+            return;
+        }
+
+        if (ImGui.MenuItem("Show in Inspector", "Enter"))
+        {
+            _context.Selection = null;
+            _context.SelectedAssetPath = entry.FullPath;
+        }
+
+        DrawAddToSceneItem(entry);
+
+        ImGui.Separator();
+        string target = Path.GetRelativePath(Path.GetDirectoryName(_baseDirectory) ?? _baseDirectory, _lastProjectDirectory);
+        if (ImGui.MenuItem($"Copy to Project ({target})", "Ctrl+D"))
+        {
+            CopyBuiltinsInto(_lastProjectDirectory);
+        }
+
+        if (ImGui.MenuItem("Copy", "Ctrl+C"))
+        {
+            _selectedPath = entry.FullPath;
+            CopySelected(cut: false);
+        }
+
+        if (ImGui.MenuItem("Copy Reference"))
+        {
+            ImGui.SetClipboardText(entry.FullPath);
+        }
+    }
+
+    // Saves editable copies of built-in assets (the selection by default) into a project folder.
+    private void CopyBuiltinsInto(string destDir, IReadOnlyList<string>? references = null)
+    {
+        IEnumerable<string> sources = references ?? (_selectedPaths.Count > 0 ? _selectedPaths : new List<string> { _selectedPath ?? "" });
+        foreach (string reference in sources.Where(r => IsBuiltinPath(r) && !IsBuiltinFolder(r)).ToList())
+        {
+            try
+            {
+                string path = BuiltinAssets.Export(reference, destDir);
+                Spot.Framework.Log.Info("Copied built-in '{0}' to {1}.", BuiltinAssets.TryGet(reference, out BuiltinAsset a) ? a.Name : reference, path);
+            }
+            catch (Exception ex)
+            {
+                Spot.Framework.Log.Error("Failed to copy '{0}' into the project: {1}", reference, ex.Message);
+            }
+        }
+
+        ClearThumbnails();
     }
 
     // Cheap "does this folder hold anything" probe for the empty/full folder icon. Enumeration stops at the
@@ -1020,7 +1283,7 @@ public class AssetBrowserPanel
 
         try
         {
-            texture = new Texture2D(path);
+            texture = Texture2D.FromFile(path);
             _thumbnails[path] = texture;
             return true;
         }
@@ -1031,7 +1294,7 @@ public class AssetBrowserPanel
         }
     }
 
-    private bool TryGetMaterialPreview(string path, out Spot.Rendering.Framebuffer fb)
+    private bool TryGetMaterialPreview(string path, out Spot.Framework.Graphics.Framebuffer fb)
     {
         if (_materialPreviews.TryGetValue(path, out fb!))
         {
@@ -1044,9 +1307,9 @@ public class AssetBrowserPanel
 
         try
         {
-            fb = new Spot.Rendering.Framebuffer(128, 128);
-            var material = Spot.Assets.Material.Load(path);
-            Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb);
+            fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
+            var material = Spot.Engine.Assets.Material.Load(path);
+            Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb, transparentBackground: true);
             _materialPreviews[path] = fb;
             return true;
         }
@@ -1056,7 +1319,7 @@ public class AssetBrowserPanel
         }
     }
 
-    private bool TryGetModelPreview(string path, out Spot.Rendering.Framebuffer fb)
+    private bool TryGetModelPreview(string path, out Spot.Framework.Graphics.Framebuffer fb)
     {
         if (_modelPreviews.TryGetValue(path, out fb!))
         {
@@ -1072,22 +1335,22 @@ public class AssetBrowserPanel
         {
             // Non-blocking: returns null until the geometry is parsed and uploaded (pumped elsewhere each
             // frame). Show the glyph until then, and retry next frame.
-            var model = Spot.Assets.ModelImporter.RequestAsync(path);
+            var model = Spot.Framework.Graphics.ModelImporter.RequestAsync(path);
             if (model is null)
             {
                 return false;
             }
 
             _modelPreviewsThisFrame++;
-            fb = new Spot.Rendering.Framebuffer(128, 128);
-            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb);
+            fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
+            Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb, transparentBackground: true);
             _modelPreviews[path] = fb;
             return true;
         }
         catch (Exception e)
         {
             _modelFailed.Add(path);
-            Spot.Core.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
+            Spot.Framework.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
             return false;
         }
     }
@@ -1103,8 +1366,6 @@ public class AssetBrowserPanel
 
         string className = Path.GetFileNameWithoutExtension(name).Replace(" ", "");
         string template = $@"using System;
-using Spot.Core;
-using Spot.Scenes;
 
 namespace Spot.Game;
 
@@ -1139,8 +1400,8 @@ public class {className} : EntityBehaviour
         string filepath = Path.Combine(_currentDirectory, name);
         if (File.Exists(filepath)) return;
         
-        var newScene = new Spot.Scenes.Scene();
-        new Spot.Scenes.SceneSerializer(newScene).Serialize(filepath);
+        var newScene = new Spot.Engine.Scenes.Scene();
+        new Spot.Engine.Scenes.SceneSerializer(newScene).Serialize(filepath);
     }
 
     private void CreateMaterial(string name)
@@ -1151,7 +1412,7 @@ public class {className} : EntityBehaviour
         string filepath = Path.Combine(_currentDirectory, name);
         if (File.Exists(filepath)) return;
 
-        new Spot.Assets.Material().Save(filepath);
+        new Spot.Engine.Assets.Material().Save(filepath);
     }
 
     private void CreateUIDocument(string name)
@@ -1163,17 +1424,17 @@ public class {className} : EntityBehaviour
         if (File.Exists(filepath)) return;
 
         // Seed a minimal document: a single full-screen panel to drop widgets onto.
-        var root = new Spot.UI.UIRoot();
+        var root = new Spot.Engine.UI.UIRoot();
         var panel = root.Panel();
         panel.Name = "Root";
-        panel.Rect = new Spot.UI.UIRect
+        panel.Rect = new Spot.Engine.UI.UIRect
         {
             Anchor = System.Numerics.Vector2.Zero,
             Pivot = System.Numerics.Vector2.Zero,
             Position = System.Numerics.Vector2.Zero,
             Size = new System.Numerics.Vector2(1920f, 1080f),
         };
-        Spot.UI.Serialization.UISerializer.Save(root, filepath);
+        Spot.Engine.UI.UISerializer.Save(root, filepath);
     }
 
     private void CreateAnimatorController(string name)
@@ -1184,8 +1445,8 @@ public class {className} : EntityBehaviour
         string filepath = Path.Combine(_currentDirectory, name);
         if (File.Exists(filepath)) return;
 
-        var controller = new Spot.Animation.AnimatorController();
-        controller.States.Add(new Spot.Animation.AnimatorState { Name = "New State", EditorX = 220.0f, EditorY = 40.0f });
+        var controller = new Spot.Engine.Animation.AnimatorController();
+        controller.States.Add(new Spot.Engine.Animation.AnimatorState { Name = "New State", EditorX = 220.0f, EditorY = 40.0f });
         controller.DefaultState = "New State";
         controller.Save(filepath);
     }
@@ -1194,7 +1455,7 @@ public class {className} : EntityBehaviour
     // current folder and marking the source entity as an instance of the new prefab.
     private void AcceptEntityDropToCreatePrefab()
     {
-        if (!ImGui.BeginDragDropTarget())
+        if (InBuiltin || !ImGui.BeginDragDropTarget())
         {
             return;
         }
@@ -1220,7 +1481,7 @@ public class {className} : EntityBehaviour
             File.WriteAllText(path, Prefab.Serialize(entity));
 
             // Link the source entity to the new prefab so the hierarchy tints it as an instance.
-            string? reference = Spot.Assets.AssetDatabase.ToGuidRef(path);
+            string? reference = Spot.Engine.Assets.AssetDatabase.ToGuidRef(path);
             entity.AddComponent(new PrefabComponent { PrefabRef = reference });
 
             SelectSingle(path);
@@ -1228,7 +1489,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to create prefab: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to create prefab: {0}", ex.Message);
         }
     }
 
@@ -1283,7 +1544,7 @@ public class {className} : EntityBehaviour
                         }
                         catch (Exception ex)
                         {
-                            Spot.Core.Log.Error("Failed to update script class name: {0}", ex.Message);
+                            Spot.Framework.Log.Error("Failed to update script class name: {0}", ex.Message);
                         }
                     }
                 }
@@ -1314,7 +1575,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to rename asset: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to rename asset: {0}", ex.Message);
         }
         ClearThumbnails();
     }
@@ -1394,7 +1655,7 @@ public class {className} : EntityBehaviour
             string dest = Path.Combine(destDir, name);
             if (File.Exists(dest) || Directory.Exists(dest))
             {
-                Spot.Core.Log.Error("Cannot move '{0}': an item with that name already exists in the target folder.", name);
+                Spot.Framework.Log.Error("Cannot move '{0}': an item with that name already exists in the target folder.", name);
                 return;
             }
 
@@ -1409,7 +1670,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to move asset: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to move asset: {0}", ex.Message);
         }
         finally
         {
@@ -1441,7 +1702,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to duplicate asset: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to duplicate asset: {0}", ex.Message);
         }
     }
 
@@ -1449,8 +1710,15 @@ public class {className} : EntityBehaviour
     // copy duplicates as a fresh asset. Names that collide in the target get a unique suffix.
     private void PasteClipboardInto(string destDir)
     {
-        if (string.IsNullOrEmpty(s_clipboardPath)) return;
+        if (string.IsNullOrEmpty(s_clipboardPath) || IsBuiltinPath(destDir)) return;
         string src = s_clipboardPath;
+
+        // A copied built-in pastes as an editable copy (and stays on the clipboard for more).
+        if (IsBuiltinPath(src))
+        {
+            CopyBuiltinsInto(destDir, new List<string> { src });
+            return;
+        }
 
         if (!File.Exists(src) && !Directory.Exists(src))
         {
@@ -1495,7 +1763,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to paste asset: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to paste asset: {0}", ex.Message);
         }
     }
 
@@ -1511,8 +1779,8 @@ public class {className} : EntityBehaviour
         if (File.Exists(src))
         {
             File.Move(src, dest);
-            string meta = Spot.Assets.AssetMeta.MetaPathFor(src);
-            if (File.Exists(meta)) File.Move(meta, Spot.Assets.AssetMeta.MetaPathFor(dest));
+            string meta = Spot.Engine.Assets.AssetMeta.MetaPathFor(src);
+            if (File.Exists(meta)) File.Move(meta, Spot.Engine.Assets.AssetMeta.MetaPathFor(dest));
             return true;
         }
         return false;
@@ -1560,7 +1828,7 @@ public class {className} : EntityBehaviour
         }
         catch (Exception ex)
         {
-            Spot.Core.Log.Error("Failed to delete asset: {0}", ex.Message);
+            Spot.Framework.Log.Error("Failed to delete asset: {0}", ex.Message);
         }
         ClearThumbnails();
     }
@@ -1572,6 +1840,10 @@ public class {className} : EntityBehaviour
             return;
         }
         _currentDirectory = path;
+        if (!IsBuiltinPath(path))
+        {
+            _lastProjectDirectory = path;
+        }
         ClearSelection();
         ClearThumbnails();
     }

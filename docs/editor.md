@@ -14,13 +14,27 @@ looks and plays before shipping it.
 
 Opening the editor first shows a compact **launcher** for picking a project to work on:
 
-- **New Project** — names a project and a location on disk, previews the folder it will create, and
-  scaffolds it (folder, `Assets/`, `.sptproj`, and build files) before opening it.
-- **Open Project** — browses for an existing `.sptproj` file.
-- **Recent Projects** — a searchable list of the projects you've opened before. Each entry shows the
-  project name, its path, when it was **last opened**, and the **engine version** that opened it.
-  Click a card to open it; hover it for quick actions (open the containing folder, or remove it from
-  the list), or right-click for the same menu.
+- **New Project** (`Ctrl+N`) — names a project and a location on disk, previews the folder it will
+  create, and scaffolds it (folder, `Assets/`, `.sptproj`, and build files) before opening it. It
+  won't create into a folder that already has files in it (that would overwrite its project file and
+  start scene); it suggests a free name instead (`MyProject2`, ...). `Enter` creates, `Esc` cancels.
+- **Open Project** (`Ctrl+O`) — browses for an existing `.sptproj` file.
+- **Projects** — the projects you've opened before, as a **grid** of cards or a compact **list**
+  (toggle on the header; the launcher remembers your choice). Each card shows a **thumbnail** of the
+  project, its name, its folder (shortened in the middle, full path in the tooltip), when it was
+  **last opened**, and the **engine version** that last opened it, in amber when it differs from this
+  editor's. Search by name or path (`Ctrl+F`), and sort by last opened or by name.
+
+Click a card to select it and double-click (or press `Enter`) to open it. The `...` button, or a
+right-click, opens its menu: **Open**, **Show in Explorer** (Finder on macOS, the containing folder
+elsewhere), **Copy Path**, and **Remove from List**, which only forgets the entry and leaves the
+files alone. From the keyboard, the arrow keys, `Home` and `End` move the selection, `Delete` removes
+it from the list, `Ctrl+C` copies its path, and `Esc` clears the search, then the selection.
+
+A project's thumbnail is a snapshot of the scene viewport, taken whenever you save the active scene or
+close the editor and stored as `Library/thumbnail.png` inside the project (the `Library` folder holds
+editor-only caches and stays out of version control). Projects without one yet show a placeholder,
+tinted per project so each keeps a recognizable color.
 
 The recent list is stored per-user and drops entries whose files no longer exist, so it stays
 current on its own. Choosing a project shows a loading screen while the editor grows to its working
@@ -36,30 +50,66 @@ The editor is organized into dockable panels you can rearrange and save into a l
   billboards of invisible entities (cameras, lights, sky) are all clickable, and clicking empty space
   clears the selection. With the viewport hovered, `W`/`E`/`R` switch the gizmo between move/rotate/scale
   and `F` frames the selected entity (double-clicking an entity in the hierarchy does the same). Hold
-  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×).
+  `Ctrl` while dragging a gizmo to snap in increments (1 unit / 15° / 0.25×). An infinite grid marks the
+  ground plane (y = 0 in 3D, the XY plane in 2D): its spacing follows the zoom in powers of ten — finer near
+  the camera, coarser in the distance, every tenth line stronger — and its lines through the origin are the
+  world axes in the theme's X/Y/Z colors, with the Y axis rising from the origin in 3D. Geometry in front of
+  the grid hides it, but a surface lying on the ground plane (a floor at y = 0) keeps showing the grid on top,
+  and the grid runs all the way to the camera however low it flies. It is also where the game
+  runs: Play turns the viewport into the game, and `F8` switches between the game camera and the editor
+  camera (see [Edit mode and play mode](#edit-mode-and-play-mode)). A floating toolbar in its top-left
+  corner holds two light, translucent clusters: the transform tools (move `W`, rotate `E`, scale `R`), then
+  the view — a **2D** toggle, **colliders**, **fullbright** and **wireframe** overlay toggles, and the
+  camera settings. Each is a compact icon that lights up in the accent while selected or on and names
+  itself (and its shortcut) in a tooltip; clicking the toolbar never picks or deselects in the scene
+  behind it.
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
   You create, delete, and reparent entities here. Select several at once with `Ctrl`+click (toggle one)
   and `Shift`+click (range), then delete, duplicate, reparent (drag any one of them), or reorder
   (**Move Up**/**Move Down**) the whole selection together. It is also the UI widget tree: clicking the
   **UI Canvas** switches it to the open document's widgets, and clicking a scene viewport switches it back
-  to the scene's entities — automatically, following whichever view you're working in.
+  to the scene's entities — automatically, following whichever view you're working in. Rows are uniform
+  full-width bands, thin guide lines connect each parent to its children, and each entity's icon is tinted
+  by kind (mesh, light, camera, particles, ...); disabled entities are dimmed and prefab instances tinted.
 - **Inspector** — shows the components of the selected entity (or asset) and lets you edit their
   values. The inspector is generated from the components themselves, so custom components appear
-  automatically. Asset reference fields (mesh, material, texture, ...) show a preview tile — an image
+  automatically. Each component is a card with a title strip (click it to fold the card; **⋮** removes the
+  component). Labels sit in a column about a third of the panel wide, so every value lines up; a label too
+  long for it is cut with an ellipsis and shown whole on hover. Vector fields put a colored X/Y/Z cap on
+  each number box — click the cap to reset that axis. Asset reference fields (mesh, material, texture, ...) show a preview tile — an image
   thumbnail, or a live-rendered sphere for materials — and open a searchable, thumbnailed picker when
-  clicked, so you can pick an asset without dragging.
+  clicked, so you can pick an asset without dragging. The picker lists the matching
+  [built-in assets](assets.md#built-in-assets) first, then the project's files; a built-in mesh with custom
+  parameters shows them next to its name (*Capsule (radius 0.3, height 1.7)*). Selecting a built-in asset
+  shows a read-only preview with **Copy to Project** and **Copy Reference** buttons. A Mesh Renderer drawing
+  a built-in shape lists the shape's parameters (size, radius, height, segments, rings) below its model slot:
+  dragging one reshapes the mesh live, releasing it keeps the change as a single undo step, and **Reset
+  Shape** restores the defaults. A 3D collider added to an entity with a mesh starts out fitted to it, and
+  **Fit to Mesh** refits it at any time.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
   The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
-  including the Game panel during play, where it also hands the cursor and input back to the editor
-  (same as `Esc`), so what you type doesn't drive the game as well. Click the Game panel to take
+  including while the game has the controls during play, where it also hands the cursor and input back to
+  the editor (same as `Esc`), so what you type doesn't drive the game as well. Click the game view to take
   control again. The editor owns this window, so the engine does not also draw its floating overlay.
 - **Asset browser** — the content in your project (scenes, models, textures, audio, prefabs), where
   you import and organize assets. Textures show their image, materials render a live sphere preview, and
   3D models render a live thumbnail (a neutral-shaded, auto-framed view of the geometry) so you can tell
-  models apart at a glance without dropping them into a scene. Model thumbnails load in the background and
-  are cached per folder. Select several files at once with `Ctrl`+click and `Shift`+click, then delete or
-  drag the whole selection into a folder together.
+  models apart at a glance without dropping them into a scene. Previews sit directly on the tile, with no
+  backdrop. Model thumbnails load in the background and are cached per folder. Everything else gets a
+  painted icon: files are a paper page with a colored type badge (**C#** for scripts, **UI** for UI
+  documents, a waveform for audio, a state graph for animator controllers, the extension for other files),
+  scenes a small 3D viewport, prefabs a blue cube, and folders show papers when they hold anything. Under
+  each file's name, a colored line and a caption give its type (C# Script, Scene, Texture, Model,
+  Material, ...), so a material sphere and a sphere model are easy to tell apart. Files sit on a soft card;
+  folders have none until hovered or selected. Select several files at once with `Ctrl`+click and `Shift`+click, then delete or
+  drag the whole selection into a folder together. The project root starts with a read-only **Built-in**
+  folder holding the engine's [built-in assets](assets.md#built-in-assets) — meshes, textures and materials —
+  which you drag onto slots, the scene or the hierarchy like any other asset. They can't be renamed, moved
+  or deleted; to customize one, copy it into the project: `Ctrl`+`D` (or **Copy to Project**) saves an
+  editable copy into the last project folder you visited, dragging it onto a project folder saves it there,
+  and `Ctrl`+`C` then `Ctrl`+`V` pastes a copy wherever you like. `Enter` shows the selected built-in in the
+  Inspector.
 - **UI Canvas** — a screen-space surface for authoring a game UI (`.sptui`) document, separate from the
   scene viewport; the shared **Hierarchy** panel shows its widgets while it is focused. See
   [Runtime UI](ui.md#authoring-in-the-editor).
@@ -97,9 +147,24 @@ by the cursor's plain frame-to-frame movement, which is what keeps it smooth —
 instead would discard the motion the mouse made during that frame's update and render, making the camera
 feel both sluggish and jittery.
 
-The **Camera** button in the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on the
-base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both are
-global to the editor and persist with the window layout in `editor_window.json`.
+The gear button at the end of the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on
+the base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both
+are global to the editor and persist with the window layout in `editor_window.json`.
+
+## Look and feel
+
+The default **Spot Dark** theme is built from a few close layers of neutral gray — the menu bar and tab
+strips darkest, then inset regions (console output, asset grid), docked panels, component cards and, on
+top, menus and popups — with one calm blue accent kept for what matters: the selection, focus, and
+anything switched on (the active tool, an enabled overlay, a paused game). Docked panels are separated by
+thin dark seams that light up in the accent when you hover or drag them to resize. The panel that has
+keyboard focus shows an accent line along the top of its tab; the other tabs in a strip recede until
+hovered. Everything that floats over a viewport — the toolbar, the camera readout, hints and drop labels,
+the camera preview — shares the same light, translucent overlay so the scene stays visible around it.
+
+**View → Theme** switches between the built-in themes (Spot Dark, Spot Light, Nord, Cherry, All Black).
+Themes are a semantic palette plus spacing and rounding metrics (`EditorTheme`, `EditorPalette`,
+`EditorStyleMetrics` in `Spot.DebugUI`), so a custom theme only has to fill in meaningful colors.
 
 ## The menu bar
 
@@ -115,12 +180,47 @@ reference material in one place:
 - **Credits** — the open-source libraries Spot is built on, with their licenses, plus the copyright
   and license notice.
 
-## Importing models into a scene
+## Adding assets to a scene
 
-To place a model (FBX, OBJ, glTF, ...) in your scene, **drag it from the asset browser** onto the
-scene view or into the hierarchy — or right-click it and choose **Add to Scene (with materials)**.
-Dropping onto an entity in the hierarchy adds the model as a child of that entity; dropping onto empty
-space or the viewport adds it at the root.
+You never have to create an empty entity and add components by hand to use an asset: **drag it from the
+asset browser** into the scene and the editor builds the finished entity for you.
+
+| Asset | Becomes |
+|-------|---------|
+| Prefab (`.sptprefab`) | the prefab's entity tree, marked as an instance of it |
+| Model (FBX, OBJ, glTF, ...) or built-in mesh | the model's entity hierarchy with its materials applied (see below) |
+| Image (PNG, JPG, ...) or built-in texture | a **Sprite**, scaled to the picture's proportions |
+| Audio clip (WAV, OGG) | an **Audio Source** playing it |
+| UI document (`.sptui`) | a **UI Canvas** showing it |
+
+- **Onto the scene view**, the new entity lands where the cursor points. In 3D that is the first surface
+  under the cursor (a sprite, or the bounds of a mesh you are looking at from outside) or the ground plane
+  (y = 0), whichever is nearer; looking at the sky or at something far away, it lands a short way in front
+  of the camera. In 2D it is the cursor's spot on the z = 0 plane, keeping the asset's own depth. While you
+  drag, a ring marks the landing spot (lying in the ground plane, so its size shows the distance) with a
+  label naming what will be created. Assets dropped on a scene tab go into that scene, which becomes the
+  active one.
+- **Onto the hierarchy**, dropping on an entity adds the new entity as its child; dropping on empty space
+  adds it at the root, at the asset's own position.
+- **Right-click → Add to Scene** in the asset browser does the same as dropping on the hierarchy's empty
+  space.
+
+Dragging a multi-selection adds every asset in it that stands for an entity (other files are skipped).
+The new entities are selected, so `W`/`E`/`R` and `F` act on them straight away, and `Ctrl`+`Z` takes the
+whole drop back.
+
+**Materials** (`.sptmat` or built-in) are applied rather than added: drag one onto a mesh to restyle it.
+
+- **Onto the scene view**, it goes to the mesh under the cursor: that mesh's bounds are outlined while you
+  drag, with a label naming the material and the mesh (or saying there is no mesh there). For an imported
+  model that is the one part you point at, since each part is its own mesh. As with placing, meshes whose
+  bounds contain the camera are passed over, so from inside a room you paint what you point at, not the room.
+- **Onto an entity in the hierarchy**, it goes to that entity's mesh or, for an entity without one (such as
+  a model's root), to every mesh beneath it. Entities with no mesh anywhere below don't take the drop.
+
+Each drop is one undo step, however many meshes it painted.
+
+### Importing models
 
 The import does two things automatically:
 
@@ -187,26 +287,38 @@ The editor has two modes:
   tick in real time. Play starts instantly (no build step) and, when you stop, the scene is restored
   exactly as it was before you pressed Play, so testing never disturbs your work.
 
-The **Game** view shows what the scene's primary camera sees during play. The Scene view stays open
-alongside it, so you can fly around and inspect the live runtime state.
+There is no separate Game panel: **the scene becomes the game**. Pressing Play switches the active
+scene's viewport to the scene's game camera (its primary camera) and marks its tab with a play icon. The
+game gets the controls straight away, so WASD, mouse-look and any cursor lock the game requests work as in
+a standalone build. If the scene has no camera that would render, the viewport says so.
 
-**Game panel input focus.** While in play mode the Game panel only receives keyboard and mouse input
-when it is focused. Click inside the Game view to give it focus (the "Click to control" hint
-disappears). From that point WASD, mouse-look, and any cursor lock the game requests all work as in
-a standalone build. Press `Escape` to release focus and return the cursor to the editor — after that
-you can fly the Scene camera or inspect entities without the game reacting to your input. The game's
-simulation continues in the background regardless of focus.
+**Game camera and editor camera (`F8`).** As in Unreal's *eject*/*possess*, `F8` switches the playing
+viewport between the two cameras:
 
-Three controls sit centered in the menu bar:
+- **Eject** (game camera → editor camera): the game keeps running but stops receiving input, the cursor is
+  freed, and the editor camera starts at the game camera's view. Fly around, click entities, and inspect or
+  tweak them in the Inspector while the simulation runs; the viewport shows an *Editor camera* hint.
+  Anything you change is discarded on Stop, like every play-mode change.
+- **Possess** (editor camera → game camera): the viewport shows the game again and hands it the controls.
+
+`Esc` gives the cursor and input back to the editor without leaving the game camera; the viewport then
+shows *Click to control*, and clicking it hands the controls back to the game. The game's simulation
+continues regardless of who has the controls. Stopping play returns the viewport to the editor camera.
+
+In edit mode `F8` previews the active scene through its game camera, without running anything; press it
+again to return to the editor camera. While a viewport shows the game camera its gizmos, picking and
+editor icons are off, since they work in the editor camera's space.
+
+Four controls sit centered in the menu bar:
 
 | Button | Keyboard | Effect |
 |--------|----------|--------|
 | Play / Stop | — | Enters or exits play mode. On stop the scene is fully restored. |
 | Pause / Resume | `Ctrl`+`P` | Freezes the simulation without discarding state; resume to continue. |
 | Step | `Ctrl`+`Right` | Advances the simulation exactly one frame (only works while paused). |
+| Game / editor camera | `F8` | Switches the viewport between the game camera (gamepad icon, highlighted) and the editor camera. |
 
-While the simulation is running the scene-view gizmos and drag-drop are locked — edits belong in
-edit mode. You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
+You can still save the scene file from play mode (`Ctrl`+`S`), which saves the
 pre-play (authored) version since any runtime changes are ephemeral.
 
 ## Managing projects

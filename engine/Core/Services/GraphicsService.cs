@@ -1,7 +1,9 @@
-using Spot.Rendering;
-using Spot.Scenes;
+using Spot.Engine;
+using Spot.Engine.Rendering;
+using Spot.Engine.Scenes;
+using Spot.Framework.Graphics;
 
-namespace Spot.Core.Services;
+namespace Spot.Engine.Services;
 
 /// <summary>
 /// Initializes rendering systems.
@@ -15,14 +17,11 @@ public class GraphicsService : IEngineService
 {
     public void Init(Application app)
     {
-        var gl = Silk.NET.OpenGL.GL.GetApi(app.Window.NativeWindow);
-        Renderer.Init(gl);
-        Renderer2D.Init();
+        // The window already installed its context as the renderer's device; set up the engine's renderers on it.
         Renderer3D.Init();
         PostProcessingRenderer.Init();
         BloomRenderer.Init();
         ParticleRenderer.Init();
-        UIRenderer.Init();
         Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
         // The desktop scene renderer applies the full HDR/bloom/tone-mapping post pipeline; the browser leaves

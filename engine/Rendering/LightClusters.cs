@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Spot.Framework.Graphics;
 
-namespace Spot.Rendering;
+namespace Spot.Engine.Rendering;
 
 /// <summary>
 /// Builds and uploads the per-frame light cluster grid ("froxels") used by the clustered forward lighting
@@ -194,7 +195,7 @@ internal sealed class LightClusters
                 count = Math.Max(0, MaxIndices - cursor);
                 if (!_overflowLogged)
                 {
-                    Spot.Core.Log.CoreWarn("Light cluster index list overflowed ({0} slots); some lights dropped from distant froxels.", MaxIndices);
+                    Spot.Framework.Log.CoreWarn("Light cluster index list overflowed ({0} slots); some lights dropped from distant froxels.", MaxIndices);
                     _overflowLogged = true;
                 }
             }

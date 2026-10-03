@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Spot.Animation;
-using Spot.Scenes;
+using Spot.Engine.Animation;
+using Spot.Engine.Scenes;
+using Spot.Framework.Animation;
 using Xunit;
 
 namespace Spot.Engine.Tests;

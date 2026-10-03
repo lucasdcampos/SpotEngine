@@ -1,6 +1,7 @@
-using Spot.Audio;
+using Spot.Engine;
+using Spot.Framework.Audio;
 
-namespace Spot.Core.Services;
+namespace Spot.Engine.Services;
 
 /// <summary>
 /// Ties the audio subsystem into the application lifecycle: it installs the desktop OpenAL backend and opens
@@ -10,7 +11,7 @@ namespace Spot.Core.Services;
 /// </summary>
 public class AudioService : IEngineService
 {
-    public void Init(Application app) => AudioManager.Init(new OpenAlAudioBackend());
+    public void Init(Application app) => AudioManager.Init();
 
     public void Update(float deltaTime) => AudioManager.Update(deltaTime);
 
