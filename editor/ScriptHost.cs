@@ -159,7 +159,7 @@ internal sealed class ScriptHost
 
         // Nudge the runtime to actually reclaim the collectible context now that references are dropped, so a
         // rapid rebuild/reload does not accumulate stale assemblies. Unloading takes a few collections to finish.
-        for (int i = 0; i < 8 && _retired.Exists(r => r.IsAlive); i++)
+        for (int i = 0; i < 4 && _retired.Exists(r => r.IsAlive); i++)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();

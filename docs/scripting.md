@@ -163,7 +163,10 @@ The editor loads your project's compiled scripts into a **reloadable** load cont
 component, add a field, or add a whole new component and see it in the running editor without
 restarting. Save your `.cs` file and the editor rebuilds the project and swaps in the new assembly;
 auto-reload is on by default (toggle it under **Project ▸ Auto-Reload Scripts**), or trigger it manually
-with **Project ▸ Reload Scripts** (`Ctrl+R`). Across a reload the editor turns your components back into
+with **Project ▸ Reload Scripts** (`Ctrl+R`). The build runs in the background, so the editor stays usable:
+the right end of the menu bar shows a spinner with the elapsed time while scripts compile, then *Scripts
+reloaded*, or *Script build failed* (click it to open the Console). Pressing **Play** while scripts compile —
+or before they were ever built — starts the game as soon as they're ready. Across a reload the editor turns your components back into
 scene data, unloads the old assembly, and rebuilds them from the new one — so their authored field values
 and entity references carry over, and the inspector immediately reflects new fields and components. A
 build error aborts the swap and leaves the current components in place, and — like everything else — a

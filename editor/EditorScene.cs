@@ -497,44 +497,116 @@ public class EditorScene : Scene
         _scriptWatcher = null;
     }
 
+    // The script build running in the background, if any, with when it started (for the status indicator), and
+    // whether Play was pressed while it ran (or before any scripts were built) and should start once it's done.
+    private System.Threading.Tasks.Task<Spot.Build.BuildResult>? _scriptBuild;
+    private long _scriptBuildStartedAt;
+    private bool _playWhenScriptsReady;
+
+    // The last script build's outcome, shown briefly in the menu bar (a failure stays until the next build).
+    private bool? _scriptBuildSucceeded;
+    private long _scriptBuildFinishedAt;
+
+    // Build output arrives on the build's threads; it is queued and logged from the UI thread.
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(bool IsError, string Line)> _scriptBuildOutput = new();
+
+    private bool ScriptsBuilding => _scriptBuild is not null;
+
     /// <summary>
-    /// Rebuilds the active project and swaps in the freshly compiled script assembly without restarting the
-    /// editor, preserving each component's authored field values and entity references across the reload.
-    /// Only runs in edit mode; a failed build or load logs and leaves the current scripts in place.
+    /// Rebuilds the active project's scripts in the background and, once the build finishes, swaps in the new
+    /// assembly without restarting the editor (see <see cref="CompleteScriptReload"/>), preserving each
+    /// component's authored field values and entity references. The editor stays responsive meanwhile and the
+    /// menu bar shows the progress. Only starts in edit mode; a reload already running absorbs the request
+    /// (an edit made during it marks the scripts out of date again, so auto-reload follows up).
     /// </summary>
     private void ReloadScripts()
     {
         Project? project = Spot.Engine.Project.Active;
-        if (project == null || _state != EditorState.Edit)
+        if (project == null || _state != EditorState.Edit || ScriptsBuilding)
         {
             return;
         }
 
         _scriptsOutOfDate = false;
-        Spot.Framework.Log.Info("Reloading scripts...");
-
-        // 1. Recompile. A failed build leaves the running scripts untouched.
-        var result = Spot.Build.ProjectBuilder.Build(
-            project,
-            Spot.Build.BuildPlatform.Windows,
-            onOutput: LogBuildOutput,
-            onError: msg => Spot.Framework.Log.Error($"[Build] {msg}"),
-            fastDebug: true);
-
-        if (!result.Success)
+        _scriptBuildSucceeded = null;
+        _scriptBuildStartedAt = System.Environment.TickCount64;
+        _scriptBuild = System.Threading.Tasks.Task.Run(() =>
         {
-            Spot.Framework.Log.Error("Script reload aborted: build failed.");
+            try
+            {
+                return Spot.Build.ProjectBuilder.Build(
+                    project,
+                    Spot.Build.BuildPlatform.Windows,
+                    onOutput: line => _scriptBuildOutput.Enqueue((false, line)),
+                    onError: line => _scriptBuildOutput.Enqueue((true, line)),
+                    fastDebug: true);
+            }
+            catch (System.Exception ex)
+            {
+                _scriptBuildOutput.Enqueue((true, "Script build threw: " + ex.Message));
+                return new Spot.Build.BuildResult(false, -1, string.Empty);
+            }
+        });
+    }
+
+    // Called every frame on the UI thread: relays the build's output to the console and, once the build has
+    // finished, completes the reload (or reports the failure) and starts a Play that was waiting for it.
+    private void PollScriptBuild()
+    {
+        while (_scriptBuildOutput.TryDequeue(out var output))
+        {
+            if (output.IsError)
+                Spot.Framework.Log.Error("[Build] {0}", output.Line);
+            else
+                LogBuildOutput(output.Line);
+        }
+
+        if (_scriptBuild is not { IsCompleted: true } build)
+        {
             return;
         }
 
-        // 2. Turn every component from the old assembly back into scene data (MissingComponents), so nothing in
+        _scriptBuild = null;
+        _scriptBuildFinishedAt = System.Environment.TickCount64;
+        Project? project = Spot.Engine.Project.Active;
+        bool built = build.Result.Success && project != null;
+        _scriptBuildSucceeded = built && CompleteScriptReload(project!);
+        if (!built)
+        {
+            Spot.Framework.Log.Error("Script reload aborted: build failed.");
+        }
+
+        bool play = _playWhenScriptsReady;
+        _playWhenScriptsReady = false;
+        if (play && _state == EditorState.Edit)
+        {
+            OnPlay();
+        }
+    }
+
+    /// <summary>
+    /// The UI-thread half of a script reload, run once the build succeeded: swaps in the freshly compiled
+    /// assembly. A failed load logs and leaves the components unresolved (their data is kept).
+    /// </summary>
+    /// <returns><see langword="true"/> if the new scripts are loaded.</returns>
+    private bool CompleteScriptReload(Project project)
+    {
+        // Play was entered while the build ran: swapping types under a running game is not safe. Leave the old
+        // scripts in place and mark them out of date, so the reload happens once play stops.
+        if (_state != EditorState.Edit)
+        {
+            _scriptsOutOfDate = true;
+            return true;
+        }
+
+        // 1. Turn every component from the old assembly back into scene data (MissingComponents), so nothing in
         //    the open scenes keeps the old load context alive and it can be collected.
         foreach (OpenSceneData sceneData in _openScenes)
         {
             SceneSerializer.UnresolveUserComponents(sceneData.Scene, type => type.Assembly.IsCollectible);
         }
 
-        // 3. Swap the assembly, first forgetting the reflection caches that still reference the old types.
+        // 2. Swap the assembly, first forgetting the reflection caches that still reference the old types.
         ComponentSerialization.ClearTypeCaches();
         Spot.DebugUI.UI.ComponentScripts.ForgetLoadedTypes();
         s_scriptHost.Unload();
@@ -542,16 +614,17 @@ public class EditorScene : Scene
         if (dll == null || !s_scriptHost.Load(dll))
         {
             Spot.Framework.Log.Error("Script reload failed to load the rebuilt assembly; scripts are now unresolved.");
-            return;
+            return false;
         }
 
-        // 4. Rebuild the components from the new assembly, fields and entity references included.
+        // 3. Rebuild the components from the new assembly, fields and entity references included.
         foreach (OpenSceneData sceneData in _openScenes)
         {
             SceneSerializer.ResolveMissingComponents(sceneData.Scene);
         }
 
         Spot.Framework.Log.Info("Scripts reloaded.");
+        return true;
     }
 
     private void LoadStartScene()
@@ -726,6 +799,8 @@ public class EditorScene : Scene
 
     public override void OnUpdate(float deltaTime)
     {
+        PollScriptBuild();
+
         // Opening a project mid-play replaces every scene tab, the playing one included (and a closed tab
         // takes its scene with it). Leave play mode rather than keep a scene running that is no longer open.
         if (_state != EditorState.Edit && (_playSceneData == null || !_openScenes.Contains(_playSceneData)))
@@ -1930,12 +2005,14 @@ public class EditorScene : Scene
     {
         if (_state != EditorState.Edit || Project.Active == null || _activeSceneData == null) return;
 
-        // If no game assembly is loaded yet (first Play after a clean checkout, or the project has
-        // never been built), compile it now so scripts actually run. This is synchronous and blocks
-        // the UI for a normal incremental build (~1-3 s); subsequent plays use the cached DLL.
-        if (s_scriptHost.Assembly == null)
+        // Scripts are compiling (or were never built — the first Play after a clean checkout): build them in the
+        // background and start playing as soon as they're loaded, rather than freezing the editor or running the
+        // game without its components. The menu bar shows the wait.
+        if (ScriptsBuilding || s_scriptHost.Assembly == null)
         {
-            EnsureScriptsBuilt(Project.Active);
+            _playWhenScriptsReady = true;
+            ReloadScripts();
+            return;
         }
 
         // Drop any in-flight edit rather than recording it: play mode is about to replace this state.
@@ -1992,38 +2069,6 @@ public class EditorScene : Scene
         _state = EditorState.Edit;
     }
 
-    // Compiles the project scripts (dotnet build → bin/) and loads the resulting assembly so that
-    // ScriptResolver can instantiate game types. Called once on first Play when no assembly is loaded.
-    private void EnsureScriptsBuilt(Project project)
-    {
-        Spot.Framework.Log.Info("Building project scripts for play mode...");
-
-        if (!BuildScriptsDll(project))
-        {
-            Spot.Framework.Log.Error("Script build failed; game scripts will not run. See the console for build errors.");
-            return;
-        }
-
-        string? dll = FindProjectAssembly(project);
-        if (dll == null)
-        {
-            Spot.Framework.Log.Error("Script build succeeded but the output DLL was not found under bin/. Cannot load scripts.");
-            return;
-        }
-
-        if (!s_scriptHost.Load(dll))
-        {
-            Spot.Framework.Log.Error("Failed to load project scripts from '{0}'.", dll);
-            return;
-        }
-
-        // Resolve every component that was waiting for its type: the assembly is now available.
-        foreach (var sceneData in _openScenes)
-        {
-            SceneSerializer.ResolveMissingComponents(sceneData.Scene);
-        }
-    }
-
     // Matches msbuild's trailing "    0 Warning(s)" / "    1 Error(s)" count lines, which carry the words
     // "warning"/"error" without being diagnostics themselves.
     private static readonly System.Text.RegularExpressions.Regex s_buildSummaryLine = new(
@@ -2045,62 +2090,6 @@ public class EditorScene : Scene
         if (diagnostic)
         {
             Spot.Framework.Log.Info("[Build] {0}", line);
-        }
-    }
-
-    // Runs `dotnet build` on the project's .csproj so scripts compile into bin/. Returns true on
-    // success. Synchronous — the caller's frame loop freezes for the duration of the build.
-    private static bool BuildScriptsDll(Project project)
-    {
-        if (string.IsNullOrEmpty(project.ProjectDirectory))
-        {
-            return false;
-        }
-
-        // Keep EngineBin in sync with the running engine so scripts compile against the current API.
-        Spot.Build.ProjectGenerator.Generate(project);
-
-        string csprojFile = project.Config.Name + ".csproj";
-        var processInfo = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"build \"{csprojFile}\" -c Debug --nologo",
-            WorkingDirectory = project.ProjectDirectory,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-
-        try
-        {
-            using var process = new System.Diagnostics.Process { StartInfo = processInfo };
-            process.OutputDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                    LogBuildOutput(e.Data);
-            };
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                    Spot.Framework.Log.Error("[Build] {0}", e.Data);
-            };
-
-            if (!process.Start())
-            {
-                Spot.Framework.Log.Error("Failed to start dotnet build process.");
-                return false;
-            }
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-            process.WaitForExit();
-            return process.ExitCode == 0;
-        }
-        catch (System.Exception ex)
-        {
-            Spot.Framework.Log.Error("Script build threw an exception: {0}", ex.Message);
-            return false;
         }
     }
 
@@ -2307,12 +2296,117 @@ public class EditorScene : Scene
         }
 
         DrawPlayControl();
+        DrawScriptStatus();
 
         ImGui.EndMainMenuBar();
         ImGui.PopStyleVar(2);
     }
 
 
+
+    // How long "Scripts reloaded" stays in the menu bar after a successful reload.
+    private const long ScriptStatusLingerMs = 3000;
+
+    // The script status at the right end of the menu bar, so a reload never looks like a frozen editor: a
+    // spinner with the elapsed time while scripts compile (and a note when Play is waiting for them), a short
+    // "reloaded" confirmation, a failure that stays until the next build and opens the console when clicked,
+    // and — with auto-reload off — a reminder that edited scripts are waiting for Ctrl+R.
+    private void DrawScriptStatus()
+    {
+        var palette = EditorThemeManager.Current.Palette;
+        long now = System.Environment.TickCount64;
+
+        string glyph;
+        string label;
+        Vector4 color;
+        string tooltip;
+        bool spinner = false;
+        System.Action? onClick = null;
+
+        if (ScriptsBuilding)
+        {
+            spinner = true;
+            glyph = string.Empty;
+            long seconds = (now - _scriptBuildStartedAt) / 1000;
+            label = _playWhenScriptsReady
+                ? $"Compiling scripts... {seconds}s  (Play starts when ready)"
+                : $"Compiling scripts... {seconds}s";
+            color = palette.Text;
+            tooltip = "The project's scripts are being rebuilt. The editor stays usable meanwhile; components update when it finishes.";
+        }
+        else if (_scriptBuildSucceeded == false)
+        {
+            glyph = EditorIcons.Warning;
+            label = "Script build failed";
+            color = palette.LogError;
+            tooltip = "The scripts didn't compile; the previous ones are still in use. Click to open the Console.";
+            onClick = () => _focusConsoleRequested = true;
+        }
+        else if (_scriptBuildSucceeded == true && now - _scriptBuildFinishedAt < ScriptStatusLingerMs)
+        {
+            glyph = EditorIcons.Check;
+            label = "Scripts reloaded";
+            color = new Vector4(0.42f, 0.80f, 0.50f, 1.0f);
+            tooltip = "The rebuilt scripts are loaded.";
+        }
+        else if (_scriptsOutOfDate && !_autoReloadScripts && _state == EditorState.Edit)
+        {
+            glyph = EditorIcons.Rotate;
+            label = "Scripts changed  (Ctrl+R)";
+            color = palette.TextDisabled;
+            tooltip = "Scripts were edited. Click (or press Ctrl+R) to rebuild and reload them.";
+            onClick = ReloadScripts;
+        }
+        else
+        {
+            return;
+        }
+
+        const float iconWidth = 18.0f;
+        const float rightMargin = 16.0f;
+        float textWidth = ImGui.CalcTextSize(label).X;
+        float width = iconWidth + 6.0f + textWidth;
+        float x = ImGui.GetWindowWidth() - width - rightMargin;
+        if (x < ImGui.GetCursorPosX() + 8.0f)
+        {
+            return; // no room beside the menus and the play controls
+        }
+
+        ImGui.SameLine(x);
+        float barHeight = ImGui.GetFrameHeight();
+        Vector2 origin = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton("##scriptStatus", new Vector2(width, barHeight));
+        bool hovered = ImGui.IsItemHovered();
+        if (hovered)
+        {
+            ImGui.SetTooltip(tooltip);
+            if (onClick is not null) ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+        }
+
+        if (onClick is not null && ImGui.IsItemClicked(ImGuiMouseButton.Left))
+        {
+            onClick();
+        }
+
+        var drawList = ImGui.GetWindowDrawList();
+        float textY = origin.Y + (barHeight - ImGui.GetTextLineHeight()) * 0.5f;
+        Vector2 iconCenter = new(origin.X + iconWidth * 0.5f, origin.Y + barHeight * 0.5f);
+        if (spinner)
+        {
+            // A three-quarter arc turning about once a second, in the accent color.
+            float start = (float)(now % 1000) / 1000.0f * MathF.Tau;
+            drawList.PathArcTo(iconCenter, 6.0f, start, start + MathF.PI * 1.5f, 24);
+            drawList.PathStroke(ImGui.GetColorU32(palette.Accent), ImDrawFlags.None, 2.0f);
+        }
+        else
+        {
+            Vector2 glyphSize = ImGui.CalcTextSize(glyph);
+            drawList.AddText(iconCenter - glyphSize * 0.5f, ImGui.GetColorU32(color), glyph);
+        }
+
+        Vector4 labelColor = hovered && onClick is not null ? palette.Text : color;
+        drawList.AddText(new Vector2(origin.X + iconWidth + 6.0f, textY), ImGui.GetColorU32(labelColor), label);
+    }
 
     // Draws the centered play / pause / step / camera controls inside the main menu bar. The three transport
     // buttons share one subtle capsule and the camera switch sits beside it. Buttons follow the viewport
@@ -2376,7 +2470,7 @@ public class EditorScene : Scene
             uint col = ImGui.GetColorU32(new Vector4(0.42f, 0.80f, 0.50f, 1.0f));
             drawList.AddTriangleFilled(p0 + new Vector2(pad + 1, pad), p0 + new Vector2(pad + 1, size - pad), p0 + new Vector2(size - pad + 1, size * 0.5f), col);
             if (c0) OnPlay();
-            if (h0) ImGui.SetTooltip("Play");
+            if (h0) ImGui.SetTooltip(ScriptsBuilding ? "Play (starts once the scripts finish compiling)" : "Play");
         }
         else
         {
