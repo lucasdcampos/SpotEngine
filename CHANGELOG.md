@@ -111,6 +111,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- The editor could close without any message (a native heap corruption) about a minute after the Inspector showed two asset slots in one card, such as a Mesh Renderer's Mesh and Material or a material's Texture and Normal Map: each asset slot popped one ImGui ID too many
 - A 3D character inside a trigger volume was considered grounded (its ground probe hit the trigger), so it braked in mid-air and could jump again from it
 - UI clip rectangles were applied as pixels in a scaled UI (any scale-with-height layout off its reference height) and ignored the viewport's origin, clipping the wrong area
 - After stopping play in the editor, the game's UI (and any render pass a script left registered) kept drawing over the edit-mode viewport, and the next play stacked a second copy of its UI document; stopping now clears the scene's runtime UI and render passes

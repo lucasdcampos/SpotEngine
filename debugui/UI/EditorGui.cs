@@ -743,8 +743,10 @@ public static class EditorGui
 
         DrawAssetPicker(popupName, searchPatterns, currentPath, ref outPath, ref changed, drawCustomItems, builtins);
 
+        // EndLabel pops the ID pushed above. Never pop again here: with ImGui's asserts compiled out, an extra
+        // PopID drives the window's ID stack negative, the next PushID writes in front of its heap buffer, and
+        // the process dies with STATUS_HEAP_CORRUPTION once ImGui frees it (~60 s after the window goes idle).
         EndLabel();
-        ImGui.PopID();
 
         return changed;
     }

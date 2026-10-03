@@ -166,6 +166,12 @@ the camera preview — shares the same light, translucent overlay so the scene s
 Themes are a semantic palette plus spacing and rounding metrics (`EditorTheme`, `EditorPalette`,
 `EditorStyleMetrics` in `Spot.DebugUI`), so a custom theme only has to fill in meaningful colors.
 
+When writing a panel, build its rows with the `EditorGui` helpers and keep every ImGui push/pop pair
+(`PushID`/`PopID`, `TreeNode`/`TreePop`, `Begin`/`End`) balanced on every path. The native ImGui library
+ships with its asserts compiled out, so a mismatch is not reported: one extra `PopID` corrupts memory and
+the editor closes a minute later, with no message. `EditorGuiIdStackTests` checks that each row helper
+leaves the ID stack as it found it.
+
 ## The menu bar
 
 Along the top, the menu bar groups project, edit, view, and help actions, with the play/stop control
