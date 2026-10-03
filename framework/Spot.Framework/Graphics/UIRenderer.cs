@@ -192,7 +192,10 @@ public static class UIRenderer
     /// Restricts subsequent drawing to the intersection of <paramref name="rect"/> and any clip already on
     /// the stack. Must be paired with <see cref="PopClip"/>.
     /// </summary>
-    /// <param name="rect">The clip rectangle as <c>(x, y, width, height)</c> in top-left pixel coordinates.</param>
+    /// <param name="rect">
+    /// The clip rectangle as <c>(x, y, width, height)</c>, top-left, in the units of the pass (the size given to
+    /// <see cref="Begin"/>); it is mapped onto the bound viewport, so a scaled UI clips where it draws.
+    /// </param>
     public static void PushClip(Vector4 rect)
     {
         Vector4 clip = s_clipStack.Count > 0 ? Intersect(s_clipStack[^1], rect) : rect;
@@ -373,11 +376,16 @@ public static class UIRenderer
 
         Renderer.Device.SetCapability(GraphicsCapability.ScissorTest, true);
 
-        int x = (int)MathF.Round(clip.X);
-        int w = (int)MathF.Round(clip.Z);
-        int h = (int)MathF.Round(clip.W);
+        // The pass is laid out in its own units (a scaled UI covers the viewport with a reference size), but the
+        // scissor is in framebuffer pixels: scale to the bound viewport and offset by its origin. With no viewport
+        // tracked yet, units are taken as pixels.
+        float sx = Renderer.ViewportWidth > 0 && s_screenWidth > 0f ? Renderer.ViewportWidth / s_screenWidth : 1f;
+        float sy = Renderer.ViewportHeight > 0 && s_screenHeight > 0f ? Renderer.ViewportHeight / s_screenHeight : 1f;
+        int x = Renderer.ViewportX + (int)MathF.Round(clip.X * sx);
+        int w = (int)MathF.Round(clip.Z * sx);
+        int h = (int)MathF.Round(clip.W * sy);
         // GL scissor is measured from the bottom-left; our clip is top-left.
-        int y = (int)MathF.Round(s_screenHeight - (clip.Y + clip.W));
+        int y = Renderer.ViewportY + (int)MathF.Round((s_screenHeight - (clip.Y + clip.W)) * sy);
 
         Renderer.Device.SetScissor(x, y, (uint)Math.Max(0, w), (uint)Math.Max(0, h));
     }

@@ -98,6 +98,25 @@ public class UIRendererTests
     }
 
     [Fact]
+    public void Clip_ScalesUnitsToTheViewportAndOffsetsByItsOrigin()
+    {
+        RecordingGraphicsDevice device = Install();
+
+        // A UI laid out at 200 x 100 units, shown in a 400 x 200 pixel viewport that starts at (100, 50): a scaled
+        // UI in an editor's play viewport.
+        Renderer.SetViewport(100, 50, 400, 200);
+        UIRenderer.Begin(200, 100);
+        UIRenderer.PushClip(new Vector4(10, 20, 100, 50));
+
+        // x: 100 + 10 * 2; y: 50 + (100 - 70) * 2; size doubled.
+        Assert.Equal((120, 110, 200u, 100u), device.Scissor);
+
+        UIRenderer.PopClip();
+        UIRenderer.End();
+        Renderer.SetViewport(0, 0, 0, 0);
+    }
+
+    [Fact]
     public void DrawText_EmitsOneQuadPerVisibleGlyphAndMeasuresConsistently()
     {
         RecordingGraphicsDevice device = Install();
