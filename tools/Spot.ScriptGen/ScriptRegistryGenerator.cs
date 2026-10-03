@@ -23,7 +23,8 @@ namespace Spot.ScriptGen;
 [Generator]
 public sealed class ScriptRegistryGenerator : IIncrementalGenerator
 {
-    private const string BaseTypeFullName = "Spot.Engine.Scenes.EntityBehaviour";
+    private const string ComponentTypeFullName = "Spot.Engine.Scenes.Component";
+    private const string LegacyBaseTypeFullName = "Spot.Engine.Scenes.EntityBehaviour";
 
     private readonly record struct ScriptInfo(string FullName, string SimpleName, string FilePath);
 
@@ -60,7 +61,7 @@ public sealed class ScriptRegistryGenerator : IIncrementalGenerator
             return null;
         }
 
-        if (!DerivesFromEntityBehaviour(symbol))
+        if (!DerivesFromScriptBase(symbol))
         {
             return null;
         }
@@ -78,11 +79,12 @@ public sealed class ScriptRegistryGenerator : IIncrementalGenerator
         return new ScriptInfo(fullName, symbol.Name, decl.SyntaxTree.FilePath);
     }
 
-    private static bool DerivesFromEntityBehaviour(INamedTypeSymbol symbol)
+    private static bool DerivesFromScriptBase(INamedTypeSymbol symbol)
     {
         for (INamedTypeSymbol? t = symbol.BaseType; t is not null; t = t.BaseType)
         {
-            if (t.ToDisplayString() == BaseTypeFullName)
+            string name = t.ToDisplayString();
+            if (name == ComponentTypeFullName || name == LegacyBaseTypeFullName)
             {
                 return true;
             }

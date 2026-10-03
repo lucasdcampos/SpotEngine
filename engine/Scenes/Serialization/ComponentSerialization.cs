@@ -354,6 +354,9 @@ internal static class ComponentSerialization
             if (!IsSupported(prop.PropertyType)) continue;
             if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
 
+            // The base Component's state (Enabled) is written beside the fields, not among them.
+            if (prop.DeclaringType == typeof(Component)) continue;
+
             members.Add(new ScriptMember(prop.Name, prop.PropertyType, o => prop.GetValue(o), (o, v) => prop.SetValue(o, v)));
         }
 

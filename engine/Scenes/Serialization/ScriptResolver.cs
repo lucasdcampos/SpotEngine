@@ -67,7 +67,7 @@ internal static class ScriptResolver
                 continue;
             }
 
-            Type? match = types.FirstOrDefault(t => t.Name == name && t.IsSubclassOf(typeof(EntityBehaviour)));
+            Type? match = types.FirstOrDefault(t => t.Name == name && IsScriptType(t));
             if (match != null)
             {
                 return match;
@@ -107,7 +107,7 @@ internal static class ScriptResolver
         }
 
         Type? type = Resolve(className);
-        if (type == null)
+        if (type == null || !type.IsSubclassOf(typeof(EntityBehaviour)))
         {
             // In an authoring host (the editor) the script lives in the game assembly and simply isn't loaded
             // here — an expected, non-fault condition the inspector already surfaces visually, so stay silent.
@@ -137,7 +137,11 @@ internal static class ScriptResolver
     {
         try
         {
-            EntityBehaviour instance = descriptor.Factory();
+            if (descriptor.Factory() is not EntityBehaviour instance)
+            {
+                return null;
+            }
+
             instance.Entity = entity;
             return instance;
         }
@@ -147,6 +151,48 @@ internal static class ScriptResolver
             return null;
         }
     }
+
+    /// <summary>
+    /// Creates the user <see cref="Component"/> a reference names, preferring the stable
+    /// <paramref name="guid"/> and falling back to <paramref name="className"/>. Returns
+    /// <see langword="null"/> (logging unless <see cref="QuietMissingScripts"/>) when the type cannot be found,
+    /// is not a component, or its constructor throws.
+    /// </summary>
+    public static Component? CreateComponent(string? guid, string className)
+    {
+        try
+        {
+            if (ScriptRegistry.TryGetByGuid(guid, out ScriptDescriptor? descriptor)
+                || ScriptRegistry.TryGetByName(StripCsSuffix(className), out descriptor))
+            {
+                return descriptor!.Factory() as Component;
+            }
+
+            Type? type = Resolve(className);
+            if (type is not null && typeof(Component).IsAssignableFrom(type))
+            {
+                return (Component)Activator.CreateInstance(type)!;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to instantiate component '{0}': {1}", className, ex.Message);
+            return null;
+        }
+
+        if (!QuietMissingScripts)
+        {
+            Log.CoreWarn("Failed to load component '{0}'. Type not found.", className);
+        }
+
+        return null;
+    }
+
+    // A concrete legacy script or user component: the kinds of type a script reference can name.
+    private static bool IsScriptType(Type type) =>
+        !type.IsAbstract
+        && (type.IsSubclassOf(typeof(EntityBehaviour))
+            || (type.IsSubclassOf(typeof(Component)) && Component.IsUserType(type)));
 
     private static string StripCsSuffix(string className) =>
         className.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ? className[..^3] : className;

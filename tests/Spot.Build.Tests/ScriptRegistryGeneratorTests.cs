@@ -116,4 +116,23 @@ public class ScriptRegistryGeneratorTests
         Assert.DoesNotContain("BaseThing", generated);
         Assert.DoesNotContain("PlainClass", generated);
     }
+
+    [Fact]
+    public void Generates_DescriptorsForUserComponents_IncludingThroughAbstractBases()
+    {
+        const string scriptPath = "C:/proj/Assets/Scripts/PlayerMovement.cs";
+        const string source = """
+            using Spot.Engine.Scenes;
+            public abstract class Unit : Component { }
+            public class PlayerMovement : Component { }
+            public class Soldier : Unit { }
+            """;
+        var meta = new InMemoryAdditionalText(scriptPath + ".meta", "{ \"guid\": \"player-movement-guid\" }");
+
+        string generated = RunGenerator(source, scriptPath, meta);
+
+        Assert.Contains("ScriptDescriptor(\"player-movement-guid\", \"PlayerMovement\"", generated);
+        Assert.Contains("global::Soldier", generated);
+        Assert.DoesNotContain("global::Unit", generated);
+    }
 }

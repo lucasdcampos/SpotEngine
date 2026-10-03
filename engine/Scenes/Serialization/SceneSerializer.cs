@@ -12,10 +12,11 @@ namespace Spot.Engine.Scenes;
 /// Reads and writes a <see cref="Scene"/> as <c>.sptscene</c> JSON. Component data is handled entirely
 /// by reflection through <see cref="ComponentSerialization"/> — every component tagged with
 /// <see cref="SceneComponentAttribute"/> is written and read automatically, so adding a serializable
-/// component needs no changes here. Only the two structural pieces are handled explicitly: the
-/// <see cref="LabelComponent"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>)
-/// and the <see cref="ScriptComponent"/> (its scripts are resolved by class name and instantiated at
-/// load). The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
+/// component needs no changes here. The structural pieces are handled explicitly: the
+/// <see cref="LabelComponent"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>),
+/// the user components (written in order under <c>"Components"</c> by guid and class name with their public
+/// fields, and resolved and instantiated at load — an unresolvable one is kept verbatim in
+/// <see cref="MissingComponents"/>), and the legacy <see cref="ScriptComponent"/>. The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
 /// component keys, and missing assets — logging and continuing rather than throwing.
 /// </summary>
 public class SceneSerializer
@@ -93,6 +94,14 @@ public class SceneSerializer
             }
         }
 
+        // User components are written in the entity's order, followed by any that could not be resolved
+        // (kept verbatim so a missing script never loses its data).
+        JsonArray userComponents = WriteUserComponents(entity);
+        if (userComponents.Count > 0)
+        {
+            obj["Components"] = userComponents;
+        }
+
         // Scripts are special: only the class names are stored (runtime instances are rebuilt on load).
         if (entity.TryGetComponent(out ScriptComponent? scripts))
         {
@@ -111,6 +120,44 @@ public class SceneSerializer
         }
 
         return obj;
+    }
+
+    private static JsonArray WriteUserComponents(Entity entity)
+    {
+        var items = new JsonArray();
+        foreach (Component component in entity.Components)
+        {
+            if (!component.IsUserComponent)
+            {
+                continue;
+            }
+
+            Type type = component.GetType();
+            var entry = new JsonObject { ["Type"] = type.Name };
+            if (ScriptRegistry.TryGetByType(type, out ScriptDescriptor? descriptor) && !string.IsNullOrEmpty(descriptor!.Guid))
+            {
+                entry["Guid"] = descriptor.Guid;
+            }
+
+            entry["Enabled"] = component.Enabled;
+            JsonObject fields = ComponentSerialization.SerializeMembers(component);
+            if (fields.Count > 0)
+            {
+                entry["Fields"] = fields;
+            }
+
+            items.Add(entry);
+        }
+
+        if (entity.TryGetComponent(out MissingComponents? missing))
+        {
+            foreach (MissingComponent item in missing.Items)
+            {
+                items.Add(item.Data.DeepClone());
+            }
+        }
+
+        return items;
     }
 
     private static JsonObject SerializeScripts(ScriptComponent scripts)
@@ -278,6 +325,12 @@ public class SceneSerializer
 
         foreach (var (key, node) in entityObj)
         {
+            if (key == "Components" && node is JsonArray userComponents)
+            {
+                ReadUserComponents(entity, userComponents, refs);
+                continue;
+            }
+
             if (key is "Tag" or "Children" || node is not JsonObject componentObj)
             {
                 continue;
@@ -355,6 +408,100 @@ public class SceneSerializer
                 }
             }
         }
+    }
+
+    private static void ReadUserComponents(Entity entity, JsonArray items, SceneReferences refs)
+    {
+        foreach (JsonNode? node in items)
+        {
+            if (node is not JsonObject entry)
+            {
+                continue;
+            }
+
+            if (!TryCreateUserComponent(entity, entry, refs))
+            {
+                if (!entity.TryGetComponent(out MissingComponents? missing))
+                {
+                    missing = entity.AddComponent(new MissingComponents());
+                }
+
+                missing.Items.Add(new MissingComponent((JsonObject)entry.DeepClone()));
+            }
+        }
+    }
+
+    // Instantiates the user component an entry names, restores its enabled state and fields, and attaches it.
+    // Returns false (attaching nothing) when the type cannot be resolved or construction fails.
+    private static bool TryCreateUserComponent(Entity entity, JsonObject entry, SceneReferences refs)
+    {
+        string className = ReadString(entry, "Type");
+        string guid = ReadString(entry, "Guid");
+        Component? component = ScriptResolver.CreateComponent(guid, className);
+        if (component is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (entry["Enabled"] is JsonValue enabled && enabled.TryGetValue(out bool isEnabled))
+            {
+                component.Enabled = isEnabled;
+            }
+
+            if (entry["Fields"] is JsonObject fields)
+            {
+                ComponentSerialization.ApplyMembers(component, fields, refs);
+            }
+
+            entity.AddComponent(component);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.CoreError("Failed to load component '{0}': {1}", className, ex.Message);
+            return false;
+        }
+    }
+
+    private static string ReadString(JsonObject obj, string key) =>
+        obj[key] is JsonValue value && value.TryGetValue(out string? text) ? text : string.Empty;
+
+    /// <summary>
+    /// Retries every entry in the scene's <see cref="MissingComponents"/> — for example once the editor has
+    /// loaded the game's scripts — attaching each one whose type now resolves (with its fields and entity
+    /// references restored) and keeping the rest. An entity left with no missing entries loses the holder.
+    /// </summary>
+    /// <param name="scene">The scene to resolve.</param>
+    /// <returns>The number of components resolved.</returns>
+    internal static int ResolveMissingComponents(Scene scene)
+    {
+        IReadOnlyList<Entity> holders = scene.View<MissingComponents>();
+        if (holders.Count == 0)
+        {
+            return 0;
+        }
+
+        var refs = new SceneReferences();
+        foreach (Entity entity in scene.View<LabelComponent>())
+        {
+            refs.Register(entity.EnsurePersistentId(), entity);
+        }
+
+        int resolved = 0;
+        foreach (Entity entity in holders)
+        {
+            MissingComponents missing = entity.GetComponent<MissingComponents>();
+            resolved += missing.Items.RemoveAll(item => TryCreateUserComponent(entity, item.Data, refs));
+            if (missing.Items.Count == 0)
+            {
+                entity.RemoveComponent<MissingComponents>();
+            }
+        }
+
+        refs.ResolveDeferred();
+        return resolved;
     }
 
     private static void AddScript(
