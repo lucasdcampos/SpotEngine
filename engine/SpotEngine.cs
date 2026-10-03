@@ -15,7 +15,7 @@ public static class SpotEngine
     /// Gets the current engine version.
     /// </summary>
     /// <returns>The engine version string.</returns>
-    public static string GetVersion() => "0.4.0";
+    public static string GetVersion() => "0.5.0";
 
 #if !BROWSER
     /// <summary>
