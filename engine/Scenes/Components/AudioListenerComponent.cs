@@ -5,7 +5,7 @@ namespace Spot.Engine.Scenes;
 /// relative to it. Typically added to the camera. If several are present, <c>AudioSystem</c> uses the first
 /// active one. The listener faces its local +Z, matching the engine's directional convention.
 /// </summary>
-[ComponentMenu("Audio Listener", Order = 61)]
+[ComponentMenu("Audio Listener", Order = 61, Category = "Audio")]
 [SceneComponent("AudioListener")]
 public sealed class AudioListenerComponent : Component
 {

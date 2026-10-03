@@ -10,7 +10,7 @@ namespace Spot.Engine.Scenes;
 /// play-mode frame to honor <see cref="PlayOnAwake"/> and to keep a spatial voice positioned at the
 /// entity's transform.
 /// </summary>
-[ComponentMenu("Audio Source", Order = 60)]
+[ComponentMenu("Audio Source", Order = 60, Category = "Audio")]
 [SceneComponent("AudioSource")]
 public sealed class AudioSourceComponent : Component
 {

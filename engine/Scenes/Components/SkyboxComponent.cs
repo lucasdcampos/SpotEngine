@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Spot.Engine.Scenes;
 
-[ComponentMenu("Skybox", Order = 95)]
+[ComponentMenu("Skybox", Order = 95, Category = "Environment")]
 [SceneComponent("Skybox")]
 public sealed class SkyboxComponent : Component
 {

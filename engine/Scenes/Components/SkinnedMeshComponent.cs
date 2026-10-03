@@ -12,7 +12,7 @@ namespace Spot.Engine.Scenes;
 /// by name, to the entities of the instantiated skeleton. Added automatically to skinned mesh parts by
 /// <see cref="ModelInstantiator"/>.
 /// </summary>
-[ComponentMenu("Skinned Mesh Renderer", Addable = false, Order = 21)]
+[ComponentMenu("Skinned Mesh Renderer", Addable = false, Order = 21, Category = "Rendering")]
 [SceneComponent("SkinnedMeshRenderer")]
 public sealed class SkinnedMeshComponent : Component
 {

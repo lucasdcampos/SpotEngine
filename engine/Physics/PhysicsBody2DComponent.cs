@@ -8,7 +8,7 @@ namespace Spot.Engine.Physics;
 /// <see cref="CircleCollider2DComponent"/>) it is simulated by the active <see cref="IPhysics2D"/> backend:
 /// gravity, collision response, and (on the Aether backend) rotation, friction, and restitution.
 /// </summary>
-[ComponentMenu("Physics Body 2D", Order = 40)]
+[ComponentMenu("Physics Body 2D", Order = 40, Category = "Physics 2D")]
 [SceneComponent("PhysicsBody2D")]
 public sealed class PhysicsBody2DComponent : Component
 {

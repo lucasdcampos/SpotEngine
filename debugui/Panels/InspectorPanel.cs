@@ -100,7 +100,7 @@ public class InspectorPanel : IDisposable
         // drawing code here anymore.
         foreach (var info in ComponentInspector.ComponentTypes)
         {
-            if (entity.HasComponent(info.Type))
+            if (!Component.IsUserType(info.Type) && entity.HasComponent(info.Type))
                 ComponentInspector.DrawComponent(entity, info);
         }
 
@@ -166,81 +166,35 @@ public class InspectorPanel : IDisposable
         }
     }
 
-    // The searchable list: the engine's components, then the game's own, then "New Component". Enter adds the
-    // only match, or creates a component named after the search when nothing matches.
+    private const float PickerWidth = 290f;
+    private const float IconColumn = 24f;
+
+    // The searchable menu: "New Component" first, then every addable component grouped by category (the game's
+    // own under Scripts first), each with its icon. Enter adds the only match, or — when nothing matches —
+    // creates a component named after the search.
     private void DrawComponentPicker(Entity entity)
     {
         // InputText captures keyboard focus and swallows Escape, so close explicitly.
         if (ImGui.IsKeyPressed(ImGuiKey.Escape))
             ImGui.CloseCurrentPopup();
 
-        ImGui.SetNextItemWidth(250f);
+        ImGui.SetNextItemWidth(PickerWidth);
         if (ImGui.IsWindowAppearing())
             ImGui.SetKeyboardFocusHere();
-        bool submitted = ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _componentSearchFilter, 256,
-            ImGuiInputTextFlags.EnterReturnsTrue);
-
-        ImGui.Spacing();
+        bool submitted = ImGui.InputTextWithHint("##ComponentSearch", $"{EditorIcons.Search}  Search components...",
+            ref _componentSearchFilter, 256, ImGuiInputTextFlags.EnterReturnsTrue);
 
         string filter = _componentSearchFilter.Trim();
-        var builtIns = new List<ComponentInspector.ComponentTypeInfo>();
-        foreach (var info in ComponentInspector.ComponentTypes)
-        {
-            if (info.Addable && !entity.HasComponent(info.Type) && Matches(info.DisplayName, filter))
-                builtIns.Add(info);
-        }
+        List<ComponentEntry> matches = AddableComponents(entity, filter);
 
-        var userTypes = new List<Type>();
-        foreach (Type type in _userComponentTypes)
-        {
-            if (!entity.HasComponent(type) && Matches(type.Name, filter))
-                userTypes.Add(type);
-        }
-
-        Action? add = null;
-        if (ImGui.BeginChild("ComponentList", new Vector2(250f, 300f), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar))
-        {
-            // The game's own components come first: they are what a project adds most.
-            if (userTypes.Count > 0)
-            {
-                ImGui.TextDisabled("Scripts");
-                ImGui.Separator();
-                foreach (Type type in userTypes)
-                {
-                    if (ImGui.MenuItem($"{EditorIcons.Code}  {type.Name}"))
-                        add = () => AddUserComponent(entity, type);
-                }
-
-                if (builtIns.Count > 0)
-                {
-                    ImGui.Spacing();
-                    ImGui.TextDisabled("Built-in");
-                    ImGui.Separator();
-                }
-            }
-
-            foreach (var info in builtIns)
-            {
-                if (ImGui.MenuItem(info.DisplayName))
-                    add = () => AddBuiltInComponent(entity, info);
-            }
-
-            if (builtIns.Count == 0 && userTypes.Count == 0)
-                ImGui.TextDisabled("No matching components.");
-            ImGui.EndChild();
-        }
-
-        ImGui.Separator();
-        // With a search that matches nothing, the search itself names the new component: one click (or Enter)
-        // creates it. Otherwise — or when that name is taken — the naming step opens, prefilled.
+        // New Component comes first. With a search that matches nothing, the search itself names it: one click
+        // (or Enter) creates it. Otherwise — or when that name is taken — the naming step opens, prefilled.
         string suggested = ComponentScripts.ToClassName(filter);
-        bool quickCreate = suggested.Length > 0 && builtIns.Count == 0 && userTypes.Count == 0
-            && !ComponentNameTaken(suggested);
-        string newLabel = quickCreate
-            ? $"{EditorIcons.Plus}  New Component \"{suggested}\""
-            : $"{EditorIcons.Plus}  New Component...";
-        bool createFromSearch = submitted && quickCreate;
-        if (ImGui.MenuItem(newLabel) || createFromSearch)
+        bool quickCreate = suggested.Length > 0 && matches.Count == 0 && !ComponentNameTaken(suggested);
+        ImGui.Spacing();
+        string newLabel = quickCreate ? $"New Component \"{suggested}\"" : "New Component...";
+        if (PickerRow("new", EditorIcons.Plus, EditorThemeManager.Current.Palette.Accent, newLabel, indent: 0f)
+            || (submitted && quickCreate))
         {
             if (quickCreate)
             {
@@ -258,18 +212,116 @@ public class InspectorPanel : IDisposable
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
             ImGui.SetTooltip("Creates a C# script with a class deriving from Component and attaches it.");
 
-        if (submitted && add is null && builtIns.Count + userTypes.Count == 1)
+        ImGui.Separator();
+
+        ComponentEntry? chosen = null;
+        // The list fits its content, up to a fixed height, so a narrowed search doesn't leave an empty box.
+        ImGui.SetNextWindowSizeConstraints(new Vector2(PickerWidth, 0f), new Vector2(PickerWidth, 320f));
+        if (ImGui.BeginChild("ComponentList", new Vector2(PickerWidth, 0f), ImGuiChildFlags.AutoResizeY))
         {
-            add = builtIns.Count == 1
-                ? () => AddBuiltInComponent(entity, builtIns[0])
-                : () => AddUserComponent(entity, userTypes[0]);
+            if (matches.Count == 0)
+                ImGui.TextDisabled(filter.Length == 0 ? "Every component is already attached." : "No matching components.");
+
+            foreach (IGrouping<string, ComponentEntry> group in matches.GroupBy(e => e.Category))
+            {
+                // A search shows every group open; otherwise each remembers whether it was folded.
+                if (filter.Length > 0)
+                    ImGui.SetNextItemOpen(true);
+                if (!CategoryHeader(group.Key, group.Count()))
+                    continue;
+
+                foreach (ComponentEntry entry in group)
+                {
+                    if (PickerRow(entry.Type.FullName ?? entry.Type.Name, ComponentCatalog.Glyph(entry),
+                            ComponentCatalog.CategoryColor(entry.Category), entry.DisplayName, ImGui.GetTreeNodeToLabelSpacing()))
+                    {
+                        chosen = entry;
+                    }
+
+                    if (entry.IsUser && ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+                        ImGui.SetTooltip(entry.Type.FullName ?? entry.Type.Name);
+                }
+            }
+
+            ImGui.EndChild();
         }
 
-        if (add is not null)
+        if (submitted && chosen is null && matches.Count == 1)
+            chosen = matches[0];
+
+        if (chosen is not null)
         {
-            add();
+            AddComponentOfType(entity, chosen.Type, chosen.DisplayName);
             ImGui.CloseCurrentPopup();
         }
+    }
+
+    // Every component the entity can still take that matches the search (by label, class name or category),
+    // sorted by category, then by the engine's menu order or name.
+    private List<ComponentEntry> AddableComponents(Entity entity, string filter)
+    {
+        var entries = new List<(ComponentEntry Entry, int Order)>();
+        foreach (var info in ComponentInspector.ComponentTypes)
+        {
+            if (info.Addable && !Component.IsUserType(info.Type) && !entity.HasComponent(info.Type))
+                entries.Add((ComponentCatalog.Describe(info.Type), info.Order));
+        }
+
+        foreach (Type type in _userComponentTypes)
+        {
+            if (!entity.HasComponent(type))
+                entries.Add((ComponentCatalog.Describe(type), int.MaxValue));
+        }
+
+        return entries
+            .Where(e => Matches(e.Entry.DisplayName, filter) || Matches(e.Entry.Type.Name, filter)
+                        || Matches(e.Entry.Category, filter))
+            .OrderBy(e => e.Entry.Category, Comparer<string>.Create(ComponentCatalog.CompareCategories))
+            .ThenBy(e => e.Order)
+            .ThenBy(e => e.Entry.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(e => e.Entry)
+            .ToList();
+    }
+
+    // A foldable group header: the category's tinted icon and name, with its item count on the right.
+    private static bool CategoryHeader(string category, int count)
+    {
+        var palette = EditorThemeManager.Current.Palette;
+        bool open = ImGui.TreeNodeEx($"##cat_{category}",
+            ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.SpanAvailWidth | ImGuiTreeNodeFlags.NoTreePushOnOpen);
+
+        Vector2 min = ImGui.GetItemRectMin();
+        Vector2 max = ImGui.GetItemRectMax();
+        float y = min.Y + (max.Y - min.Y - ImGui.GetTextLineHeight()) * 0.5f;
+        float x = min.X + ImGui.GetTreeNodeToLabelSpacing();
+        var dl = ImGui.GetWindowDrawList();
+        DrawIcon(dl, x, y, ComponentCatalog.CategoryGlyph(category), ComponentCatalog.CategoryColor(category));
+        dl.AddText(new Vector2(x + IconColumn, y), ImGui.GetColorU32(palette.TextDisabled), category);
+        string countText = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        float countWidth = ImGui.CalcTextSize(countText).X;
+        dl.AddText(new Vector2(max.X - countWidth - 6.0f, y), ImGui.GetColorU32(palette.TextDisabled), countText);
+        return open;
+    }
+
+    // One menu row: a tinted icon centered in its column and a label, the whole width clickable.
+    private static bool PickerRow(string id, string glyph, Vector4 glyphColor, string label, float indent)
+    {
+        float height = ImGui.GetFrameHeight();
+        bool clicked = ImGui.Selectable($"##{id}", false, ImGuiSelectableFlags.None, new Vector2(0f, height));
+
+        Vector2 min = ImGui.GetItemRectMin();
+        float y = min.Y + (height - ImGui.GetTextLineHeight()) * 0.5f;
+        float x = min.X + indent;
+        var dl = ImGui.GetWindowDrawList();
+        DrawIcon(dl, x, y, glyph, glyphColor);
+        dl.AddText(new Vector2(x + IconColumn, y), ImGui.GetColorU32(ImGuiCol.Text), label);
+        return clicked;
+    }
+
+    private static void DrawIcon(ImDrawListPtr dl, float x, float y, string glyph, Vector4 color)
+    {
+        float width = ImGui.CalcTextSize(glyph).X;
+        dl.AddText(new Vector2(x + MathF.Round((IconColumn - 6.0f - width) * 0.5f), y), ImGui.GetColorU32(color), glyph);
     }
 
     // Names the new component: Enter creates it, Escape goes back to the list.
@@ -327,11 +379,11 @@ public class InspectorPanel : IDisposable
     private static bool Matches(string name, string filter) =>
         filter.Length == 0 || name.Contains(filter, StringComparison.OrdinalIgnoreCase);
 
-    private static void AddBuiltInComponent(Entity entity, ComponentInspector.ComponentTypeInfo info)
+    private static void AddComponentOfType(Entity entity, Type type, string displayName)
     {
         try
         {
-            var component = (Component)Activator.CreateInstance(info.Type)!;
+            var component = (Component)Activator.CreateInstance(type)!;
 
             // A new 3D collider starts out matching the entity's mesh, as it would be sized by hand.
             if (component is Spot.Engine.Physics.Collider3DComponent collider
@@ -344,7 +396,7 @@ public class InspectorPanel : IDisposable
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
+            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", displayName, ex.Message);
         }
     }
 

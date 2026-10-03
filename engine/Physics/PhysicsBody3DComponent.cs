@@ -9,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// simulated by the active <see cref="IPhysics3D"/> backend: gravity, collision response, and
 /// (on the Bepu backend) rotation, friction, and restitution.
 /// </summary>
-[ComponentMenu("Physics Body 3D", Order = 60)]
+[ComponentMenu("Physics Body 3D", Order = 60, Category = "Physics")]
 [SceneComponent("PhysicsBody3D")]
 public sealed class PhysicsBody3DComponent : Component
 {

@@ -9,7 +9,7 @@ namespace Spot.Engine.Scenes;
 /// data-only: it holds what to draw (a <see cref="Assets.Model"/> and a color) and a render system
 /// draws it together with the entity's <see cref="TransformComponent"/>.
 /// </summary>
-[ComponentMenu("Mesh Renderer", Order = 20)]
+[ComponentMenu("Mesh Renderer", Order = 20, Category = "Rendering")]
 [SceneComponent("MeshRenderer")]
 public sealed class MeshComponent : Component
 {

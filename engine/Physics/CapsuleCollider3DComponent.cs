@@ -9,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// total height is <c>Length + 2 * Radius</c>. Simulated by the Bepu backend; the legacy AABB solver
 /// ignores it.
 /// </summary>
-[ComponentMenu("Capsule Collider 3D", Order = 72)]
+[ComponentMenu("Capsule Collider 3D", Order = 72, Category = "Physics")]
 [SceneComponent("CapsuleCollider3D")]
 public sealed class CapsuleCollider3DComponent : Collider3DComponent
 {

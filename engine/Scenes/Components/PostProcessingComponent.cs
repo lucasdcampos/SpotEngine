@@ -19,7 +19,7 @@ public enum TonemapMode
     Aces = 2,
 }
 
-[ComponentMenu("Post Processing", Order = 110)]
+[ComponentMenu("Post Processing", Order = 110, Category = "Environment")]
 [SceneComponent("PostProcessing")]
 public sealed class PostProcessingComponent : Component
 {

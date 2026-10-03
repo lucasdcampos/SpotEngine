@@ -51,7 +51,7 @@ public enum ParticleRenderMode
 /// <see cref="TransformComponent"/>. Simulation runs only in play mode, so particles are static in the
 /// editor's edit view until you press Play.
 /// </summary>
-[ComponentMenu("Particle System", Order = 30)]
+[ComponentMenu("Particle System", Order = 30, Category = "Effects")]
 [SceneComponent("ParticleSystem")]
 public sealed class ParticleSystemComponent : Component
 {

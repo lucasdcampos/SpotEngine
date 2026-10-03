@@ -14,7 +14,7 @@ public enum SceneCameraProjection
 /// <summary>
 /// A component that acts as a camera for the scene.
 /// </summary>
-[ComponentMenu("Camera", Order = 30)]
+[ComponentMenu("Camera", Order = 30, Category = "Rendering")]
 [SceneComponent("Camera")]
 public sealed class CameraComponent : Component
 {

@@ -75,8 +75,10 @@ The editor is organized into dockable panels you can rearrange and save into a l
   values. The inspector is generated from the components themselves, so custom components appear
   automatically. Each component is a card with a title strip (click it to fold the card; **⋮** removes the
   component); your own components follow the engine's, in the order you added them. **Add Component** opens a
-  searchable menu — your components under **Scripts** first, then the built-in ones; `Enter` adds the only
-  match — and **New Component…** writes a new script deriving from `Component`, opens it and attaches it (see
+  searchable menu: **New Component…** at the top, then every component grouped by category (your own under
+  **Scripts** first, then Rendering, Environment, Effects, Physics, Physics 2D, Audio, Animation, UI and
+  Network), each with its icon; groups fold, a search opens every group that matches, and `Enter` adds the
+  only match. **New Component…** writes a new script deriving from `Component`, opens it and attaches it (see
   [Scripting](scripting.md#creating-one-in-the-editor)); typing a name that matches nothing and pressing
   `Enter` creates it in one step, and dropping a script on the button attaches it. A component whose script is
   still compiling, or is missing, shows as a card that keeps its values until it resolves. Labels sit in a column about a third of the panel wide, so every value lines up; a label too

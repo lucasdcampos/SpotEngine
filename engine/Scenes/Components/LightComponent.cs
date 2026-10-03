@@ -9,7 +9,7 @@ public enum LightType
     Spot
 }
 
-[ComponentMenu("Light", Order = 80)]
+[ComponentMenu("Light", Order = 80, Category = "Rendering")]
 [SceneComponent("Light")]
 public sealed class LightComponent : Component
 {

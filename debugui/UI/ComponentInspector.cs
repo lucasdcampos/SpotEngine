@@ -137,7 +137,7 @@ internal static class ComponentInspector
     public static void DrawUserComponent(Entity entity, Component component)
     {
         Type type = component.GetType();
-        EditorGui.Component(entity, type, Humanize(type.Name), removable: true, () =>
+        EditorGui.Component(entity, type, ComponentCatalog.Describe(type).DisplayName, removable: true, () =>
         {
             bool enabled = component.Enabled;
             if (EditorGui.Checkbox("Enabled", ref enabled))
@@ -569,7 +569,7 @@ internal static class ComponentInspector
     }
 
     /// <summary>Turns a PascalCase property name into spaced words ("FieldOfView" → "Field Of View").</summary>
-    private static string Humanize(string name)
+    internal static string Humanize(string name)
     {
         var sb = new StringBuilder(name.Length + 4);
         for (int i = 0; i < name.Length; i++)

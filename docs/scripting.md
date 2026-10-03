@@ -37,8 +37,9 @@ Select an entity, click **Add Component**, then **New Component…**, and name i
 `Assets/Scripts/<Name>.cs` (a class deriving from `Component`, with its `.meta` sidecar), opens it in
 your code editor, and attaches it to the entity right away — it shows as *waiting to compile* until the
 scripts reload, then turns into the real component. Typing a name that matches nothing in the search box
-and pressing `Enter` does the same in one step. Existing components are listed under **Scripts** at the
-top of the same menu, and dropping a script from the Asset Browser onto **Add Component** attaches it.
+and pressing `Enter` does the same in one step. Existing components are listed under **Scripts**, the
+first group of the same menu (put `[ComponentMenu("Display Name", Category = "Gameplay")]` on a component to
+give it a label and file it under another group), and dropping a script from the Asset Browser onto **Add Component** attaches it.
 
 ### In code
 

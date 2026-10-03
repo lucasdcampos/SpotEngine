@@ -8,6 +8,7 @@ namespace Spot.Net;
 /// sampled and sent each tick; on other peers it is smoothed toward the latest received value so movement
 /// looks continuous despite the discrete snapshot rate. Attach it alongside a <see cref="NetworkObject"/>.
 /// </summary>
+[ComponentMenu("Network Transform", Category = "Network")]
 public sealed class NetworkTransform : Component
 {
     /// <summary>Whether to replicate position. Defaults to <see langword="true"/>.</summary>

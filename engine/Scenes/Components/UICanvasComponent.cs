@@ -15,7 +15,7 @@ namespace Spot.Engine.Scenes;
 /// can already find the widgets. Only the document reference is serialized; the instantiated widgets are
 /// runtime state.
 /// </remarks>
-[ComponentMenu("UI Canvas", Order = 20)]
+[ComponentMenu("UI Canvas", Order = 20, Category = "UI")]
 [SceneComponent("UICanvas")]
 public sealed class UICanvasComponent : Component
 {

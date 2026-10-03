@@ -10,7 +10,7 @@ namespace Spot.Engine.Physics;
 /// dynamic <see cref="PhysicsBody3DComponent"/>, a <see cref="BoxCollider3DComponent"/>, and a child
 /// entity carrying a <see cref="Spot.Engine.Scenes.CameraComponent"/> for the eyes.
 /// </summary>
-[ComponentMenu("Character Controller 3D", Order = 65)]
+[ComponentMenu("Character Controller 3D", Order = 65, Category = "Physics")]
 [SceneComponent("CharacterController3D")]
 public sealed class CharacterController3DComponent : Component
 {
