@@ -305,7 +305,9 @@ viewport between the two cameras:
 
 `Esc` gives the cursor and input back to the editor without leaving the game camera; the viewport then
 shows *Click to control*, and clicking it hands the controls back to the game. The game's simulation
-continues regardless of who has the controls. Stopping play returns the viewport to the editor camera.
+continues regardless of who has the controls. Stopping play returns the viewport to the editor camera and
+discards everything the game built while it ran — its entities, and beside them its UI and its custom render
+passes — so nothing of it is left drawing over the scene you edit.
 
 In edit mode `F8` previews the active scene through its game camera, without running anything; press it
 again to return to the editor camera. While a viewport shows the game camera its gizmos, picking and

@@ -137,6 +137,14 @@ public sealed class RenderPassRegistry
         _ordered = null;
     }
 
+    /// <summary>Removes every registered pass.</summary>
+    internal void Clear()
+    {
+        _passes.Clear();
+        _faultLogged.Clear();
+        _ordered = null;
+    }
+
     /// <summary>Removes a pass.</summary>
     /// <param name="pass">The pass.</param>
     /// <returns><see langword="true"/> if it was registered.</returns>

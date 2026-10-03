@@ -105,6 +105,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- After stopping play in the editor, the game's UI (and any render pass a script left registered) kept drawing over the edit-mode viewport, and the next play stacked a second copy of its UI document; stopping now clears the scene's runtime UI and render passes
 - Playing in the editor viewport, the game's UI and pointer used the whole editor window: widgets didn't react to hovering or clicking where they were drawn, and scripts reading the mouse saw window coordinates. The game is now presented in the viewport's rectangle (`Display.SetView`), and `Input.MousePosition` and `Display.Width`/`Height` follow it
 - Screen-space UI was invisible in standalone 3D games (HelloEngine's HUD among them): the scene's back-face culling discarded its quads; the UI pass now turns culling off
 - **New Project** could scaffold into an existing folder with files in it, overwriting its project file and start scene; the dialog now refuses a taken name and suggests a free one

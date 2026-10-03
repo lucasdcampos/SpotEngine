@@ -1994,6 +1994,10 @@ public class EditorScene : Scene
         {
             var scene = _playSceneData.Scene;
             ScriptSystem.DestroyAll(scene);
+
+            // What the game built beside its entities — its UI, its render passes — goes with it, even when no
+            // snapshot is restored below; otherwise the edit-mode viewport would keep drawing the game's HUD.
+            scene.ClearRuntimeState();
             foreach (var e in scene.View<AudioSourceComponent>())
             {
                 var src = e.GetComponent<AudioSourceComponent>();

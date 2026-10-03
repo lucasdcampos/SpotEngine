@@ -314,9 +314,27 @@ public class Scene
     /// </summary>
     internal void Clear()
     {
+        ClearRuntimeState();
         _registry.Clear();
         _pendingDestroy.Clear();
         TeardownPhysics();
+    }
+
+    /// <summary>
+    /// Drops what play mode built on the scene beside its entities — the UI tree and the custom render passes —
+    /// so a scene the editor restores in place after play neither keeps nor draws them, and the next play starts
+    /// from nothing: each UI canvas instantiates its document again rather than on top of the last one.
+    /// </summary>
+    internal void ClearRuntimeState()
+    {
+        _ui = null;
+        RenderPasses.Clear();
+        foreach (Entity entity in View<UICanvasComponent>())
+        {
+            UICanvasComponent canvas = entity.GetComponent<UICanvasComponent>();
+            canvas.Instantiated = false;
+            canvas.Instances.Clear();
+        }
     }
 
     /// <summary>
