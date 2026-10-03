@@ -8,7 +8,7 @@ namespace HelloEngine;
 /// Orbits the camera around a point: slowly on its own, or by dragging with the right mouse button; the scroll
 /// wheel zooms.
 /// </summary>
-public sealed class CameraOrbit : EntityBehaviour
+public sealed class CameraOrbit : Component
 {
     /// <summary>Gets or sets the point the camera looks at.</summary>
     public Vector3 Target { get; set; } = new(0, 1, 0);
@@ -26,7 +26,7 @@ public sealed class CameraOrbit : EntityBehaviour
     private Vector2 _lastMouse;
     private float _yaw;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _lastMouse = Input.MousePosition;

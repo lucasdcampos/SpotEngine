@@ -32,7 +32,7 @@ public enum SurfaceStyle
 /// A body orbits its parent entity when the parent is a body too (the Moon is a child of the Earth), and the
 /// origin otherwise. Sizes and distances are compressed to fit one screen; periods, tilts and facts are real.
 /// </remarks>
-public sealed class CelestialBody : EntityBehaviour
+public sealed class CelestialBody : Component
 {
     private const float Deg2Rad = MathF.PI / 180.0f;
 
@@ -141,11 +141,11 @@ public sealed class CelestialBody : EntityBehaviour
     {
         get
         {
-            // Resolved on first use rather than in OnCreate, which other scripts may run before.
+            // Resolved on first use rather than in OnStart, which other scripts may run before.
             if (!_primaryResolved)
             {
                 _primaryResolved = true;
-                _primary = Entity.Parent is { } parent ? SceneScripts.Find<CelestialBody>(parent) : null;
+                _primary = Entity.Parent?.GetComponents<CelestialBody>().FirstOrDefault();
             }
 
             return _primary;
@@ -170,7 +170,7 @@ public sealed class CelestialBody : EntityBehaviour
     /// <summary>Gets the normal of the body's equator — and of its rings — in world space.</summary>
     public Vector3 PoleAxis => Vector3.Normalize(Vector3.TransformNormal(Vector3.UnitY, Orientation));
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         // The editor shows a placeholder sphere for each body; in play the space renderer draws the real thing.
         if (Entity.TryGetComponent(out MeshComponent? placeholder))

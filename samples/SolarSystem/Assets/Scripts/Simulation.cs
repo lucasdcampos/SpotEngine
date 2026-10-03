@@ -8,7 +8,7 @@ namespace SolarSystem;
 /// it is on that date. Running all the bodies from one place, in <see cref="OnUpdate"/>, means the camera and the
 /// HUD (which run later in the frame) always see this frame's positions.
 /// </summary>
-public sealed class Simulation : EntityBehaviour
+public sealed class Simulation : Component
 {
     /// <summary>The speeds the HUD's « and » buttons step through, in simulated days per second.</summary>
     public static readonly float[] Speeds = { 0.25f, 0.5f, 1, 2, 5, 10, 20, 50, 100, 365 };
@@ -43,7 +43,7 @@ public sealed class Simulation : EntityBehaviour
     /// <summary>Gets the star at the center, if the scene has one.</summary>
     public CelestialBody? Sun { get; private set; }
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
 
@@ -58,7 +58,7 @@ public sealed class Simulation : EntityBehaviour
         DaysSinceJ2000 = (start - J2000).TotalDays;
 
         // Moons sort right after their planet, so the tour and Tab visit the Earth, then the Moon.
-        List<CelestialBody> bodies = SceneScripts.All<CelestialBody>(Scene);
+        List<CelestialBody> bodies = Scene.GetComponents<CelestialBody>();
         bodies.Sort((a, b) => SortKey(a).CompareTo(SortKey(b)));
         Bodies = bodies;
         Sun = bodies.FirstOrDefault(b => b.Kind == BodyKind.Star);

@@ -45,7 +45,7 @@ public interface IResettable
 /// (score, stats, the event feed, the hit marker), the start screen, pause, slow motion and the player's settings,
 /// and resets the playground. Other scripts reach it through <see cref="Current"/>.
 /// </summary>
-public sealed class Playground : EntityBehaviour
+public sealed class Playground : Component
 {
     private const float FeedLifetime = 4.0f;
     private const int MaxFeed = 6;
@@ -123,7 +123,7 @@ public sealed class Playground : EntityBehaviour
     private Voice _wind;
     private int _settleFrames;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
         Sfx.Build();
@@ -292,7 +292,7 @@ public sealed class Playground : EntityBehaviour
     /// <summary>Puts every prop, target, crate and drone back where it started.</summary>
     public void ResetPlayground()
     {
-        foreach (IResettable resettable in SceneScripts.All<IResettable>(Scene))
+        foreach (IResettable resettable in Scene.GetComponents<IResettable>())
         {
             resettable.ResetState();
         }

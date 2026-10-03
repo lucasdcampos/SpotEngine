@@ -50,24 +50,43 @@ public partial class SampleProjectTests
 
     [Theory]
     [MemberData(nameof(Projects))]
-    public void ScriptsNamedByScenes_AreDefinedInTheProject(string project)
+    public void ComponentsNamedByScenes_AreDefinedInTheProject(string project)
     {
         string assets = AssetsDirectory(project);
-        var defined = new HashSet<string>(StringComparer.Ordinal);
+
+        // Every class with its base: a component derives from Component directly or through another component.
+        var bases = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string source in Directory.EnumerateFiles(assets, "*.cs", SearchOption.AllDirectories))
         {
-            foreach (Match match in BehaviourDeclaration().Matches(File.ReadAllText(source)))
+            foreach (Match match in ClassDeclaration().Matches(File.ReadAllText(source)))
             {
-                defined.Add(match.Groups[1].Value);
+                bases[match.Groups[1].Value] = match.Groups[2].Value;
+            }
+        }
+
+        var defined = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string name in bases.Keys)
+        {
+            string? current = name;
+            for (int depth = 0; current is not null && depth < 16; depth++)
+            {
+                if (!bases.TryGetValue(current, out string? baseName)) break;
+                if (baseName is "Component" or "NetworkBehaviour")
+                {
+                    defined.Add(name);
+                    break;
+                }
+
+                current = baseName;
             }
         }
 
         foreach (string scene in Directory.EnumerateFiles(assets, "*.sptscene", SearchOption.AllDirectories))
         {
             JsonNode? root = JsonNode.Parse(File.ReadAllText(scene));
-            foreach (string type in ScriptTypes(root?["Entities"] as JsonArray))
+            foreach (string type in ComponentTypes(root?["Entities"] as JsonArray))
             {
-                Assert.True(defined.Contains(type), $"{Path.GetFileName(scene)} names script '{type}', which no script in {project} defines.");
+                Assert.True(defined.Contains(type), $"{Path.GetFileName(scene)} names component '{type}', which no script in {project} defines.");
             }
         }
     }
@@ -87,14 +106,14 @@ public partial class SampleProjectTests
         }
     }
 
-    [GeneratedRegex(@"class\s+(\w+)\s*:\s*EntityBehaviour\b")]
-    private static partial Regex BehaviourDeclaration();
+    [GeneratedRegex(@"class\s+(\w+)\s*:\s*([\w.]+)")]
+    private static partial Regex ClassDeclaration();
 
-    private static IEnumerable<string> ScriptTypes(JsonArray? entities)
+    private static IEnumerable<string> ComponentTypes(JsonArray? entities)
     {
         foreach (JsonNode? entity in entities ?? new JsonArray())
         {
-            if (entity?["Scripts"]?["Items"] is JsonArray items)
+            if (entity?["Components"] is JsonArray items)
             {
                 foreach (JsonNode? item in items)
                 {
@@ -105,7 +124,7 @@ public partial class SampleProjectTests
                 }
             }
 
-            foreach (string type in ScriptTypes(entity?["Children"] as JsonArray))
+            foreach (string type in ComponentTypes(entity?["Children"] as JsonArray))
             {
                 yield return type;
             }

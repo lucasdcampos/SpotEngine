@@ -11,7 +11,7 @@ namespace SolarSystem;
 /// built in code (<see cref="HudControls"/>) from engine widgets restyled by subclassing; everything that follows
 /// the 3D view is the <see cref="SolarOverlay"/> widget.
 /// </summary>
-public sealed class SolarHud : EntityBehaviour
+public sealed class SolarHud : Component
 {
     /// <summary>Gets or sets the idle time after which the guided tour starts on its own, in seconds (0 = never).</summary>
     [InspectorRange(0.0f, 600.0f, 1.0f)]
@@ -61,15 +61,12 @@ public sealed class SolarHud : EntityBehaviour
 
     internal float FrameTime { get; private set; }
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _simulation = Simulation.Current;
-        foreach (Entity entity in Scene.View<ScriptComponent>())
-        {
-            _camera ??= SceneScripts.Find<OrbitCamera>(entity);
-            _renderer ??= SceneScripts.Find<SpaceRenderer>(entity);
-            _belt ??= SceneScripts.Find<AsteroidBelt>(entity);
-        }
+        _camera = Scene.GetComponents<OrbitCamera>().FirstOrDefault();
+        _renderer = Scene.GetComponents<SpaceRenderer>().FirstOrDefault();
+        _belt = Scene.GetComponents<AsteroidBelt>().FirstOrDefault();
 
         foreach (Entity entity in Scene.View<PostProcessingComponent>())
         {

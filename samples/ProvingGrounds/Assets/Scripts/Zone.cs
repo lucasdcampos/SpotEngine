@@ -3,7 +3,7 @@ using Spot.Engine.Scenes;
 namespace ProvingGrounds;
 
 /// <summary>A trigger volume that names the area the player walks into, on the HUD.</summary>
-public sealed class Zone : EntityBehaviour
+public sealed class Zone : Component
 {
     public string Title { get; set; } = "Zone";
 

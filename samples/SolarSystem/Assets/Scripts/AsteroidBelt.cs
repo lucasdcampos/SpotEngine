@@ -9,7 +9,7 @@ namespace SolarSystem;
 /// point light, and its GPU instancing turns a thousand-odd rocks into a handful of draw calls. They are children
 /// of this entity, which turns with the belt's orbital period.
 /// </summary>
-public sealed class AsteroidBelt : EntityBehaviour
+public sealed class AsteroidBelt : Component
 {
     public int Count { get; set; } = 1400;
 
@@ -47,7 +47,7 @@ public sealed class AsteroidBelt : EntityBehaviour
 
     private TransformComponent _transform = null!;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         var random = new Random(Seed);

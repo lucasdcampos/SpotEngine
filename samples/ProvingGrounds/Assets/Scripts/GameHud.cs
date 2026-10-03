@@ -13,7 +13,7 @@ namespace ProvingGrounds;
 /// menu is built here from engine widgets restyled by subclassing — buttons, sliders and switches on a frosted panel
 /// that swallows the clicks landing on it.
 /// </summary>
-public sealed class GameHud : EntityBehaviour
+public sealed class GameHud : Component
 {
     private const float MenuWidth = 780.0f;
     private const float MenuHeight = 470.0f;
@@ -42,7 +42,7 @@ public sealed class GameHud : EntityBehaviour
     internal IReadOnlyList<(string Label, Vector3 Position)> Landmarks => _landmarks;
 
     // The UI Canvas instantiates the document before scripts run, so its widgets already exist here.
-    public override void OnCreate()
+    public override void OnStart()
     {
         _kit = new HudKit();
         _performanceText = UI.Find<Text>("Performance");
@@ -55,7 +55,7 @@ public sealed class GameHud : EntityBehaviour
             break;
         }
 
-        foreach (Zone zone in SceneScripts.All<Zone>(Scene))
+        foreach (Zone zone in Scene.GetComponents<Zone>())
         {
             if (zone.Title == "The Hub") continue;
             _landmarks.Add((zone.Title, zone.Entity.GetComponent<TransformComponent>().WorldPosition));

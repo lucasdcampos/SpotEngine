@@ -24,25 +24,23 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Playground",
-            "Fields": {
-              "SpawnPoint": "65ab8ea51edb462da23da483008662bb",
-              "FieldOfView": 80,
-              "MouseSensitivity": 1,
-              "HeadBob": true,
-              "ShowPerformance": false,
-              "AmbienceVolume": 0.5,
-              "SlowMotionScale": 0.3,
-              "HelpOpen": false,
-              "LookScale": 1
-            }
+      "Components": [
+        {
+          "Type": "Playground",
+          "Enabled": true,
+          "Fields": {
+            "SpawnPoint": "65ab8ea51edb462da23da483008662bb",
+            "FieldOfView": 80,
+            "MouseSensitivity": 1,
+            "HeadBob": true,
+            "ShowPerformance": false,
+            "AmbienceVolume": 0.5,
+            "SlowMotionScale": 0.3,
+            "HelpOpen": false,
+            "LookScale": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -93,18 +91,16 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Effects",
-            "Fields": {
-              "MaxDecals": 160,
-              "DecalLifetime": 30
-            }
+      "Components": [
+        {
+          "Type": "Effects",
+          "Enabled": true,
+          "Fields": {
+            "MaxDecals": 160,
+            "DecalLifetime": 30
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -134,14 +130,12 @@
         "Enabled": true,
         "DocumentRef": "UI/Hud.sptui"
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "GameHud"
-          }
-        ]
-      }
+      "Components": [
+        {
+          "Type": "GameHud",
+          "Enabled": true
+        }
+      ]
     },
     {
       "Tag": {
@@ -329,19 +323,17 @@
         "Friction": 0,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Player",
-            "Fields": {
-              "StrideLength": 2.3,
-              "StrafeRoll": 1.4,
-              "MaxShake": 4
-            }
+      "Components": [
+        {
+          "Type": "Player",
+          "Enabled": true,
+          "Fields": {
+            "StrideLength": 2.3,
+            "StrafeRoll": 1.4,
+            "MaxShake": 4
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -386,14 +378,12 @@
           "AudioListener": {
             "Enabled": true
           },
-          "Scripts": {
-            "Enabled": true,
-            "Items": [
-              {
-                "Type": "WeaponController"
-              }
-            ]
-          }
+          "Components": [
+            {
+              "Type": "WeaponController",
+              "Enabled": true
+            }
+          ]
         }
       ]
     },
@@ -2291,18 +2281,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "The Hub",
-              "Subtitle": "Pick a direction: every path shows off a part of the engine"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "The Hub",
+            "Subtitle": "Pick a direction: every path shows off a part of the engine"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -4214,19 +4202,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -4602,19 +4588,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -4990,19 +4974,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -5378,19 +5360,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -5766,19 +5746,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -6154,19 +6132,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -6542,19 +6518,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -6930,19 +6904,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -7318,19 +7290,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -7706,19 +7676,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -8094,19 +8062,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -8482,19 +8448,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 0,
-              "SlideSpeed": 2,
-              "ResetDelay": 2.2
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 0,
+            "SlideSpeed": 2,
+            "ResetDelay": 2.2
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -8908,19 +8872,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 6.5,
-              "SlideSpeed": 3.2,
-              "ResetDelay": 1.6
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 6.5,
+            "SlideSpeed": 3.2,
+            "ResetDelay": 1.6
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -9334,19 +9296,17 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Target",
-            "Fields": {
-              "SlideDistance": 6.5,
-              "SlideSpeed": 4,
-              "ResetDelay": 1.6
-            }
+      "Components": [
+        {
+          "Type": "Target",
+          "Enabled": true,
+          "Fields": {
+            "SlideDistance": 6.5,
+            "SlideSpeed": 4,
+            "ResetDelay": 1.6
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -9737,19 +9697,17 @@
         "Billboard": true,
         "WorldScale": 0.016
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.15,
-              "Frequency": 0.3
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.15,
+            "Frequency": 0.3
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -9792,18 +9750,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "Shooting Range",
-              "Subtitle": "Pop-up targets from 10 to 40 m: score by ring, multiplied by distance"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "Shooting Range",
+            "Subtitle": "Pop-up targets from 10 to 40 m: score by ring, multiplied by distance"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -10410,21 +10366,19 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ReflexChallenge",
-            "Fields": {
-              "Wall": "ac5e50e03bd7452bb6998f78a4aad2e2",
-              "Duration": 30,
-              "Simultaneous": 3,
-              "OrbRadius": 0.32,
-              "OrbLifetime": 2.4
-            }
+      "Components": [
+        {
+          "Type": "ReflexChallenge",
+          "Enabled": true,
+          "Fields": {
+            "Wall": "ac5e50e03bd7452bb6998f78a4aad2e2",
+            "Duration": 30,
+            "Simultaneous": 3,
+            "OrbRadius": 0.32,
+            "OrbLifetime": 2.4
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -10629,18 +10583,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "Reflex Test",
-              "Subtitle": "Shoot the red button, then every orb as fast as it appears"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "Reflex Test",
+            "Subtitle": "Shoot the red button, then every orb as fast as it appears"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -10712,18 +10664,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -10795,18 +10745,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -10878,18 +10826,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -10961,18 +10907,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11044,18 +10988,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11127,18 +11069,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11210,18 +11150,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11293,18 +11231,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11376,18 +11312,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11459,18 +11393,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11542,18 +11474,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11625,18 +11555,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11708,18 +11636,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11791,18 +11717,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11874,18 +11798,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -11957,18 +11879,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12040,18 +11960,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12123,18 +12041,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12206,18 +12122,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12289,18 +12203,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12372,18 +12284,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12455,18 +12365,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12538,18 +12446,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12621,18 +12527,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12704,18 +12608,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12787,18 +12689,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12870,18 +12770,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -12953,18 +12851,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13036,18 +12932,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13119,18 +13013,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13202,18 +13094,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13285,18 +13175,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13368,18 +13256,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13451,18 +13337,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13534,18 +13418,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 1,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 1,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13617,18 +13499,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13700,18 +13580,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13783,18 +13661,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13866,18 +13742,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -13949,18 +13823,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14032,18 +13904,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14115,18 +13985,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14198,18 +14066,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14281,18 +14147,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14364,18 +14228,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14447,18 +14309,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14530,18 +14390,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14613,18 +14471,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14696,18 +14552,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14779,18 +14633,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14862,18 +14714,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -14945,18 +14795,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15028,18 +14876,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15111,18 +14957,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15194,18 +15038,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15277,18 +15119,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15360,18 +15200,16 @@
         "Friction": 0.6,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.6
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -15483,20 +15321,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -15646,20 +15482,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -15809,20 +15643,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -15972,20 +15804,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -16135,20 +15965,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -16298,20 +16126,18 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "ExplosiveCrate",
-            "Fields": {
-              "Health": 3,
-              "Radius": 5.5,
-              "Impulse": 140,
-              "RespawnDelay": 14
-            }
+      "Components": [
+        {
+          "Type": "ExplosiveCrate",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Radius": 5.5,
+            "Impulse": 140,
+            "RespawnDelay": 14
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -16461,18 +16287,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -16544,18 +16368,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -16627,18 +16449,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -16710,18 +16530,16 @@
         "Friction": 0.7,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 1
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -16762,19 +16580,17 @@
         "Billboard": true,
         "WorldScale": 0.01
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.1,
-              "Frequency": 0.5
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.1,
+            "Frequency": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17062,18 +16878,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17141,18 +16955,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17220,18 +17032,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17299,18 +17109,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17378,18 +17186,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17457,18 +17263,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17536,18 +17340,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17615,18 +17417,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17694,18 +17494,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17773,18 +17571,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17852,18 +17648,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -17931,18 +17725,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18010,18 +17802,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18089,18 +17879,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18168,18 +17956,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18247,18 +18033,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18326,18 +18110,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18405,18 +18187,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18484,18 +18264,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18563,18 +18341,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18642,18 +18418,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18721,18 +18495,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18800,18 +18572,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18879,18 +18649,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -18958,18 +18726,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -19037,18 +18803,16 @@
         "Restitution": 0.55,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 2,
-              "ImpactVolume": 0.5
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 2,
+            "ImpactVolume": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -19116,18 +18880,16 @@
         "Restitution": 0,
         "Radius": 0.5
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "PhysicsProp",
-            "Fields": {
-              "Surface": 0,
-              "ImpactVolume": 1.4
-            }
+      "Components": [
+        {
+          "Type": "PhysicsProp",
+          "Enabled": true,
+          "Fields": {
+            "Surface": 0,
+            "ImpactVolume": 1.4
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -19168,19 +18930,17 @@
         "Billboard": true,
         "WorldScale": 0.016
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.15,
-              "Frequency": 0.3
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.15,
+            "Frequency": 0.3
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -19223,18 +18983,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "Physics Yard",
-              "Subtitle": "Crates, dominoes and explosives: shoot them, blast them, launch them"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "Physics Yard",
+            "Subtitle": "Crates, dominoes and explosives: shoot them, blast them, launch them"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -20068,19 +19826,17 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 45,
-              "Bob": 0.2,
-              "Frequency": 0.5
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 45,
+            "Bob": 0.2,
+            "Frequency": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -20216,21 +19972,19 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "JumpPad",
-            "Fields": {
-              "Launch": [
-                0,
-                20,
-                -7.5
-              ]
-            }
+      "Components": [
+        {
+          "Type": "JumpPad",
+          "Enabled": true,
+          "Fields": {
+            "Launch": [
+              0,
+              20,
+              -7.5
+            ]
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -20926,19 +20680,17 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Elevator",
-            "Fields": {
-              "Height": 8,
-              "Speed": 2.4,
-              "Wait": 2
-            }
+      "Components": [
+        {
+          "Type": "Elevator",
+          "Enabled": true,
+          "Fields": {
+            "Height": 8,
+            "Speed": 2.4,
+            "Wait": 2
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -21791,19 +21543,17 @@
         "Billboard": true,
         "WorldScale": 0.01
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.1,
-              "Frequency": 0.4
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.1,
+            "Frequency": 0.4
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -22429,17 +22179,15 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "SpeedTrap",
-            "Fields": {
-              "Threshold": 9
-            }
+      "Components": [
+        {
+          "Type": "SpeedTrap",
+          "Enabled": true,
+          "Fields": {
+            "Threshold": 9
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -22560,19 +22308,17 @@
         "Billboard": true,
         "WorldScale": 0.016
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.15,
-              "Frequency": 0.3
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.15,
+            "Frequency": 0.3
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -22615,18 +22361,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "Movement Course",
-              "Subtitle": "Jump pads, a lift, gaps, a crouch tunnel and a strafe-jump speed trap"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "Movement Course",
+            "Subtitle": "Jump pads, a lift, gaps, a crouch tunnel and a strafe-jump speed trap"
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -22956,24 +22700,22 @@
         "Restitution": 0,
         "Radius": 0.6
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Drone",
-            "Fields": {
-              "Health": 3,
-              "Patrol": [
-                5,
-                2.5
-              ],
-              "PatrolSpeed": 0.42,
-              "RespawnDelay": 6,
-              "Points": 150
-            }
+      "Components": [
+        {
+          "Type": "Drone",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Patrol": [
+              5,
+              2.5
+            ],
+            "PatrolSpeed": 0.42,
+            "RespawnDelay": 6,
+            "Points": 150
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -23428,24 +23170,22 @@
         "Restitution": 0,
         "Radius": 0.6
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Drone",
-            "Fields": {
-              "Health": 3,
-              "Patrol": [
-                7,
-                2
-              ],
-              "PatrolSpeed": 0.33,
-              "RespawnDelay": 6,
-              "Points": 150
-            }
+      "Components": [
+        {
+          "Type": "Drone",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Patrol": [
+              7,
+              2
+            ],
+            "PatrolSpeed": 0.33,
+            "RespawnDelay": 6,
+            "Points": 150
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -23900,24 +23640,22 @@
         "Restitution": 0,
         "Radius": 0.6
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Drone",
-            "Fields": {
-              "Health": 3,
-              "Patrol": [
-                5,
-                3
-              ],
-              "PatrolSpeed": 0.5,
-              "RespawnDelay": 6,
-              "Points": 150
-            }
+      "Components": [
+        {
+          "Type": "Drone",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Patrol": [
+              5,
+              3
+            ],
+            "PatrolSpeed": 0.5,
+            "RespawnDelay": 6,
+            "Points": 150
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -24372,24 +24110,22 @@
         "Restitution": 0,
         "Radius": 0.6
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Drone",
-            "Fields": {
-              "Health": 3,
-              "Patrol": [
-                4,
-                1.5
-              ],
-              "PatrolSpeed": 0.6,
-              "RespawnDelay": 6,
-              "Points": 150
-            }
+      "Components": [
+        {
+          "Type": "Drone",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Patrol": [
+              4,
+              1.5
+            ],
+            "PatrolSpeed": 0.6,
+            "RespawnDelay": 6,
+            "Points": 150
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -24844,24 +24580,22 @@
         "Restitution": 0,
         "Radius": 0.6
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Drone",
-            "Fields": {
-              "Health": 3,
-              "Patrol": [
-                6,
-                3.5
-              ],
-              "PatrolSpeed": 0.28,
-              "RespawnDelay": 6,
-              "Points": 150
-            }
+      "Components": [
+        {
+          "Type": "Drone",
+          "Enabled": true,
+          "Fields": {
+            "Health": 3,
+            "Patrol": [
+              6,
+              3.5
+            ],
+            "PatrolSpeed": 0.28,
+            "RespawnDelay": 6,
+            "Points": 150
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -25302,19 +25036,17 @@
         "Billboard": true,
         "WorldScale": 0.016
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Hover",
-            "Fields": {
-              "Spin": 0,
-              "Bob": 0.15,
-              "Frequency": 0.3
-            }
+      "Components": [
+        {
+          "Type": "Hover",
+          "Enabled": true,
+          "Fields": {
+            "Spin": 0,
+            "Bob": 0.15,
+            "Frequency": 0.3
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -25357,18 +25089,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Zone",
-            "Fields": {
-              "Title": "Drone Field",
-              "Subtitle": "Moving targets: three hits each, and they fall out of the sky"
-            }
+      "Components": [
+        {
+          "Type": "Zone",
+          "Enabled": true,
+          "Fields": {
+            "Title": "Drone Field",
+            "Subtitle": "Moving targets: three hits each, and they fall out of the sky"
           }
-        ]
-      }
+        }
+      ]
     }
   ]
 }

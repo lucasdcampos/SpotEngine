@@ -10,7 +10,6 @@ using Spot.Build;
 using Spot.Editor.Panels;
 using Spot.DebugUI;
 using Spot.DebugUI.Panels;
-using Spot.Editor.Scenes;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 using Spot.DebugUI.Undo;

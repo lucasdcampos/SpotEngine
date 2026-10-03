@@ -4,13 +4,12 @@ using Spot.Framework;
 namespace Spot.Net;
 
 /// <summary>
-/// The base class for networked gameplay scripts — the networking counterpart to
-/// <see cref="EntityBehaviour"/>. It exposes the peer's role and this object's ownership, and adds RPCs
+/// The base class for networked gameplay components — a <see cref="Component"/> that knows about the network. It exposes the peer's role and this object's ownership, and adds RPCs
 /// (<see cref="InvokeServerRpc"/>/<see cref="InvokeClientRpc"/> with <c>[ServerRpc]</c>/<c>[ClientRpc]</c>
 /// handlers) and synchronized variables (<see cref="Sync{T}"/>). Attach it to an entity that also carries a
 /// <see cref="NetworkObject"/> (networked prefabs do this).
 /// </summary>
-public abstract class NetworkBehaviour : EntityBehaviour
+public abstract class NetworkBehaviour : Component
 {
     private List<ISyncVar>? _syncVars;
     private Action? _onConnectedHandler;
@@ -36,7 +35,7 @@ public abstract class NetworkBehaviour : EntityBehaviour
     /// <summary>
     /// Declares a server-authoritative synchronized variable with an initial value. Set it on the server and
     /// clients receive the change automatically. Call this from the script's constructor or
-    /// <see cref="EntityBehaviour.OnCreate"/> so its index is stable across peers.
+    /// <see cref="Component.OnStart"/> so its index is stable across peers.
     /// </summary>
     /// <typeparam name="T">A network-serializable value type.</typeparam>
     /// <param name="value">The initial value.</param>
@@ -94,9 +93,9 @@ public abstract class NetworkBehaviour : EntityBehaviour
     /// </summary>
     protected virtual void OnNetworkDisconnected() { }
 
-    public override void OnCreate()
+    public override void OnStart()
     {
-        base.OnCreate();
+        base.OnStart();
         _onConnectedHandler = OnNetworkConnected;
         _onDisconnectedHandler = OnNetworkDisconnected;
         Net.ConnectedToServer += _onConnectedHandler;

@@ -7,7 +7,7 @@ namespace HelloEngine;
 /// Spins its entity and bobs it up and down. The entity is a kinematic physics body, so as it moves it shoves the
 /// falling cubes around.
 /// </summary>
-public sealed class Spinner : EntityBehaviour
+public sealed class Spinner : Component
 {
     /// <summary>Gets or sets the spin speed, in degrees per second.</summary>
     public float DegreesPerSecond { get; set; } = 40.0f;
@@ -19,7 +19,7 @@ public sealed class Spinner : EntityBehaviour
     private Vector3 _origin;
     private float _time;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _origin = _transform.Position;

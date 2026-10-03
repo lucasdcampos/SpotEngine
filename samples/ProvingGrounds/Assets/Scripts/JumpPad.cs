@@ -7,7 +7,7 @@ namespace ProvingGrounds;
 /// A launch pad: a trigger volume that throws the player when they step on it (a trigger callback). The launch is
 /// given in the pad's own space, so turning the pad turns the jump.
 /// </summary>
-public sealed class JumpPad : EntityBehaviour
+public sealed class JumpPad : Component
 {
     /// <summary>Gets or sets the launch velocity in the pad's space: Y up, -Z forward.</summary>
     public Vector3 Launch { get; set; } = new(0.0f, 15.0f, -6.0f);

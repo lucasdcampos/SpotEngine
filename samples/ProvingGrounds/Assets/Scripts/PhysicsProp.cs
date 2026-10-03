@@ -9,7 +9,7 @@ namespace ProvingGrounds;
 /// where it started when the playground is reset — setting a dynamic body's transform teleports it — and comes back
 /// by itself if it falls off the world. Its <see cref="Surface"/> picks the impact effect bullets make on it.
 /// </summary>
-public sealed class PhysicsProp : EntityBehaviour, IResettable
+public sealed class PhysicsProp : Component, IResettable
 {
     private static float s_windowStart;
     private static int s_soundsInWindow;
@@ -26,7 +26,7 @@ public sealed class PhysicsProp : EntityBehaviour, IResettable
     private Vector3 _rotation;
     private float _lastSound;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         Entity.TryGetComponent(out _body);

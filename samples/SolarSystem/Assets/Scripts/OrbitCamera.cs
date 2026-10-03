@@ -13,7 +13,7 @@ namespace SolarSystem;
 /// Runs in <see cref="OnLateUpdate"/>, after <see cref="Simulation"/> has moved the bodies this frame, so a body
 /// being followed never lags a frame behind.
 /// </remarks>
-public sealed class OrbitCamera : EntityBehaviour
+public sealed class OrbitCamera : Component
 {
     private const float DragThreshold = 4.0f;
 
@@ -74,7 +74,7 @@ public sealed class OrbitCamera : EntityBehaviour
     [HideInInspector]
     public float AutoOrbit { get; set; }
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         Entity.TryGetComponent(out _camera);

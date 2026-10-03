@@ -4,7 +4,7 @@ using Spot.Engine.Scenes;
 namespace ProvingGrounds;
 
 /// <summary>Spins its entity around Y and floats it up and down — signs, beacons, pickups.</summary>
-public sealed class Hover : EntityBehaviour
+public sealed class Hover : Component
 {
     /// <summary>Gets or sets the spin, in degrees per second.</summary>
     public float Spin { get; set; } = 30.0f;
@@ -19,7 +19,7 @@ public sealed class Hover : EntityBehaviour
     private Vector3 _origin;
     private float _time;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _origin = _transform.Position;

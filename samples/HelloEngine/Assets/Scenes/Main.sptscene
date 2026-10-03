@@ -151,24 +151,22 @@
         "NearClip": 0.1,
         "FarClip": 500
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CameraOrbit",
-            "Fields": {
-              "Target": [
-                0,
-                1,
-                0
-              ],
-              "Distance": 15,
-              "Pitch": 25,
-              "IdleSpeed": 6
-            }
+      "Components": [
+        {
+          "Type": "CameraOrbit",
+          "Enabled": true,
+          "Fields": {
+            "Target": [
+              0,
+              1,
+              0
+            ],
+            "Distance": 15,
+            "Pitch": 25,
+            "IdleSpeed": 6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -311,18 +309,16 @@
         "Friction": 0.8,
         "Restitution": 0
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Spinner",
-            "Fields": {
-              "DegreesPerSecond": 40,
-              "BobHeight": 0.5
-            }
+      "Components": [
+        {
+          "Type": "Spinner",
+          "Enabled": true,
+          "Fields": {
+            "DegreesPerSecond": 40,
+            "BobHeight": 0.5
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -348,24 +344,22 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "GlowRing",
-            "Fields": {
-              "Radius": 3.2,
-              "Dots": 48,
-              "Color": [
-                0.35,
-                0.9,
-                2.6,
-                1
-              ]
-            }
+      "Components": [
+        {
+          "Type": "GlowRing",
+          "Enabled": true,
+          "Fields": {
+            "Radius": 3.2,
+            "Dots": 48,
+            "Color": [
+              0.35,
+              0.9,
+              2.6,
+              1
+            ]
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -460,19 +454,17 @@
         "Enabled": true,
         "DocumentRef": "UI/Hud.sptui"
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CubeRain",
-            "Fields": {
-              "MaxCubes": 80,
-              "DropHeight": 9,
-              "DropInterval": 0.75
-            }
+      "Components": [
+        {
+          "Type": "CubeRain",
+          "Enabled": true,
+          "Fields": {
+            "MaxCubes": 80,
+            "DropHeight": 9,
+            "DropInterval": 0.75
           }
-        ]
-      }
+        }
+      ]
     }
   ]
 }

@@ -9,7 +9,7 @@ namespace ProvingGrounds;
 /// hear and feel, camera shake from explosions, a slight roll into strafes, and launches from jump pads. Movement
 /// itself — Quake-style acceleration, air strafing, crouching, jumping, mouse look — is the component's.
 /// </summary>
-public sealed class Player : EntityBehaviour
+public sealed class Player : Component
 {
     /// <summary>Gets or sets the distance between footsteps at a run, in meters.</summary>
     public float StrideLength { get; set; } = 2.3f;
@@ -46,7 +46,7 @@ public sealed class Player : EntityBehaviour
     private float _dip;
     private float _time;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
         _transform = GetComponent<TransformComponent>();

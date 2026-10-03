@@ -390,22 +390,7 @@ internal sealed class NetworkReplication
         }
     }
 
-    private static List<NetworkBehaviour> GetBehaviours(Entity entity)
-    {
-        var list = new List<NetworkBehaviour>();
-        if (entity.TryGetComponent(out ScriptComponent? scripts))
-        {
-            foreach (ScriptInstance item in scripts.Items)
-            {
-                if (item.Instance is NetworkBehaviour behaviour)
-                {
-                    list.Add(behaviour);
-                }
-            }
-        }
-
-        return list;
-    }
+    private static List<NetworkBehaviour> GetBehaviours(Entity entity) => entity.GetComponents<NetworkBehaviour>();
 
     /// <summary>Smooths every non-owned replicated transform toward its latest received value.</summary>
     public void ApplyInterpolation(float deltaTime)

@@ -11,7 +11,7 @@ namespace ProvingGrounds;
 /// drops and tumbles under real physics, trailing smoke, and blows up where it lands. It warps back in later.
 /// Its parts are children in the scene: "Eye", "Rotor L", "Rotor R" and a "Lamp" light.
 /// </summary>
-public sealed class Drone : EntityBehaviour, IShootable, IResettable
+public sealed class Drone : Component, IShootable, IResettable
 {
     /// <summary>Gets or sets how many bullet hits it takes.</summary>
     public float Health { get; set; } = 3.0f;
@@ -47,7 +47,7 @@ public sealed class Drone : EntityBehaviour, IShootable, IResettable
 
     public Vector3 AimPoint => _transform.WorldPosition;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         Entity.TryGetComponent(out _body);

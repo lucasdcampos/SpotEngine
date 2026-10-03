@@ -7,7 +7,7 @@ namespace ProvingGrounds;
 /// A lift: a kinematic platform that rides between where it was placed and <see cref="Height"/> above, pausing at
 /// each end. Being kinematic, it carries whatever stands on it.
 /// </summary>
-public sealed class Elevator : EntityBehaviour
+public sealed class Elevator : Component
 {
     /// <summary>Gets or sets how high it rises, in meters.</summary>
     public float Height { get; set; } = 6.0f;
@@ -24,7 +24,7 @@ public sealed class Elevator : EntityBehaviour
     private float _direction = 1.0f;
     private float _waiting;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _bottom = _transform.Position;
