@@ -20,8 +20,10 @@ internal interface IPhysics3D : IDisposable
     /// <summary>
     /// Casts a ray against the simulation. Returns <see langword="true"/> and fills <paramref name="hit"/>
     /// with the closest intersection within <paramref name="maxDistance"/>, otherwise <see langword="false"/>.
+    /// Only colliders whose layer bit is set in <paramref name="layerMask"/> are considered, and triggers only
+    /// when <paramref name="hitTriggers"/> is set.
     /// </summary>
-    bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit);
+    bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, uint layerMask, bool hitTriggers, out RaycastHit hit);
 
     /// <summary>
     /// The overlapping collidable pairs detected during the most recent <see cref="Step"/>, consumed by

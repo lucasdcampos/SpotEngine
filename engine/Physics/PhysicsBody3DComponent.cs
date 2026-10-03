@@ -44,4 +44,61 @@ public class PhysicsBody3DComponent : Component
     /// reliable grounded test. Not serialized or shown in the inspector.
     /// </summary>
     internal bool Grounded;
+
+    // Impulses queued since the last step, applied by the backend when it next pushes this body into the
+    // simulation. Point impulses beyond the cap fold into the linear sum so a runaway caller can't grow the list.
+    private const int MaxPointImpulses = 64;
+    private readonly List<(Vector3 Impulse, Vector3 Position)> _pointImpulses = new();
+    private Vector3 _linearImpulse;
+
+    /// <summary>
+    /// Applies an instantaneous push through the body's center of mass at the next physics step: its velocity
+    /// changes by <paramref name="impulse"/> divided by its <see cref="Mass"/>. Only dynamic bodies respond; the
+    /// impulse is dropped for static and kinematic ones.
+    /// </summary>
+    /// <param name="impulse">The impulse in world space (newton-seconds: mass times change in velocity).</param>
+    public void AddImpulse(Vector3 impulse) => _linearImpulse += impulse;
+
+    /// <summary>
+    /// Applies an instantaneous push at a world-space point at the next physics step — a bullet hitting the edge
+    /// of a crate — so the body both moves and, unless <see cref="FreezeRotation"/> is set, starts spinning. Only
+    /// dynamic bodies respond. The legacy backend has no rotation and applies just the linear part.
+    /// </summary>
+    /// <param name="impulse">The impulse in world space (newton-seconds).</param>
+    /// <param name="position">The world-space point the impulse acts at.</param>
+    public void AddImpulseAtPosition(Vector3 impulse, Vector3 position)
+    {
+        if (_pointImpulses.Count < MaxPointImpulses)
+        {
+            _pointImpulses.Add((impulse, position));
+        }
+        else
+        {
+            _linearImpulse += impulse;
+        }
+    }
+
+    internal bool HasPendingImpulses => _linearImpulse != Vector3.Zero || _pointImpulses.Count > 0;
+
+    internal IReadOnlyList<(Vector3 Impulse, Vector3 Position)> PendingPointImpulses => _pointImpulses;
+
+    internal Vector3 PendingCentralImpulse => _linearImpulse;
+
+    /// <summary>The sum of every pending impulse, central and at a point: its effect on the linear velocity.</summary>
+    internal Vector3 PendingLinearImpulse()
+    {
+        Vector3 total = _linearImpulse;
+        foreach ((Vector3 impulse, Vector3 _) in _pointImpulses)
+        {
+            total += impulse;
+        }
+
+        return total;
+    }
+
+    internal void ClearPendingImpulses()
+    {
+        _linearImpulse = Vector3.Zero;
+        _pointImpulses.Clear();
+    }
 }

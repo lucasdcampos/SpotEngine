@@ -37,6 +37,9 @@ public static class PhysicsSettings
     /// <summary>The number of collision layers, matching the 32-bit collision mask.</summary>
     public const int LayerCount = 32;
 
+    /// <summary>A layer mask with every layer's bit set, for queries that should consider all colliders.</summary>
+    public const uint AllLayers = 0xFFFFFFFF;
+
     // Per-layer bitmask of which other layers it collides with; symmetric. All-ones = everything collides.
     private static readonly uint[] s_layerMask = CreateFullMask();
 

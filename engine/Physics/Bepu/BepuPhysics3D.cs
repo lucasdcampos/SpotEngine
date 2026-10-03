@@ -27,6 +27,9 @@ internal sealed class BepuPhysics3D : IPhysics3D
     private const float DegToRad = MathF.PI / 180f;
     private const float GroundProbe = 0.12f;
 
+    // The farthest a kinematic body may move in one step and still be swept there by velocity; beyond it, teleport.
+    private const float MaxKinematicStep = 2.0f;
+
     private readonly BufferPool _pool = new();
     private readonly ThreadDispatcher _dispatcher;
     private readonly Simulation _simulation;
@@ -38,6 +41,10 @@ internal sealed class BepuPhysics3D : IPhysics3D
     private readonly Dictionary<int, int> _staticToEntity = new();
     private readonly HashSet<int> _seen = new();
     private readonly List<int> _toRemove = new();
+
+    // The local pose WriteBack last gave each dynamic body's transform. A transform that no longer matches it at the
+    // next sync was moved by a script, which teleports the body there.
+    private readonly Dictionary<int, (Vector3 Position, Vector3 Rotation)> _written = new();
     private readonly List<ContactPair> _contactPairs = new();
 
     public BepuPhysics3D()
@@ -165,11 +172,22 @@ internal sealed class BepuPhysics3D : IPhysics3D
             if (kind == 2 && hasBody)
             {
                 var b = _simulation.Bodies[tracked.Body];
+                if (_written.TryGetValue(entity.Id, out var written)
+                    && (transform.Position != written.Position || (!freeze && transform.Rotation != written.Rotation)))
+                {
+                    // Teleported by a script (a respawn, a reset): jump there and drop the old spin.
+                    b.Pose.Position = shapeCenter;
+                    b.Pose.Orientation = orientation;
+                    b.Velocity.Angular = Vector3.Zero;
+                    _written.Remove(entity.Id);
+                }
+
                 Vector3 v = body!.Velocity;
                 v += PhysicsSettings.Gravity * (body.GravityScale - 1f) * dt; // integrator applies the base gravity
                 if (body.LinearDrag > 0f) v *= MathF.Max(0f, 1f - body.LinearDrag * dt);
                 b.Velocity.Linear = v;
                 b.Awake = true;
+                ApplyImpulses(b, body);
 
                 int hv = tracked.Body.Value;
                 _materials.Ensure(hv);
@@ -178,10 +196,22 @@ internal sealed class BepuPhysics3D : IPhysics3D
             }
             else if (kind == 1)
             {
+                // Move toward the authored pose with the velocity that reaches it over this step, rather than
+                // teleporting: the solver then knows the body moves, so a lift carries what stands on it and a
+                // moving wall shoves what it meets. A jump too big to be motion (a respawn) still teleports.
                 var b = _simulation.Bodies[tracked.Body];
-                b.Pose.Position = shapeCenter;
+                Vector3 delta = shapeCenter - b.Pose.Position;
+                if (dt > 0f && delta.LengthSquared() < MaxKinematicStep * MaxKinematicStep)
+                {
+                    b.Velocity.Linear = delta / dt;
+                }
+                else
+                {
+                    b.Pose.Position = shapeCenter;
+                    b.Velocity.Linear = Vector3.Zero;
+                }
+
                 b.Pose.Orientation = orientation;
-                b.Velocity.Linear = Vector3.Zero;
                 b.Velocity.Angular = Vector3.Zero;
                 b.Awake = true;
             }
@@ -191,6 +221,12 @@ internal sealed class BepuPhysics3D : IPhysics3D
                 s.Pose.Position = shapeCenter;
                 s.Pose.Orientation = orientation;
                 s.UpdateBounds();
+            }
+
+            // Only dynamic bodies respond to impulses; drop any queued on the rest so they don't pile up.
+            if (kind != 2 && hasBody)
+            {
+                body!.ClearPendingImpulses();
             }
         }
 
@@ -202,9 +238,30 @@ internal sealed class BepuPhysics3D : IPhysics3D
         }
         foreach (int id in _toRemove)
         {
+            _written.Remove(id);
             DestroyTracked(id, _tracked[id]);
             _tracked.Remove(id);
         }
+    }
+
+    // Applies the impulses scripts queued on a dynamic body since the last step: a point impulse is offset from the
+    // body's center of mass, so it spins the body as well as moving it (a frozen body has no inverse inertia, so it
+    // only moves).
+    private static void ApplyImpulses(BodyReference b, PhysicsBody3DComponent body)
+    {
+        if (!body.HasPendingImpulses) return;
+
+        if (body.PendingCentralImpulse != Vector3.Zero)
+        {
+            b.ApplyLinearImpulse(body.PendingCentralImpulse);
+        }
+
+        foreach ((Vector3 impulse, Vector3 position) in body.PendingPointImpulses)
+        {
+            b.ApplyImpulse(impulse, position - b.Pose.Position);
+        }
+
+        body.ClearPendingImpulses();
     }
 
     private Tracked CreateTracked(int entityId, ShapeKey key, ColliderDesc desc, float mass, bool freeze, Vector3 center, Quaternion orientation, Vector3 velocity)
@@ -280,6 +337,7 @@ internal sealed class BepuPhysics3D : IPhysics3D
             transform!.Position = pose.Position - worldOffset;
             body.Velocity = b.Velocity.Linear;
             if (!tracked.Freeze) transform.Rotation = QuaternionToEuler(pose.Orientation);
+            _written[kvp.Key] = (transform.Position, transform.Rotation);
 
             body.Grounded = ProbeGround(tracked, pose.Position);
         }
@@ -288,7 +346,7 @@ internal sealed class BepuPhysics3D : IPhysics3D
     private bool ProbeGround(Tracked tracked, Vector3 center)
     {
         // Short downward ray from the body's center; grounded if it hits anything but itself.
-        var handler = new GroundRayHandler(tracked.Body.Value);
+        var handler = new GroundRayHandler(tracked.Body.Value, _contacts);
         float distance = tracked.HalfHeightY + GroundProbe;
         Vector3 origin = center;
         Vector3 direction = new Vector3(0f, -1f, 0f);
@@ -298,13 +356,16 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
     // --- Raycast -------------------------------------------------------------------------------
 
-    public bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
+    public bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit) =>
+        Raycast(scene, origin, direction, maxDistance, PhysicsSettings.AllLayers, hitTriggers: true, out hit);
+
+    public bool Raycast(Scene scene, Vector3 origin, Vector3 direction, float maxDistance, uint layerMask, bool hitTriggers, out RaycastHit hit)
     {
         hit = default;
         if (direction.LengthSquared() < 1e-12f) return false;
         direction = Vector3.Normalize(direction);
 
-        var handler = new ClosestRayHandler();
+        var handler = new ClosestRayHandler(_contacts, layerMask, hitTriggers);
         try
         {
             _simulation.RayCast(origin, direction, maxDistance, ref handler, 0);

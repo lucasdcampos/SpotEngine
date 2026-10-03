@@ -28,7 +28,23 @@ play mode never dies rather than crashing — consistent with the engine's "neve
 backend is built lazily when a scene enters play and torn down when it exits.
 
 A **character controller** component provides capsule-based character movement (walking, slopes,
-stepping) for players and NPCs, rather than pushing a raw rigid body around.
+stepping) for players and NPCs, rather than pushing a raw rigid body around. It counts as grounded only when
+solid ground is under it: a trigger volume it stands or jumps inside is not a floor.
+
+## Moving bodies from scripts
+
+How you move a body depends on what it is:
+
+- A **dynamic** body is driven by the simulation. Set its velocity to steer it, or give it an **impulse** — an
+  instant push, like a bullet or a blast — with `AddImpulse` (through its center) or `AddImpulseAtPosition` (at a
+  point, so it also starts to spin, as a crate does when shot near an edge). Impulses are in newton-seconds, so a
+  heavy body moves less than a light one. Setting a dynamic body's position or rotation from a script
+  **teleports** it there and stops its spin — what a respawn or a level reset needs; its velocity stays whatever
+  you set.
+- A **kinematic** body is moved by its transform, and the simulation sweeps it there with the matching velocity,
+  so it carries and shoves what it touches: a lift lifts whoever stands on it, a moving wall pushes crates. A jump
+  of more than a couple of meters in one step is treated as a teleport instead.
+- A **static** collider (no body) can still be moved, but nothing is pushed along with it.
 
 ## 2D backend
 
@@ -51,7 +67,10 @@ entity and a contact normal/point) and **trigger** enter/stay/exit callbacks for
 ## Raycasting
 
 You can cast a ray into a scene's 3D simulation and get the closest hit within a distance — useful
-for shooting, line-of-sight checks, ground probes, and mouse picking. The 2D simulation offers the
+for shooting, line-of-sight checks, ground probes, and mouse picking. An overload takes a **layer mask** (bit
+`n` set for layer `n`, `PhysicsSettings.AllLayers` for all) and whether triggers count: a weapon whose ray starts
+inside the shooter's own capsule puts the player on a layer of its own and leaves it out of the mask, and passes
+through trigger volumes by default. The 2D simulation offers the
 same query in the XY plane (`Scene.Raycast2D`), handy for grounded checks and cursor picking. Raycasts
 are meaningful only while the simulation is live (play mode).
 

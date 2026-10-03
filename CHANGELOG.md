@@ -21,6 +21,8 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - `ProceduralImages` (solid color, flat normal, checkerboard, prototyping grid, soft dot), `Image.EncodePng`/`SavePng`, and `MeshExport.ToObj`
 - `samples/HelloEngine`: a minimal engine project — a lit, shadowed scene with post-processing, physics, particles, a UI document, scripts and a custom render pass, using no binary assets — with tests that its scenes, UI and scripts keep loading
 - `samples/SolarSystem`: a showcase engine project — the Sun, planets, Moon, rings and an asteroid belt in real time at their real positions for the date, with procedural shaders in custom render passes, orbit trails, a guided tour, hover info cards (mass, size, gravity, day, year, distance, temperature, moons), and a minimal icon toolbar with a settings pop-up — still with no binary assets
+- **Filtered raycasts**: `Scene.Raycast(origin, direction, maxDistance, out hit, layerMask, hitTriggers)` considers only colliders on the masked layers and skips trigger volumes unless asked, so a shot can start inside the shooter's own capsule; `PhysicsSettings.AllLayers` is the all-layers mask
+- **Impulses**: `PhysicsBody3DComponent.AddImpulse` and `AddImpulseAtPosition` push a dynamic body at the next step; a push away from its center also spins it (the legacy backend applies the linear part)
 - **Samples** (`samples/`): `HelloQuad` (core only: your own loop, 2D quads, raw input), `HelloTriangle` (a triangle straight through the graphics device), `Hello2D` (sprites, shapes, text, sound and input actions from code) and `Hello3D` (camera, lit primitives, instancing, and an optional source model loaded with Assimp and animated with `Skeleton`); each takes `--frames N` to exit on its own
 - `BillboardBatch` (blended camera-facing or oriented quads in 3D, alpha or additive, depth-tested without depth writes, with a soft-dot default texture) and `FullscreenPass` (run a fragment shader over the viewport, optionally sampling a source texture); the engine's particle and world-text pass is now built on `BillboardBatch`
 - `AudioManager.Init()` opens the platform's default audio device (OpenAL on desktop, Web Audio in the browser), plus `AudioManager.IsAvailable` and `CreateDefaultBackend()`
@@ -53,6 +55,8 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - **Drag materials onto meshes**: dropping a material on a mesh in the viewport (outlined while dragging) or on an entity in the Hierarchy applies it — to a model root's every mesh when the entity has none of its own — as one undo step
 
 ### Changed
+- Setting a dynamic 3D body's position or rotation from a script now teleports it (and stops its spin) instead of being overwritten by the simulation, so props can be reset and characters respawned
+- Kinematic 3D bodies are swept to their new pose with the matching velocity instead of being teleported, so a lift carries what stands on it and a moving wall pushes what it meets (jumps over 2 m still teleport)
 - Writing `.sptmat` files from a model moved out of the Assimp importer: `AssimpModelImporter.ExtractMaterialsPerSlot`/`ExtractMaterials` became `ModelMaterials.ExtractPerSlot`/`ExtractEmbedded`; `Aabb.FromTransform` is now an engine extension (same call, `using Spot.Engine.Physics;`)
 - `WindowSpec.IconPath` moved to `ApplicationSpec.IconPath` (the window takes raw pixels; the engine loads the file); `Renderer2D.DrawEditorGrid` became `EditorGrid.Draw2D`; the window no longer reads `RenderSettings` (the engine forwards `RenderSettings.VSync` to it)
 - Named input actions moved out of the raw `Input` state into `InputActions`; `Input.GetAction`/`Bind`/`SetDefaultBindings`/... keep working as extension members. The engine-only capture API was renamed: `SetEngineCaptured`/`EngineCaptured` → `Input.Captured`, `GameInputSuppressed` → `Input.Suppressed`, `EditorReleaseCursor`/`EditorRestoreCursor` → `ReleaseCursor`/`RestoreCursor`
@@ -106,6 +110,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- A 3D character inside a trigger volume was considered grounded (its ground probe hit the trigger), so it braked in mid-air and could jump again from it
 - UI clip rectangles were applied as pixels in a scaled UI (any scale-with-height layout off its reference height) and ignored the viewport's origin, clipping the wrong area
 - After stopping play in the editor, the game's UI (and any render pass a script left registered) kept drawing over the edit-mode viewport, and the next play stacked a second copy of its UI document; stopping now clears the scene's runtime UI and render passes
 - Playing in the editor viewport, the game's UI and pointer used the whole editor window: widgets didn't react to hovering or clicking where they were drawn, and scripts reading the mouse saw window coordinates. The game is now presented in the viewport's rectangle (`Display.SetView`), and `Input.MousePosition` and `Display.Width`/`Height` follow it

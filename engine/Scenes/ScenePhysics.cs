@@ -40,14 +40,14 @@ internal sealed class ScenePhysics
         (_collisions2D ??= new CollisionDispatcher()).Dispatch(physics.Contacts);
     }
 
-    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit)
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, uint layerMask, bool hitTriggers, out RaycastHit hit)
     {
         if (_physics3D is null)
         {
             hit = default;
             return false;
         }
-        return _physics3D.Raycast(_scene, origin, direction, maxDistance, out hit);
+        return _physics3D.Raycast(_scene, origin, direction, maxDistance, layerMask, hitTriggers, out hit);
     }
 
     public bool Raycast2D(Vector2 origin, Vector2 direction, float maxDistance, out RaycastHit2D hit)

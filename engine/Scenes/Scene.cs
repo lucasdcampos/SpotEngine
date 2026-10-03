@@ -151,7 +151,22 @@ public class Scene
     /// <paramref name="maxDistance"/>. Only meaningful during play mode (when the simulation is live).
     /// </summary>
     public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit) =>
-        _physics.Raycast(origin, direction, maxDistance, out hit);
+        _physics.Raycast(origin, direction, maxDistance, PhysicsSettings.AllLayers, hitTriggers: true, out hit);
+
+    /// <summary>
+    /// Casts a ray against this scene's 3D physics, considering only colliders on a layer in
+    /// <paramref name="layerMask"/> (bit <c>n</c> set for layer <c>n</c>), and returns the closest hit within
+    /// <paramref name="maxDistance"/>. Use it to see past the shooter's own collider (put the player on a layer
+    /// and leave it out of the mask) or past volumes. Only meaningful during play mode.
+    /// </summary>
+    /// <param name="origin">Where the ray starts, in world space.</param>
+    /// <param name="direction">The ray's direction (normalized for you).</param>
+    /// <param name="maxDistance">How far the ray reaches.</param>
+    /// <param name="hit">Receives the closest hit, when there is one.</param>
+    /// <param name="layerMask">The layers the ray can hit; <see cref="PhysicsSettings.AllLayers"/> for every one.</param>
+    /// <param name="hitTriggers">Whether trigger colliders stop the ray; by default they are passed through.</param>
+    public bool Raycast(Vector3 origin, Vector3 direction, float maxDistance, out RaycastHit hit, uint layerMask, bool hitTriggers = false) =>
+        _physics.Raycast(origin, direction, maxDistance, layerMask, hitTriggers, out hit);
 
     /// <summary>
     /// Casts a ray against this scene's 2D physics (XY plane) and returns the closest hit within
