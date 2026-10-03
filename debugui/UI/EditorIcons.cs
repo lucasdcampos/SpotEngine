@@ -43,6 +43,18 @@ public static class EditorIcons
     public const string DrawPolygon = "\uf5ee";  // draw-polygon (wireframe toggle)
     public const string Plus = "\uf067";         // plus
     public const string CaretDown = "\uf0d7";    // caret-down (drop-down affordance)
+    public const string Ellipsis = "\uf141";     // ellipsis (horizontal "more actions")
+    public const string Book = "\uf02d";         // book (documentation)
+    public const string CodeBranch = "\uf126";   // code-branch (source repository)
+    public const string ExternalLink = "\uf08e"; // arrow-up-right-from-square (opens outside the app)
+    public const string Grid = "\uf009";         // table-cells-large (grid view)
+    public const string List = "\uf03a";         // list (list view)
+    public const string Sort = "\uf160";         // arrow-down-wide-short
+    public const string Clock = "\uf017";        // clock
+    public const string Check = "\uf00c";        // check
+    public const string Copy = "\uf0c5";         // copy
+    public const string Trash = "\uf2ed";        // trash-can
+    public const string Warning = "\uf071";      // triangle-exclamation
 
     // Every codepoint above; the engine bakes exactly these (as an ImGui [lo,hi,…,0] range) so the
     // atlas stays small instead of loading all ~1500 Font Awesome glyphs.
@@ -52,6 +64,8 @@ public static class EditorIcons
         0xf121, 0xf15b, 0xf07b, 0xf07c, 0xf53f, 0xf0e8, 0xf185, 0xf013,
         0xf002, 0xf0b2, 0xf2f1, 0xf31e, 0xf04b, 0xf04d, 0xf142, 0xf00d,
         0xf001, 0xf06d, 0xf11b, 0xf06e, 0xf5cb, 0xf5ee, 0xf067, 0xf0d7,
+        0xf141, 0xf02d, 0xf126, 0xf08e, 0xf009, 0xf03a, 0xf160, 0xf017,
+        0xf00c, 0xf0c5, 0xf2ed, 0xf071,
     };
 
     /// <summary>The ImGui glyph range (<c>[lo, hi, …, 0]</c>) covering exactly <see cref="Codepoints"/>.</summary>

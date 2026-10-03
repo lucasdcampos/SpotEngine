@@ -9,7 +9,8 @@ namespace Spot.DebugUI.UI;
 /// fixed order, through <see cref="ApplicationSpec.AdditionalFonts"/> (see <c>Program.cs</c>): index 0
 /// is the body font, then a heavier <see cref="Title"/> face, a monospaced <see cref="Mono"/> face, a
 /// large standalone icon face (<see cref="Icons"/>) for oversized glyphs, a large <see cref="IconText"/> face
-/// for short words drawn as icons, and a <see cref="Small"/> face for captions.
+/// for short words drawn as icons, a <see cref="Small"/> face for captions and a <see cref="Heading"/> face
+/// for large titles.
 /// Lookups fall back to the current font if an extra failed to load, so callers never get a null handle.
 /// </summary>
 public static class EditorFonts
@@ -20,6 +21,7 @@ public static class EditorFonts
     private const int IconsIndex = 3;
     private const int IconTextIndex = 4;
     private const int SmallIndex = 5;
+    private const int HeadingIndex = 6;
 
     /// <summary>The primary UI font used for body text.</summary>
     public static ImFontPtr Body => Font(0);
@@ -48,6 +50,9 @@ public static class EditorFonts
 
     /// <summary>A smaller body face for secondary captions, e.g. the asset type under an asset-browser tile.</summary>
     public static ImFontPtr Small => Font(SmallIndex);
+
+    /// <summary>A large, heavier face for page-level titles, such as the launcher's headings.</summary>
+    public static ImFontPtr Heading => Font(HeadingIndex);
 
     private static ImFontPtr Font(int index)
     {

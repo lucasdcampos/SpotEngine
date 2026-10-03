@@ -14,13 +14,27 @@ looks and plays before shipping it.
 
 Opening the editor first shows a compact **launcher** for picking a project to work on:
 
-- **New Project** — names a project and a location on disk, previews the folder it will create, and
-  scaffolds it (folder, `Assets/`, `.sptproj`, and build files) before opening it.
-- **Open Project** — browses for an existing `.sptproj` file.
-- **Recent Projects** — a searchable list of the projects you've opened before. Each entry shows the
-  project name, its path, when it was **last opened**, and the **engine version** that opened it.
-  Click a card to open it; hover it for quick actions (open the containing folder, or remove it from
-  the list), or right-click for the same menu.
+- **New Project** (`Ctrl+N`) — names a project and a location on disk, previews the folder it will
+  create, and scaffolds it (folder, `Assets/`, `.sptproj`, and build files) before opening it. It
+  won't create into a folder that already has files in it (that would overwrite its project file and
+  start scene); it suggests a free name instead (`MyProject2`, ...). `Enter` creates, `Esc` cancels.
+- **Open Project** (`Ctrl+O`) — browses for an existing `.sptproj` file.
+- **Projects** — the projects you've opened before, as a **grid** of cards or a compact **list**
+  (toggle on the header; the launcher remembers your choice). Each card shows a **thumbnail** of the
+  project, its name, its folder (shortened in the middle, full path in the tooltip), when it was
+  **last opened**, and the **engine version** that last opened it, in amber when it differs from this
+  editor's. Search by name or path (`Ctrl+F`), and sort by last opened or by name.
+
+Click a card to select it and double-click (or press `Enter`) to open it. The `...` button, or a
+right-click, opens its menu: **Open**, **Show in Explorer** (Finder on macOS, the containing folder
+elsewhere), **Copy Path**, and **Remove from List**, which only forgets the entry and leaves the
+files alone. From the keyboard, the arrow keys, `Home` and `End` move the selection, `Delete` removes
+it from the list, `Ctrl+C` copies its path, and `Esc` clears the search, then the selection.
+
+A project's thumbnail is a snapshot of the scene viewport, taken whenever you save the active scene or
+close the editor and stored as `Library/thumbnail.png` inside the project (the `Library` folder holds
+editor-only caches and stays out of version control). Projects without one yet show a placeholder,
+tinted per project so each keeps a recognizable color.
 
 The recent list is stored per-user and drops entries whose files no longer exist, so it stays
 current on its own. Choosing a project shows a loading screen while the editor grows to its working

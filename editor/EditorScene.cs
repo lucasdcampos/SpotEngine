@@ -1908,6 +1908,7 @@ public class EditorScene : Scene
         Spot.Engine.Application.Instance.Console.SetHost(null);
         Spot.Editor.Utils.EditorSettings.Save(Spot.Engine.Application.Instance.Window.NativeWindow);
         SaveSession();
+        CaptureProjectThumbnail();
 
         StopScriptWatcher();
         foreach (var sceneData in _openScenes) sceneData.Dispose();
@@ -2792,7 +2793,20 @@ public class EditorScene : Scene
         sceneData.IsDirty = false;
         sceneData.DirtyCheckCounter = 0;
         _history.MarkSaved(sceneData);
+        if (sceneData == _activeSceneData) CaptureProjectThumbnail();
         return true;
+    }
+
+    // Refreshes the picture the launcher shows for this project from a scene viewport that is on screen: the active
+    // one when visible, otherwise any visible one (a tab behind another keeps an old, possibly never-drawn, picture).
+    private void CaptureProjectThumbnail()
+    {
+        if (Project.Active == null) return;
+        OpenSceneData? source = _activeSceneData is { IsOpen: true, ViewportVisible: true }
+            ? _activeSceneData
+            : _openScenes.FirstOrDefault(s => s.IsOpen && s.ViewportVisible);
+        if (source == null) return;
+        Spot.Editor.Utils.ProjectThumbnail.Capture(source.Framebuffer, Project.Active.ProjectDirectory);
     }
 
     // Invoked when the window's close button is pressed. Vetoes the close (returning false) when any

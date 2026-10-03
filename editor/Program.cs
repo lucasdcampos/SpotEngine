@@ -4,6 +4,7 @@ using Spot.Framework.Assimp;
 using Spot.Framework.Graphics;
 using Spot.DebugUI;
 using Spot.DebugUI.UI;
+using Spot.Editor.Launcher;
 using Spot.Editor.UI;
 
 namespace Spot.Editor;
@@ -17,14 +18,15 @@ public static class Program
         {
             Name = "Spot.Editor",
             // Start at the launcher's compact size; the editor restores its own size when it loads.
-            Window = new WindowSpec { Title = "Spot Launcher", Width = 840, Height = 520 },
+            Window = new WindowSpec { Title = "Spot Launcher", Width = LauncherScene.WindowWidth, Height = LauncherScene.WindowHeight },
             IconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "spot-icon.png"),
             FontPath = System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"),
             FontSize = 16,
             // Extra atlas fonts, resolved by EditorFonts in registration order: a heavier Inter for
             // titles, JetBrains Mono for the console, a large standalone Font Awesome atlas for the
             // asset-browser tiles (drawn at 48–128px, where upscaling the 16px merged glyphs would blur),
-            // a large Inter for the words drawn as tile icons ("C#", "UI"), and a small Inter for captions.
+            // a large Inter for the words drawn as tile icons ("C#", "UI"), a small Inter for captions, and a
+            // heading Inter for page titles.
             // Keep this order in sync with EditorFonts.
             AdditionalFonts =
             {
@@ -33,6 +35,7 @@ public static class Program
                 new FontSpec(System.IO.Path.Combine(fontsDir, "fa-solid-900.ttf"), 72.0f, EditorIcons.GlyphRanges),
                 new FontSpec(System.IO.Path.Combine(fontsDir, "Inter-Medium.ttf"), 72.0f, EditorFonts.IconTextGlyphRanges),
                 new FontSpec(System.IO.Path.Combine(fontsDir, "Inter-Regular.ttf"), 13.0f),
+                new FontSpec(System.IO.Path.Combine(fontsDir, "Inter-Medium.ttf"), 22.0f),
             },
             // Font Awesome 6 (Solid) merged into the body font so its glyphs render inline with text,
             // matched to the 16px body size.

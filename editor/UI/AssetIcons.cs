@@ -544,7 +544,7 @@ internal static class AssetIcons
 
     // Recolors the vertices emitted since vtxStart along a linear gradient from (p0, c0) to (p1, c1). Shapes are
     // drawn opaque white first, so each vertex's alpha is its anti-aliasing coverage, which is kept.
-    private static void ApplyGradient(ImDrawListPtr dl, int vtxStart, Vector2 p0, Vector2 p1, Vector4 c0, Vector4 c1)
+    internal static void ApplyGradient(ImDrawListPtr dl, int vtxStart, Vector2 p0, Vector2 p1, Vector4 c0, Vector4 c1)
     {
         Vector2 d = p1 - p0;
         float invLengthSq = 1.0f / MathF.Max(d.LengthSquared(), 1e-6f);

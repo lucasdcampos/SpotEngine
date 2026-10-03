@@ -48,6 +48,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Color grading LUT support in `PostProcessingComponent`: assign a 2D horizontal-strip LUT texture (e.g. 256×16 for a 16³ grade) and blend it with `LutIntensity`
 - Physics materials: `Friction` and `Restitution` on `Collider3DComponent` (Bepu static bodies) and `PhysicsBody2DComponent` values now correctly applied to Aether fixtures
 - **Drag assets into the scene**: dropping a prefab, model, image, audio clip or UI document from the Asset Browser onto the viewport or Hierarchy creates the finished entity (prefab instance, model hierarchy, sprite at the picture's proportions, audio source, UI canvas). Viewport drops land on the surface under the cursor or the ground plane, with a ring marking the spot while dragging; multi-selections drop together, and each drop is one named undo step
+- **Project thumbnails**: saving the active scene or closing the editor stores a snapshot of the scene viewport in the project's `Library/thumbnail.png`, which the launcher shows on the project's card
 - **Drag materials onto meshes**: dropping a material on a mesh in the viewport (outlined while dragging) or on an entity in the Hierarchy applies it — to a model root's every mesh when the entity has none of its own — as one undo step
 
 ### Changed
@@ -81,6 +82,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - **Viewport toolbar** floats as two light translucent clusters (transform tools; 2D, colliders, fullbright, wireframe and camera settings as icon toggles with tooltips) instead of opaque buttons and checkboxes, and clicks on it no longer also pick or deselect in the scene; viewport hints, labels and the camera preview share the same overlay style
 - **Hierarchy** rows are uniform full-width bands with a muted selection, guide lines between parents and children, and kind-tinted icons; **Properties** cards get a title strip, label columns that scale with the panel (long labels are cut with an ellipsis and shown on hover), and X/Y/Z fields with colored caps fused to their number boxes
 - The Asset Browser's **Add to Scene** works for every asset that stands for an entity (prefabs, models, images, audio clips, UI documents) and on a multi-selection, replacing the model-only **Add to Scene (with materials)**
+- **Launcher redesigned**: project cards in a grid or a list (remembered) with a thumbnail, the name, a shortened path, when the project was last opened and its engine version (amber when it differs), a `...` menu (open, show in file manager, copy path, remove from list) and clear hover and selection states; search, sort (last opened or name) and view sit on the header row; the sidebar shows the engine version once; keyboard: `Ctrl`+`N`/`O`/`F`, arrows, `Home`/`End`, `Enter`, `Delete`, `Ctrl`+`C`, `Esc`
 
 ### Added
 - **Point light shadows**: point and spot lights now cast real-time cubemap shadows; enable per-light via `CastShadows` (the first shadow-casting light in the scene gets a depth cubemap, sampled as linear distance); `RenderSettings.PointShadows` and `PointShadowResolution` are global controls
@@ -103,6 +105,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- **New Project** could scaffold into an existing folder with files in it, overwriting its project file and start scene; the dialog now refuses a taken name and suggests a free one
 - The editor grid flickered (z-fighting) where an object lay on it, such as a floor at y = 0; it now shows steadily on top of such surfaces, and no longer stops short of the camera when it skims the ground
 - Focusing another scene tab during play moved the simulation (and Stop's restore) onto that scene; the played scene is now pinned until Stop, and play ends cleanly if its tab closes or another project opens
 - While a game held a locked cursor in the editor, its clicks could press editor buttons under the hidden cursor
