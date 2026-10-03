@@ -290,7 +290,9 @@ The editor has two modes:
 There is no separate Game panel: **the scene becomes the game**. Pressing Play switches the active
 scene's viewport to the scene's game camera (its primary camera) and marks its tab with a play icon. The
 game gets the controls straight away, so WASD, mouse-look and any cursor lock the game requests work as in
-a standalone build. If the scene has no camera that would render, the viewport says so.
+a standalone build. The game sees the viewport as its screen: its UI, its mouse position and the screen size
+it reads are the viewport's, so hovering and clicking its widgets — or anything a script picks under the
+pointer — line up with the picture. If the scene has no camera that would render, the viewport says so.
 
 **Game camera and editor camera (`F8`).** As in Unreal's *eject*/*possess*, `F8` switches the playing
 viewport between the two cameras:

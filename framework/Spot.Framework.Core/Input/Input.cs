@@ -78,7 +78,9 @@ public static class Input
     public static bool RelativeMouseMode { get; set; }
 
     /// <summary>
-    /// Gets the mouse position in window pixels, with the origin at the top-left.
+    /// Gets the mouse position in pixels from the top-left of the app's view: the window, unless a host presents the
+    /// app in part of it (see <see cref="Display.SetView"/>), in which case the position is measured from that
+    /// rectangle's corner and lies outside it while the pointer does.
     /// </summary>
     /// <remarks>
     /// Returns the frozen position while input is blocked (<see cref="Captured"/> or <see cref="Suppressed"/>).
@@ -86,7 +88,7 @@ public static class Input
     /// is released and roams free, and a live position would feed that roaming straight into the camera as
     /// delta. The position is restored on release, so the first frame back sees a zero delta and no jump.
     /// </remarks>
-    public static Vector2 MousePosition => InputBlocked ? _frozenMousePosition : _mousePosition;
+    public static Vector2 MousePosition => (InputBlocked ? _frozenMousePosition : _mousePosition) - Display.ViewOrigin;
 
     /// <summary>
     /// Gets the mouse wheel movement accumulated during the current frame.

@@ -794,15 +794,31 @@ public class EditorScene : Scene
                     Spot.Framework.Input.Suppressed = !_gameHasInput;
                 }
 
-                // In play mode: run the full system stack for the active scene.
-                if (!_isPlayPaused)
-                    sceneData.Scene.UpdateRuntime(deltaTime);
-                else if (_playStep)
+                // While the viewport shows the game, the game is presented in that rectangle of the window: its UI
+                // hit-testing and its scripts' pointer read the viewport's size and a mouse position measured from
+                // its corner, as they would full-window in a build. The rectangle is the previous frame's ImGui
+                // layout, like _gameHasInput. Cleared right after, since the editor works in window space.
+                if (sceneData.GameView && _gameViewSize.X > 0 && _gameViewSize.Y > 0)
                 {
-                    sceneData.Scene.UpdateRuntime(1f / 60f);
-                    _playStep = false;
+                    Spot.Framework.Display.SetView(_gameViewOrigin.X, _gameViewOrigin.Y, _gameViewSize.X, _gameViewSize.Y);
                 }
-                // Paused with no step pending: freeze (do nothing).
+
+                try
+                {
+                    // In play mode: run the full system stack for the active scene.
+                    if (!_isPlayPaused)
+                        sceneData.Scene.UpdateRuntime(deltaTime);
+                    else if (_playStep)
+                    {
+                        sceneData.Scene.UpdateRuntime(1f / 60f);
+                        _playStep = false;
+                    }
+                    // Paused with no step pending: freeze (do nothing).
+                }
+                finally
+                {
+                    Spot.Framework.Display.ClearView();
+                }
             }
             else
             {
@@ -1245,6 +1261,14 @@ public class EditorScene : Scene
                 if (imageSize.X > 0 && imageSize.Y > 0 && sceneData.Scene.TryGetActivePrimaryCamera(out Entity gameCamera))
                 {
                     gameCamera.GetComponent<CameraComponent>().SetViewportSize(imageSize.X, imageSize.Y);
+                }
+
+                // Where the playing game's picture sits in the window, for its input (see OnUpdate). ImGui's screen
+                // space is the window's own unless platform windows are enabled, so measure from the main viewport.
+                if (sceneData == _playSceneData && sceneData.GameView)
+                {
+                    _gameViewOrigin = imageMin - ImGui.GetMainViewport().Pos;
+                    _gameViewSize = imageSize;
                 }
 
                 sceneData.ViewportPanel.OnImGuiRender(handleInput: isFocused || isHovered, gameView: sceneData.GameView);
@@ -1928,6 +1952,10 @@ public class EditorScene : Scene
     private bool _gameHasInput;
     private bool _prevGameHasInput;
 
+    // The playing viewport's image rectangle in window pixels, recorded by the ImGui pass.
+    private Vector2 _gameViewOrigin;
+    private Vector2 _gameViewSize;
+
     private void OnPlay()
     {
         if (_state != EditorState.Edit || Project.Active == null || _activeSceneData == null) return;
@@ -1951,6 +1979,7 @@ public class EditorScene : Scene
         // The scene becomes the game: its viewport switches to the game camera and the game gets the controls
         // straight away, as in Unreal. F8 ejects to the editor camera; Esc frees the cursor.
         _playSceneData.GameView = true;
+        _gameViewSize = Vector2.Zero; // measured afresh by this play's first ImGui pass
         _playSceneData.FocusNextFrame = true;
         _gameHasInput = true;
         _prevGameHasInput = false;

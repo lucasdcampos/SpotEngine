@@ -16,7 +16,10 @@ worked:
 
 - **Held / pressed / released** for keyboard keys and mouse buttons (the "down this frame" and "up
   this frame" variants fire for a single frame, so they're right for one-shot actions like a jump).
-- **Mouse position** and **scroll delta** for the current frame.
+- **Mouse position** and **scroll delta** for the current frame. The position is in pixels from the
+  top-left of the app's view — the window, or the rectangle a host shows the app in, such as the editor's
+  play viewport (`Display.SetView`); `Display.Width` and `Display.Height` give that view's size, so the
+  position means the same thing in the editor as in a build.
 - **Cursor lock**, which hides and captures the cursor for mouse-look. While locked, `MousePosition`
   keeps reporting a virtual position that moves with the mouse, so your frame-to-frame delta drives
   the look; the hardware cursor stays confined to the window (on desktop the engine recentres it each
