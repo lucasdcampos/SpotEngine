@@ -1,0 +1,5 @@
+{
+  "Name": "ProvingGrounds",
+  "StartScene": "Scenes/ProvingGrounds.sptscene",
+  "AssetDirectory": "Assets"
+}

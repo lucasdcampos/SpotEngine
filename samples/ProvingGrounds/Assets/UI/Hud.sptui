@@ -1,0 +1,111 @@
+{
+  "ScaleMode": "ScaleWithHeight",
+  "ReferenceHeight": 1080,
+  "Widgets": [
+    {
+      "Type": "Text",
+      "Name": "Brand",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          40,
+          30
+        ],
+        "Size": [
+          360,
+          26
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Content": "PROVING GROUNDS",
+      "FontRef": "",
+      "FontSize": 20,
+      "Color": [
+        0.96,
+        0.97,
+        1,
+        0.92
+      ],
+      "Align": 0,
+      "Wrap": false
+    },
+    {
+      "Type": "Text",
+      "Name": "Tagline",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          41,
+          56
+        ],
+        "Size": [
+          360,
+          20
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Content": "Spot Engine sample",
+      "FontRef": "",
+      "FontSize": 14,
+      "Color": [
+        0.33,
+        0.86,
+        1,
+        0.85
+      ],
+      "Align": 0,
+      "Wrap": false
+    },
+    {
+      "Type": "Text",
+      "Name": "Performance",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          41,
+          84
+        ],
+        "Size": [
+          360,
+          20
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Content": "",
+      "FontRef": "",
+      "FontSize": 14,
+      "Color": [
+        0.68,
+        0.73,
+        0.8,
+        0.9
+      ],
+      "Align": 0,
+      "Wrap": false
+    }
+  ]
+}

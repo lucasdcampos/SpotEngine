@@ -1,0 +1,27 @@
+{
+  "Color": [
+    0.7,
+    0.72,
+    0.76,
+    1
+  ],
+  "TexturePath": "builtin:Texture/Grid",
+  "ShaderType": "Standard",
+  "WaveSpeed": 0.6,
+  "WaveScale": 1.0,
+  "WaveStrength": 0.25,
+  "SpecularPower": 200.0,
+  "Metallic": 0.0,
+  "Emissive": [
+    0,
+    0,
+    0
+  ],
+  "EmissiveIntensity": 1.0,
+  "NormalMapPath": null,
+  "Tiling": [
+    0.125,
+    0.125
+  ],
+  "AutoTile": true
+}

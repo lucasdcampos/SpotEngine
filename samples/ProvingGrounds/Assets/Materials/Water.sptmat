@@ -1,0 +1,27 @@
+{
+  "Color": [
+    0.12,
+    0.38,
+    0.5,
+    0.9
+  ],
+  "TexturePath": null,
+  "ShaderType": "Water",
+  "WaveSpeed": 0.6,
+  "WaveScale": 1.0,
+  "WaveStrength": 0.25,
+  "SpecularPower": 120.0,
+  "Metallic": 0.0,
+  "Emissive": [
+    0,
+    0,
+    0
+  ],
+  "EmissiveIntensity": 1.0,
+  "NormalMapPath": null,
+  "Tiling": [
+    1,
+    1
+  ],
+  "AutoTile": false
+}

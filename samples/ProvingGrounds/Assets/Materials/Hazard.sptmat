@@ -1,0 +1,27 @@
+{
+  "Color": [
+    0.78,
+    0.12,
+    0.08,
+    1
+  ],
+  "TexturePath": null,
+  "ShaderType": "Standard",
+  "WaveSpeed": 0.6,
+  "WaveScale": 1.0,
+  "WaveStrength": 0.25,
+  "SpecularPower": 200.0,
+  "Metallic": 0.25,
+  "Emissive": [
+    0,
+    0,
+    0
+  ],
+  "EmissiveIntensity": 1.0,
+  "NormalMapPath": null,
+  "Tiling": [
+    1,
+    1
+  ],
+  "AutoTile": false
+}

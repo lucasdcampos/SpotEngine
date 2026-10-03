@@ -1,0 +1,27 @@
+{
+  "Color": [
+    0.72,
+    0.54,
+    0.34,
+    1
+  ],
+  "TexturePath": "builtin:Texture/Checker",
+  "ShaderType": "Standard",
+  "WaveSpeed": 0.6,
+  "WaveScale": 1.0,
+  "WaveStrength": 0.25,
+  "SpecularPower": 200.0,
+  "Metallic": 0.0,
+  "Emissive": [
+    0,
+    0,
+    0
+  ],
+  "EmissiveIntensity": 1.0,
+  "NormalMapPath": null,
+  "Tiling": [
+    0.25,
+    0.25
+  ],
+  "AutoTile": true
+}
