@@ -52,8 +52,9 @@ procedural background — injected into a scene's frame. Implement `IRenderPass`
 A pass receives a `RenderContext` with the scene, the camera's view-projection and position, the render
 target and viewport bound at that point (the HDR capture, an editor viewport, or the screen), and whether
 the frame is post-processed. Passes in the same stage run by their order, then by registration. A pass
-should restore any state the engine relies on — depth testing, blending, the bound target — and one that
-throws is logged once and skipped, never taking the frame down.
+should restore any state the engine relies on — depth testing, blending, face culling (on in a 3D scene), the
+bound target — and one that throws is logged once and skipped, never taking the frame down.
+`samples/SolarSystem` draws its whole sky, planets, rings and orbits this way.
 
 ## 3D content and lighting
 

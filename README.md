@@ -45,6 +45,7 @@ dotnet build SpotEngine.slnx
 dotnet run --project editor                  # launch the editor
 dotnet run --project samples/HelloQuad       # a framework-only program (also HelloTriangle, Hello2D, Hello3D)
 dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # an engine project, cooked and run
+dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # the solar-system showcase
 ```
 
 ## The `spot` CLI
@@ -74,7 +75,7 @@ spot help
 | `editor/` | The ImGui-based editor |
 | `debugui/` | Debug/authoring panels shared by the editor and the runtime overlay |
 | `net/` | Networking (`Spot.Net`) |
-| `samples/` | Small programs for each level, including `HelloEngine`, an engine project |
+| `samples/` | Small programs for each level, plus two engine projects: `HelloEngine` and the `SolarSystem` showcase |
 | `tools/` | `Spot.Build` (project/build library) and the `spot` CLI |
 | `tests/` | The xUnit test suites |
 | `docs/` | Documentation |

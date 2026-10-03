@@ -174,11 +174,13 @@ The `samples/` folder has small programs for each level. The framework ones are 
 | `Hello2D` | 2 | sprites, shapes, text, a sound built from PCM, input actions |
 | `Hello3D` | 2 | `Camera3D`, lit primitives, instancing, and an optional model loaded with Assimp and animated with `Skeleton` |
 | `HelloEngine` | 3 | a project: a scene with lighting, shadows, sky and post-processing, physics, particles, a UI document, scripts, and a custom render pass |
+| `SolarSystem` | 3 | a showcase project: the solar system in real time, with procedural planet shaders in custom render passes, an instanced asteroid belt, hover info cards, and an icon toolbar with a settings pop-up built from restyled engine widgets |
 
 `HelloEngine` is an engine project like any other: open `samples/HelloEngine/HelloEngine.sptproj` in the
 editor, or cook and run it with `spot run --project samples/HelloEngine` (and publish it with
 `spot build windows` or `spot build browser`). It uses no binary assets — primitives and generated textures
-only.
+only. `SolarSystem` is opened and run the same way; it ships no assets either, drawing every surface with its
+own shaders.
 
 ## Related
 

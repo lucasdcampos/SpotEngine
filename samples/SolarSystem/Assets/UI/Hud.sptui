@@ -1,0 +1,76 @@
+{
+  "ScaleMode": "ScaleWithHeight",
+  "ReferenceHeight": 900,
+  "Widgets": [
+    {
+      "Type": "Text",
+      "Name": "Title",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          36,
+          26
+        ],
+        "Size": [
+          520,
+          46
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Content": "Solar System",
+      "FontRef": "",
+      "FontSize": 36,
+      "Color": [
+        0.95,
+        0.96,
+        0.98,
+        1
+      ],
+      "Align": 0,
+      "Wrap": false
+    },
+    {
+      "Type": "Text",
+      "Name": "Subtitle",
+      "Rect": {
+        "Anchor": [
+          0,
+          0
+        ],
+        "Pivot": [
+          0,
+          0
+        ],
+        "Position": [
+          38,
+          72
+        ],
+        "Size": [
+          620,
+          22
+        ]
+      },
+      "Visible": true,
+      "Enabled": true,
+      "Content": "Rendered in real time with Spot Engine",
+      "FontRef": "",
+      "FontSize": 15,
+      "Color": [
+        0.62,
+        0.67,
+        0.76,
+        1
+      ],
+      "Align": 0,
+      "Wrap": false
+    }
+  ]
+}

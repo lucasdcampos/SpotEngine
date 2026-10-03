@@ -84,6 +84,19 @@ protected override void OnStart()
 Editor-authored documents store appearance and layout; **behaviour is wired in code** by looking widgets up
 by name, so designers lay out the screen and scripts give it life.
 
+## Custom widgets
+
+The built-in widgets are ordinary classes, and so can yours be: derive from `Widget`, override its draw hook
+and draw with the framework's `UIRenderer` (quads, nine-slices, text, clipping), and add it to the tree like
+any other. `samples/SolarSystem` draws its planet labels, hover reticle and info card from one such widget,
+projecting the 3D bodies with the camera as it is when the frame is drawn.
+
+To restyle a built-in widget, derive from it and override only its drawing: it keeps its behaviour — a
+button's click, a toggle's flip, a slider's drag and its capture — while you choose the look. The same sample
+builds its toolbar and settings pop-up this way: round icon buttons with tooltips, sliding switches and a stepped
+slider, on a panel that swallows the clicks landing on it so they don't reach the game behind (a widget is hit
+only when it is interactive).
+
 ## Input
 
 Each frame the root hit-tests the top-most interactive widget under the pointer and dispatches press,

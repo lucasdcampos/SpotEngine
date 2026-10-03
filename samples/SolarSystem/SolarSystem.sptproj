@@ -1,0 +1,5 @@
+{
+  "Name": "SolarSystem",
+  "StartScene": "Scenes/SolarSystem.sptscene",
+  "AssetDirectory": "Assets"
+}

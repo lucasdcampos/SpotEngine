@@ -47,6 +47,7 @@ dotnet run --project editor                  # launch the editor
 dotnet run --project tools/Spot.Cli -- help  # the `spot` command-line tool
 dotnet run --project samples/HelloQuad       # a level-1 program: your own loop (also HelloTriangle, Hello2D, Hello3D)
 dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # cook and run the engine sample
+dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # the solar-system showcase
 ```
 
 See the repository [README](../README.md) for build and run instructions.

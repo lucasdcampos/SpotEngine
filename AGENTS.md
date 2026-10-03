@@ -15,6 +15,7 @@ dotnet run --project editor                  # launch the ImGui editor
 dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/build/cook/migrate)
 dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, HelloTriangle (L1), Hello2D, Hello3D (L2); `-- --frames N` exits after N frames
 dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L3 sample project: generate + cook + run
+dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # L3 showcase project (custom shaders, UI)
 ```
 
 ## Projects
@@ -30,7 +31,7 @@ dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L3 s
 | `tools/Spot.Build` | library | `.sptproj` → buildable app (used by editor + CLI) |
 | `tools/Spot.Cli` | exe (`spot`) | thin CLI front-end over Spot.Build |
 | `net/Spot.Net` | library | WebSocket networking (server-authoritative) |
-| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and `samples/HelloEngine`, an L3 `.sptproj` project: only its source is committed (its `.csproj`/`.sln` are regenerated and gitignored, so it is not in the solution); keep it free of binary assets. `SampleProjectTests` check its scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
+| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and the L3 `.sptproj` projects `samples/HelloEngine` and `samples/SolarSystem` (a showcase): only their source is committed (their `.csproj`/`.sln` are regenerated and gitignored, so they are not in the solution); keep them free of binary assets. `SampleProjectTests` check their scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
 | `tests/*` | xUnit | `Spot.Framework.Tests` (framework only, no engine reference), `Spot.Engine.Tests` (includes the architecture tests that pin the layering), `Spot.Build.Tests`, `Spot.Net.Tests`; shared fakes (e.g. `RecordingGraphicsDevice`) in `tests/Shared`, binary fixtures in `tests/Fixtures` |
 
 ## Rules
