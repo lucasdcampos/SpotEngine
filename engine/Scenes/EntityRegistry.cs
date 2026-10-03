@@ -16,7 +16,16 @@ internal sealed class EntityRegistry
 {
     private readonly Scene _scene;
     private readonly HashSet<int> _entities = new();
-    private readonly Dictionary<Type, Dictionary<int, object>> _pools = new();
+    private readonly Dictionary<Type, Dictionary<int, Component>> _pools = new();
+
+    // Each entity's components in the order they were added: the order hooks run in, the inspector shows them
+    // in, and polymorphic lookups scan. Mirrors the pools, which stay the fast exact-type index.
+    private readonly Dictionary<int, List<Component>> _ordered = new();
+
+    // Every user component across the scene, in the order they were added, plus a snapshot the component
+    // system iterates (rebuilt only after a change, so a steady frame allocates nothing).
+    private readonly List<Component> _userComponents = new();
+    private Component[]? _userSnapshot;
     private readonly Dictionary<Type, IReadOnlyList<Entity>> _viewCache = new();
     private readonly Dictionary<(Type, Type), IReadOnlyList<Entity>> _viewCache2 = new();
     private readonly HierarchyCache _hierarchy;
@@ -46,10 +55,22 @@ internal sealed class EntityRegistry
     public void RemoveEntity(int id)
     {
         _entities.Remove(id);
-        foreach (Dictionary<int, object> pool in _pools.Values)
+        foreach (Dictionary<int, Component> pool in _pools.Values)
         {
             pool.Remove(id);
         }
+
+        if (_ordered.Remove(id, out List<Component>? ordered))
+        {
+            foreach (Component component in ordered)
+            {
+                if (component.IsUserComponent)
+                {
+                    _userComponents.Remove(component);
+                }
+            }
+        }
+
         InvalidateCaches();
     }
 
@@ -58,6 +79,9 @@ internal sealed class EntityRegistry
     {
         _entities.Clear();
         _pools.Clear();
+        _ordered.Clear();
+        _userComponents.Clear();
+        _userSnapshot = null;
         _viewCache.Clear();
         _viewCache2.Clear();
         _hierarchy.Invalidate();
@@ -66,11 +90,40 @@ internal sealed class EntityRegistry
 
     // --- components ---
 
-    /// <summary>Stores <paramref name="component"/> for <paramref name="id"/> under <paramref name="type"/>.</summary>
-    public void Set(Type type, int id, object component)
+    /// <summary>
+    /// Stores <paramref name="component"/> for <paramref name="id"/> under its runtime type, replacing any
+    /// component of that exact type. A replaced component keeps its slot in the entity's order.
+    /// </summary>
+    /// <returns>The component that was replaced, or <see langword="null"/>.</returns>
+    public Component? Set(int id, Component component)
     {
-        PoolFor(type)[id] = component;
+        Dictionary<int, Component> pool = PoolFor(component.GetType());
+        List<Component> ordered = OrderedFor(id);
+        pool.TryGetValue(id, out Component? replaced);
+        pool[id] = component;
+
+        int slot = replaced is null ? -1 : ordered.IndexOf(replaced);
+        if (slot >= 0)
+        {
+            ordered[slot] = component;
+        }
+        else
+        {
+            ordered.Add(component);
+        }
+
+        if (replaced is not null && replaced.IsUserComponent)
+        {
+            _userComponents.Remove(replaced);
+        }
+
+        if (component.IsUserComponent)
+        {
+            _userComponents.Add(component);
+        }
+
         InvalidateCaches();
+        return replaced;
     }
 
     public T Get<T>(int id)
@@ -79,12 +132,17 @@ internal sealed class EntityRegistry
             ? component
             : throw new InvalidOperationException($"Entity does not have a component of type {typeof(T).Name}.");
 
+    /// <summary>
+    /// Finds the entity's component of type <typeparamref name="T"/>: the exact type first (one dictionary
+    /// probe), then — unless <typeparamref name="T"/> is sealed and so cannot match anything else — the first
+    /// component in the entity's order assignable to it, so base classes and interfaces resolve too.
+    /// </summary>
     public bool TryGet<T>(int id, [NotNullWhen(true)] out T? component)
         where T : class
     {
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) && pool.TryGetValue(id, out object? value))
+        if (TryGet(typeof(T), id, out Component? found))
         {
-            component = (T)value;
+            component = (T)(object)found;
             return true;
         }
 
@@ -94,38 +152,108 @@ internal sealed class EntityRegistry
 
     public bool Has<T>(int id)
         where T : class =>
-        _pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool) && pool.ContainsKey(id);
+        TryGet(typeof(T), id, out _);
 
-    public void Remove<T>(int id)
+    public Component? Remove<T>(int id)
         where T : class =>
         Remove(typeof(T), id);
 
-    public bool Has(Type type, int id) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.ContainsKey(id);
+    public bool Has(Type type, int id) => TryGet(type, id, out _);
 
-    public object? Get(Type type, int id) =>
-        _pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(id, out object? value)
-            ? value
-            : null;
+    public Component? Get(Type type, int id) => TryGet(type, id, out Component? component) ? component : null;
 
-    public bool TryGet(Type type, int id, [NotNullWhen(true)] out object? component)
+    /// <summary>The non-generic counterpart to <see cref="TryGet{T}(int, out T)"/>, with the same lookup rules.</summary>
+    public bool TryGet(Type type, int id, [NotNullWhen(true)] out Component? component)
     {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool) && pool.TryGetValue(id, out component))
+        if (_pools.TryGetValue(type, out Dictionary<int, Component>? pool) && pool.TryGetValue(id, out component))
         {
             return true;
+        }
+
+        if (!type.IsSealed && _ordered.TryGetValue(id, out List<Component>? ordered))
+        {
+            foreach (Component candidate in ordered)
+            {
+                if (type.IsInstanceOfType(candidate))
+                {
+                    component = candidate;
+                    return true;
+                }
+            }
         }
 
         component = null;
         return false;
     }
 
-    public void Remove(Type type, int id)
+    /// <summary>
+    /// Removes the entity's component of <paramref name="type"/>, resolved the way
+    /// <see cref="TryGet(Type, int, out Component)"/> resolves it (so a base class or interface removes the
+    /// first match).
+    /// </summary>
+    /// <returns>The removed component, or <see langword="null"/> when the entity had none.</returns>
+    public Component? Remove(Type type, int id)
     {
-        if (_pools.TryGetValue(type, out Dictionary<int, object>? pool))
+        if (!TryGet(type, id, out Component? component))
         {
-            pool.Remove(id);
-            InvalidateCaches();
+            return null;
         }
+
+        _pools[component.GetType()].Remove(id);
+        if (_ordered.TryGetValue(id, out List<Component>? ordered))
+        {
+            ordered.Remove(component);
+        }
+
+        if (component.IsUserComponent)
+        {
+            _userComponents.Remove(component);
+        }
+
+        InvalidateCaches();
+        return component;
+    }
+
+    /// <summary>The entity's components in the order they were added (empty for an unknown id).</summary>
+    public IReadOnlyList<Component> ComponentsOf(int id) =>
+        _ordered.TryGetValue(id, out List<Component>? ordered) ? ordered : Array.Empty<Component>();
+
+    /// <summary>
+    /// Every user component (see <see cref="Component.IsUserComponent"/>) in the order they were added, as a
+    /// snapshot that stays valid while components are added or removed during iteration.
+    /// </summary>
+    public IReadOnlyList<Component> UserComponents => _userSnapshot ??= _userComponents.ToArray();
+
+    /// <summary>Every component in the store assignable to <typeparamref name="T"/>, grouped by entity.</summary>
+    public List<T> All<T>()
+        where T : class
+    {
+        var result = new List<T>();
+        if (typeof(T).IsSealed)
+        {
+            if (_pools.TryGetValue(typeof(T), out Dictionary<int, Component>? pool))
+            {
+                foreach (Component component in pool.Values)
+                {
+                    result.Add((T)(object)component);
+                }
+            }
+
+            return result;
+        }
+
+        foreach (List<Component> ordered in _ordered.Values)
+        {
+            foreach (Component component in ordered)
+            {
+                if (component is T match)
+                {
+                    result.Add(match);
+                }
+            }
+        }
+
+        return result;
     }
 
     // --- queries (cached per frame; invalidated by any structural mutation) ---
@@ -140,7 +268,7 @@ internal sealed class EntityRegistry
         }
 
         var result = new List<Entity>();
-        if (_pools.TryGetValue(typeof(T), out Dictionary<int, object>? pool))
+        if (_pools.TryGetValue(typeof(T), out Dictionary<int, Component>? pool))
         {
             foreach (int id in pool.Keys)
             {
@@ -164,15 +292,15 @@ internal sealed class EntityRegistry
         }
 
         var result = new List<Entity>();
-        if (!_pools.TryGetValue(typeof(T1), out Dictionary<int, object>? pool1) ||
-            !_pools.TryGetValue(typeof(T2), out Dictionary<int, object>? pool2))
+        if (!_pools.TryGetValue(typeof(T1), out Dictionary<int, Component>? pool1) ||
+            !_pools.TryGetValue(typeof(T2), out Dictionary<int, Component>? pool2))
         {
             _viewCache2[key] = result;
             return result;
         }
 
         // Iterate the smaller pool and probe the larger one.
-        (Dictionary<int, object> smaller, Dictionary<int, object> larger) =
+        (Dictionary<int, Component> smaller, Dictionary<int, Component> larger) =
             pool1.Count <= pool2.Count ? (pool1, pool2) : (pool2, pool1);
 
         foreach (int id in smaller.Keys)
@@ -227,11 +355,23 @@ internal sealed class EntityRegistry
     /// </summary>
     public void MoveEntityComponentsTo(int sourceId, EntityRegistry dest, int destId)
     {
-        foreach (Dictionary<int, object> pool in _pools.Values)
+        foreach (Dictionary<int, Component> pool in _pools.Values)
         {
-            if (pool.Remove(sourceId, out object? component))
+            if (pool.Remove(sourceId, out Component? component))
             {
                 dest.PoolFor(component.GetType())[destId] = component;
+            }
+        }
+
+        if (_ordered.Remove(sourceId, out List<Component>? ordered))
+        {
+            dest._ordered[destId] = ordered;
+            foreach (Component component in ordered)
+            {
+                if (component.IsUserComponent && _userComponents.Remove(component))
+                {
+                    dest._userComponents.Add(component);
+                }
             }
         }
 
@@ -241,19 +381,31 @@ internal sealed class EntityRegistry
     /// <summary>Clears the derived query and hierarchy-active caches without touching stored state.</summary>
     public void InvalidateCaches()
     {
+        _userSnapshot = null;
         _viewCache.Clear();
         _viewCache2.Clear();
         _hierarchy.Invalidate();
     }
 
-    private Dictionary<int, object> PoolFor(Type type)
+    private Dictionary<int, Component> PoolFor(Type type)
     {
-        if (!_pools.TryGetValue(type, out Dictionary<int, object>? pool))
+        if (!_pools.TryGetValue(type, out Dictionary<int, Component>? pool))
         {
-            pool = new Dictionary<int, object>();
+            pool = new Dictionary<int, Component>();
             _pools[type] = pool;
         }
 
         return pool;
+    }
+
+    private List<Component> OrderedFor(int id)
+    {
+        if (!_ordered.TryGetValue(id, out List<Component>? ordered))
+        {
+            ordered = new List<Component>();
+            _ordered[id] = ordered;
+        }
+
+        return ordered;
     }
 }

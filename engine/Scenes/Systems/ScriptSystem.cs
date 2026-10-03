@@ -11,6 +11,8 @@ internal static class ScriptSystem
 {
     public static void Update(Scene scene, float deltaTime)
     {
+        ComponentSystem.Update(scene, deltaTime);
+
         // First pass — start, enable/disable and update. View (not ViewActive) so disabled scripts are still
         // observed and can fire OnDisable on the frame they go inactive. The list is snapshotted so a script
         // that spawns or destroys entities during its update cannot invalidate the iterator (the classic
@@ -65,6 +67,8 @@ internal static class ScriptSystem
             }
         }
 
+        ComponentSystem.LateUpdate(scene, deltaTime);
+
         // Second pass — late update, after every script's OnUpdate has run this frame so it observes their
         // changes (a follow camera sees its target's moved position). ActiveLastFrame gates on a script that
         // has been started and had its OnEnable run this frame or earlier.
@@ -92,6 +96,8 @@ internal static class ScriptSystem
     /// </summary>
     public static void FixedUpdate(Scene scene, float deltaTime)
     {
+        ComponentSystem.FixedUpdate(scene, deltaTime);
+
         foreach ((Entity _, ScriptComponent scriptComp) in scene.ViewActive<ScriptComponent>())
         {
             foreach (EntityBehaviour script in scriptComp.Scripts.ToList())
@@ -132,6 +138,8 @@ internal static class ScriptSystem
 
     public static void ImGuiRender(Scene scene)
     {
+        ComponentSystem.ImGuiRender(scene);
+
         foreach (Entity entity in scene.View<ScriptComponent>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
@@ -156,6 +164,8 @@ internal static class ScriptSystem
 
     public static void DestroyAll(Scene scene)
     {
+        ComponentSystem.DestroyAll(scene);
+
         foreach (Entity entity in scene.View<ScriptComponent>())
         {
             foreach (EntityBehaviour script in entity.GetComponent<ScriptComponent>().Scripts.ToList())

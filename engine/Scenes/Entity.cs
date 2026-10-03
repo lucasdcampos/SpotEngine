@@ -27,6 +27,13 @@ public readonly struct Entity : IEquatable<Entity>
     public bool IsValid => _scene is not null && _scene.IsAlive(this);
 
     /// <summary>
+    /// Gets a value indicating whether this handle refers to a scene at all — <see langword="false"/> for the
+    /// default handle a component holds before it is attached. Cheaper than <see cref="IsValid"/>, which also
+    /// checks the entity is still alive.
+    /// </summary>
+    internal bool HasScene => _scene is not null;
+
+    /// <summary>
     /// Gets or sets the entity's name (stored in its <see cref="LabelComponent"/>).
     /// </summary>
     public string Name
@@ -179,10 +186,33 @@ public readonly struct Entity : IEquatable<Entity>
     /// <param name="component">The component instance.</param>
     /// <returns>The attached component.</returns>
     public T AddComponent<T>(T component)
-        where T : class => OwningScene.AddComponent(this, component);
+        where T : Component => OwningScene.AddComponent(this, component);
 
     /// <summary>
-    /// Gets the entity's component of the given type, throwing if it is absent. Use
+    /// Attaches a new component of the given type to the entity, replacing any existing component of the same
+    /// type. This is how a game's own components are attached in code:
+    /// <c>entity.AddComponent&lt;PlayerMovement&gt;()</c>.
+    /// </summary>
+    /// <typeparam name="T">The component type.</typeparam>
+    /// <returns>The attached component.</returns>
+    public T AddComponent<T>()
+        where T : Component, new() => OwningScene.AddComponent(this, new T());
+
+    /// <summary>
+    /// Returns every component on this entity assignable to <typeparamref name="T"/> (a concrete type, a base
+    /// class or an interface), in the order they were added.
+    /// </summary>
+    /// <typeparam name="T">The component type to match.</typeparam>
+    /// <returns>A new list of the matching components.</returns>
+    public List<T> GetComponents<T>()
+        where T : class => OwningScene.GetComponents<T>(this);
+
+    /// <summary>Gets the entity's components in the order they were added.</summary>
+    public IReadOnlyList<Component> Components => OwningScene.ComponentsOf(this);
+
+    /// <summary>
+    /// Gets the entity's component of the given type, throwing if it is absent. <typeparamref name="T"/> may be a
+    /// concrete component type, a base class or an interface (the first match in the entity's order). Use
     /// <see cref="TryGetComponent{T}(out T)"/> when the component may not be present. (The non-generic
     /// <see cref="GetComponent(Type)"/> returns <see langword="null"/> instead of throwing.)
     /// </summary>

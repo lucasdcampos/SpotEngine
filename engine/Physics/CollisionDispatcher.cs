@@ -73,16 +73,43 @@ internal sealed class CollisionDispatcher
         var toB = new Collision(pair.A, -pair.Normal, pair.Point);
         Deliver(pair.A, phase, "collision", s => Call(s, phase, toA));
         Deliver(pair.B, phase, "collision", s => Call(s, phase, toB));
+        DeliverToComponents(pair.A, phase, "collision", c => Call(c, phase, toA));
+        DeliverToComponents(pair.B, phase, "collision", c => Call(c, phase, toB));
     }
 
     private static void DispatchTrigger(ContactPair pair, Phase phase)
     {
         Deliver(pair.A, phase, "trigger", s => Call(s, phase, pair.B, trigger: true));
         Deliver(pair.B, phase, "trigger", s => Call(s, phase, pair.A, trigger: true));
+        DeliverToComponents(pair.A, phase, "trigger", c => Call(c, phase, pair.B));
+        DeliverToComponents(pair.B, phase, "trigger", c => Call(c, phase, pair.A));
     }
 
     private static void Deliver(Entity entity, Phase phase, string kind, System.Action<EntityBehaviour> call) =>
         ScriptSystem.ForEachLiveScript(entity, kind + ":" + phase, call);
+
+    private static void DeliverToComponents(Entity entity, Phase phase, string kind, System.Action<Component> call) =>
+        ComponentSystem.ForEachLive(entity, kind + ":" + phase, call);
+
+    private static void Call(Component component, Phase phase, Collision collision)
+    {
+        switch (phase)
+        {
+            case Phase.Enter: component.OnCollisionEnter(collision); break;
+            case Phase.Stay: component.OnCollisionStay(collision); break;
+            case Phase.Exit: component.OnCollisionExit(collision); break;
+        }
+    }
+
+    private static void Call(Component component, Phase phase, Entity other)
+    {
+        switch (phase)
+        {
+            case Phase.Enter: component.OnTriggerEnter(other); break;
+            case Phase.Stay: component.OnTriggerStay(other); break;
+            case Phase.Exit: component.OnTriggerExit(other); break;
+        }
+    }
 
     private static void Call(EntityBehaviour script, Phase phase, Collision collision)
     {

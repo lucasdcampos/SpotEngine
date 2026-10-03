@@ -112,7 +112,8 @@ public sealed class TransformGizmo
 
         _active = Handle.None;
 
-        if (transform.Entity is not Entity entity || !entity.IsValid)
+        Entity entity = transform.Entity;
+        if (!entity.IsValid)
         {
             return;
         }

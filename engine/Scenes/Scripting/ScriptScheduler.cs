@@ -12,11 +12,11 @@ namespace Spot.Engine.Scenes;
 /// </summary>
 internal sealed class ScriptScheduler
 {
-    private readonly EntityBehaviour _owner;
+    private readonly object _owner;
     private readonly List<Coroutine> _coroutines = new();
     private readonly List<ScheduledInvoke> _invokes = new();
 
-    internal ScriptScheduler(EntityBehaviour owner) => _owner = owner;
+    internal ScriptScheduler(object owner) => _owner = owner;
 
     /// <summary>Registers a coroutine. Its first step runs on the next scheduler tick, not immediately.</summary>
     internal Coroutine StartCoroutine(IEnumerator routine)

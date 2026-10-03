@@ -16,8 +16,6 @@ public sealed class TransformComponent : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
 
-    public Entity? Entity { get; internal set; }
-
     private Vector3 _position = Vector3.Zero;
     private Vector3 _rotation = Vector3.Zero;
     private Vector3 _scale = Vector3.One;
@@ -107,7 +105,7 @@ public sealed class TransformComponent : Component
 
     private TransformComponent? GetParentTransform()
     {
-        if (Entity != null && Entity.Value.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
+        if (Entity.HasScene && Entity.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
         {
             if (rel.Parent.Value.TryGetComponent(out TransformComponent? parentTransform))
             {
@@ -146,7 +144,7 @@ public sealed class TransformComponent : Component
         get
         {
             TransformComponent? parentTransform = GetParentTransform();
-            Entity? currentParent = parentTransform?.Entity;
+            Entity? currentParent = parentTransform is null ? null : parentTransform.Entity;
 
             // If reparented, force update
             if (_lastParent != currentParent)

@@ -426,7 +426,7 @@ public class Scene
             }
         }
 
-        if (_registry.TryGet(typeof(ScriptComponent), id, out object? value))
+        if (_registry.TryGet(typeof(ScriptComponent), id, out Component? value))
         {
             foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
             {
@@ -459,6 +459,11 @@ public class Scene
                     Log.CoreError("Script '{0}' threw from OnDestroy; ignoring. {1}", script.GetType().Name, ex);
                 }
             }
+        }
+
+        foreach (Component component in _registry.ComponentsOf(id).ToArray())
+        {
+            ComponentSystem.Teardown(component);
         }
 
         _registry.RemoveEntity(id);
@@ -553,9 +558,9 @@ public class Scene
         {
             var entity = new Entity(newId, this);
 
-            if (TryGetComponent(entity, out TransformComponent? transform))
+            foreach (Component component in _registry.ComponentsOf(newId))
             {
-                transform.Entity = entity;
+                component.Entity = entity;
             }
 
             if (TryGetComponent(entity, out LabelComponent? label))
@@ -671,15 +676,20 @@ public class Scene
 
     internal bool IsActiveInHierarchy(int entityId) => _registry.IsActiveInHierarchy(entityId);
 
-    // Component access delegates to the registry, which stores each component under its type and invalidates
-    // the query and hierarchy caches on mutation. The scene first wires the two components that need a
-    // back-reference (a transform to its entity, a label to its owning scene) before storing them.
+    // Component access delegates to the registry, which stores each component under its runtime type and
+    // invalidates the query and hierarchy caches on mutation. The scene first wires the component's back-reference
+    // to its entity (and a label to its owning scene), and tears down a started user component it replaces.
 
     internal T AddComponent<T>(Entity entity, T component)
-        where T : class
+        where T : Component
     {
         WireComponent(entity, component);
-        _registry.Set(typeof(T), entity.Id, component);
+        Component? replaced = _registry.Set(entity.Id, component);
+        if (replaced is not null && !ReferenceEquals(replaced, component))
+        {
+            ComponentSystem.Teardown(replaced);
+        }
+
         return component;
     }
 
@@ -697,7 +707,38 @@ public class Scene
 
     internal void RemoveComponent<T>(Entity entity)
         where T : class =>
-        _registry.Remove<T>(entity.Id);
+        RemoveComponent(entity, typeof(T));
+
+    internal List<T> GetComponents<T>(Entity entity)
+        where T : class
+    {
+        var result = new List<T>();
+        foreach (Component component in _registry.ComponentsOf(entity.Id))
+        {
+            if (component is T match)
+            {
+                result.Add(match);
+            }
+        }
+
+        return result;
+    }
+
+    internal IReadOnlyList<Component> ComponentsOf(Entity entity) => _registry.ComponentsOf(entity.Id);
+
+    /// <summary>Every user component in the scene, in the order they were added (a snapshot).</summary>
+    internal IReadOnlyList<Component> UserComponents => _registry.UserComponents;
+
+    /// <summary>
+    /// Returns every component in the scene of type <typeparamref name="T"/> — a concrete component type, a base
+    /// class or an interface — including those on disabled entities. Check <see cref="Component.Enabled"/> and
+    /// <see cref="Entity.IsActiveInHierarchy"/> when only live ones matter.
+    /// </summary>
+    /// <typeparam name="T">The component type to match.</typeparam>
+    /// <returns>A new list, safe to keep while the scene changes.</returns>
+    public List<T> GetComponents<T>()
+        where T : class =>
+        _registry.All<T>();
 
     // Non-generic component access, keyed by runtime type, for callers that only know a component's Type at
     // runtime (e.g. the editor's reflection-based inspector).
@@ -706,27 +747,31 @@ public class Scene
 
     internal object? GetComponent(Entity entity, Type type) => _registry.Get(type, entity.Id);
 
-    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component) =>
-        _registry.TryGet(type, entity.Id, out component);
-
-    internal Component AddComponent(Entity entity, Component component)
+    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component)
     {
-        WireComponent(entity, component);
-        _registry.Set(component.GetType(), entity.Id, component);
-        return component;
+        bool found = _registry.TryGet(type, entity.Id, out Component? match);
+        component = match;
+        return found;
     }
 
-    internal void RemoveComponent(Entity entity, Type type) => _registry.Remove(type, entity.Id);
+    internal Component AddComponent(Entity entity, Component component) => AddComponent<Component>(entity, component);
 
-    // Gives a transform its owning entity and a label its owning scene so components can navigate back to
-    // the scene graph. Other component types need no wiring.
-    private void WireComponent(Entity entity, object component)
+    internal void RemoveComponent(Entity entity, Type type)
     {
-        if (component is TransformComponent transform)
+        Component? removed = _registry.Remove(type, entity.Id);
+        if (removed is not null)
         {
-            transform.Entity = entity;
+            ComponentSystem.Teardown(removed);
         }
-        else if (component is LabelComponent label)
+    }
+
+    // Gives every component its owning entity, and a label its owning scene, so components can navigate back to
+    // the scene graph.
+    private void WireComponent(Entity entity, Component component)
+    {
+        component.Entity = entity;
+        component.Detached = false;
+        if (component is LabelComponent label)
         {
             label.OwnerScene = this;
         }
