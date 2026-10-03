@@ -55,6 +55,19 @@ public static class EditorIcons
     public const string Copy = "\uf0c5";         // copy
     public const string Trash = "\uf2ed";        // trash-can
     public const string Warning = "\uf071";      // triangle-exclamation
+    public const string VolumeHigh = "\uf028";   // volume-high (audio source)
+    public const string Headphones = "\uf025";   // headphones (audio listener)
+    public const string PersonRunning = "\uf70c"; // person-running (character controller)
+    public const string WeightHanging = "\uf5cd"; // weight-hanging (physics body)
+    public const string Capsules = "\uf46b";     // capsules (capsule collider)
+    public const string Square = "\uf0c8";       // square (2D box collider)
+    public const string Film = "\uf008";         // film (animator)
+    public const string Font = "\uf031";         // font (text)
+    public const string Wand = "\uf72b";         // wand-magic-sparkles (post-processing)
+    public const string NetworkWired = "\uf6ff"; // network-wired (networking)
+    public const string WindowMaximize = "\uf2d0"; // window-maximize (UI canvas)
+    public const string Atom = "\uf5d2";         // atom (physics)
+    public const string Mountain = "\uf6fc";     // mountain (environment)
 
     // Every codepoint above; the engine bakes exactly these (as an ImGui [lo,hi,…,0] range) so the
     // atlas stays small instead of loading all ~1500 Font Awesome glyphs.
@@ -65,7 +78,9 @@ public static class EditorIcons
         0xf002, 0xf0b2, 0xf2f1, 0xf31e, 0xf04b, 0xf04d, 0xf142, 0xf00d,
         0xf001, 0xf06d, 0xf11b, 0xf06e, 0xf5cb, 0xf5ee, 0xf067, 0xf0d7,
         0xf141, 0xf02d, 0xf126, 0xf08e, 0xf009, 0xf03a, 0xf160, 0xf017,
-        0xf00c, 0xf0c5, 0xf2ed, 0xf071,
+        0xf00c, 0xf0c5, 0xf2ed, 0xf071, 0xf028, 0xf025, 0xf70c, 0xf5cd,
+        0xf46b, 0xf0c8, 0xf008, 0xf031, 0xf72b, 0xf6ff, 0xf2d0, 0xf5d2,
+        0xf6fc,
     };
 
     /// <summary>The ImGui glyph range (<c>[lo, hi, …, 0]</c>) covering exactly <see cref="Codepoints"/>.</summary>

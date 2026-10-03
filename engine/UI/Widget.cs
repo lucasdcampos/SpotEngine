@@ -13,7 +13,7 @@ public readonly record struct UIInput(Vector2 Pointer, bool Down, bool Pressed, 
 /// <summary>
 /// The base of the retained UI tree: a node with an anchored <see cref="Rect"/>, optional children and
 /// virtual hooks for layout, drawing and pointer interaction. UI is built in code — construct widgets and
-/// add them to the active scene's <see cref="UIRoot"/> (see <c>EntityBehaviour.UI</c>), or use the builder
+/// add them to the active scene's <see cref="UIRoot"/> (see <c>Component.UI</c>), or use the builder
 /// methods here (<see cref="Panel()"/>, <see cref="Button(string)"/>, …) which create a child and return it
 /// for configuration.
 /// </summary>

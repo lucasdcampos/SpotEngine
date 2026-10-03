@@ -38,7 +38,7 @@ The built-in components include:
 | Physics | **Physics Body** (2D/3D), 2D **Box/Circle Colliders**, 3D **Box/Sphere/Capsule Colliders**, **Character Controller** |
 | Audio | **Audio Source**, **Audio Listener** |
 | Content | **Prefab** — an instance of a reusable entity template |
-| Behavior | **Scripts** — custom logic you write (see [Scripting](scripting.md)) |
+| Behavior | **Your own components** — custom logic you write as a class deriving from `Component` (see [Scripting](scripting.md)) |
 
 Nearly every visible entity has a Transform; the rest are mixed and matched freely.
 
@@ -53,14 +53,14 @@ tag, or every entity with a tag. Tags are the idiomatic way to categorize object
 
 Because behavior and appearance come from components, you **compose** objects rather than inherit
 them. A "player" isn't a special class — it's an entity with a transform, a sprite or mesh, maybe a
-physics body, and a script. A "camera" is just an entity with a camera component. This keeps objects
+physics body, and a `PlayerMovement` component you wrote. A "camera" is just an entity with a camera component. This keeps objects
 flexible: you can add or remove capabilities at any time.
 
 ## Systems
 
 The engine's **systems** walk the scene and act on entities that have the right combination of
 components — the rendering system draws everything with a transform and something visible; the
-physics system simulates bodies with colliders; the script system runs every entity's scripts. You
+physics system simulates bodies with colliders; the component system runs the hooks of your own components. You
 mostly don't touch systems directly: you add components, and the systems do the rest. See
 [Architecture](architecture.md).
 

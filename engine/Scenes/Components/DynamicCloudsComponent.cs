@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Spot.Engine.Scenes;
 
-[ComponentMenu("Dynamic Clouds", Order = 90)]
+[ComponentMenu("Dynamic Clouds", Order = 90, Category = "Environment")]
 [SceneComponent("DynamicClouds")]
 public sealed class DynamicCloudsComponent : Component
 {

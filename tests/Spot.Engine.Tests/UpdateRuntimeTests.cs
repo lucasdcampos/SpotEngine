@@ -12,14 +12,14 @@ public class UpdateRuntimeTests
 {
     private const float Dt = 1f / 60f;
 
-    private sealed class UpdateCounter : EntityBehaviour
+    private sealed class UpdateCounter : Component
     {
         public int Updates;
         public override void OnUpdate(float deltaTime) => Updates++;
     }
 
     // Destroys its own entity the first time it updates, so we can observe UpdateRuntime's end-of-frame flush.
-    private sealed class SelfDestructOnUpdate : EntityBehaviour
+    private sealed class SelfDestructOnUpdate : Component
     {
         public override void OnUpdate(float deltaTime) => Entity.Scene.Destroy(Entity);
     }
@@ -27,7 +27,7 @@ public class UpdateRuntimeTests
     // Records the sibling body's velocity the first time it updates. If physics stepped before scripts (the
     // intended order), gravity has already made Velocity.Y negative by the time this runs; if scripts ran
     // first it would still be exactly zero. A clean, magnitude-independent discriminator of the ordering.
-    private sealed class VelocityProbe : EntityBehaviour
+    private sealed class VelocityProbe : Component
     {
         public bool Observed;
         public float ObservedVelocityY;
@@ -44,7 +44,7 @@ public class UpdateRuntimeTests
     public void UpdateRuntime_RunsScriptsEveryFrame()
     {
         var scene = new Scene();
-        var counter = scene.Instantiate().AddScript(new UpdateCounter());
+        var counter = scene.Instantiate().AddComponent(new UpdateCounter());
 
         scene.UpdateRuntime(Dt);
         scene.UpdateRuntime(Dt);
@@ -57,7 +57,7 @@ public class UpdateRuntimeTests
     {
         var scene = new Scene();
         Entity doomed = scene.Instantiate("Doomed");
-        doomed.AddScript(new SelfDestructOnUpdate());
+        doomed.AddComponent(new SelfDestructOnUpdate());
 
         Assert.True(doomed.IsValid);
         scene.UpdateRuntime(Dt);
@@ -93,7 +93,7 @@ public class UpdateRuntimeTests
         e.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
         e.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
         e.GetComponent<TransformComponent>().Position = new Vector3(0, 10, 0);
-        var probe = e.AddScript(new VelocityProbe());
+        var probe = e.AddComponent(new VelocityProbe());
 
         scene.UpdateRuntime(Dt);
 
@@ -113,7 +113,7 @@ public class UpdateRuntimeTests
 
         scene.Instantiate("Emitter").AddComponent(new ParticleSystemComponent());
         scene.Instantiate("Speaker").AddComponent(new AudioSourceComponent());
-        scene.Instantiate("Scripted").AddScript(new UpdateCounter());
+        scene.Instantiate("Scripted").AddComponent(new UpdateCounter());
 
         var exception = Record.Exception(() =>
         {

@@ -11,7 +11,7 @@ namespace HelloEngine;
 /// counter current. Shows spawning entities with components from a script, and wiring a UI document
 /// (<c>Assets/UI/Hud.sptui</c>, on this entity's UI Canvas) by widget name.
 /// </summary>
-public sealed class CubeRain : EntityBehaviour
+public sealed class CubeRain : Component
 {
     /// <summary>Gets or sets how many cubes may exist at once; the oldest is recycled past it.</summary>
     public int MaxCubes { get; set; } = 80;
@@ -36,7 +36,7 @@ public sealed class CubeRain : EntityBehaviour
     private Text? _counter;
 
     // The UI Canvas instantiates the document before scripts run, so its widgets already exist here.
-    public override void OnCreate()
+    public override void OnStart()
     {
         Button? drop = UI.Find<Button>("DropButton");
         if (drop is not null)

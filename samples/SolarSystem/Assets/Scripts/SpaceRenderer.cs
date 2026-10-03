@@ -18,7 +18,7 @@ namespace SolarSystem;
 /// The Sun's <see cref="LightComponent"/> lights the bodies, and the scene's directional light supplies the faint
 /// ambient fill, so the same lights drive these shaders and the engine's own lit renderer.
 /// </summary>
-public sealed class SpaceRenderer : EntityBehaviour
+public sealed class SpaceRenderer : Component
 {
     private const int OrbitSegments = 256;
 
@@ -55,7 +55,7 @@ public sealed class SpaceRenderer : EntityBehaviour
     private Texture2D? _lineTexture;
     private float _time;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         try
         {

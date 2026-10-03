@@ -38,7 +38,7 @@ public class Scene
     private UIRoot? _ui;
 
     /// <summary>
-    /// This scene's screen-space UI tree. Built in code from scripts (see <c>EntityBehaviour.UI</c>): add
+    /// This scene's screen-space UI tree. Built in code from components (see <c>Component.UI</c>): add
     /// <see cref="Widget"/>s to it and the engine lays them out, routes pointer input each play-mode frame,
     /// and draws them as the final pass. Created on first access, so scenes without UI cost nothing.
     /// </summary>
@@ -59,13 +59,13 @@ public class Scene
 
         Systems.Add(new DelegateSystem(SystemOrder.UICanvas,           UICanvasSystem.Update,                              "UI Canvas"));
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update,                 "Character Controller"));
-        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ScriptSystem.FixedUpdate,                           "Fixed Update"));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ComponentSystem.FixedUpdate,                        "Fixed Update"));
         Systems.Add(new DelegateSystem(SystemOrder.Physics2D,           static (scene, dt) => scene.StepPhysics2D(dt),      "Physics 2D"));
         Systems.Add(new DelegateSystem(SystemOrder.Physics3D,           static (scene, dt) => scene.StepPhysics3D(dt),      "Physics 3D"));
         Systems.Add(new DelegateSystem(SystemOrder.Animation,           AnimationSystem.Update,                             "Animation"));
         Systems.Add(new DelegateSystem(SystemOrder.Particles,           ParticleSystem.Update,                              "Particles"));
         Systems.Add(new DelegateSystem(SystemOrder.Audio,               AudioSystem.Update,                                 "Audio"));
-        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ScriptSystem.Update,                                "Scripts"));
+        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ComponentSystem.Update,                             "Scripts"));
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ public class Scene
     /// </summary>
     public virtual void OnImGuiRender()
     {
-        ScriptSystem.ImGuiRender(this);
+        ComponentSystem.ImGuiRender(this);
     }
 
     /// <summary>
@@ -426,39 +426,9 @@ public class Scene
             }
         }
 
-        if (_registry.TryGet(typeof(ScriptComponent), id, out object? value))
+        foreach (Component component in _registry.ComponentsOf(id).ToArray())
         {
-            foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
-            {
-                if (!script.Started)
-                {
-                    continue;
-                }
-
-                // A still-enabled script gets OnDisable before OnDestroy, mirroring OnEnable/OnCreate. Both
-                // are guarded so a throwing teardown hook cannot abort destruction of the rest of the tree.
-                if (script.ActiveLastFrame)
-                {
-                    script.ActiveLastFrame = false;
-                    try
-                    {
-                        script.OnDisable();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.CoreError("Script '{0}' threw from OnDisable; ignoring. {1}", script.GetType().Name, ex);
-                    }
-                }
-
-                try
-                {
-                    script.OnDestroy();
-                }
-                catch (Exception ex)
-                {
-                    Log.CoreError("Script '{0}' threw from OnDestroy; ignoring. {1}", script.GetType().Name, ex);
-                }
-            }
+            ComponentSystem.Teardown(component);
         }
 
         _registry.RemoveEntity(id);
@@ -497,7 +467,7 @@ public class Scene
 
     /// <summary>
     /// Moves every persistent root entity (marked via <see cref="Entity.DontDestroyOnLoad"/>) and its
-    /// subtree from this scene into <paramref name="target"/>, preserving live component and script
+    /// subtree from this scene into <paramref name="target"/>, preserving live component
     /// state. Called by the <see cref="SceneManager"/> during a scene switch, before this scene is
     /// torn down, so persistent objects carry over rather than being destroyed with the scene.
     /// </summary>
@@ -528,9 +498,9 @@ public class Scene
 
     /// <summary>
     /// Adopts the entity <paramref name="rootId"/> and all of its descendants from
-    /// <paramref name="source"/> into this scene, reusing the existing component and script instances so
+    /// <paramref name="source"/> into this scene, reusing the existing component instances so
     /// their runtime state is preserved. Entity ids are re-minted in this scene and every stored entity
-    /// handle (transform, relationship, script) is rebound to the new ids and this scene.
+    /// handle (each component's entity, the relationships) is rebound to the new ids and this scene.
     /// </summary>
     private void AdoptSubtree(Scene source, int rootId)
     {
@@ -553,9 +523,9 @@ public class Scene
         {
             var entity = new Entity(newId, this);
 
-            if (TryGetComponent(entity, out TransformComponent? transform))
+            foreach (Component component in _registry.ComponentsOf(newId))
             {
-                transform.Entity = entity;
+                component.Entity = entity;
             }
 
             if (TryGetComponent(entity, out LabelComponent? label))
@@ -573,14 +543,6 @@ public class Scene
                     {
                         rel.Children[i] = mapped.Value;
                     }
-                }
-            }
-
-            if (TryGetComponent(entity, out ScriptComponent? scripts))
-            {
-                foreach (EntityBehaviour script in scripts.Scripts)
-                {
-                    script.Entity = entity;
                 }
             }
         }
@@ -671,15 +633,20 @@ public class Scene
 
     internal bool IsActiveInHierarchy(int entityId) => _registry.IsActiveInHierarchy(entityId);
 
-    // Component access delegates to the registry, which stores each component under its type and invalidates
-    // the query and hierarchy caches on mutation. The scene first wires the two components that need a
-    // back-reference (a transform to its entity, a label to its owning scene) before storing them.
+    // Component access delegates to the registry, which stores each component under its runtime type and
+    // invalidates the query and hierarchy caches on mutation. The scene first wires the component's back-reference
+    // to its entity (and a label to its owning scene), and tears down a started user component it replaces.
 
     internal T AddComponent<T>(Entity entity, T component)
-        where T : class
+        where T : Component
     {
         WireComponent(entity, component);
-        _registry.Set(typeof(T), entity.Id, component);
+        Component? replaced = _registry.Set(entity.Id, component);
+        if (replaced is not null && !ReferenceEquals(replaced, component))
+        {
+            ComponentSystem.Teardown(replaced);
+        }
+
         return component;
     }
 
@@ -697,7 +664,38 @@ public class Scene
 
     internal void RemoveComponent<T>(Entity entity)
         where T : class =>
-        _registry.Remove<T>(entity.Id);
+        RemoveComponent(entity, typeof(T));
+
+    internal List<T> GetComponents<T>(Entity entity)
+        where T : class
+    {
+        var result = new List<T>();
+        foreach (Component component in _registry.ComponentsOf(entity.Id))
+        {
+            if (component is T match)
+            {
+                result.Add(match);
+            }
+        }
+
+        return result;
+    }
+
+    internal IReadOnlyList<Component> ComponentsOf(Entity entity) => _registry.ComponentsOf(entity.Id);
+
+    /// <summary>Every user component in the scene, in the order they were added (a snapshot).</summary>
+    internal IReadOnlyList<Component> UserComponents => _registry.UserComponents;
+
+    /// <summary>
+    /// Returns every component in the scene of type <typeparamref name="T"/> — a concrete component type, a base
+    /// class or an interface — including those on disabled entities. Check <see cref="Component.Enabled"/> and
+    /// <see cref="Entity.IsActiveInHierarchy"/> when only live ones matter.
+    /// </summary>
+    /// <typeparam name="T">The component type to match.</typeparam>
+    /// <returns>A new list, safe to keep while the scene changes.</returns>
+    public List<T> GetComponents<T>()
+        where T : class =>
+        _registry.All<T>();
 
     // Non-generic component access, keyed by runtime type, for callers that only know a component's Type at
     // runtime (e.g. the editor's reflection-based inspector).
@@ -706,27 +704,31 @@ public class Scene
 
     internal object? GetComponent(Entity entity, Type type) => _registry.Get(type, entity.Id);
 
-    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component) =>
-        _registry.TryGet(type, entity.Id, out component);
-
-    internal Component AddComponent(Entity entity, Component component)
+    internal bool TryGetComponent(Entity entity, Type type, [NotNullWhen(true)] out object? component)
     {
-        WireComponent(entity, component);
-        _registry.Set(component.GetType(), entity.Id, component);
-        return component;
+        bool found = _registry.TryGet(type, entity.Id, out Component? match);
+        component = match;
+        return found;
     }
 
-    internal void RemoveComponent(Entity entity, Type type) => _registry.Remove(type, entity.Id);
+    internal Component AddComponent(Entity entity, Component component) => AddComponent<Component>(entity, component);
 
-    // Gives a transform its owning entity and a label its owning scene so components can navigate back to
-    // the scene graph. Other component types need no wiring.
-    private void WireComponent(Entity entity, object component)
+    internal void RemoveComponent(Entity entity, Type type)
     {
-        if (component is TransformComponent transform)
+        Component? removed = _registry.Remove(type, entity.Id);
+        if (removed is not null)
         {
-            transform.Entity = entity;
+            ComponentSystem.Teardown(removed);
         }
-        else if (component is LabelComponent label)
+    }
+
+    // Gives every component its owning entity, and a label its owning scene, so components can navigate back to
+    // the scene graph.
+    private void WireComponent(Entity entity, Component component)
+    {
+        component.Entity = entity;
+        component.Detached = false;
+        if (component is LabelComponent label)
         {
             label.OwnerScene = this;
         }

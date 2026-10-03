@@ -33,6 +33,13 @@ public sealed class ComponentMenuAttribute : Attribute
 
     /// <summary>Gets or sets the sort order among components (lower is drawn first). Ties break by display name.</summary>
     public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the group the component is listed under in the "Add Component" menu (for example
+    /// <c>"Rendering"</c> or <c>"Physics"</c>). A game's own components without a category are listed under
+    /// <c>"Scripts"</c>; set it on them to file them elsewhere.
+    /// </summary>
+    public string? Category { get; set; }
 }
 
 /// <summary>Hides a component property or script field from the reflection-based inspector (e.g. serialized paths, computed values, or script state that should not be authored).</summary>

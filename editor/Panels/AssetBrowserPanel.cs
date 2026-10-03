@@ -835,9 +835,9 @@ public class AssetBrowserPanel
             try { Directory.CreateDirectory(path); } catch { }
             StartInlineRename(path, Path.GetFileName(path), isNew: true);
         }
-        if (ImGui.MenuItem("New Script"))
+        if (ImGui.MenuItem("New Component Script"))
         {
-            string path = UniqueAssetPath(_currentDirectory, "NewScript", ".cs");
+            string path = UniqueAssetPath(_currentDirectory, "NewComponent", ".cs");
             CreateScript(Path.GetFileName(path));
             StartInlineRename(path, Path.GetFileNameWithoutExtension(path), isNew: true);
         }
@@ -1365,23 +1365,7 @@ public class AssetBrowserPanel
         if (File.Exists(filepath)) return;
 
         string className = Path.GetFileNameWithoutExtension(name).Replace(" ", "");
-        string template = $@"using System;
-
-namespace Spot.Game;
-
-public class {className} : EntityBehaviour
-{{
-    public override void OnCreate()
-    {{
-
-    }}
-
-    public override void OnUpdate(float deltaTime)
-    {{
-
-    }}
-}}
-";
+        string template = Spot.DebugUI.UI.ComponentScripts.Template(className, Spot.DebugUI.UI.ComponentScripts.ProjectNamespace());
         File.WriteAllText(filepath, template);
     }
 

@@ -10,7 +10,7 @@ namespace HelloEngine;
 /// <see cref="RenderStage.AfterTransparent"/>, inside the HDR capture, so the over-bright dots bloom like the rest
 /// of the scene.
 /// </summary>
-public sealed class GlowRing : EntityBehaviour
+public sealed class GlowRing : Component
 {
     /// <summary>Gets or sets the ring's radius.</summary>
     public float Radius { get; set; } = 3.2f;
@@ -24,7 +24,7 @@ public sealed class GlowRing : EntityBehaviour
     private DelegateRenderPass? _pass;
     private float _time;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _pass = new DelegateRenderPass(RenderStage.AfterTransparent, Draw, name: "Glow Ring");
         Scene.AddRenderPass(_pass);

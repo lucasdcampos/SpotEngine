@@ -43,7 +43,11 @@ public sealed class EditorGuiIdStackTests : IDisposable
         ["AssetSlot (empty)"] = () => EditorGui.AssetSlot("Mesh", "MODEL_FILE", new[] { "*.fbx" }, null, out _),
         ["AssetSlot (set)"] = () => EditorGui.AssetSlot("Mesh", "MODEL_FILE", new[] { "*.fbx" }, "Models/rock.fbx", out _),
         ["EntityField"] = () => { Entity v = default; EditorGui.EntityField("Target", new Scene(), ref v); },
-        ["ScriptSlot"] = () => EditorGui.ScriptSlot("Script", Array.Empty<string>(), out _),
+        ["Component card"] = () => EditorGui.Component(
+            new Scene().Instantiate(), typeof(TransformComponent), "Transform", removable: true, () => { }),
+        ["Component card (custom id)"] = () => EditorGui.Component(
+            new Scene().Instantiate(), typeof(TransformComponent), "Pending", removable: true, () => { },
+            id: "missing0", onRemove: () => { }),
     };
 
     private readonly object? _previousApplication;

@@ -9,9 +9,9 @@ namespace Spot.Engine.Physics;
 /// Aether backend. Inherits <see cref="Collider2DComponent.Offset"/>, <see cref="Collider2DComponent.IsTrigger"/>,
 /// and <see cref="Collider2DComponent.Layer"/>.
 /// </summary>
-[ComponentMenu("Box Collider 2D", Order = 50)]
+[ComponentMenu("Box Collider 2D", Order = 50, Category = "Physics 2D")]
 [SceneComponent("BoxCollider2D")]
-public class BoxCollider2DComponent : Collider2DComponent
+public sealed class BoxCollider2DComponent : Collider2DComponent
 {
     /// <summary>
     /// The full width and height of the box.

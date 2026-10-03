@@ -7,14 +7,14 @@ using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
 
-// A probe script that scene deserialization resolves by class name via reflection across loaded
+// A probe component that scene deserialization resolves by class name via reflection across loaded
 // assemblies. Kept top-level and public so Activator can construct it.
-public sealed class SerializationProbeBehaviour : EntityBehaviour
+public sealed class SerializationProbeBehaviour : Component
 {
 }
 
 // A probe script exposing public fields, to verify script tunables are persisted through a scene.
-public sealed class SerializationFieldProbe : EntityBehaviour
+public sealed class SerializationFieldProbe : Component
 {
     public float Speed = 1.0f;
     public int Count;
@@ -24,13 +24,13 @@ public sealed class SerializationFieldProbe : EntityBehaviour
 
 // A probe script referenced through the registry by a stable guid, to verify guid-based (rename-safe)
 // resolution survives a class-name change in the scene.
-public sealed class GuidProbeBehaviour : EntityBehaviour
+public sealed class GuidProbeBehaviour : Component
 {
     public int Value;
 }
 
 // A probe with an Entity-typed field, to verify entity references round-trip through the scene by stable id.
-public sealed class EntityRefProbe : EntityBehaviour
+public sealed class EntityRefProbe : Component
 {
     public Entity Target;
 }
@@ -53,7 +53,7 @@ public class SerializationTests
         try
         {
             var scene = new Scene();
-            scene.Instantiate("G").AddScript(new GuidProbeBehaviour { Value = 42 });
+            scene.Instantiate("G").AddComponent(new GuidProbeBehaviour { Value = 42 });
 
             // The guid is captured from the registry on save even though the instance was added by name.
             string json = new SceneSerializer(scene).SerializeToString();
@@ -65,8 +65,7 @@ public class SerializationTests
             var loaded = new Scene();
             Assert.True(new SceneSerializer(loaded).DeserializeFromString(renamed));
 
-            var comp = FindByName(loaded, "G").GetComponent<ScriptComponent>();
-            var restored = Assert.IsType<GuidProbeBehaviour>(comp.Scripts.Single());
+            var restored = FindByName(loaded, "G").GetComponent<GuidProbeBehaviour>();
             Assert.Equal(42, restored.Value);
         }
         finally
@@ -132,7 +131,7 @@ public class SerializationTests
     {
         var scene = new Scene();
         var e = scene.Instantiate("Scripted");
-        e.AddScript(new SerializationProbeBehaviour());
+        e.AddComponent(new SerializationProbeBehaviour());
 
         string json = new SceneSerializer(scene).SerializeToString();
 
@@ -140,10 +139,8 @@ public class SerializationTests
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
         var scripted = FindByName(loaded, "Scripted");
-        var comp = scripted.GetComponent<ScriptComponent>();
-        Assert.Contains(nameof(SerializationProbeBehaviour), comp.ClassNames);
-        Assert.Single(comp.Scripts);
-        Assert.IsType<SerializationProbeBehaviour>(comp.Scripts.Single());
+        Assert.Single(scripted.Components, c => c.IsUserComponent);
+        Assert.True(scripted.HasComponent<SerializationProbeBehaviour>());
     }
 
     [Fact]
@@ -151,7 +148,7 @@ public class SerializationTests
     {
         var scene = new Scene();
         var agent = scene.Instantiate("Agent");
-        var probe = agent.AddScript(new SerializationFieldProbe());
+        var probe = agent.AddComponent(new SerializationFieldProbe());
         probe.Speed = 12.5f;
         probe.Count = 7;
         probe.Flag = true;
@@ -162,8 +159,7 @@ public class SerializationTests
         var loaded = new Scene();
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
-        var comp = FindByName(loaded, "Agent").GetComponent<ScriptComponent>();
-        var restored = Assert.IsType<SerializationFieldProbe>(comp.Scripts.Single());
+        var restored = FindByName(loaded, "Agent").GetComponent<SerializationFieldProbe>();
         Assert.Equal(12.5f, restored.Speed);
         Assert.Equal(7, restored.Count);
         Assert.True(restored.Flag);
@@ -176,7 +172,7 @@ public class SerializationTests
         var scene = new Scene();
         var a = scene.Instantiate("A");
         var b = scene.Instantiate("B");
-        EntityRefProbe probe = a.AddScript(new EntityRefProbe());
+        EntityRefProbe probe = a.AddComponent(new EntityRefProbe());
         probe.Target = b;
 
         string json = new SceneSerializer(scene).SerializeToString();
@@ -184,8 +180,7 @@ public class SerializationTests
         var loaded = new Scene();
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
-        var comp = FindByName(loaded, "A").GetComponent<ScriptComponent>();
-        var restored = Assert.IsType<EntityRefProbe>(comp.Scripts.Single());
+        var restored = FindByName(loaded, "A").GetComponent<EntityRefProbe>();
         Assert.True(restored.Target.IsValid);
         Assert.Equal("B", restored.Target.Name);
     }
@@ -194,15 +189,14 @@ public class SerializationTests
     public void Scene_UnsetEntityReference_StaysUnset()
     {
         var scene = new Scene();
-        scene.Instantiate("A").AddScript(new EntityRefProbe());
+        scene.Instantiate("A").AddComponent(new EntityRefProbe());
 
         string json = new SceneSerializer(scene).SerializeToString();
 
         var loaded = new Scene();
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
-        var comp = FindByName(loaded, "A").GetComponent<ScriptComponent>();
-        var restored = Assert.IsType<EntityRefProbe>(comp.Scripts.Single());
+        var restored = FindByName(loaded, "A").GetComponent<EntityRefProbe>();
         Assert.False(restored.Target.IsValid);
     }
 

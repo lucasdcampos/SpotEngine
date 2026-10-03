@@ -14,7 +14,7 @@ namespace Spot.Engine.Scenes;
 /// <see cref="Font"/> is set it falls back to the engine's built-in default font, so text renders with zero
 /// setup.
 /// </remarks>
-[ComponentMenu("Text", Order = 15)]
+[ComponentMenu("Text", Order = 15, Category = "Rendering")]
 [SceneComponent("Text")]
 public sealed class TextComponent : Component
 {

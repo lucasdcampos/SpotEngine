@@ -7,7 +7,7 @@ namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// One resolvable script: its stable <see cref="Guid"/> (from the <c>.cs.meta</c> sidecar), its class
-/// <see cref="Name"/>, the concrete <see cref="EntityBehaviour"/> <see cref="Type"/>, and a
+/// <see cref="Name"/>, the concrete user <see cref="Component"/> <see cref="Type"/>, and a
 /// <see cref="Factory"/> that constructs an instance without reflection. Emitted by the script source
 /// generator so the runtime never needs <c>Activator</c> or an assembly scan — the AOT/trimming-safe path
 /// the browser build depends on.
@@ -16,7 +16,7 @@ namespace Spot.Engine.Scenes;
 /// <param name="Name">The script's class name (the legacy serialized reference).</param>
 /// <param name="Type">The concrete script type.</param>
 /// <param name="Factory">Constructs a new instance of the script.</param>
-public sealed record ScriptDescriptor(string Guid, string Name, Type Type, Func<EntityBehaviour> Factory);
+public sealed record ScriptDescriptor(string Guid, string Name, Type Type, Func<Component> Factory);
 
 /// <summary>
 /// Supplies the scripts a single assembly contains. The script source generator emits one implementation
@@ -135,6 +135,23 @@ public static class ScriptRegistry
     }
 
     /// <summary>Finds a script by its class name (case-insensitive). Returns <see langword="false"/> when unknown.</summary>
+    /// <summary>Looks up the descriptor generated for the concrete <paramref name="type"/>.</summary>
+    /// <param name="type">The script or component type.</param>
+    /// <param name="descriptor">The descriptor, if the type is registered.</param>
+    /// <returns><see langword="true"/> if found.</returns>
+    public static bool TryGetByType(Type type, out ScriptDescriptor? descriptor)
+    {
+        // Names are unique per registry (last registration wins), so the name map finds the candidate and the
+        // type check rejects a same-named class from another assembly.
+        if (TryGetByName(type.Name, out descriptor) && descriptor!.Type == type)
+        {
+            return true;
+        }
+
+        descriptor = null;
+        return false;
+    }
+
     public static bool TryGetByName(string? name, out ScriptDescriptor? descriptor)
     {
         descriptor = null;

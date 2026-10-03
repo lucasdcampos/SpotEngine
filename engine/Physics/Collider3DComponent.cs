@@ -10,11 +10,16 @@ namespace Spot.Engine.Physics;
 /// </summary>
 public abstract class Collider3DComponent : Component
 {
+    // Only the engine's collider shapes derive from this: the physics backends know each concrete shape.
+    private protected Collider3DComponent()
+    {
+    }
+
     /// <summary>The collider's local offset from the entity's position, scaled by the entity's world scale.</summary>
     public Vector3 Offset { get; set; } = Vector3.Zero;
 
     /// <summary>
-    /// When true, the collider reports overlaps as trigger callbacks (<see cref="EntityBehaviour.OnTriggerEnter"/>)
+    /// When true, the collider reports overlaps as trigger callbacks (<see cref="Component.OnTriggerEnter"/>)
     /// without producing a physical response, so other bodies pass through it. Bepu backend only.
     /// </summary>
     public bool IsTrigger { get; set; }

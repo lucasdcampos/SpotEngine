@@ -13,9 +13,9 @@ public class SceneRuntimeStateTests
     private const float Dt = 1f / 60f;
 
     // Builds UI and a render pass when it starts, and — like a careless script — never removes them.
-    private sealed class LeavesThingsBehind : EntityBehaviour
+    private sealed class LeavesThingsBehind : Component
     {
-        public override void OnCreate()
+        public override void OnStart()
         {
             UI.Text("Score");
             Scene.AddRenderPass(new DelegateRenderPass(RenderStage.Overlay, _ => { }));
@@ -26,12 +26,12 @@ public class SceneRuntimeStateTests
     public void ClearRuntimeState_DropsTheUIAndRenderPassesAScriptLeftBehind()
     {
         var scene = new Scene();
-        scene.Instantiate().AddScript(new LeavesThingsBehind());
+        scene.Instantiate().AddComponent(new LeavesThingsBehind());
         scene.UpdateRuntime(Dt);
         Assert.NotNull(scene.UIRootOrNull);
         Assert.Equal(1, scene.RenderPasses.Count);
 
-        ScriptSystem.DestroyAll(scene);
+        ComponentSystem.DestroyAll(scene);
         scene.ClearRuntimeState();
 
         Assert.Null(scene.UIRootOrNull);

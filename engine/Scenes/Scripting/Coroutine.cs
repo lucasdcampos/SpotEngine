@@ -3,8 +3,8 @@ using System.Collections;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// A handle to a running coroutine, returned by <see cref="EntityBehaviour.StartCoroutine"/>. Hold it
-/// to stop the coroutine later with <see cref="EntityBehaviour.StopCoroutine"/> or to poll
+/// A handle to a running coroutine, returned by <c>Component.StartCoroutine</c>. Hold it
+/// to stop the coroutine later with <c>Component.StopCoroutine</c> or to poll
 /// <see cref="IsRunning"/>. Coroutines are owned by the script that started them, so they stop
 /// automatically when the entity is destroyed or its scene is left.
 /// </summary>

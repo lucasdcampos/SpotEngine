@@ -21,7 +21,7 @@ public class RpcTests
             Entity e = scene.Instantiate("RpcPlayer");
             e.AddComponent(new NetworkObject());
             e.AddComponent(new NetworkTransform());
-            e.AddScript<RpcProbe>();
+            e.AddComponent<RpcProbe>();
             return e;
         });
     }
@@ -113,7 +113,7 @@ public class RpcTests
     }
 
     private static RpcProbe Probe(Entity entity) =>
-        entity.GetComponent<ScriptComponent>().Items.Select(i => i.Instance).OfType<RpcProbe>().First();
+        entity.GetComponent<RpcProbe>();
 
     private sealed class RpcProbe : NetworkBehaviour
     {

@@ -30,7 +30,7 @@ public class ScriptNamespaceMigratorTests
             using Spot.Core;
             using Spot.Scenes;
 
-            public class Player : EntityBehaviour
+            public class Player : Component
             {
                 public override void OnUpdate(float dt)
                 {
@@ -115,7 +115,7 @@ public class ScriptNamespaceMigratorTests
             using Spot.Engine.Scenes;
             using Spot.Framework;
 
-            public class Ok : EntityBehaviour { }
+            public class Ok : Component { }
             """;
 
         Assert.Same(source, Migrate(source));
@@ -129,7 +129,7 @@ public class ScriptNamespaceMigratorTests
             using Spot.Scenes;
             using Spot.UI;
 
-            class Hud : EntityBehaviour { Button? _play; bool _held = Input.GetKey(Key.A); }
+            class Hud : Component { Button? _play; bool _held = Input.GetKey(Key.A); }
             """;
 
         string once = Migrate(source);
@@ -161,8 +161,8 @@ public class ScriptNamespaceMigratorTests
         string old = Path.Combine(temp.Path, "Old.cs");
         string current = Path.Combine(temp.Path, "Sub", "Current.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(current)!);
-        File.WriteAllText(old, "using Spot.Scenes;\nclass A : EntityBehaviour { }\n");
-        File.WriteAllText(current, "using Spot.Engine.Scenes;\nclass B : EntityBehaviour { }\n");
+        File.WriteAllText(old, "using Spot.Scenes;\nclass A : Component { }\n");
+        File.WriteAllText(current, "using Spot.Engine.Scenes;\nclass B : Component { }\n");
 
         Assert.Equal(1, ScriptNamespaceMigrator.MigrateDirectory(temp.Path, dryRun: true));
         Assert.Contains("using Spot.Scenes;", File.ReadAllText(old));
@@ -187,7 +187,7 @@ public class ScriptNamespaceMigratorTests
         Directory.CreateDirectory(assets);
         Directory.CreateDirectory(build);
         File.WriteAllText(Path.Combine(temp.Path, "Program.cs"), "using Spot;\nclass P { void M() => SpotEngine.CreateApplication(); }\n");
-        File.WriteAllText(Path.Combine(assets, "S.cs"), "using Spot.Scenes;\nclass S : EntityBehaviour { }\n");
+        File.WriteAllText(Path.Combine(assets, "S.cs"), "using Spot.Scenes;\nclass S : Component { }\n");
         File.WriteAllText(Path.Combine(build, "Gen.cs"), "using Spot.Scenes;\n");
 
         Assert.Equal(2, ScriptNamespaceMigrator.MigrateProject(temp.Path, assets));

@@ -12,7 +12,7 @@ namespace Spot.Engine.Scenes;
 /// This is the data-only counterpart to Unity's SpriteRenderer. It deliberately holds no drawing
 /// logic — the engine's renderer does the drawing.
 /// </remarks>
-[ComponentMenu("Sprite 2D", Order = 10)]
+[ComponentMenu("Sprite 2D", Order = 10, Category = "Rendering")]
 [SceneComponent("Sprite")]
 public sealed class Sprite2DComponent : Component
 {

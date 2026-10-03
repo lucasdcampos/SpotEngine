@@ -23,7 +23,7 @@ public static class Explosions
         Playground? game = Playground.Current;
         HitResult best = HitResult.None;
 
-        foreach (IShootable target in SceneScripts.All<IShootable>(scene))
+        foreach (IShootable target in scene.GetComponents<IShootable>())
         {
             Vector3 point = target.AimPoint;
             float distance = Vector3.Distance(point, center);

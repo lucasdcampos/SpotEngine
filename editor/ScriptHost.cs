@@ -15,8 +15,8 @@ namespace Spot.Editor;
 /// Loads the active project's compiled assembly so the editor can resolve and instantiate its scripts, and —
 /// unlike a plain <c>Assembly.Load</c> — can drop and reload it without restarting. The assembly lives in a
 /// collectible <see cref="AssemblyLoadContext"/>; everything it references (the engine, Silk.NET, …) resolves
-/// through the default context, so only the project's own script types are unloadable and every
-/// <see cref="EntityBehaviour"/> subclass still shares the one engine <see cref="EntityBehaviour"/> type.
+/// through the default context, so only the project's own component types are unloadable and every one of them
+/// still derives from the one engine <see cref="Component"/> type.
 /// </summary>
 /// <remarks>
 /// The project assembly's generated <see cref="IScriptProvider"/> registers itself with
@@ -40,6 +40,11 @@ internal sealed class ScriptHost
     }
 
     private ScriptLoadContext? _context;
+
+    // Contexts unloaded by earlier reloads, watched so one that never gets collected (a leak) is reported, and how
+    // many leaked loads were last reported (so the warning repeats only if leaks accumulate).
+    private readonly List<WeakReference> _retired = new();
+    private int _reportedLeaks;
     private readonly List<IScriptProvider> _providers = new();
 
     /// <summary>Gets the currently loaded project assembly, or <see langword="null"/> when none is loaded.</summary>
@@ -151,10 +156,33 @@ internal sealed class ScriptHost
             Log.CoreWarn("Failed to unload project scripts: {0}", ex.Message);
         }
 
+        // Loads retired by earlier reloads have had a whole editing session's worth of collections to go away; one
+        // still alive now is held by something (a static, an event handler, a cache) — a real leak. The load just
+        // unloaded is not judged yet: it can stay reachable from the current frame for a moment, so it is only
+        // counted on the next reload. Report a leak once, when the number of leaked loads grows, so a slow
+        // collection never floods the console.
+        // A full collection may not have run since then, and an unloaded context takes a couple to go: give them
+        // a few before judging (only while one is still around, so the common case costs nothing extra).
+        for (int i = 0; i < 3 && _retired.Exists(r => r.IsAlive); i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        _retired.RemoveAll(r => !r.IsAlive);
+        if (_retired.Count > _reportedLeaks)
+        {
+            _reportedLeaks = _retired.Count;
+            Log.CoreWarn(
+                "{0} earlier load(s) of the project scripts are still in memory; something outside the scripts still references their types.",
+                _retired.Count);
+        }
+
+        _retired.Add(new WeakReference(_context));
         _context = null;
 
-        // Nudge the runtime to actually reclaim the collectible context now that references are dropped, so a
-        // rapid rebuild/reload does not accumulate stale assemblies.
+        // Nudge the runtime to reclaim the collectible context now that references are dropped, so a rapid
+        // rebuild/reload does not accumulate stale assemblies.
         GC.Collect();
         GC.WaitForPendingFinalizers();
     }

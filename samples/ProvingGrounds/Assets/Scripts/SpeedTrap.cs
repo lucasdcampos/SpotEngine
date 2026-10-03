@@ -6,7 +6,7 @@ namespace ProvingGrounds;
 /// A gate at the end of the strafe-jump strip: a trigger volume that clocks the player passing through it. Anything
 /// above running speed came from air-strafing, and scores.
 /// </summary>
-public sealed class SpeedTrap : EntityBehaviour
+public sealed class SpeedTrap : Component
 {
     /// <summary>Gets or sets the speed that counts as fast, in meters per second.</summary>
     public float Threshold { get; set; } = 9.0f;

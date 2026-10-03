@@ -5,11 +5,11 @@ namespace Spot.Engine.Tests;
 
 // A probe that records the order of every lifecycle hook it receives, so tests can assert the exact
 // sequence the script system drives.
-public sealed class LifecycleProbe : EntityBehaviour
+public sealed class LifecycleProbe : Component
 {
     public List<string> Events { get; } = new();
 
-    public override void OnCreate() => Events.Add("create");
+    public override void OnStart() => Events.Add("create");
 
     public override void OnEnable() => Events.Add("enable");
 
@@ -32,7 +32,7 @@ public class ScriptLifecycleTests
     public void FirstFrame_RunsCreateEnableUpdateLate_InOrder()
     {
         var scene = new Scene();
-        LifecycleProbe probe = scene.Instantiate("A").AddScript(new LifecycleProbe());
+        LifecycleProbe probe = scene.Instantiate("A").AddComponent(new LifecycleProbe());
 
         scene.UpdateRuntime(0.016f);
 
@@ -45,7 +45,7 @@ public class ScriptLifecycleTests
     public void SecondFrame_RunsFixedThenUpdateThenLate_WithoutRecreating()
     {
         var scene = new Scene();
-        LifecycleProbe probe = scene.Instantiate("A").AddScript(new LifecycleProbe());
+        LifecycleProbe probe = scene.Instantiate("A").AddComponent(new LifecycleProbe());
 
         scene.UpdateRuntime(0.016f);
         probe.Events.Clear();
@@ -61,7 +61,7 @@ public class ScriptLifecycleTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("A");
-        LifecycleProbe probe = entity.AddScript(new LifecycleProbe());
+        LifecycleProbe probe = entity.AddComponent(new LifecycleProbe());
 
         scene.UpdateRuntime(0.016f);
         entity.Enabled = false;
@@ -81,7 +81,7 @@ public class ScriptLifecycleTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("A");
-        LifecycleProbe probe = entity.AddScript(new LifecycleProbe());
+        LifecycleProbe probe = entity.AddComponent(new LifecycleProbe());
 
         scene.UpdateRuntime(0.016f);
         entity.Enabled = false;
@@ -91,7 +91,7 @@ public class ScriptLifecycleTests
         entity.Enabled = true;
         scene.UpdateRuntime(0.016f);
 
-        // OnEnable fires again; OnCreate does not; the enable precedes this frame's update.
+        // OnEnable fires again; OnStart does not; the enable precedes this frame's update.
         Assert.Equal(new[] { "enable", "update", "late" }, probe.Events);
     }
 
@@ -100,7 +100,7 @@ public class ScriptLifecycleTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("A");
-        LifecycleProbe probe = entity.AddScript(new LifecycleProbe());
+        LifecycleProbe probe = entity.AddComponent(new LifecycleProbe());
 
         scene.UpdateRuntime(0.016f);
         probe.Events.Clear();
@@ -117,9 +117,9 @@ public class ScriptLifecycleTests
     public void InvokeValidate_CallsOnValidate_Guarded()
     {
         var scene = new Scene();
-        LifecycleProbe probe = scene.Instantiate("A").AddScript(new LifecycleProbe());
+        LifecycleProbe probe = scene.Instantiate("A").AddComponent(new LifecycleProbe());
 
-        ScriptSystem.InvokeValidate(probe);
+        ComponentSystem.InvokeValidate(probe);
 
         Assert.Equal(new[] { "validate" }, probe.Events);
     }
@@ -128,7 +128,7 @@ public class ScriptLifecycleTests
     public void ThrowingHook_IsQuarantined_NotRethrown()
     {
         var scene = new Scene();
-        scene.Instantiate("Boom").AddScript(new ThrowingProbe());
+        scene.Instantiate("Boom").AddComponent(new ThrowingProbe());
 
         // A script that throws from OnUpdate must be quarantined, never crashing the frame.
         var ex = Record.Exception(() =>
@@ -140,7 +140,7 @@ public class ScriptLifecycleTests
         Assert.Null(ex);
     }
 
-    private sealed class ThrowingProbe : EntityBehaviour
+    private sealed class ThrowingProbe : Component
     {
         public override void OnUpdate(float deltaTime) => throw new System.InvalidOperationException("boom");
     }

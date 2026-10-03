@@ -24,7 +24,7 @@ center and stay there across resolutions — a health readout anchored to the bo
 the center. Widgets nest: children are positioned relative to their parent's resolved rectangle and drawn
 on top of it.
 
-Because the tree is **retained**, you build it once (typically in a script's create hook) and then just
+Because the tree is **retained**, you build it once (typically in a component's `OnStart`) and then just
 change widget properties — a label's text, a bar's width — as the game runs; you don't rebuild it every
 frame the way immediate-mode UI does.
 

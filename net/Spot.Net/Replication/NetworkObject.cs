@@ -7,6 +7,7 @@ namespace Spot.Net;
 /// server assigns the id and owner when the object is spawned (see <see cref="NetworkSpawner"/>); every
 /// peer that replicates the object carries a matching <see cref="NetworkObject"/>.
 /// </summary>
+[ComponentMenu("Network Object", Category = "Network")]
 public sealed class NetworkObject : Component
 {
     /// <summary>The object's session-wide id, assigned by the server on spawn.</summary>

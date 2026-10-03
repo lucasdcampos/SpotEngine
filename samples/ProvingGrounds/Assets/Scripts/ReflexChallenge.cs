@@ -21,7 +21,7 @@ public enum ChallengeState
 /// entities spawned with a mesh and a sphere collider as children of this one, so a hit on any of them reaches this
 /// script.
 /// </summary>
-public sealed class ReflexChallenge : EntityBehaviour, IShootable, IResettable
+public sealed class ReflexChallenge : Component, IShootable, IResettable
 {
     /// <summary>Gets or sets the board the orbs appear on (its scale is the area they use).</summary>
     public Entity Wall;
@@ -85,7 +85,7 @@ public sealed class ReflexChallenge : EntityBehaviour, IShootable, IResettable
 
     public Vector3 AimPoint => _button?.WorldPosition ?? GetComponent<TransformComponent>().WorldPosition;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
         foreach (Entity child in Entity.Children)

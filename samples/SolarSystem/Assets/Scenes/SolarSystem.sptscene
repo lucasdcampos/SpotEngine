@@ -24,20 +24,18 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "Simulation",
-            "Fields": {
-              "DaysPerSecond": 5,
-              "Paused": false,
-              "SpinCompression": 80,
-              "StartDate": ""
-            }
+      "Components": [
+        {
+          "Type": "Simulation",
+          "Enabled": true,
+          "Fields": {
+            "DaysPerSecond": 5,
+            "Paused": false,
+            "SpinCompression": 80,
+            "StartDate": ""
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -63,21 +61,19 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "SpaceRenderer",
-            "Fields": {
-              "ShowOrbits": true,
-              "SunBrightness": 1.6,
-              "CoronaBrightness": 0.75,
-              "OrbitWidth": 2.4,
-              "OrbitOpacity": 0.1
-            }
+      "Components": [
+        {
+          "Type": "SpaceRenderer",
+          "Enabled": true,
+          "Fields": {
+            "ShowOrbits": true,
+            "SunBrightness": 1.6,
+            "CoronaBrightness": 0.75,
+            "OrbitWidth": 2.4,
+            "OrbitOpacity": 0.1
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -119,22 +115,20 @@
         "NearClip": 0.9520238,
         "FarClip": 4000
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "OrbitCamera",
-            "Fields": {
-              "OverviewDistance": 92,
-              "OverviewPitch": 24,
-              "MaxDistance": 320,
-              "Sensitivity": 0.25,
-              "IdleDrift": 1.2,
-              "Smoothing": 6
-            }
+      "Components": [
+        {
+          "Type": "OrbitCamera",
+          "Enabled": true,
+          "Fields": {
+            "OverviewDistance": 92,
+            "OverviewPitch": 24,
+            "MaxDistance": 320,
+            "Sensitivity": 0.25,
+            "IdleDrift": 1.2,
+            "Smoothing": 6
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -268,85 +262,83 @@
         "SpotAngle": 15,
         "SpotOuterAngle": 30
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Sun",
-              "Kind": 0,
-              "Category": "Yellow dwarf star (G2V)",
-              "Description": "The star at the heart of it all: a 4.6-billion-year-old ball of hydrogen and helium holding 99.86% of the solar system\u0027s mass. Every second it turns about 600 million tonnes of hydrogen into helium.",
-              "Order": 0,
-              "AccentColor": [
-                1,
-                0.76,
-                0.38
-              ],
-              "Radius": 4,
-              "OrbitRadius": 0,
-              "OrbitPeriodDays": 0,
-              "MeanLongitudeDeg": 0,
-              "AxialTiltDeg": 7.25,
-              "RotationHours": 609.12,
-              "TidallyLocked": false,
-              "Surface": 0,
-              "ColorA": [
-                1,
-                0.82,
-                0.48
-              ],
-              "ColorB": [
-                1,
-                0.45,
-                0.12
-              ],
-              "ColorC": [
-                0.6,
-                0.22,
-                0.06
-              ],
-              "BandFrequency": 8,
-              "Turbulence": 0.4,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "AtmosphereHeight": 0.05,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 2,
-              "MassKg": 1.989E+30,
-              "DiameterKm": 1392700,
-              "GravityMs2": 274,
-              "DistanceKm": 0,
-              "MeanTemperatureC": 5505,
-              "Moons": 0
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Sun",
+            "Kind": 0,
+            "Category": "Yellow dwarf star (G2V)",
+            "Description": "The star at the heart of it all: a 4.6-billion-year-old ball of hydrogen and helium holding 99.86% of the solar system\u0027s mass. Every second it turns about 600 million tonnes of hydrogen into helium.",
+            "Order": 0,
+            "AccentColor": [
+              1,
+              0.76,
+              0.38
+            ],
+            "Radius": 4,
+            "OrbitRadius": 0,
+            "OrbitPeriodDays": 0,
+            "MeanLongitudeDeg": 0,
+            "AxialTiltDeg": 7.25,
+            "RotationHours": 609.12,
+            "TidallyLocked": false,
+            "Surface": 0,
+            "ColorA": [
+              1,
+              0.82,
+              0.48
+            ],
+            "ColorB": [
+              1,
+              0.45,
+              0.12
+            ],
+            "ColorC": [
+              0.6,
+              0.22,
+              0.06
+            ],
+            "BandFrequency": 8,
+            "Turbulence": 0.4,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "AtmosphereHeight": 0.05,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 2,
+            "MassKg": 1.989E+30,
+            "DiameterKm": 1392700,
+            "GravityMs2": 274,
+            "DistanceKm": 0,
+            "MeanTemperatureC": 5505,
+            "Moons": 0
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -385,85 +377,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Mercury",
-              "Kind": 1,
-              "Category": "Terrestrial planet",
-              "Description": "The smallest planet and the closest to the Sun. With almost no atmosphere to hold the heat, its surface swings from 430 \u00B0C by day to -180 \u00B0C at night.",
-              "Order": 1,
-              "AccentColor": [
-                0.74,
-                0.72,
-                0.7
-              ],
-              "Radius": 0.3,
-              "OrbitRadius": 10.6,
-              "OrbitPeriodDays": 87.969,
-              "MeanLongitudeDeg": 252.25084,
-              "AxialTiltDeg": 0.034,
-              "RotationHours": 1407.6,
-              "TidallyLocked": false,
-              "Surface": 1,
-              "ColorA": [
-                0.6,
-                0.58,
-                0.56
-              ],
-              "ColorB": [
-                0.46,
-                0.44,
-                0.43
-              ],
-              "ColorC": [
-                0.75,
-                0.73,
-                0.7
-              ],
-              "BandFrequency": 8,
-              "Turbulence": 0.4,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "AtmosphereHeight": 0.05,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 1.3,
-              "MassKg": 3.301E+23,
-              "DiameterKm": 4879,
-              "GravityMs2": 3.7,
-              "DistanceKm": 57900000,
-              "MeanTemperatureC": 167,
-              "Moons": 0
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Mercury",
+            "Kind": 1,
+            "Category": "Terrestrial planet",
+            "Description": "The smallest planet and the closest to the Sun. With almost no atmosphere to hold the heat, its surface swings from 430 \u00B0C by day to -180 \u00B0C at night.",
+            "Order": 1,
+            "AccentColor": [
+              0.74,
+              0.72,
+              0.7
+            ],
+            "Radius": 0.3,
+            "OrbitRadius": 10.6,
+            "OrbitPeriodDays": 87.969,
+            "MeanLongitudeDeg": 252.25084,
+            "AxialTiltDeg": 0.034,
+            "RotationHours": 1407.6,
+            "TidallyLocked": false,
+            "Surface": 1,
+            "ColorA": [
+              0.6,
+              0.58,
+              0.56
+            ],
+            "ColorB": [
+              0.46,
+              0.44,
+              0.43
+            ],
+            "ColorC": [
+              0.75,
+              0.73,
+              0.7
+            ],
+            "BandFrequency": 8,
+            "Turbulence": 0.4,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "AtmosphereHeight": 0.05,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 1.3,
+            "MassKg": 3.301E+23,
+            "DiameterKm": 4879,
+            "GravityMs2": 3.7,
+            "DistanceKm": 57900000,
+            "MeanTemperatureC": 167,
+            "Moons": 0
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -502,85 +492,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Venus",
-              "Kind": 1,
-              "Category": "Terrestrial planet",
-              "Description": "Earth\u0027s near twin in size, hidden under sulfuric-acid clouds and a crushing carbon-dioxide atmosphere. A runaway greenhouse makes it the hottest planet of all, and it spins backwards.",
-              "Order": 2,
-              "AccentColor": [
-                0.96,
-                0.8,
-                0.52
-              ],
-              "Radius": 0.48,
-              "OrbitRadius": 13.6,
-              "OrbitPeriodDays": 224.701,
-              "MeanLongitudeDeg": 181.97974,
-              "AxialTiltDeg": 177.36,
-              "RotationHours": -5832.5,
-              "TidallyLocked": false,
-              "Surface": 2,
-              "ColorA": [
-                0.95,
-                0.86,
-                0.64
-              ],
-              "ColorB": [
-                0.8,
-                0.63,
-                0.4
-              ],
-              "ColorC": [
-                0.99,
-                0.95,
-                0.84
-              ],
-              "BandFrequency": 8,
-              "Turbulence": 0.4,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                1,
-                0.84,
-                0.58,
-                0.55
-              ],
-              "AtmosphereHeight": 0.07,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 4.2,
-              "MassKg": 4.867E+24,
-              "DiameterKm": 12104,
-              "GravityMs2": 8.87,
-              "DistanceKm": 108200000,
-              "MeanTemperatureC": 464,
-              "Moons": 0
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Venus",
+            "Kind": 1,
+            "Category": "Terrestrial planet",
+            "Description": "Earth\u0027s near twin in size, hidden under sulfuric-acid clouds and a crushing carbon-dioxide atmosphere. A runaway greenhouse makes it the hottest planet of all, and it spins backwards.",
+            "Order": 2,
+            "AccentColor": [
+              0.96,
+              0.8,
+              0.52
+            ],
+            "Radius": 0.48,
+            "OrbitRadius": 13.6,
+            "OrbitPeriodDays": 224.701,
+            "MeanLongitudeDeg": 181.97974,
+            "AxialTiltDeg": 177.36,
+            "RotationHours": -5832.5,
+            "TidallyLocked": false,
+            "Surface": 2,
+            "ColorA": [
+              0.95,
+              0.86,
+              0.64
+            ],
+            "ColorB": [
+              0.8,
+              0.63,
+              0.4
+            ],
+            "ColorC": [
+              0.99,
+              0.95,
+              0.84
+            ],
+            "BandFrequency": 8,
+            "Turbulence": 0.4,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              1,
+              0.84,
+              0.58,
+              0.55
+            ],
+            "AtmosphereHeight": 0.07,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 4.2,
+            "MassKg": 4.867E+24,
+            "DiameterKm": 12104,
+            "GravityMs2": 8.87,
+            "DistanceKm": 108200000,
+            "MeanTemperatureC": 464,
+            "Moons": 0
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -619,85 +607,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Earth",
-              "Kind": 1,
-              "Category": "Terrestrial planet",
-              "Description": "Our home, and the only world known to harbor life. Liquid water covers 71% of its surface, under a thin, nitrogen-rich atmosphere that shields it and keeps it temperate.",
-              "Order": 3,
-              "AccentColor": [
-                0.38,
-                0.62,
-                1
-              ],
-              "Radius": 0.5,
-              "OrbitRadius": 15.5,
-              "OrbitPeriodDays": 365.256,
-              "MeanLongitudeDeg": 100.46435,
-              "AxialTiltDeg": 23.44,
-              "RotationHours": 23.934,
-              "TidallyLocked": false,
-              "Surface": 3,
-              "ColorA": [
-                0.03,
-                0.1,
-                0.26
-              ],
-              "ColorB": [
-                0.25,
-                0.4,
-                0.18
-              ],
-              "ColorC": [
-                0.8,
-                0.68,
-                0.48
-              ],
-              "BandFrequency": 8,
-              "Turbulence": 0.4,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0.4,
-                0.64,
-                1,
-                0.85
-              ],
-              "AtmosphereHeight": 0.045,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 3.7,
-              "MassKg": 5.972E+24,
-              "DiameterKm": 12742,
-              "GravityMs2": 9.81,
-              "DistanceKm": 149600000,
-              "MeanTemperatureC": 15,
-              "Moons": 1
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Earth",
+            "Kind": 1,
+            "Category": "Terrestrial planet",
+            "Description": "Our home, and the only world known to harbor life. Liquid water covers 71% of its surface, under a thin, nitrogen-rich atmosphere that shields it and keeps it temperate.",
+            "Order": 3,
+            "AccentColor": [
+              0.38,
+              0.62,
+              1
+            ],
+            "Radius": 0.5,
+            "OrbitRadius": 15.5,
+            "OrbitPeriodDays": 365.256,
+            "MeanLongitudeDeg": 100.46435,
+            "AxialTiltDeg": 23.44,
+            "RotationHours": 23.934,
+            "TidallyLocked": false,
+            "Surface": 3,
+            "ColorA": [
+              0.03,
+              0.1,
+              0.26
+            ],
+            "ColorB": [
+              0.25,
+              0.4,
+              0.18
+            ],
+            "ColorC": [
+              0.8,
+              0.68,
+              0.48
+            ],
+            "BandFrequency": 8,
+            "Turbulence": 0.4,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0.4,
+              0.64,
+              1,
+              0.85
+            ],
+            "AtmosphereHeight": 0.045,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 3.7,
+            "MassKg": 5.972E+24,
+            "DiameterKm": 12742,
+            "GravityMs2": 9.81,
+            "DistanceKm": 149600000,
+            "MeanTemperatureC": 15,
+            "Moons": 1
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -736,85 +722,83 @@
             ],
             "Occluder": false
           },
-          "Scripts": {
-            "Enabled": true,
-            "Items": [
-              {
-                "Type": "CelestialBody",
-                "Fields": {
-                  "DisplayName": "Moon",
-                  "Kind": 2,
-                  "Category": "Natural satellite",
-                  "Description": "Earth\u0027s only natural satellite, formed from the debris of a giant impact 4.5 billion years ago. Its pull raises our tides, and it always shows us the same face.",
-                  "Order": 3,
-                  "AccentColor": [
-                    0.82,
-                    0.82,
-                    0.85
-                  ],
-                  "Radius": 0.15,
-                  "OrbitRadius": 1.3,
-                  "OrbitPeriodDays": 27.322,
-                  "MeanLongitudeDeg": 218.316,
-                  "AxialTiltDeg": 6.68,
-                  "RotationHours": 655.7,
-                  "TidallyLocked": true,
-                  "Surface": 1,
-                  "ColorA": [
-                    0.68,
-                    0.67,
-                    0.65
-                  ],
-                  "ColorB": [
-                    0.36,
-                    0.36,
-                    0.37
-                  ],
-                  "ColorC": [
-                    0.82,
-                    0.81,
-                    0.79
-                  ],
-                  "BandFrequency": 8,
-                  "Turbulence": 0.4,
-                  "Storm": [
-                    0,
-                    0,
-                    0,
-                    0
-                  ],
-                  "StormColor": [
-                    0.75,
-                    0.38,
-                    0.25
-                  ],
-                  "Atmosphere": [
-                    0,
-                    0,
-                    0,
-                    0
-                  ],
-                  "AtmosphereHeight": 0.05,
-                  "RingInner": 0,
-                  "RingOuter": 0,
-                  "NarrowRings": false,
-                  "RingColor": [
-                    0.85,
-                    0.76,
-                    0.6,
-                    1
-                  ],
-                  "Seed": 8.1,
-                  "MassKg": 7.342E+22,
-                  "DiameterKm": 3474.8,
-                  "GravityMs2": 1.62,
-                  "DistanceKm": 384400,
-                  "MeanTemperatureC": -20,
-                  "Moons": 0
-                }
+          "Components": [
+            {
+              "Type": "CelestialBody",
+              "Enabled": true,
+              "Fields": {
+                "DisplayName": "Moon",
+                "Kind": 2,
+                "Category": "Natural satellite",
+                "Description": "Earth\u0027s only natural satellite, formed from the debris of a giant impact 4.5 billion years ago. Its pull raises our tides, and it always shows us the same face.",
+                "Order": 3,
+                "AccentColor": [
+                  0.82,
+                  0.82,
+                  0.85
+                ],
+                "Radius": 0.15,
+                "OrbitRadius": 1.3,
+                "OrbitPeriodDays": 27.322,
+                "MeanLongitudeDeg": 218.316,
+                "AxialTiltDeg": 6.68,
+                "RotationHours": 655.7,
+                "TidallyLocked": true,
+                "Surface": 1,
+                "ColorA": [
+                  0.68,
+                  0.67,
+                  0.65
+                ],
+                "ColorB": [
+                  0.36,
+                  0.36,
+                  0.37
+                ],
+                "ColorC": [
+                  0.82,
+                  0.81,
+                  0.79
+                ],
+                "BandFrequency": 8,
+                "Turbulence": 0.4,
+                "Storm": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "StormColor": [
+                  0.75,
+                  0.38,
+                  0.25
+                ],
+                "Atmosphere": [
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "AtmosphereHeight": 0.05,
+                "RingInner": 0,
+                "RingOuter": 0,
+                "NarrowRings": false,
+                "RingColor": [
+                  0.85,
+                  0.76,
+                  0.6,
+                  1
+                ],
+                "Seed": 8.1,
+                "MassKg": 7.342E+22,
+                "DiameterKm": 3474.8,
+                "GravityMs2": 1.62,
+                "DistanceKm": 384400,
+                "MeanTemperatureC": -20,
+                "Moons": 0
               }
-            ]
-          }
+            }
+          ]
         }
       ]
     },
@@ -855,85 +839,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Mars",
-              "Kind": 1,
-              "Category": "Terrestrial planet",
-              "Description": "A cold desert world, red with iron-oxide dust. It holds Olympus Mons, the tallest volcano in the solar system, and dry valleys where rivers once flowed.",
-              "Order": 4,
-              "AccentColor": [
-                0.96,
-                0.52,
-                0.34
-              ],
-              "Radius": 0.36,
-              "OrbitRadius": 18.5,
-              "OrbitPeriodDays": 686.98,
-              "MeanLongitudeDeg": 355.4533,
-              "AxialTiltDeg": 25.19,
-              "RotationHours": 24.623,
-              "TidallyLocked": false,
-              "Surface": 4,
-              "ColorA": [
-                0.76,
-                0.4,
-                0.22
-              ],
-              "ColorB": [
-                0.42,
-                0.23,
-                0.15
-              ],
-              "ColorC": [
-                0.88,
-                0.64,
-                0.44
-              ],
-              "BandFrequency": 8,
-              "Turbulence": 0.4,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0.96,
-                0.66,
-                0.5,
-                0.32
-              ],
-              "AtmosphereHeight": 0.03,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 6.6,
-              "MassKg": 6.417E+23,
-              "DiameterKm": 6779,
-              "GravityMs2": 3.71,
-              "DistanceKm": 227900000,
-              "MeanTemperatureC": -65,
-              "Moons": 2
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Mars",
+            "Kind": 1,
+            "Category": "Terrestrial planet",
+            "Description": "A cold desert world, red with iron-oxide dust. It holds Olympus Mons, the tallest volcano in the solar system, and dry valleys where rivers once flowed.",
+            "Order": 4,
+            "AccentColor": [
+              0.96,
+              0.52,
+              0.34
+            ],
+            "Radius": 0.36,
+            "OrbitRadius": 18.5,
+            "OrbitPeriodDays": 686.98,
+            "MeanLongitudeDeg": 355.4533,
+            "AxialTiltDeg": 25.19,
+            "RotationHours": 24.623,
+            "TidallyLocked": false,
+            "Surface": 4,
+            "ColorA": [
+              0.76,
+              0.4,
+              0.22
+            ],
+            "ColorB": [
+              0.42,
+              0.23,
+              0.15
+            ],
+            "ColorC": [
+              0.88,
+              0.64,
+              0.44
+            ],
+            "BandFrequency": 8,
+            "Turbulence": 0.4,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0.96,
+              0.66,
+              0.5,
+              0.32
+            ],
+            "AtmosphereHeight": 0.03,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 6.6,
+            "MassKg": 6.417E+23,
+            "DiameterKm": 6779,
+            "GravityMs2": 3.71,
+            "DistanceKm": 227900000,
+            "MeanTemperatureC": -65,
+            "Moons": 2
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -959,24 +941,22 @@
           1
         ]
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "AsteroidBelt",
-            "Fields": {
-              "Count": 1400,
-              "InnerRadius": 21.5,
-              "OuterRadius": 26.5,
-              "Thickness": 0.55,
-              "MinSize": 0.035,
-              "MaxSize": 0.16,
-              "OrbitPeriodDays": 1680,
-              "Seed": 7
-            }
+      "Components": [
+        {
+          "Type": "AsteroidBelt",
+          "Enabled": true,
+          "Fields": {
+            "Count": 1400,
+            "InnerRadius": 21.5,
+            "OuterRadius": 26.5,
+            "Thickness": 0.55,
+            "MinSize": 0.035,
+            "MaxSize": 0.16,
+            "OrbitPeriodDays": 1680,
+            "Seed": 7
           }
-        ]
-      },
+        }
+      ],
       "Children": [
         {
           "Tag": {
@@ -54217,85 +54197,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Jupiter",
-              "Kind": 1,
-              "Category": "Gas giant",
-              "Description": "The giant of the family, more than twice as massive as all the other planets combined. Its Great Red Spot is a storm wider than Earth that has raged for centuries.",
-              "Order": 5,
-              "AccentColor": [
-                0.93,
-                0.72,
-                0.5
-              ],
-              "Radius": 2.1,
-              "OrbitRadius": 32.2,
-              "OrbitPeriodDays": 4332.59,
-              "MeanLongitudeDeg": 34.40438,
-              "AxialTiltDeg": 3.13,
-              "RotationHours": 9.925,
-              "TidallyLocked": false,
-              "Surface": 5,
-              "ColorA": [
-                0.9,
-                0.85,
-                0.76
-              ],
-              "ColorB": [
-                0.72,
-                0.53,
-                0.38
-              ],
-              "ColorC": [
-                0.97,
-                0.94,
-                0.88
-              ],
-              "BandFrequency": 10,
-              "Turbulence": 0.55,
-              "Storm": [
-                -22,
-                40,
-                9,
-                0.9
-              ],
-              "StormColor": [
-                0.8,
-                0.42,
-                0.28
-              ],
-              "Atmosphere": [
-                0.95,
-                0.88,
-                0.75,
-                0.3
-              ],
-              "AtmosphereHeight": 0.025,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 5.1,
-              "MassKg": 1.898E+27,
-              "DiameterKm": 139820,
-              "GravityMs2": 24.79,
-              "DistanceKm": 778500000,
-              "MeanTemperatureC": -110,
-              "Moons": 95
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Jupiter",
+            "Kind": 1,
+            "Category": "Gas giant",
+            "Description": "The giant of the family, more than twice as massive as all the other planets combined. Its Great Red Spot is a storm wider than Earth that has raged for centuries.",
+            "Order": 5,
+            "AccentColor": [
+              0.93,
+              0.72,
+              0.5
+            ],
+            "Radius": 2.1,
+            "OrbitRadius": 32.2,
+            "OrbitPeriodDays": 4332.59,
+            "MeanLongitudeDeg": 34.40438,
+            "AxialTiltDeg": 3.13,
+            "RotationHours": 9.925,
+            "TidallyLocked": false,
+            "Surface": 5,
+            "ColorA": [
+              0.9,
+              0.85,
+              0.76
+            ],
+            "ColorB": [
+              0.72,
+              0.53,
+              0.38
+            ],
+            "ColorC": [
+              0.97,
+              0.94,
+              0.88
+            ],
+            "BandFrequency": 10,
+            "Turbulence": 0.55,
+            "Storm": [
+              -22,
+              40,
+              9,
+              0.9
+            ],
+            "StormColor": [
+              0.8,
+              0.42,
+              0.28
+            ],
+            "Atmosphere": [
+              0.95,
+              0.88,
+              0.75,
+              0.3
+            ],
+            "AtmosphereHeight": 0.025,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 5.1,
+            "MassKg": 1.898E+27,
+            "DiameterKm": 139820,
+            "GravityMs2": 24.79,
+            "DistanceKm": 778500000,
+            "MeanTemperatureC": -110,
+            "Moons": 95
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -54334,85 +54312,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Saturn",
-              "Kind": 1,
-              "Category": "Gas giant",
-              "Description": "The jewel of the solar system. Its rings are countless pieces of ice and rock, from grains of dust to boulders the size of a house, spread 280,000 km wide yet mostly just tens of meters thick.",
-              "Order": 6,
-              "AccentColor": [
-                0.96,
-                0.84,
-                0.58
-              ],
-              "Radius": 1.85,
-              "OrbitRadius": 42.6,
-              "OrbitPeriodDays": 10759.22,
-              "MeanLongitudeDeg": 49.94432,
-              "AxialTiltDeg": 26.73,
-              "RotationHours": 10.656,
-              "TidallyLocked": false,
-              "Surface": 5,
-              "ColorA": [
-                0.92,
-                0.84,
-                0.64
-              ],
-              "ColorB": [
-                0.78,
-                0.66,
-                0.46
-              ],
-              "ColorC": [
-                0.96,
-                0.9,
-                0.74
-              ],
-              "BandFrequency": 11,
-              "Turbulence": 0.25,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0.95,
-                0.88,
-                0.7,
-                0.28
-              ],
-              "AtmosphereHeight": 0.025,
-              "RingInner": 1.24,
-              "RingOuter": 2.27,
-              "NarrowRings": false,
-              "RingColor": [
-                0.88,
-                0.8,
-                0.66,
-                1
-              ],
-              "Seed": 7.3,
-              "MassKg": 5.683E+26,
-              "DiameterKm": 116460,
-              "GravityMs2": 10.44,
-              "DistanceKm": 1.432E+09,
-              "MeanTemperatureC": -140,
-              "Moons": 274
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Saturn",
+            "Kind": 1,
+            "Category": "Gas giant",
+            "Description": "The jewel of the solar system. Its rings are countless pieces of ice and rock, from grains of dust to boulders the size of a house, spread 280,000 km wide yet mostly just tens of meters thick.",
+            "Order": 6,
+            "AccentColor": [
+              0.96,
+              0.84,
+              0.58
+            ],
+            "Radius": 1.85,
+            "OrbitRadius": 42.6,
+            "OrbitPeriodDays": 10759.22,
+            "MeanLongitudeDeg": 49.94432,
+            "AxialTiltDeg": 26.73,
+            "RotationHours": 10.656,
+            "TidallyLocked": false,
+            "Surface": 5,
+            "ColorA": [
+              0.92,
+              0.84,
+              0.64
+            ],
+            "ColorB": [
+              0.78,
+              0.66,
+              0.46
+            ],
+            "ColorC": [
+              0.96,
+              0.9,
+              0.74
+            ],
+            "BandFrequency": 11,
+            "Turbulence": 0.25,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0.95,
+              0.88,
+              0.7,
+              0.28
+            ],
+            "AtmosphereHeight": 0.025,
+            "RingInner": 1.24,
+            "RingOuter": 2.27,
+            "NarrowRings": false,
+            "RingColor": [
+              0.88,
+              0.8,
+              0.66,
+              1
+            ],
+            "Seed": 7.3,
+            "MassKg": 5.683E+26,
+            "DiameterKm": 116460,
+            "GravityMs2": 10.44,
+            "DistanceKm": 1.432E+09,
+            "MeanTemperatureC": -140,
+            "Moons": 274
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -54451,85 +54427,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Uranus",
-              "Kind": 1,
-              "Category": "Ice giant",
-              "Description": "An ice giant knocked onto its side, perhaps by an ancient collision: each pole spends 42 years in sunlight, then 42 in darkness. Methane in its air tints it a pale cyan.",
-              "Order": 7,
-              "AccentColor": [
-                0.58,
-                0.88,
-                0.94
-              ],
-              "Radius": 1.15,
-              "OrbitRadius": 59.4,
-              "OrbitPeriodDays": 30688.5,
-              "MeanLongitudeDeg": 313.23218,
-              "AxialTiltDeg": 97.77,
-              "RotationHours": -17.24,
-              "TidallyLocked": false,
-              "Surface": 6,
-              "ColorA": [
-                0.68,
-                0.87,
-                0.9
-              ],
-              "ColorB": [
-                0.58,
-                0.8,
-                0.86
-              ],
-              "ColorC": [
-                0.86,
-                0.96,
-                0.97
-              ],
-              "BandFrequency": 6,
-              "Turbulence": 0.06,
-              "Storm": [
-                0,
-                0,
-                0,
-                0
-              ],
-              "StormColor": [
-                0.75,
-                0.38,
-                0.25
-              ],
-              "Atmosphere": [
-                0.66,
-                0.9,
-                1,
-                0.55
-              ],
-              "AtmosphereHeight": 0.05,
-              "RingInner": 1.64,
-              "RingOuter": 2,
-              "NarrowRings": true,
-              "RingColor": [
-                0.45,
-                0.48,
-                0.52,
-                0.35
-              ],
-              "Seed": 9.4,
-              "MassKg": 8.681E+25,
-              "DiameterKm": 50724,
-              "GravityMs2": 8.69,
-              "DistanceKm": 2.867E+09,
-              "MeanTemperatureC": -195,
-              "Moons": 29
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Uranus",
+            "Kind": 1,
+            "Category": "Ice giant",
+            "Description": "An ice giant knocked onto its side, perhaps by an ancient collision: each pole spends 42 years in sunlight, then 42 in darkness. Methane in its air tints it a pale cyan.",
+            "Order": 7,
+            "AccentColor": [
+              0.58,
+              0.88,
+              0.94
+            ],
+            "Radius": 1.15,
+            "OrbitRadius": 59.4,
+            "OrbitPeriodDays": 30688.5,
+            "MeanLongitudeDeg": 313.23218,
+            "AxialTiltDeg": 97.77,
+            "RotationHours": -17.24,
+            "TidallyLocked": false,
+            "Surface": 6,
+            "ColorA": [
+              0.68,
+              0.87,
+              0.9
+            ],
+            "ColorB": [
+              0.58,
+              0.8,
+              0.86
+            ],
+            "ColorC": [
+              0.86,
+              0.96,
+              0.97
+            ],
+            "BandFrequency": 6,
+            "Turbulence": 0.06,
+            "Storm": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "StormColor": [
+              0.75,
+              0.38,
+              0.25
+            ],
+            "Atmosphere": [
+              0.66,
+              0.9,
+              1,
+              0.55
+            ],
+            "AtmosphereHeight": 0.05,
+            "RingInner": 1.64,
+            "RingOuter": 2,
+            "NarrowRings": true,
+            "RingColor": [
+              0.45,
+              0.48,
+              0.52,
+              0.35
+            ],
+            "Seed": 9.4,
+            "MassKg": 8.681E+25,
+            "DiameterKm": 50724,
+            "GravityMs2": 8.69,
+            "DistanceKm": 2.867E+09,
+            "MeanTemperatureC": -195,
+            "Moons": 29
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -54568,85 +54542,83 @@
         ],
         "Occluder": false
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "CelestialBody",
-            "Fields": {
-              "DisplayName": "Neptune",
-              "Kind": 1,
-              "Category": "Ice giant",
-              "Description": "The windiest world, with storms whipped to 2,000 km/h. Too faint to see with the naked eye, it was the first planet found by mathematics, then by telescope, in 1846.",
-              "Order": 8,
-              "AccentColor": [
-                0.42,
-                0.58,
-                1
-              ],
-              "Radius": 1.12,
-              "OrbitRadius": 73.8,
-              "OrbitPeriodDays": 60182,
-              "MeanLongitudeDeg": 304.88004,
-              "AxialTiltDeg": 28.32,
-              "RotationHours": 16.11,
-              "TidallyLocked": false,
-              "Surface": 6,
-              "ColorA": [
-                0.36,
-                0.52,
-                0.88
-              ],
-              "ColorB": [
-                0.27,
-                0.41,
-                0.8
-              ],
-              "ColorC": [
-                0.86,
-                0.92,
-                1
-              ],
-              "BandFrequency": 7,
-              "Turbulence": 0.7,
-              "Storm": [
-                -20,
-                -60,
-                10,
-                0.8
-              ],
-              "StormColor": [
-                0.12,
-                0.18,
-                0.45
-              ],
-              "Atmosphere": [
-                0.42,
-                0.62,
-                1,
-                0.6
-              ],
-              "AtmosphereHeight": 0.05,
-              "RingInner": 0,
-              "RingOuter": 0,
-              "NarrowRings": false,
-              "RingColor": [
-                0.85,
-                0.76,
-                0.6,
-                1
-              ],
-              "Seed": 10.8,
-              "MassKg": 1.024E+26,
-              "DiameterKm": 49244,
-              "GravityMs2": 11.15,
-              "DistanceKm": 4.515E+09,
-              "MeanTemperatureC": -200,
-              "Moons": 16
-            }
+      "Components": [
+        {
+          "Type": "CelestialBody",
+          "Enabled": true,
+          "Fields": {
+            "DisplayName": "Neptune",
+            "Kind": 1,
+            "Category": "Ice giant",
+            "Description": "The windiest world, with storms whipped to 2,000 km/h. Too faint to see with the naked eye, it was the first planet found by mathematics, then by telescope, in 1846.",
+            "Order": 8,
+            "AccentColor": [
+              0.42,
+              0.58,
+              1
+            ],
+            "Radius": 1.12,
+            "OrbitRadius": 73.8,
+            "OrbitPeriodDays": 60182,
+            "MeanLongitudeDeg": 304.88004,
+            "AxialTiltDeg": 28.32,
+            "RotationHours": 16.11,
+            "TidallyLocked": false,
+            "Surface": 6,
+            "ColorA": [
+              0.36,
+              0.52,
+              0.88
+            ],
+            "ColorB": [
+              0.27,
+              0.41,
+              0.8
+            ],
+            "ColorC": [
+              0.86,
+              0.92,
+              1
+            ],
+            "BandFrequency": 7,
+            "Turbulence": 0.7,
+            "Storm": [
+              -20,
+              -60,
+              10,
+              0.8
+            ],
+            "StormColor": [
+              0.12,
+              0.18,
+              0.45
+            ],
+            "Atmosphere": [
+              0.42,
+              0.62,
+              1,
+              0.6
+            ],
+            "AtmosphereHeight": 0.05,
+            "RingInner": 0,
+            "RingOuter": 0,
+            "NarrowRings": false,
+            "RingColor": [
+              0.85,
+              0.76,
+              0.6,
+              1
+            ],
+            "Seed": 10.8,
+            "MassKg": 1.024E+26,
+            "DiameterKm": 49244,
+            "GravityMs2": 11.15,
+            "DistanceKm": 4.515E+09,
+            "MeanTemperatureC": -200,
+            "Moons": 16
           }
-        ]
-      }
+        }
+      ]
     },
     {
       "Tag": {
@@ -54676,19 +54648,17 @@
         "Enabled": true,
         "DocumentRef": "UI/Hud.sptui"
       },
-      "Scripts": {
-        "Enabled": true,
-        "Items": [
-          {
-            "Type": "SolarHud",
-            "Fields": {
-              "AutoTourAfter": 90,
-              "TourDwell": 11,
-              "ShowLabels": true
-            }
+      "Components": [
+        {
+          "Type": "SolarHud",
+          "Enabled": true,
+          "Fields": {
+            "AutoTourAfter": 90,
+            "TourDwell": 11,
+            "ShowLabels": true
           }
-        ]
-      }
+        }
+      ]
     }
   ]
 }

@@ -11,7 +11,7 @@ namespace ProvingGrounds;
 /// debris layer, which the player walks through) and the crate rebuilds itself a while later. Its warning "Lamp" child
 /// blinks faster as it takes damage.
 /// </summary>
-public sealed class ExplosiveCrate : EntityBehaviour, IShootable, IResettable
+public sealed class ExplosiveCrate : Component, IShootable, IResettable
 {
     private const int ShardCount = 7;
 
@@ -48,7 +48,7 @@ public sealed class ExplosiveCrate : EntityBehaviour, IShootable, IResettable
 
     public Vector3 AimPoint => _transform.WorldPosition;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _origin = _transform.Position;

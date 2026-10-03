@@ -14,9 +14,9 @@ public enum SceneCameraProjection
 /// <summary>
 /// A component that acts as a camera for the scene.
 /// </summary>
-[ComponentMenu("Camera", Order = 30)]
+[ComponentMenu("Camera", Order = 30, Category = "Rendering")]
 [SceneComponent("Camera")]
-public class CameraComponent : Component
+public sealed class CameraComponent : Component
 {
     public bool Primary { get; set; } = true;
     public bool FixedAspectRatio { get; set; } = false;

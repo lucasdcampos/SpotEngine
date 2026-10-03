@@ -10,7 +10,7 @@ public class CollisionEventsTests
 {
     private const float Dt = 1f / 60f;
 
-    private sealed class CollisionRecorder : EntityBehaviour
+    private sealed class CollisionRecorder : Component
     {
         public int Enter;
         public int Stay;
@@ -153,9 +153,9 @@ public class CollisionEventsTests
         var scene = new Scene();
         var a = scene.Instantiate("A");
         var b = scene.Instantiate("B");
-        var ra = a.AddScript<CollisionRecorder>();
-        var rb = b.AddScript<CollisionRecorder>();
-        ScriptSystem.Update(scene, 0f); // start the scripts so callbacks are delivered
+        var ra = a.AddComponent<CollisionRecorder>();
+        var rb = b.AddComponent<CollisionRecorder>();
+        ComponentSystem.Update(scene, 0f); // start the scripts so callbacks are delivered
         return (scene, a, b, ra, rb);
     }
 

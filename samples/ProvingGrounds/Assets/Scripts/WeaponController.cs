@@ -12,7 +12,7 @@ namespace ProvingGrounds;
 /// kicks the view, aiming down sights that narrows the field of view, reloads and weapon swaps. Hits push physics
 /// props with an impulse at the point they land, and anything implementing <see cref="IShootable"/> reacts.
 /// </summary>
-public sealed class WeaponController : EntityBehaviour
+public sealed class WeaponController : Component
 {
     private const float SwapTime = 0.38f;
 
@@ -66,7 +66,7 @@ public sealed class WeaponController : EntityBehaviour
     private float _land;
     private Vector2 _lastMouse;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
         _camera = GetComponent<CameraComponent>();
@@ -249,7 +249,7 @@ public sealed class WeaponController : EntityBehaviour
 
         Effects.Current?.Tracer(muzzle, hit.Point, Weapon.TracerColor);
 
-        IShootable? shootable = SceneScripts.FindInParents<IShootable>(hit.Entity);
+        IShootable? shootable = hit.Entity.GetComponentInParent<IShootable>();
         HitResult result = shootable?.OnShot(new ShotInfo(hit.Point, hit.Normal, direction, Weapon.Damage, DamageKind.Bullet)) ?? HitResult.None;
         if (result != HitResult.None)
         {
@@ -262,7 +262,7 @@ public sealed class WeaponController : EntityBehaviour
             body.AddImpulseAtPosition(direction * Weapon.Impulse, hit.Point);
         }
 
-        Surface surface = shootable is not null ? Surface.Metal : SceneScripts.Find<PhysicsProp>(hit.Entity)?.Surface ?? Surface.Concrete;
+        Surface surface = shootable is not null ? Surface.Metal : hit.Entity.TryGetComponent(out PhysicsProp? prop) ? prop.Surface : Surface.Concrete;
         Effects.Current?.Impact(hit, direction, surface, decal: shootable is null);
     }
 
@@ -293,7 +293,7 @@ public sealed class WeaponController : EntityBehaviour
         {
             Mass = 0.5f, Velocity = direction * Weapon.ProjectileSpeed + inherited + Vector3.UnitY * 1.2f, Restitution = 0.3f,
         });
-        grenade.AddScript(new Grenade { Damage = Weapon.Damage });
+        grenade.AddComponent(new Grenade { Damage = Weapon.Damage });
     }
 
     // Recoil kicks the view up and sideways; part of it drifts back once you stop firing.

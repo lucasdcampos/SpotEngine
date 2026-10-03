@@ -10,7 +10,7 @@ namespace ProvingGrounds;
 /// <see cref="SlideDistance"/> set it also slides side to side. Its parts are children in the scene: a "Pivot" (the
 /// hinge, which tweens) holding the "Face" (the collider) and its rings, and a "Status" lamp on the base.
 /// </summary>
-public sealed class Target : EntityBehaviour, IShootable, IResettable
+public sealed class Target : Component, IShootable, IResettable
 {
     private static readonly (float Radius, int Points, string Name)[] Rings =
     {
@@ -43,7 +43,7 @@ public sealed class Target : EntityBehaviour, IShootable, IResettable
 
     public Vector3 AimPoint => _face?.WorldPosition ?? _transform.WorldPosition;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _origin = _transform.Position;

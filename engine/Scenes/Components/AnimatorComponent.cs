@@ -22,7 +22,7 @@ namespace Spot.Engine.Scenes;
 /// resolved by name, so a script plays one with <c>animator.Play("Run")</c> or by handing over an
 /// <see cref="AnimationClip"/> it loaded itself.
 /// </remarks>
-[ComponentMenu("Animator", Order = 22)]
+[ComponentMenu("Animator", Order = 22, Category = "Animation")]
 [SceneComponent("Animator")]
 public sealed class AnimatorComponent : Component
 {

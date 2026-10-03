@@ -275,8 +275,19 @@ internal static class ComponentSerialization
     private static readonly Dictionary<Type, ScriptMember[]> s_scriptMemberCache = new();
 
     /// <summary>
+    /// Forgets every per-type reflection cache. Called when the editor unloads the game's scripts, whose types
+    /// (and the accessors cached for them) would otherwise keep the collectible load context alive.
+    /// </summary>
+    public static void ClearTypeCaches()
+    {
+        s_memberCache.Clear();
+        s_assetRefCache.Clear();
+        s_scriptMemberCache.Clear();
+    }
+
+    /// <summary>
     /// Writes an object's public fields and read/write properties of supported types into a JSON object.
-    /// Used for script instances (<see cref="EntityBehaviour"/>), which expose tunables as public fields.
+    /// Used for user components, which expose tunables as public fields.
     /// </summary>
     public static JsonObject SerializeMembers(object obj)
     {
@@ -353,6 +364,9 @@ internal static class ComponentSerialization
             if (prop.GetMethod is not { IsPublic: true } || prop.SetMethod is not { IsPublic: true }) continue;
             if (!IsSupported(prop.PropertyType)) continue;
             if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
+
+            // The base Component's state (Enabled) is written beside the fields, not among them.
+            if (prop.DeclaringType == typeof(Component)) continue;
 
             members.Add(new ScriptMember(prop.Name, prop.PropertyType, o => prop.GetValue(o), (o, v) => prop.SetValue(o, v)));
         }

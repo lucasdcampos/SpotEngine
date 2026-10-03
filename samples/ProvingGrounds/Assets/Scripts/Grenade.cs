@@ -9,7 +9,7 @@ namespace ProvingGrounds;
 /// the first thing it touches (a collision callback) or when its fuse runs out. A ray swept between frames catches
 /// anything thin it would otherwise fly through.
 /// </summary>
-public sealed class Grenade : EntityBehaviour
+public sealed class Grenade : Component
 {
     /// <summary>Gets or sets the damage at the blast's center.</summary>
     public float Damage { get; set; } = 3.0f;
@@ -28,7 +28,7 @@ public sealed class Grenade : EntityBehaviour
     private float _age;
     private bool _exploded;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         _transform = GetComponent<TransformComponent>();
         _last = _transform.Position;

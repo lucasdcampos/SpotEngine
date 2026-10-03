@@ -162,15 +162,17 @@ public static class EditorGui
     /// Type-erased counterpart of <see cref="Component{T}"/>, for callers that only know the component's
     /// <see cref="Type"/> at runtime (the reflection-based inspector). Draws the collapsible header (with an
     /// optional remove menu) and invokes <paramref name="drawContents"/> when expanded. Does nothing if the
-    /// entity has no component of <paramref name="type"/>.
+    /// entity has no component of <paramref name="type"/>. <paramref name="id"/> distinguishes several cards of
+    /// one type (it defaults to the type's name), and <paramref name="onRemove"/> replaces the default
+    /// "remove the component of <paramref name="type"/>" action.
     /// </summary>
     public static void Component(Entity entity, Type type, string title, bool removable, Action drawContents,
-                                 bool defaultOpen = true)
+                                 bool defaultOpen = true, string? id = null, Action? onRemove = null)
     {
         if (!entity.HasComponent(type)) return;
 
         var p = Palette;
-        ImGui.PushID(type.Name);
+        ImGui.PushID(id ?? type.Name);
 
         // Each component is its own card: a rounded, hairline-bordered surface that auto-sizes to its
         // content, with a little air between cards so sections read as distinct groups rather than one
@@ -264,7 +266,12 @@ public static class EditorGui
         ImGui.PopStyleColor(2);
 
         if (removeRequested)
-            entity.RemoveComponent(type);
+        {
+            if (onRemove is not null)
+                onRemove();
+            else
+                entity.RemoveComponent(type);
+        }
 
         ImGui.PopID();
     }
@@ -1076,133 +1083,11 @@ public static class EditorGui
         return 0;
     }
 
-    // ----- Script slot -----------------------------------------------------------------------------
+    // ----- Scripts ---------------------------------------------------------------------------------
 
     /// <summary>
-    /// A picker for an <see cref="EntityBehaviour"/> script by class name. Mirrors <see cref="AssetSlot"/>:
-    /// the button accepts a dragged script file and, when clicked, opens a searchable list of every script
-    /// type discovered across the loaded assemblies. Returns the chosen class name via
-    /// <paramref name="chosenClass"/> when the user picks one; existing selections in
-    /// <paramref name="alreadyAdded"/> are shown as disabled so a script isn't attached twice.
-    /// </summary>
-    public static bool ScriptSlot(string label, IReadOnlyCollection<string> alreadyAdded, out string? chosenClass)
-    {
-        chosenClass = null;
-        bool changed = false;
-
-        ImGui.PushID(label);
-
-        ImGui.PushStyleVar(ImGuiStyleVar.ButtonTextAlign, new Vector2(0.5f, 0.5f));
-        bool clicked = ImGui.Button($"{EditorIcons.Code}  {label}", new Vector2(-1, 30));
-        ImGui.PopStyleVar();
-
-        // Drag-drop: the asset browser sends a script's file name (e.g. "Player.cs").
-        if (ImGui.BeginDragDropTarget())
-        {
-            unsafe
-            {
-                var payload = ImGui.AcceptDragDropPayload("SCRIPT_FILE");
-                if (payload.NativePtr != null)
-                {
-                    string? filename = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data);
-                    if (filename != null)
-                    {
-                        chosenClass = filename.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                            ? filename[..^3] : filename;
-                        changed = true;
-                    }
-                }
-            }
-            ImGui.EndDragDropTarget();
-        }
-
-        if (clicked)
-        {
-            _assetSearchFilter = string.Empty;
-            _assetPickerJustOpened = true;
-            ImGui.OpenPopup("SelectScriptPopup");
-        }
-
-        if (ImGui.BeginPopup("SelectScriptPopup"))
-        {
-            ImGui.SetNextItemWidth(320);
-            if (_assetPickerJustOpened)
-            {
-                ImGui.SetKeyboardFocusHere();
-                _assetPickerJustOpened = false;
-            }
-            ImGui.InputTextWithHint("##Search", $"{EditorIcons.Search}  Search scripts...", ref _assetSearchFilter, 128);
-            ImGui.Separator();
-
-            ImGui.BeginChild("ScriptList", new Vector2(320, 340), ImGuiChildFlags.None);
-
-            var scripts = DiscoverScriptTypes();
-            bool foundAny = false;
-            foreach (string className in scripts)
-            {
-                if (!string.IsNullOrEmpty(_assetSearchFilter) &&
-                    !className.Contains(_assetSearchFilter, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                foundAny = true;
-                bool added = alreadyAdded.Contains(className);
-                ImGui.BeginDisabled(added);
-                if (PickerRow(EditorIcons.Code, ScriptGlyphColor, className, added ? "already attached" : null, false))
-                {
-                    chosenClass = className;
-                    changed = true;
-                    ImGui.CloseCurrentPopup();
-                }
-                ImGui.EndDisabled();
-            }
-
-            if (!foundAny)
-                ImGui.TextDisabled(scripts.Count == 0 ? "No scripts found." : "No matching scripts.");
-
-            ImGui.EndChild();
-            ImGui.EndPopup();
-        }
-
-        ImGui.PopID();
-        return changed;
-    }
-
-    private static readonly Vector4 ScriptGlyphColor = new(0.36f, 0.66f, 0.98f, 1.0f);
-
-    /// <summary>
-    /// The scripts the editor can offer, by class name. The project's scripts live as <c>.cs</c> files under
-    /// its asset directory and are only compiled when the game is built, so the editor can't see them by
-    /// reflection — it lists them by file name (the same name the serializer resolves at load). Any concrete
-    /// <see cref="EntityBehaviour"/> that <em>is</em> loaded (e.g. when running a project in-process) is folded
-    /// in too, so built-in scripts still appear.
-    /// </summary>
-    private static List<string> DiscoverScriptTypes()
-    {
-        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (string path in EnumerateProjectAssets(new[] { "*.cs" }))
-            names.Add(System.IO.Path.GetFileNameWithoutExtension(path));
-
-        foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            Type[] types;
-            try { types = assembly.GetTypes(); }
-            catch { continue; } // A partially-loadable assembly must never take the editor down.
-
-            foreach (Type type in types)
-            {
-                if (!type.IsAbstract && type.IsSubclassOf(typeof(EntityBehaviour)))
-                    names.Add(type.Name);
-            }
-        }
-        return names.ToList();
-    }
-
-    /// <summary>
-    /// Whether a script class name is backed by a <c>.cs</c> file in the project (or a loaded
-    /// <see cref="EntityBehaviour"/> type). Used by the inspector to flag attached scripts it can't find.
+    /// Whether a script class name is backed by a <c>.cs</c> file in the project (or a loaded user component
+    /// type). Used by the inspector to tell a component waiting for its script to compile from a missing one.
     /// </summary>
     public static bool ScriptExists(string className)
     {
@@ -1217,12 +1102,13 @@ public static class EditorGui
 
         foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
+            if (assembly.IsCollectible) continue; // the game's script loads: the registry knows the current one
             Type[] types;
             try { types = assembly.GetTypes(); }
             catch { continue; }
             foreach (Type type in types)
             {
-                if (!type.IsAbstract && type.Name == name && type.IsSubclassOf(typeof(EntityBehaviour)))
+                if (!type.IsAbstract && type.Name == name && type.IsSubclassOf(typeof(Spot.Engine.Scenes.Component)) && Spot.Engine.Scenes.Component.IsUserType(type))
                     return true;
             }
         }

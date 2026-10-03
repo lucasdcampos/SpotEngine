@@ -22,7 +22,7 @@ public enum Surface
 /// smoke and dust use the engine's own <see cref="ParticleSystemComponent"/> through small pools of emitters, and
 /// short-lived point lights light the scene for muzzle flashes and explosions.
 /// </summary>
-public sealed class Effects : EntityBehaviour
+public sealed class Effects : Component
 {
     /// <summary>Gets or sets how many bullet holes stay on surfaces before the oldest is recycled.</summary>
     public int MaxDecals { get; set; } = 160;
@@ -47,7 +47,7 @@ public sealed class Effects : EntityBehaviour
     private EmitterPool? _dust;
     private LightPool? _lights;
 
-    public override void OnCreate()
+    public override void OnStart()
     {
         Current = this;
         _textures = new FxTextures();
