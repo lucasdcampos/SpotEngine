@@ -623,7 +623,6 @@ public class EditorScene : Scene
             SceneSerializer.ResolveMissingComponents(sceneData.Scene);
         }
 
-        Spot.Framework.Log.Info("Scripts reloaded.");
         return true;
     }
 

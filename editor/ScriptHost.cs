@@ -41,8 +41,10 @@ internal sealed class ScriptHost
 
     private ScriptLoadContext? _context;
 
-    // Contexts unloaded by earlier reloads, watched so one that never gets collected (a leak) is reported.
+    // Contexts unloaded by earlier reloads, watched so one that never gets collected (a leak) is reported, and how
+    // many leaked loads were last reported (so the warning repeats only if leaks accumulate).
     private readonly List<WeakReference> _retired = new();
+    private int _reportedLeaks;
     private readonly List<IScriptProvider> _providers = new();
 
     /// <summary>Gets the currently loaded project assembly, or <see langword="null"/> when none is loaded.</summary>
@@ -154,25 +156,34 @@ internal sealed class ScriptHost
             Log.CoreWarn("Failed to unload project scripts: {0}", ex.Message);
         }
 
-        _retired.Add(new WeakReference(_context));
-        _context = null;
-
-        // Nudge the runtime to actually reclaim the collectible context now that references are dropped, so a
-        // rapid rebuild/reload does not accumulate stale assemblies. Unloading takes a few collections to finish.
-        for (int i = 0; i < 4 && _retired.Exists(r => r.IsAlive); i++)
+        // Loads retired by earlier reloads have had a whole editing session's worth of collections to go away; one
+        // still alive now is held by something (a static, an event handler, a cache) — a real leak. The load just
+        // unloaded is not judged yet: it can stay reachable from the current frame for a moment, so it is only
+        // counted on the next reload. Report a leak once, when the number of leaked loads grows, so a slow
+        // collection never floods the console.
+        // A full collection may not have run since then, and an unloaded context takes a couple to go: give them
+        // a few before judging (only while one is still around, so the common case costs nothing extra).
+        for (int i = 0; i < 3 && _retired.Exists(r => r.IsAlive); i++)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
 
-        // A load that survives is a leak: something still references one of its types or objects (a static, an
-        // event handler, a cache). Say so, since every such load stays in memory and in reflection scans.
         _retired.RemoveAll(r => !r.IsAlive);
-        if (_retired.Count > 0)
+        if (_retired.Count > _reportedLeaks)
         {
+            _reportedLeaks = _retired.Count;
             Log.CoreWarn(
-                "{0} earlier load(s) of the project scripts are still in memory after a reload; something still references their types.",
+                "{0} earlier load(s) of the project scripts are still in memory; something outside the scripts still references their types.",
                 _retired.Count);
         }
+
+        _retired.Add(new WeakReference(_context));
+        _context = null;
+
+        // Nudge the runtime to reclaim the collectible context now that references are dropped, so a rapid
+        // rebuild/reload does not accumulate stale assemblies.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
     }
 }

@@ -170,9 +170,9 @@ or before they were ever built — starts the game as soon as they're ready. Acr
 scene data, unloads the old assembly, and rebuilds them from the new one — so their authored field values
 and entity references carry over, and the inspector immediately reflects new fields and components. A
 build error aborts the swap and leaves the current components in place, and — like everything else — a
-failure here logs and keeps the editor alive rather than crashing it. If an earlier load of your scripts can't be released after a
-reload — something, such as a static field or an event handler outside your scripts, still references one of
-their types — the console says so, since each such load stays in memory.
+failure here logs and keeps the editor alive rather than crashing it. If an earlier load of your scripts is still in memory by the next
+reload — something outside your scripts, such as a static field or an event handler, still references one of
+their types — the console says so once (and again only if more pile up), since each such load stays in memory.
 
 ## Related
 
