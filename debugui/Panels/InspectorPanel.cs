@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Assets;
@@ -31,6 +33,13 @@ public class InspectorPanel : IDisposable
     private string? _prefabPath;
     private string _prefabLastJson = "";
     private string _componentSearchFilter = "";
+
+    // The Add Component popup's state: the game's component types (gathered when the popup opens, since that
+    // scans the loaded assemblies) and the "New Component" naming step.
+    private List<Type> _userComponentTypes = new();
+    private bool _namingNewComponent;
+    private bool _focusNewComponentName;
+    private string _newComponentName = "";
 
     public InspectorPanel(ISelectionContext context)
     {
@@ -94,6 +103,17 @@ public class InspectorPanel : IDisposable
             if (entity.HasComponent(info.Type))
                 ComponentInspector.DrawComponent(entity, info);
         }
+
+        // The game's own components follow, in the order they were added, then any still waiting for their
+        // script (or whose script is gone).
+        foreach (Component component in entity.Components.ToArray())
+        {
+            if (component.IsUserComponent)
+                ComponentInspector.DrawUserComponent(entity, component);
+        }
+
+        if (entity.TryGetComponent(out MissingComponents? missing))
+            ComponentInspector.DrawMissingComponents(entity, missing);
     }
 
     private static void DrawTagRow(Entity entity)
@@ -116,59 +136,280 @@ public class InspectorPanel : IDisposable
         {
             ImGui.OpenPopup("AddComponent");
             _componentSearchFilter = "";
+            _namingNewComponent = false;
+            _userComponentTypes = ComponentInspector.UserComponentTypes();
             ImGui.SetNextWindowFocus();
+        }
+
+        // Dropping a script from the asset browser attaches its component (pending until it compiles, if needed).
+        if (ImGui.BeginDragDropTarget())
+        {
+            unsafe
+            {
+                var payload = ImGui.AcceptDragDropPayload("SCRIPT_FILE");
+                if (payload.NativePtr != null
+                    && System.Runtime.InteropServices.Marshal.PtrToStringUTF8(payload.Data) is string file)
+                {
+                    AttachScript(entity, System.IO.Path.GetFileNameWithoutExtension(file));
+                }
+            }
+            ImGui.EndDragDropTarget();
         }
 
         if (ImGui.BeginPopup("AddComponent"))
         {
-            // InputText captures keyboard focus and swallows Escape, so close explicitly.
-            if (ImGui.IsKeyPressed(ImGuiKey.Escape))
-                ImGui.CloseCurrentPopup();
-
-            ImGui.SetNextItemWidth(250f);
-            if (ImGui.IsWindowAppearing())
-                ImGui.SetKeyboardFocusHere();
-            ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _componentSearchFilter, 256);
-            
-            ImGui.Spacing();
-
-            if (ImGui.BeginChild("ComponentList", new Vector2(250f, 300f), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar))
-            {
-                // The menu is built from the same discovered component list as the inspector: any component
-                // marked addable that the entity doesn't already have.
-                foreach (var info in ComponentInspector.ComponentTypes)
-                {
-                    if (!info.Addable || entity.HasComponent(info.Type))
-                        continue;
-
-                    if (!string.IsNullOrEmpty(_componentSearchFilter) && !info.DisplayName.Contains(_componentSearchFilter, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    if (ImGui.MenuItem(info.DisplayName))
-                    {
-                        try
-                        {
-                            var component = (Component)Activator.CreateInstance(info.Type)!;
-
-                            // A new 3D collider starts out matching the entity's mesh, as it would be sized by hand.
-                            if (component is Spot.Engine.Physics.Collider3DComponent collider
-                                && entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null)
-                            {
-                                Spot.Engine.Physics.ColliderFitting.FitToMesh(collider, mesh);
-                            }
-
-                            entity.AddComponent(component);
-                        }
-                        catch (Exception ex)
-                        {
-                            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
-                        }
-                        ImGui.CloseCurrentPopup();
-                    }
-                }
-                ImGui.EndChild();
-            }
+            if (_namingNewComponent)
+                DrawNewComponentNaming(entity);
+            else
+                DrawComponentPicker(entity);
             ImGui.EndPopup();
+        }
+    }
+
+    // The searchable list: the engine's components, then the game's own, then "New Component". Enter adds the
+    // only match, or creates a component named after the search when nothing matches.
+    private void DrawComponentPicker(Entity entity)
+    {
+        // InputText captures keyboard focus and swallows Escape, so close explicitly.
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+            ImGui.CloseCurrentPopup();
+
+        ImGui.SetNextItemWidth(250f);
+        if (ImGui.IsWindowAppearing())
+            ImGui.SetKeyboardFocusHere();
+        bool submitted = ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _componentSearchFilter, 256,
+            ImGuiInputTextFlags.EnterReturnsTrue);
+
+        ImGui.Spacing();
+
+        string filter = _componentSearchFilter.Trim();
+        var builtIns = new List<ComponentInspector.ComponentTypeInfo>();
+        foreach (var info in ComponentInspector.ComponentTypes)
+        {
+            if (info.Addable && !entity.HasComponent(info.Type) && Matches(info.DisplayName, filter))
+                builtIns.Add(info);
+        }
+
+        var userTypes = new List<Type>();
+        foreach (Type type in _userComponentTypes)
+        {
+            if (!entity.HasComponent(type) && Matches(type.Name, filter))
+                userTypes.Add(type);
+        }
+
+        Action? add = null;
+        if (ImGui.BeginChild("ComponentList", new Vector2(250f, 300f), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar))
+        {
+            // The game's own components come first: they are what a project adds most.
+            if (userTypes.Count > 0)
+            {
+                ImGui.TextDisabled("Scripts");
+                ImGui.Separator();
+                foreach (Type type in userTypes)
+                {
+                    if (ImGui.MenuItem($"{EditorIcons.Code}  {type.Name}"))
+                        add = () => AddUserComponent(entity, type);
+                }
+
+                if (builtIns.Count > 0)
+                {
+                    ImGui.Spacing();
+                    ImGui.TextDisabled("Built-in");
+                    ImGui.Separator();
+                }
+            }
+
+            foreach (var info in builtIns)
+            {
+                if (ImGui.MenuItem(info.DisplayName))
+                    add = () => AddBuiltInComponent(entity, info);
+            }
+
+            if (builtIns.Count == 0 && userTypes.Count == 0)
+                ImGui.TextDisabled("No matching components.");
+            ImGui.EndChild();
+        }
+
+        ImGui.Separator();
+        // With a search that matches nothing, the search itself names the new component: one click (or Enter)
+        // creates it. Otherwise — or when that name is taken — the naming step opens, prefilled.
+        string suggested = ComponentScripts.ToClassName(filter);
+        bool quickCreate = suggested.Length > 0 && builtIns.Count == 0 && userTypes.Count == 0
+            && !ComponentNameTaken(suggested);
+        string newLabel = quickCreate
+            ? $"{EditorIcons.Plus}  New Component \"{suggested}\""
+            : $"{EditorIcons.Plus}  New Component...";
+        bool createFromSearch = submitted && quickCreate;
+        if (ImGui.MenuItem(newLabel) || createFromSearch)
+        {
+            if (quickCreate)
+            {
+                CreateUserComponent(entity, suggested);
+                ImGui.CloseCurrentPopup();
+            }
+            else
+            {
+                _namingNewComponent = true;
+                _focusNewComponentName = true;
+                _newComponentName = suggested;
+            }
+        }
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.DelayShort))
+            ImGui.SetTooltip("Creates a C# script with a class deriving from Component and attaches it.");
+
+        if (submitted && add is null && builtIns.Count + userTypes.Count == 1)
+        {
+            add = builtIns.Count == 1
+                ? () => AddBuiltInComponent(entity, builtIns[0])
+                : () => AddUserComponent(entity, userTypes[0]);
+        }
+
+        if (add is not null)
+        {
+            add();
+            ImGui.CloseCurrentPopup();
+        }
+    }
+
+    // Names the new component: Enter creates it, Escape goes back to the list.
+    private void DrawNewComponentNaming(Entity entity)
+    {
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
+        {
+            _namingNewComponent = false;
+            return;
+        }
+
+        ImGui.TextUnformatted("New Component");
+        ImGui.SetNextItemWidth(250f);
+        if (_focusNewComponentName)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _focusNewComponentName = false;
+        }
+        bool submitted = ImGui.InputTextWithHint("##NewComponentName", "PlayerMovement", ref _newComponentName, 128,
+            ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CharsNoBlank);
+
+        string name = _newComponentName.Trim();
+        bool exists = name.Length > 0 && ComponentNameTaken(name);
+        bool valid = ComponentScripts.IsValidClassName(name) && !exists;
+        if (name.Length > 0 && !valid)
+        {
+            ImGui.TextColored(new Vector4(0.95f, 0.70f, 0.25f, 1.0f),
+                exists ? "A script with this name already exists." : "Use letters, digits and _ (start with a letter).");
+        }
+        else
+        {
+            ImGui.TextDisabled("Creates Assets/Scripts/" + (name.Length > 0 ? name : "<Name>") + ".cs");
+        }
+
+        ImGui.BeginDisabled(!valid);
+        bool create = ImGui.Button("Create", new Vector2(122f, 0f)) || (submitted && valid);
+        ImGui.EndDisabled();
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel", new Vector2(122f, 0f)))
+            _namingNewComponent = false;
+
+        if (create)
+        {
+            CreateUserComponent(entity, name);
+            _namingNewComponent = false;
+            ImGui.CloseCurrentPopup();
+        }
+    }
+
+    // Whether a component or script by this name already exists, so a new one would clash with it.
+    private bool ComponentNameTaken(string name) =>
+        _userComponentTypes.Exists(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase))
+        || EditorGui.ScriptExists(name);
+
+    private static bool Matches(string name, string filter) =>
+        filter.Length == 0 || name.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+    private static void AddBuiltInComponent(Entity entity, ComponentInspector.ComponentTypeInfo info)
+    {
+        try
+        {
+            var component = (Component)Activator.CreateInstance(info.Type)!;
+
+            // A new 3D collider starts out matching the entity's mesh, as it would be sized by hand.
+            if (component is Spot.Engine.Physics.Collider3DComponent collider
+                && entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null)
+            {
+                Spot.Engine.Physics.ColliderFitting.FitToMesh(collider, mesh);
+            }
+
+            entity.AddComponent(component);
+        }
+        catch (Exception ex)
+        {
+            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", info.DisplayName, ex.Message);
+        }
+    }
+
+    private static void AddUserComponent(Entity entity, Type type)
+    {
+        try
+        {
+            entity.AddComponent((Component)Activator.CreateInstance(type)!);
+        }
+        catch (Exception ex)
+        {
+            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", type.Name, ex.Message);
+        }
+    }
+
+    // Attaches the component a script file defines: directly when its type is loaded, otherwise as a pending
+    // reference (by the script's guid) that resolves once the scripts compile.
+    private static void AttachScript(Entity entity, string className)
+    {
+        Type? type = ComponentInspector.UserComponentTypes()
+            .Find(t => string.Equals(t.Name, className, StringComparison.OrdinalIgnoreCase));
+        if (type is not null)
+        {
+            if (!entity.HasComponent(type))
+                AddUserComponent(entity, type);
+            return;
+        }
+
+        AttachPending(entity, className, EditorGui.GetOrCreateScriptGuid(className));
+    }
+
+    private static void AttachPending(Entity entity, string className, string guid)
+    {
+        var data = new System.Text.Json.Nodes.JsonObject { ["Type"] = className };
+        if (guid.Length > 0)
+            data["Guid"] = guid;
+
+        if (!entity.TryGetComponent(out MissingComponents? pending))
+            pending = entity.AddComponent(new MissingComponents());
+        pending.Items.Add(new MissingComponent(data));
+    }
+
+    // Writes the new script and attaches it straight away as a pending component: the entity holds its
+    // reference (by guid) until the scripts recompile, at which point it resolves into the real component.
+    private static void CreateUserComponent(Entity entity, string name)
+    {
+        if (!ComponentScripts.Create(name, out string path, out string guid))
+            return;
+
+        AttachPending(entity, name, guid);
+        Spot.Framework.Log.Info("Created {0}. {1} attaches once the scripts compile.", path, name);
+        OpenScript(path);
+    }
+
+    // Opens the new script in the system's editor for .cs files, so the next step — writing the component —
+    // is one keystroke away. A machine without an association simply keeps the file closed.
+    private static void OpenScript(string path)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Spot.Framework.Log.Warn("Could not open '{0}': {1}", path, ex.Message);
         }
     }
 

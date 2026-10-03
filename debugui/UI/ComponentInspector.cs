@@ -76,7 +76,112 @@ internal static class ComponentInspector
         return list;
     }
 
+    /// <summary>
+    /// Every user component type the editor can attach: the game's components known to the script registry
+    /// plus any concrete user <see cref="Component"/> in a loaded assembly, sorted by name. Each must have a
+    /// public parameterless constructor so the inspector can create it.
+    /// </summary>
+    public static List<Type> UserComponentTypes()
+    {
+        var types = new HashSet<Type>();
+        foreach (ScriptDescriptor descriptor in ScriptRegistry.All)
+        {
+            if (typeof(Component).IsAssignableFrom(descriptor.Type))
+                types.Add(descriptor.Type);
+        }
+
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (assembly == typeof(Component).Assembly)
+                continue;
+
+            Type[] candidates;
+            try
+            {
+                candidates = assembly.GetTypes();
+            }
+            catch
+            {
+                continue; // A partially-loadable assembly must never take the editor down.
+            }
+
+            foreach (Type type in candidates)
+            {
+                if (!type.IsAbstract && !type.IsGenericTypeDefinition && type.IsSubclassOf(typeof(Component))
+                    && type.GetConstructor(Type.EmptyTypes) is not null)
+                {
+                    types.Add(type);
+                }
+            }
+        }
+
+        return types.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>
+    /// Forgets the per-type reflection caches. Called when the editor reloads the game's scripts, so the
+    /// unloaded types are neither drawn from stale metadata nor kept alive by it.
+    /// </summary>
+    public static void ClearTypeCaches()
+    {
+        _metaCache.Clear();
+        _scriptFieldCache.Clear();
+    }
+
     // ----- Public entry points ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Draws a user component as its own card: the class name as the title, an Enabled toggle, and its public
+    /// fields and read/write properties as editors (firing <see cref="Component.OnValidate"/> on change).
+    /// </summary>
+    public static void DrawUserComponent(Entity entity, Component component)
+    {
+        Type type = component.GetType();
+        EditorGui.Component(entity, type, Humanize(type.Name), removable: true, () =>
+        {
+            bool enabled = component.Enabled;
+            if (EditorGui.Checkbox("Enabled", ref enabled))
+                component.Enabled = enabled;
+
+            DrawScriptFields(component, entity.Scene);
+        });
+    }
+
+    /// <summary>
+    /// Draws one card per user component that could not be resolved: a component whose script is waiting to
+    /// compile reads as pending, one with no script at all as missing. Their data is kept either way; removing
+    /// the card discards it.
+    /// </summary>
+    public static void DrawMissingComponents(Entity entity, MissingComponents missing)
+    {
+        MissingComponent? toRemove = null;
+        for (int i = 0; i < missing.Items.Count; i++)
+        {
+            MissingComponent item = missing.Items[i];
+            string name = string.IsNullOrEmpty(item.TypeName) ? "Unknown Component" : item.TypeName;
+            bool pending = !string.IsNullOrEmpty(item.TypeName) && EditorGui.ScriptExists(item.TypeName);
+            EditorGui.Component(entity, typeof(MissingComponents), Humanize(name), removable: true, () =>
+            {
+                if (pending)
+                {
+                    ImGui.TextDisabled($"{EditorIcons.Code}  Waiting for {name}.cs to compile...");
+                    ImGui.TextDisabled("It attaches automatically once the scripts reload (Ctrl+R).");
+                }
+                else
+                {
+                    ImGui.TextColored(ScriptMissingColor, $"{EditorIcons.Warning}  Script '{name}' was not found.");
+                    ImGui.TextWrapped("It may have been renamed or deleted, or the scripts failed to build. Its values are kept and saved with the scene.");
+                }
+            }, id: $"missing{i}", onRemove: () => toRemove = item);
+        }
+
+        if (toRemove is not null)
+        {
+            missing.Items.Remove(toRemove);
+            if (missing.Items.Count == 0)
+                entity.RemoveComponent<MissingComponents>();
+        }
+    }
 
     /// <summary>Draws the collapsible header and body for the component of <paramref name="info"/> if present.</summary>
     public static void DrawComponent(Entity entity, ComponentTypeInfo info)
@@ -873,7 +978,9 @@ internal static class ComponentInspector
 
     // Draws a script's public fields and read/write properties as inline editors. Editing a value marks
     // the scene dirty automatically, since script fields are now part of the serialized scene.
-    private static void DrawScriptFields(EntityBehaviour script)
+    private static void DrawScriptFields(EntityBehaviour script) => DrawScriptFields(script, script.Entity.Scene);
+
+    private static void DrawScriptFields(object script, Scene scene)
     {
         foreach (ScriptFieldMeta meta in ScriptFieldsFor(script.GetType()))
         {
@@ -882,9 +989,12 @@ internal static class ComponentInspector
             {
                 // Editing a serialized field mirrors Unity's OnValidate: notify the script so it can clamp or
                 // react. Guarded in the engine so a throwing handler is quarantined, never crashing the editor.
-                if (DrawScriptField(script, meta))
+                if (DrawScriptField(script, scene, meta))
                 {
-                    ScriptSystem.InvokeValidate(script);
+                    if (script is Component component)
+                        ComponentSystem.InvokeValidate(component);
+                    else if (script is EntityBehaviour behaviour)
+                        ScriptSystem.InvokeValidate(behaviour);
                 }
             }
             catch (Exception ex)
@@ -899,7 +1009,7 @@ internal static class ComponentInspector
     }
 
     // Draws one script field; returns true when the user changed it (so the caller can fire OnValidate).
-    private static bool DrawScriptField(EntityBehaviour script, ScriptFieldMeta meta)
+    private static bool DrawScriptField(object script, Scene scene, ScriptFieldMeta meta)
     {
         Type t = meta.Type;
         string label = meta.Label;
@@ -985,7 +1095,7 @@ internal static class ComponentInspector
         else if (t == typeof(Entity))
         {
             var v = (Entity)meta.Get(script)!;
-            if (EditorGui.EntityField(label, script.Entity.Scene, ref v))
+            if (EditorGui.EntityField(label, scene, ref v))
             {
                 meta.Set(script, v);
                 return true;
@@ -1014,6 +1124,7 @@ internal static class ComponentInspector
         {
             if (prop.GetIndexParameters().Length > 0) continue;
             if (prop.GetMethod is not { IsPublic: true } || prop.SetMethod is not { IsPublic: true }) continue;
+            if (prop.DeclaringType == typeof(Component)) continue; // Enabled is drawn separately.
             if (!IsScriptFieldType(prop.PropertyType)) continue;
             if (prop.GetCustomAttribute<HideInInspectorAttribute>() != null) continue;
             metas.Add(BuildScriptFieldMeta(prop, prop.PropertyType, prop.Name, o => prop.GetValue(o), (o, v) => prop.SetValue(o, v)));

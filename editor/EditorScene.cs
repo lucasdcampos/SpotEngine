@@ -529,10 +529,13 @@ public class EditorScene : Scene
         }
 
         // 2. Snapshot every live script's fields and drop the instance references, so the old load context has
-        //    nothing keeping it alive and can be collected.
+        //    nothing keeping it alive and can be collected. User components from the old assembly go back to
+        //    scene data (MissingComponents) and leave the registry, taking their types with them.
         var snapshots = new List<ScriptReloadSnapshot>();
         foreach (OpenSceneData sceneData in _openScenes)
         {
+            SceneSerializer.UnresolveUserComponents(sceneData.Scene, type => type.Assembly.IsCollectible);
+
             foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
             {
                 var comp = entity.GetComponent<ScriptComponent>();
@@ -546,7 +549,9 @@ public class EditorScene : Scene
             }
         }
 
-        // 3. Swap the assembly.
+        // 3. Swap the assembly, first forgetting the reflection caches that still reference the old types.
+        ComponentSerialization.ClearTypeCaches();
+        Spot.DebugUI.UI.ComponentScripts.ForgetLoadedTypes();
         s_scriptHost.Unload();
         string? dll = FindProjectAssembly(project);
         if (dll == null || !s_scriptHost.Load(dll))
@@ -576,6 +581,11 @@ public class EditorScene : Scene
             }
 
             refs.ResolveDeferred();
+        }
+
+        foreach (OpenSceneData sceneData in _openScenes)
+        {
+            SceneSerializer.ResolveMissingComponents(sceneData.Scene);
         }
 
         Spot.Framework.Log.Info("Scripts reloaded.");
@@ -2047,9 +2057,12 @@ public class EditorScene : Scene
             return;
         }
 
-        // Re-resolve any ScriptInstance whose Instance is still null: the assembly is now available.
+        // Re-resolve any ScriptInstance whose Instance is still null, and any user component that was waiting
+        // for its type: the assembly is now available.
         foreach (var sceneData in _openScenes)
         {
+            SceneSerializer.ResolveMissingComponents(sceneData.Scene);
+
             foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
             {
                 var comp = entity.GetComponent<ScriptComponent>();

@@ -132,21 +132,7 @@ public class SceneSerializer
                 continue;
             }
 
-            Type type = component.GetType();
-            var entry = new JsonObject { ["Type"] = type.Name };
-            if (ScriptRegistry.TryGetByType(type, out ScriptDescriptor? descriptor) && !string.IsNullOrEmpty(descriptor!.Guid))
-            {
-                entry["Guid"] = descriptor.Guid;
-            }
-
-            entry["Enabled"] = component.Enabled;
-            JsonObject fields = ComponentSerialization.SerializeMembers(component);
-            if (fields.Count > 0)
-            {
-                entry["Fields"] = fields;
-            }
-
-            items.Add(entry);
+            items.Add(WriteUserComponent(component));
         }
 
         if (entity.TryGetComponent(out MissingComponents? missing))
@@ -158,6 +144,25 @@ public class SceneSerializer
         }
 
         return items;
+    }
+
+    private static JsonObject WriteUserComponent(Component component)
+    {
+        Type type = component.GetType();
+        var entry = new JsonObject { ["Type"] = type.Name };
+        if (ScriptRegistry.TryGetByType(type, out ScriptDescriptor? descriptor) && !string.IsNullOrEmpty(descriptor!.Guid))
+        {
+            entry["Guid"] = descriptor.Guid;
+        }
+
+        entry["Enabled"] = component.Enabled;
+        JsonObject fields = ComponentSerialization.SerializeMembers(component);
+        if (fields.Count > 0)
+        {
+            entry["Fields"] = fields;
+        }
+
+        return entry;
     }
 
     private static JsonObject SerializeScripts(ScriptComponent scripts)
@@ -502,6 +507,46 @@ public class SceneSerializer
 
         refs.ResolveDeferred();
         return resolved;
+    }
+
+    /// <summary>
+    /// Turns every user component whose type matches <paramref name="unload"/> back into scene data held by
+    /// <see cref="MissingComponents"/>, detaching the live instances — the first half of a script reload. Once
+    /// the new types are loaded, <see cref="ResolveMissingComponents"/> rebuilds the components from that data,
+    /// fields and entity references included. Lifecycle hooks are not run: reloads happen in edit mode.
+    /// </summary>
+    /// <param name="scene">The scene to process.</param>
+    /// <param name="unload">Selects the component types being unloaded.</param>
+    /// <returns>The number of components detached.</returns>
+    internal static int UnresolveUserComponents(Scene scene, Func<Type, bool> unload)
+    {
+        // Every entity needs a stable id first, so an Entity field captured below can be rebound afterwards.
+        foreach (Entity entity in scene.View<LabelComponent>())
+        {
+            entity.EnsurePersistentId();
+        }
+
+        int count = 0;
+        foreach (Component component in scene.UserComponents)
+        {
+            if (!unload(component.GetType()))
+            {
+                continue;
+            }
+
+            Entity entity = component.Entity;
+            JsonObject data = WriteUserComponent(component);
+            entity.RemoveComponent(component.GetType());
+            if (!entity.TryGetComponent(out MissingComponents? missing))
+            {
+                missing = entity.AddComponent(new MissingComponents());
+            }
+
+            missing.Items.Add(new MissingComponent(data));
+            count++;
+        }
+
+        return count;
     }
 
     private static void AddScript(

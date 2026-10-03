@@ -275,6 +275,17 @@ internal static class ComponentSerialization
     private static readonly Dictionary<Type, ScriptMember[]> s_scriptMemberCache = new();
 
     /// <summary>
+    /// Forgets every per-type reflection cache. Called when the editor unloads the game's scripts, whose types
+    /// (and the accessors cached for them) would otherwise keep the collectible load context alive.
+    /// </summary>
+    public static void ClearTypeCaches()
+    {
+        s_memberCache.Clear();
+        s_assetRefCache.Clear();
+        s_scriptMemberCache.Clear();
+    }
+
+    /// <summary>
     /// Writes an object's public fields and read/write properties of supported types into a JSON object.
     /// Used for script instances (<see cref="EntityBehaviour"/>), which expose tunables as public fields.
     /// </summary>

@@ -199,7 +199,17 @@ internal sealed class EntityRegistry
             return null;
         }
 
-        _pools[component.GetType()].Remove(id);
+        // Drop a pool once it empties: the pool's key is the component's Type, and a user component's type lives
+        // in a collectible load context the editor unloads on a script reload — a lingering empty pool would
+        // keep that whole context alive.
+        Type concrete = component.GetType();
+        Dictionary<int, Component> pool = _pools[concrete];
+        pool.Remove(id);
+        if (pool.Count == 0)
+        {
+            _pools.Remove(concrete);
+        }
+
         if (_ordered.TryGetValue(id, out List<Component>? ordered))
         {
             ordered.Remove(component);

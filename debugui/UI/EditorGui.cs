@@ -162,15 +162,17 @@ public static class EditorGui
     /// Type-erased counterpart of <see cref="Component{T}"/>, for callers that only know the component's
     /// <see cref="Type"/> at runtime (the reflection-based inspector). Draws the collapsible header (with an
     /// optional remove menu) and invokes <paramref name="drawContents"/> when expanded. Does nothing if the
-    /// entity has no component of <paramref name="type"/>.
+    /// entity has no component of <paramref name="type"/>. <paramref name="id"/> distinguishes several cards of
+    /// one type (it defaults to the type's name), and <paramref name="onRemove"/> replaces the default
+    /// "remove the component of <paramref name="type"/>" action.
     /// </summary>
     public static void Component(Entity entity, Type type, string title, bool removable, Action drawContents,
-                                 bool defaultOpen = true)
+                                 bool defaultOpen = true, string? id = null, Action? onRemove = null)
     {
         if (!entity.HasComponent(type)) return;
 
         var p = Palette;
-        ImGui.PushID(type.Name);
+        ImGui.PushID(id ?? type.Name);
 
         // Each component is its own card: a rounded, hairline-bordered surface that auto-sizes to its
         // content, with a little air between cards so sections read as distinct groups rather than one
@@ -264,7 +266,12 @@ public static class EditorGui
         ImGui.PopStyleColor(2);
 
         if (removeRequested)
-            entity.RemoveComponent(type);
+        {
+            if (onRemove is not null)
+                onRemove();
+            else
+                entity.RemoveComponent(type);
+        }
 
         ImGui.PopID();
     }
