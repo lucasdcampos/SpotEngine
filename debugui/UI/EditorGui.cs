@@ -1102,6 +1102,7 @@ public static class EditorGui
 
         foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
+            if (assembly.IsCollectible) continue; // the game's script loads: the registry knows the current one
             Type[] types;
             try { types = assembly.GetTypes(); }
             catch { continue; }

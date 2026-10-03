@@ -44,11 +44,23 @@ public class InspectorPanel : IDisposable
     public InspectorPanel(ISelectionContext context)
     {
         _context = context;
+        ComponentScripts.LoadedTypesForgotten += ForgetLoadedTypes;
+    }
+
+    // The game's scripts are being reloaded: let go of their types and of the inspected prefab's components
+    // (which are instances of them), so the old assembly can unload. The prefab reloads on its next draw.
+    private void ForgetLoadedTypes()
+    {
+        _userComponentTypes = new List<Type>();
+        _prefabScene = null;
+        _prefabRoot = null;
+        _prefabPath = null;
     }
 
     // Releases the material-preview framebuffer's GL resources. Called when the editor shuts down.
     public void Dispose()
     {
+        ComponentScripts.LoadedTypesForgotten -= ForgetLoadedTypes;
         _materialPreviewFb?.Dispose();
         _materialPreviewFb = null;
         _builtinPreviewFb?.Dispose();
@@ -164,6 +176,11 @@ public class InspectorPanel : IDisposable
                 DrawComponentPicker(entity);
             ImGui.EndPopup();
         }
+        else if (_userComponentTypes.Count > 0)
+        {
+            // Don't keep the game's types alive between openings (they are gathered afresh on open).
+            _userComponentTypes = new List<Type>();
+        }
     }
 
     private const float PickerWidth = 290f;
@@ -193,7 +210,7 @@ public class InspectorPanel : IDisposable
         bool quickCreate = suggested.Length > 0 && matches.Count == 0 && !ComponentNameTaken(suggested);
         ImGui.Spacing();
         string newLabel = quickCreate ? $"New Component \"{suggested}\"" : "New Component...";
-        if (PickerRow("new", EditorIcons.Plus, EditorThemeManager.Current.Palette.Accent, newLabel, indent: 0f)
+        if (PickerRow("new", EditorIcons.Plus, EditorThemeManager.Current.Palette.Accent, newLabel, indent: 0f, keepOpen: !quickCreate)
             || (submitted && quickCreate))
         {
             if (quickCreate)
@@ -215,9 +232,15 @@ public class InspectorPanel : IDisposable
         ImGui.Separator();
 
         ComponentEntry? chosen = null;
-        // The list fits its content, up to a fixed height, so a narrowed search doesn't leave an empty box.
-        ImGui.SetNextWindowSizeConstraints(new Vector2(PickerWidth, 0f), new Vector2(PickerWidth, 320f));
-        if (ImGui.BeginChild("ComponentList", new Vector2(PickerWidth, 0f), ImGuiChildFlags.AutoResizeY))
+        // The list fits its content (every group open), up to a fixed height, so a narrowed search doesn't leave an
+        // empty box. The height is worked out before drawing rather than auto-sized: ImGui places a popup once,
+        // when it appears, so a popup that grew afterwards could hang off the bottom of the screen.
+        var style = ImGui.GetStyle();
+        int groups = matches.Select(e => e.Category).Distinct().Count();
+        float content = Math.Max(matches.Count, 1) * (ImGui.GetFrameHeight() + style.ItemSpacing.Y)
+            + groups * (ImGui.GetTextLineHeight() + style.FramePadding.Y * 2.0f + style.ItemSpacing.Y)
+            + style.WindowPadding.Y * 2.0f;
+        if (ImGui.BeginChild("ComponentList", new Vector2(PickerWidth, MathF.Min(content, 320f)), ImGuiChildFlags.None))
         {
             if (matches.Count == 0)
                 ImGui.TextDisabled(filter.Length == 0 ? "Every component is already attached." : "No matching components.");
@@ -304,10 +327,12 @@ public class InspectorPanel : IDisposable
     }
 
     // One menu row: a tinted icon centered in its column and a label, the whole width clickable.
-    private static bool PickerRow(string id, string glyph, Vector4 glyphColor, string label, float indent)
+    // keepOpen stops ImGui from closing the popup on click, for a row that switches the popup to another step.
+    private static bool PickerRow(string id, string glyph, Vector4 glyphColor, string label, float indent, bool keepOpen = false)
     {
         float height = ImGui.GetFrameHeight();
-        bool clicked = ImGui.Selectable($"##{id}", false, ImGuiSelectableFlags.None, new Vector2(0f, height));
+        bool clicked = ImGui.Selectable($"##{id}", false,
+            keepOpen ? ImGuiSelectableFlags.DontClosePopups : ImGuiSelectableFlags.None, new Vector2(0f, height));
 
         Vector2 min = ImGui.GetItemRectMin();
         float y = min.Y + (height - ImGui.GetTextLineHeight()) * 0.5f;

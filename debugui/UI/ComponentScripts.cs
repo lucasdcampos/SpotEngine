@@ -54,7 +54,14 @@ public static class ComponentScripts
     /// Forgets everything the debug UI cached about the game's component types. Call before unloading the
     /// game's scripts, so the old types are neither drawn from stale metadata nor kept alive by it.
     /// </summary>
-    public static void ForgetLoadedTypes() => ComponentInspector.ClearTypeCaches();
+    public static void ForgetLoadedTypes()
+    {
+        ComponentInspector.ClearTypeCaches();
+        LoadedTypesForgotten?.Invoke();
+    }
+
+    /// <summary>Raised by <see cref="ForgetLoadedTypes"/>, so panels holding the game's types or components can drop them.</summary>
+    internal static event Action? LoadedTypesForgotten;
 
     /// <summary>The source of a new component class named <paramref name="className"/>.</summary>
     public static string Template(string className, string rootNamespace) => $$"""

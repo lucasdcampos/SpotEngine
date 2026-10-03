@@ -51,6 +51,13 @@ internal static class ScriptResolver
 
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
+            // Collectible assemblies are the editor's script loads; the registry already covers the current one,
+            // and an earlier one still awaiting collection must never be resolved to (it would revive it).
+            if (assembly.IsCollectible)
+            {
+                continue;
+            }
+
             Type[] types;
             try
             {

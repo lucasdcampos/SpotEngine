@@ -167,7 +167,9 @@ with **Project ▸ Reload Scripts** (`Ctrl+R`). Across a reload the editor turns
 scene data, unloads the old assembly, and rebuilds them from the new one — so their authored field values
 and entity references carry over, and the inspector immediately reflects new fields and components. A
 build error aborts the swap and leaves the current components in place, and — like everything else — a
-failure here logs and keeps the editor alive rather than crashing it.
+failure here logs and keeps the editor alive rather than crashing it. If an earlier load of your scripts can't be released after a
+reload — something, such as a static field or an event handler outside your scripts, still references one of
+their types — the console says so, since each such load stays in memory.
 
 ## Related
 

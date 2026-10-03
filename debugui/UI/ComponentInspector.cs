@@ -77,22 +77,23 @@ internal static class ComponentInspector
     }
 
     /// <summary>
-    /// Every user component type the editor can attach: the game's components known to the script registry
-    /// plus any concrete user <see cref="Component"/> in a loaded assembly, sorted by name. Each must have a
-    /// public parameterless constructor so the inspector can create it.
+    /// Every user component type the editor can attach, once each, sorted by name: the game's components from
+    /// the script registry (the current build) plus any concrete user <see cref="Component"/> in a regular
+    /// loaded assembly (such as Spot.Net's). Collectible assemblies are skipped — they are the game's script
+    /// loads, and earlier ones linger until the runtime collects them, which would list each class once per
+    /// reload. Each type must have a public parameterless constructor so the inspector can create it.
     /// </summary>
     public static List<Type> UserComponentTypes()
     {
-        var types = new HashSet<Type>();
+        var types = new Dictionary<string, Type>(StringComparer.Ordinal);
         foreach (ScriptDescriptor descriptor in ScriptRegistry.All)
         {
-            if (typeof(Component).IsAssignableFrom(descriptor.Type))
-                types.Add(descriptor.Type);
+            types[descriptor.Type.FullName ?? descriptor.Type.Name] = descriptor.Type;
         }
 
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (assembly == typeof(Component).Assembly)
+            if (assembly == typeof(Component).Assembly || assembly.IsCollectible || assembly.IsDynamic)
                 continue;
 
             Type[] candidates;
@@ -110,12 +111,12 @@ internal static class ComponentInspector
                 if (!type.IsAbstract && !type.IsGenericTypeDefinition && type.IsSubclassOf(typeof(Component))
                     && type.GetConstructor(Type.EmptyTypes) is not null)
                 {
-                    types.Add(type);
+                    types.TryAdd(type.FullName ?? type.Name, type);
                 }
             }
         }
 
-        return types.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return types.Values.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>
@@ -126,6 +127,7 @@ internal static class ComponentInspector
     {
         _metaCache.Clear();
         _scriptFieldCache.Clear();
+        _componentTypes = null;
     }
 
     // ----- Public entry points ---------------------------------------------------------------------
