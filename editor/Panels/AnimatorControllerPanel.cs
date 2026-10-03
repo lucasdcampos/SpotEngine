@@ -69,6 +69,7 @@ public sealed class AnimatorControllerPanel
             ImGui.End();
             return;
         }
+        EditorGui.MarkFocusedTab();
 
         const float inspectorWidth = 300.0f;
         float canvasWidth = MathF.Max(120.0f, ImGui.GetContentRegionAvail().X - inspectorWidth);

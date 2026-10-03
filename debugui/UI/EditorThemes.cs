@@ -13,10 +13,10 @@ public static class EditorThemes
     public static IReadOnlyList<EditorTheme> All => new[] { SpotDark, SpotLight, Nord, Cherry, AllBlack };
 
     /// <summary>
-    /// The default theme: a refined, low-contrast dark surface built as a gentle brightness ramp
-    /// (window &lt; dock &lt; panel &lt; header &lt; control &lt; hover) with a single blue accent, soft
-    /// borders and muted axis colors — tuned to feel like a commercial engine rather than a raw
-    /// Dear ImGui app.
+    /// The default theme: neutral grays stacked in a few close layers — chrome (menu bar, tab strips)
+    /// &lt; inset regions &lt; docked panels &lt; component cards &lt; popups — with one calm blue accent kept
+    /// for selection, focus and toggled states. Inputs sit a step below the panel instead of near-black,
+    /// and docked panels are split by thin dark seams, in the manner of Unreal, Blender and Unity.
     /// </summary>
     public static EditorTheme SpotDark { get; } = new()
     {
@@ -24,40 +24,40 @@ public static class EditorThemes
         Palette = new EditorPalette
         {
             // Surfaces climb in brightness so depth reads from tone, not heavy borders.
-            WindowBg = Rgb(21, 21, 21),     // docked panels
-            ChildBg = Rgb(15, 15, 15),      // inset regions (console output, asset grid)
-            PopupBg = Rgb(30, 30, 30, 0.98f),
-            HeaderBg = Rgb(26, 26, 26),     // menu bar, title bars, component header strips
-            Border = Rgb(40, 40, 40, 0.8f),
+            WindowBg = Rgb(36, 36, 36),     // docked panels
+            ChildBg = Rgb(30, 30, 30),      // inset regions (console output, asset grid)
+            PopupBg = Rgb(42, 42, 42, 0.98f),
+            HeaderBg = Rgb(24, 24, 24),     // menu bar and editor chrome
+            Border = Rgb(17, 17, 17),       // hairlines around popups, floating windows and cards
 
-            Text = Rgb(200, 200, 200),
-            TextDisabled = Rgb(100, 100, 100),
+            Text = Rgb(212, 212, 212),
+            TextDisabled = Rgb(128, 128, 128),
 
-            Accent = Rgb(224, 112, 0),
-            AccentHovered = Rgb(249, 137, 25),
-            AccentActive = Rgb(170, 85, 0),
+            Accent = Rgb(72, 134, 212),
+            AccentHovered = Rgb(98, 155, 226),
+            AccentActive = Rgb(58, 113, 184),
 
-            FrameBg = Rgb(10, 10, 10),
-            FrameBgHovered = Rgb(35, 35, 35),
-            FrameBgActive = Rgb(45, 45, 45),
+            FrameBg = Rgb(26, 26, 26),
+            FrameBgHovered = Rgb(33, 33, 33),
+            FrameBgActive = Rgb(39, 39, 39),
 
-            TitleBg = Rgb(15, 15, 15),
-            TitleBgActive = Rgb(21, 21, 21),
+            TitleBg = Rgb(24, 24, 24),      // tab strips of unfocused panels
+            TitleBgActive = Rgb(27, 27, 27),
 
-            TabBg = Rgb(15, 15, 15),        // inactive tabs recede into the dock
-            TabActive = Rgb(35, 35, 35),    // the selected tab lifts to the header tone
-            TabHovered = Rgb(45, 45, 45),
+            TabBg = Rgb(30, 30, 30),        // inactive tabs recede into the strip
+            TabActive = Rgb(36, 36, 36),    // the selected tab is the panel's own surface
+            TabHovered = Rgb(46, 46, 46),
 
             ScrollbarBg = Rgb(0, 0, 0, 0.0f),
-            ScrollbarGrab = Rgb(45, 45, 45),
+            ScrollbarGrab = Rgb(66, 66, 66),
 
-            Button = Rgb(35, 35, 35),
-            ButtonHovered = Rgb(50, 50, 50),
-            ButtonActive = Rgb(224, 112, 0),
+            Button = Rgb(52, 52, 52),
+            ButtonHovered = Rgb(64, 64, 64),
+            ButtonActive = Rgb(44, 44, 44), // pressed sinks; the accent is kept for toggled states
 
-            CheckMark = Rgb(224, 112, 0),
-            SliderGrab = Rgb(224, 112, 0),
-            Separator = Rgb(35, 35, 35),
+            CheckMark = Rgb(98, 155, 226),
+            SliderGrab = Rgb(72, 134, 212),
+            Separator = Rgb(20, 20, 20),    // also the seam between docked panels
 
             // Softer, desaturated axis colors so property fields read calm, not neon.
             AxisX = Rgb(196, 91, 94),
@@ -85,9 +85,9 @@ public static class EditorThemes
             Text = Rgb(20, 20, 20),
             TextDisabled = Rgb(120, 120, 120),
 
-            Accent = Rgb(200, 100, 30),
-            AccentHovered = Rgb(220, 120, 50),
-            AccentActive = Rgb(180, 80, 20),
+            Accent = Rgb(52, 116, 196),
+            AccentHovered = Rgb(74, 136, 214),
+            AccentActive = Rgb(40, 98, 172),
 
             FrameBg = Rgb(250, 250, 250),
             FrameBgHovered = Rgb(220, 220, 230),
@@ -107,8 +107,8 @@ public static class EditorThemes
             ButtonHovered = Rgb(200, 200, 200),
             ButtonActive = Rgb(180, 180, 180),
 
-            CheckMark = Rgb(200, 100, 30),
-            SliderGrab = Rgb(200, 100, 30),
+            CheckMark = Rgb(52, 116, 196),
+            SliderGrab = Rgb(52, 116, 196),
             Separator = Rgb(200, 200, 200),
 
             AxisX = Rgb(196, 91, 94),

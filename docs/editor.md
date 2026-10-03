@@ -43,16 +43,26 @@ The editor is organized into dockable panels you can rearrange and save into a l
   the grid hides it, but a surface lying on the ground plane (a floor at y = 0) keeps showing the grid on top,
   and the grid runs all the way to the camera however low it flies. It is also where the game
   runs: Play turns the viewport into the game, and `F8` switches between the game camera and the editor
-  camera (see [Edit mode and play mode](#edit-mode-and-play-mode)).
+  camera (see [Edit mode and play mode](#edit-mode-and-play-mode)). A floating toolbar in its top-left
+  corner holds two light, translucent clusters: the transform tools (move `W`, rotate `E`, scale `R`), then
+  the view — a **2D** toggle, **colliders**, **fullbright** and **wireframe** overlay toggles, and the
+  camera settings. Each is a compact icon that lights up in the accent while selected or on and names
+  itself (and its shortcut) in a tooltip; clicking the toolbar never picks or deselects in the scene
+  behind it.
 - **Hierarchy** — the list of entities in the current scene, including their parent/child structure.
   You create, delete, and reparent entities here. Select several at once with `Ctrl`+click (toggle one)
   and `Shift`+click (range), then delete, duplicate, reparent (drag any one of them), or reorder
   (**Move Up**/**Move Down**) the whole selection together. It is also the UI widget tree: clicking the
   **UI Canvas** switches it to the open document's widgets, and clicking a scene viewport switches it back
-  to the scene's entities — automatically, following whichever view you're working in.
+  to the scene's entities — automatically, following whichever view you're working in. Rows are uniform
+  full-width bands, thin guide lines connect each parent to its children, and each entity's icon is tinted
+  by kind (mesh, light, camera, particles, ...); disabled entities are dimmed and prefab instances tinted.
 - **Inspector** — shows the components of the selected entity (or asset) and lets you edit their
   values. The inspector is generated from the components themselves, so custom components appear
-  automatically. Asset reference fields (mesh, material, texture, ...) show a preview tile — an image
+  automatically. Each component is a card with a title strip (click it to fold the card; **⋮** removes the
+  component). Labels sit in a column about a third of the panel wide, so every value lines up; a label too
+  long for it is cut with an ellipsis and shown whole on hover. Vector fields put a colored X/Y/Z cap on
+  each number box — click the cap to reset that axis. Asset reference fields (mesh, material, texture, ...) show a preview tile — an image
   thumbnail, or a live-rendered sphere for materials — and open a searchable, thumbnailed picker when
   clicked, so you can pick an asset without dragging. The picker lists the matching
   [built-in assets](assets.md#built-in-assets) first, then the project's files; a built-in mesh with custom
@@ -123,9 +133,24 @@ by the cursor's plain frame-to-frame movement, which is what keeps it smooth —
 instead would discard the motion the mouse made during that frame's update and render, making the camera
 feel both sluggish and jittery.
 
-The **Camera** button in the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on the
-base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both are
-global to the editor and persist with the window layout in `editor_window.json`.
+The gear button at the end of the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on
+the base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both
+are global to the editor and persist with the window layout in `editor_window.json`.
+
+## Look and feel
+
+The default **Spot Dark** theme is built from a few close layers of neutral gray — the menu bar and tab
+strips darkest, then inset regions (console output, asset grid), docked panels, component cards and, on
+top, menus and popups — with one calm blue accent kept for what matters: the selection, focus, and
+anything switched on (the active tool, an enabled overlay, a paused game). Docked panels are separated by
+thin dark seams that light up in the accent when you hover or drag them to resize. The panel that has
+keyboard focus shows an accent line along the top of its tab; the other tabs in a strip recede until
+hovered. Everything that floats over a viewport — the toolbar, the camera readout, hints and drop labels,
+the camera preview — shares the same light, translucent overlay so the scene stays visible around it.
+
+**View → Theme** switches between the built-in themes (Spot Dark, Spot Light, Nord, Cherry, All Black).
+Themes are a semantic palette plus spacing and rounding metrics (`EditorTheme`, `EditorPalette`,
+`EditorStyleMetrics` in `Spot.DebugUI`), so a custom theme only has to fill in meaningful colors.
 
 ## The menu bar
 

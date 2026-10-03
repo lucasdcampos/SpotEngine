@@ -53,6 +53,7 @@ public sealed class AudioMixerPanel
             ImGui.End();
             return;
         }
+        EditorGui.MarkFocusedTab();
 
         EnsureSelection();
         DrawToolbar();

@@ -148,59 +148,16 @@ public class ViewportPanel
 
             if (handleInput && _camera != null)
             {
-                // Toolbar overlay: camera mode toggle followed by the gizmo mode buttons.
-                ImGui.SetCursorScreenPos(cursorPos + new Vector2(10, 10));
-                if (ImGui.Button(_camera.Is3D ? "3D Mode" : "2D Mode"))
+                DrawToolbar(cursorPos);
+
+                // The toolbar's buttons sit over the image, which has no item id of its own, so the image
+                // still counts as hovered beneath them. Clicks, wheel and fly-look aimed at the toolbar must
+                // not reach the scene as well (a click on a tool would also pick or deselect).
+                if (ImGui.IsAnyItemHovered())
                 {
-                    _camera.ToggleMode();
+                    isHovered = false;
                 }
 
-                ImGui.SameLine();
-                ImGui.Dummy(new Vector2(8, 0));
-                ImGui.SameLine();
-                DrawGizmoModeButton(EditorIcons.Move, "Move (W)", GizmoMode.Translate);
-                ImGui.SameLine();
-                DrawGizmoModeButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate);
-                ImGui.SameLine();
-                DrawGizmoModeButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale);
-
-                ImGui.SameLine();
-                ImGui.Dummy(new Vector2(8, 0));
-                ImGui.SameLine();
-
-                bool showColliders = Spot.Engine.Physics.PhysicsDebug.ShowColliders;
-                if (ImGui.Checkbox("Show Colliders", ref showColliders))
-                {
-                    Spot.Engine.Physics.PhysicsDebug.ShowColliders = showColliders;
-                }
-
-                ImGui.SameLine();
-                bool fullbright = Spot.Engine.Rendering.RendererDebug.Fullbright;
-                if (ImGui.Checkbox("Fullbright", ref fullbright))
-                {
-                    Spot.Engine.Rendering.RendererDebug.Fullbright = fullbright;
-                }
-
-                ImGui.SameLine();
-                bool wireframe = Spot.Engine.Rendering.RendererDebug.Wireframe;
-                if (ImGui.Checkbox("Wireframe", ref wireframe))
-                {
-                    Spot.Engine.Rendering.RendererDebug.Wireframe = wireframe;
-                }
-
-                // Camera feel (look sensitivity / fly speed). Tucked behind a gear so the toolbar stays
-                // uncluttered; the values are global and persist with the window layout.
-                ImGui.SameLine();
-                ImGui.Dummy(new Vector2(8, 0));
-                ImGui.SameLine();
-                if (ImGui.Button(EditorIcons.Gear + " Camera"))
-                {
-                    ImGui.OpenPopup("ViewportCameraSettings");
-                }
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip("Scene camera sensitivity and fly speed");
-                }
                 if (ImGui.BeginPopup("ViewportCameraSettings"))
                 {
                     ImGui.TextUnformatted("Scene Camera");
@@ -232,22 +189,24 @@ public class ViewportPanel
 
                 if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.Scenes.CameraComponent>())
                 {
-                    // Render Camera Preview in bottom right
-                    float previewWidth = 320;
-                    float previewHeight = 180;
+                    // Camera preview in the bottom-right corner: a floating card with a caption strip above
+                    // the picture, in the same chrome as the toolbar.
+                    const float previewWidth = 320;
+                    const float previewHeight = 180;
+                    const float frame = 4.0f;
+                    float caption = ImGui.GetTextLineHeight() + 8.0f;
 
-                    var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 20, previewHeight + 20);
-
-                    // A framed, labeled preview card that matches the editor's surface treatment.
+                    var previewPos = cursorPos + viewportSize - new Vector2(previewWidth + 12 + frame, previewHeight + 12 + frame);
                     var palette = EditorThemeManager.Current.Palette;
                     var drawList = ImGui.GetWindowDrawList();
-                    Vector2 bgMin = previewPos - new Vector2(2, 2);
-                    Vector2 bgMax = previewPos + new Vector2(previewWidth + 2, previewHeight + 2);
-                    drawList.AddRectFilled(bgMin, bgMax, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.55f)), 4.0f);
-                    drawList.AddImage((IntPtr)_cameraPreviewFramebuffer.ColorAttachment, previewPos, previewPos + new Vector2(previewWidth, previewHeight), new Vector2(0, 1), new Vector2(1, 0));
-                    drawList.AddRect(bgMin, bgMax, ImGui.GetColorU32(palette.Border), 4.0f, ImDrawFlags.None, 1.0f);
-
-                    drawList.AddText(previewPos + new Vector2(6, 4), ImGui.GetColorU32(palette.Text), "Camera Preview");
+                    Vector2 cardMin = previewPos - new Vector2(frame, frame + caption);
+                    Vector2 cardMax = previewPos + new Vector2(previewWidth + frame, previewHeight + frame);
+                    EditorGui.OverlayPanel(drawList, cardMin, cardMax);
+                    drawList.AddText(cardMin + new Vector2(frame + 4.0f, (caption + frame - ImGui.GetTextLineHeight()) * 0.5f),
+                        ImGui.GetColorU32(palette.Text), $"{EditorIcons.Video}  {_context.Selection.Value.Name}");
+                    drawList.AddImageRounded((IntPtr)_cameraPreviewFramebuffer.ColorAttachment, previewPos,
+                        previewPos + new Vector2(previewWidth, previewHeight), new Vector2(0, 1), new Vector2(1, 0),
+                        0xFFFFFFFF, 3.0f);
                 }
 
                 var io = ImGui.GetIO();
@@ -527,14 +486,13 @@ public class ViewportPanel
         DrawDropLabel(drawList, mouse, $"Apply '{name}' to {mesh.Name}", palette.Text);
     }
 
-    // A small dark tag centred above a screen point; above, because the drag source's own tooltip sits
+    // A small floating tag centred above a screen point; above, because the drag source's own tooltip sits
     // below-right of the cursor.
     private static void DrawDropLabel(ImDrawListPtr drawList, Vector2 anchor, string label, Vector4 color)
     {
         Vector2 size = ImGui.CalcTextSize(label);
         Vector2 textPos = anchor - new Vector2(size.X * 0.5f, size.Y + 18.0f);
-        drawList.AddRectFilled(textPos - new Vector2(6, 3), textPos + size + new Vector2(6, 3),
-            ImGui.GetColorU32(new Vector4(0, 0, 0, 0.65f)), 4.0f);
+        EditorGui.OverlayPanel(drawList, textPos - new Vector2(7, 4), textPos + size + new Vector2(7, 4), 4.0f);
         drawList.AddText(textPos, ImGui.GetColorU32(color), label);
     }
 
@@ -572,7 +530,8 @@ public class ViewportPanel
         // --- Orientation gizmo ---
         float axisLen = 20.0f;
         Vector2 center = new(cursorPos.X + viewportSize.X - axisLen - 18.0f, cursorPos.Y + axisLen + 16.0f);
-        drawList.AddCircleFilled(center, axisLen + 8.0f, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.22f)), 24);
+        drawList.AddCircleFilled(center, axisLen + 8.0f, ImGui.GetColorU32(WithAlpha(palette.HeaderBg, 0.45f)), 32);
+        drawList.AddCircle(center, axisLen + 8.0f, ImGui.GetColorU32(WithAlpha(palette.Text, 0.06f)), 32, 1.0f);
 
         DrawOrientationAxis(drawList, center, Vector3.UnitX, "X", palette.AxisX, axisLen);
         DrawOrientationAxis(drawList, center, Vector3.UnitY, "Y", palette.AxisY, axisLen);
@@ -613,34 +572,82 @@ public class ViewportPanel
         }
     }
 
+    // Right-aligned readout text with a soft shadow, so it stays legible over bright and dark scenes alike.
     private static void DrawRightText(ImDrawListPtr drawList, float rightEdge, ref float y, string text, Vector4 color)
     {
         Vector2 size = ImGui.CalcTextSize(text);
-        drawList.AddText(new Vector2(rightEdge - size.X, y), ImGui.GetColorU32(color), text);
+        EditorGui.OverlayText(drawList, new Vector2(rightEdge - size.X, y), color, text);
         y += size.Y + 2.0f;
     }
 
-    // A gizmo-mode toolbar button (icon glyph + tooltip) that stays highlighted while its mode is active.
-    private void DrawGizmoModeButton(string glyph, string tooltip, GizmoMode mode)
+    private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);
+
+    // The floating toolbar over the viewport's top-left corner, as two light translucent clusters so the scene
+    // stays visible around them: the transform tools, then the view (2D toggle, collider/fullbright/wireframe
+    // overlays, camera settings). Every button is a compact icon whose state reads at a glance — accent while
+    // the tool is selected or the toggle on — and names its shortcut in a tooltip.
+    private void DrawToolbar(Vector2 viewportMin)
     {
-        bool active = _gizmo.Mode == mode;
-        if (active)
+        if (_camera == null) return;
+
+        float h = ImGui.GetFrameHeight();
+        var square = new Vector2(h, h);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(2.0f, 0.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4.0f, ImGui.GetStyle().FramePadding.Y));
+
+        EditorGui.BeginToolbarCluster(viewportMin + new Vector2(8.0f, 8.0f));
+        ToolButton(EditorIcons.Move, "Move (W)", GizmoMode.Translate, square);
+        ImGui.SameLine();
+        ToolButton(EditorIcons.Rotate, "Rotate (E)", GizmoMode.Rotate, square);
+        ImGui.SameLine();
+        ToolButton(EditorIcons.Scale, "Scale (R)", GizmoMode.Scale, square);
+        Vector2 toolsMax = EditorGui.EndToolbarCluster();
+
+        EditorGui.BeginToolbarCluster(new Vector2(toolsMax.X + 6.0f, viewportMin.Y + 8.0f));
+        if (EditorGui.ToolbarButton("2D##mode", !_camera.Is3D,
+                _camera.Is3D ? "2D view (orthographic, XY plane)" : "Back to the 3D view", new Vector2(h + 8.0f, h)))
         {
-            var accent = ImGui.GetStyle().Colors[(int)ImGuiCol.ButtonActive];
-            ImGui.PushStyleColor(ImGuiCol.Button, accent);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, accent);
+            _camera.ToggleMode();
         }
-        if (ImGui.Button(glyph))
+        EditorGui.ToolbarDivider();
+
+        bool showColliders = Spot.Engine.Physics.PhysicsDebug.ShowColliders;
+        if (EditorGui.ToolbarButton(EditorIcons.VectorSquare + "##colliders", showColliders, "Show colliders", square))
+        {
+            Spot.Engine.Physics.PhysicsDebug.ShowColliders = !showColliders;
+        }
+        ImGui.SameLine();
+        bool fullbright = Spot.Engine.Rendering.RendererDebug.Fullbright;
+        if (EditorGui.ToolbarButton(EditorIcons.Lightbulb + "##fullbright", fullbright, "Fullbright (ignore lighting)", square))
+        {
+            Spot.Engine.Rendering.RendererDebug.Fullbright = !fullbright;
+        }
+        ImGui.SameLine();
+        bool wireframe = Spot.Engine.Rendering.RendererDebug.Wireframe;
+        if (EditorGui.ToolbarButton(EditorIcons.DrawPolygon + "##wireframe", wireframe, "Wireframe", square))
+        {
+            Spot.Engine.Rendering.RendererDebug.Wireframe = !wireframe;
+        }
+        EditorGui.ToolbarDivider();
+
+        // Camera feel (look sensitivity / fly speed). Tucked behind a gear so the toolbar stays uncluttered;
+        // the values are global and persist with the window layout. Lit while its popup is open.
+        bool settingsOpen = ImGui.IsPopupOpen("ViewportCameraSettings");
+        if (EditorGui.ToolbarButton(EditorIcons.Gear + "##camera", settingsOpen, "Scene camera: look sensitivity and fly speed", square))
+        {
+            ImGui.OpenPopup("ViewportCameraSettings");
+        }
+        EditorGui.EndToolbarCluster();
+
+        ImGui.PopStyleVar(2);
+    }
+
+    // A transform-tool button that stays highlighted while its gizmo mode is active.
+    private void ToolButton(string glyph, string tooltip, GizmoMode mode, Vector2 size)
+    {
+        if (EditorGui.ToolbarButton(glyph, _gizmo.Mode == mode, tooltip, size))
         {
             _gizmo.Mode = mode;
-        }
-        if (active)
-        {
-            ImGui.PopStyleColor(2);
-        }
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip(tooltip);
         }
     }
 }

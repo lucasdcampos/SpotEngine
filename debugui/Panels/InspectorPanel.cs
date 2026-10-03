@@ -51,6 +51,7 @@ public class InspectorPanel : IDisposable
     {
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoCollapse;
         ImGui.Begin("Properties", ref open, flags);
+        EditorGui.MarkFocusedTab();
 
         if (_context.SelectedAssetPath != null && BuiltinAssets.TryGet(_context.SelectedAssetPath, out BuiltinAsset builtin))
         {
@@ -110,7 +111,8 @@ public class InspectorPanel : IDisposable
 
     private void DrawAddComponentButton(Entity entity)
     {
-        if (ImGui.Button("Add Component", new Vector2(-1.0f, 0.0f)))
+        ImGui.Spacing();
+        if (ImGui.Button($"{EditorIcons.Plus}  Add Component", new Vector2(-1.0f, ImGui.GetFrameHeight() + 4.0f)))
         {
             ImGui.OpenPopup("AddComponent");
             _componentSearchFilter = "";

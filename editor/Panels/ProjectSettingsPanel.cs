@@ -17,6 +17,7 @@ public class ProjectSettingsPanel
 
         if (ImGui.Begin("Project Settings", ref isOpen))
         {
+            EditorGui.MarkFocusedTab();
             if (Project.Active != null)
             {
                 var config = Project.Active.Config;

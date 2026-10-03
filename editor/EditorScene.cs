@@ -1159,6 +1159,7 @@ public class EditorScene : Scene
         if (_showHierarchy)
         {
             ImGui.Begin("Hierarchy", ref _showHierarchy, ImGuiWindowFlags.NoCollapse);
+            EditorGui.MarkFocusedTab();
             if (_context.EditingDocument != null && _context.HierarchyTarget == HierarchyTarget.UI)
                 _uiHierarchyPanel.DrawContents();
             else
@@ -1200,6 +1201,7 @@ public class EditorScene : Scene
             bool wasOpen = sceneData.IsOpen;
             bool open = ImGui.Begin(title, ref sceneData.IsOpen, ImGuiWindowFlags.NoCollapse);
             ImGui.PopStyleVar();
+            if (open) EditorGui.MarkFocusedTab();
             sceneData.ViewportVisible = open;
 
             uint viewportDockId = ImGui.GetWindowDockID();
@@ -1291,6 +1293,7 @@ public class EditorScene : Scene
         if (_showConsole)
         {
             bool open = ImGui.Begin("Console", ref _showConsole, ImGuiWindowFlags.NoCollapse);
+            if (open) EditorGui.MarkFocusedTab();
             if (open)
             {
                 _consolePanel.OnImGuiRender(asWindow: false);
@@ -1313,6 +1316,7 @@ public class EditorScene : Scene
         if (_showAssetBrowser)
         {
             bool open = ImGui.Begin("Asset Browser", ref _showAssetBrowser, ImGuiWindowFlags.NoCollapse);
+            if (open) EditorGui.MarkFocusedTab();
             if (open)
             {
                 _assetBrowserPanel.OnImGuiRender(asWindow: false);
@@ -1464,16 +1468,15 @@ public class EditorScene : Scene
             DrawViewportHint(min, size, "Esc to release the cursor  ·  F8 for the editor camera");
     }
 
-    // A message in a dark pill at the centre of a viewport.
+    // A message in a floating pill at the centre of a viewport.
     private static void DrawViewportMessage(Vector2 min, Vector2 size, string text)
     {
         var drawList = ImGui.GetWindowDrawList();
         Vector2 textSize = ImGui.CalcTextSize(text);
         Vector2 textPos = min + (size - textSize) * 0.5f;
-        var pad = new Vector2(10.0f, 6.0f);
-        drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
-            ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.55f)), 4.0f);
-        drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.9f)), text);
+        var pad = new Vector2(12.0f, 7.0f);
+        EditorGui.OverlayPanel(drawList, textPos - pad, textPos + textSize + pad);
+        drawList.AddText(textPos, ImGui.GetColorU32(EditorThemeManager.Current.Palette.Text), text);
     }
 
     // A subtle hint centred along the bottom edge of a viewport.
@@ -1482,10 +1485,9 @@ public class EditorScene : Scene
         var drawList = ImGui.GetWindowDrawList();
         Vector2 textSize = ImGui.CalcTextSize(text);
         var textPos = new Vector2(min.X + (size.X - textSize.X) * 0.5f, min.Y + size.Y - textSize.Y - 12.0f);
-        var pad = new Vector2(8.0f, 4.0f);
-        drawList.AddRectFilled(textPos - pad, textPos + textSize + pad,
-            ImGui.GetColorU32(new Vector4(0.0f, 0.0f, 0.0f, 0.40f)), 3.0f);
-        drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 0.65f)), text);
+        var pad = new Vector2(9.0f, 4.0f);
+        EditorGui.OverlayPanel(drawList, textPos - pad, textPos + textSize + pad, 4.0f);
+        drawList.AddText(textPos, ImGui.GetColorU32(EditorThemeManager.Current.Palette.TextDisabled), text);
     }
 
     // The scene F8 acts on: the playing scene during play, otherwise the scene being edited.
@@ -2171,6 +2173,7 @@ public class EditorScene : Scene
             bool open = ImGui.Begin(title, ref data.IsOpen,
                 ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
             ImGui.PopStyleVar();
+            if (open) EditorGui.MarkFocusedTab();
 
             if (ImGui.IsWindowFocused(ImGuiFocusedFlags.ChildWindows | ImGuiFocusedFlags.RootWindow))
             {
@@ -2204,8 +2207,8 @@ public class EditorScene : Scene
         // A slightly taller bar with more generous item spacing so the top strip reads as part of the
         // editor chrome rather than a stock menu. The vars stay pushed for the whole bar so the menu
         // items inherit the same rhythm.
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(14.0f, 10.0f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(14.0f, 8.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10.0f, 7.0f));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(12.0f, 7.0f));
         if (!ImGui.BeginMainMenuBar())
         {
             ImGui.PopStyleVar(2);
@@ -2317,43 +2320,67 @@ public class EditorScene : Scene
 
 
 
-    // Draws the centered play / pause / step / camera toolbar inside the main menu bar.
+    // Draws the centered play / pause / step / camera controls inside the main menu bar. The three transport
+    // buttons share one subtle capsule and the camera switch sits beside it. Buttons follow the viewport
+    // toolbar's states: a neutral lift on hover, and a wash while their state is on (red while playing, accent
+    // while paused, a solid accent while the viewport looks through the game camera).
     private void DrawPlayControl()
     {
         var palette = EditorThemeManager.Current.Palette;
-        float size = ImGui.GetFrameHeight();
+        float barHeight = ImGui.GetFrameHeight();
+        float size = MathF.Round(barHeight - 6.0f);
         const float gap = 2.0f;
-        const float groupGap = 12.0f;
-        float totalWidth = size * 4 + gap * 2 + groupGap;
+        const float inset = 2.0f;
+        const float groupGap = 10.0f;
+        float transportWidth = size * 3 + gap * 2;
+        float totalWidth = inset + transportWidth + inset + groupGap + size;
 
-        // Center the three-button group; clamp so we never overlap existing menu items.
+        // Center the group; clamp so we never overlap existing menu items. The buttons are shorter than the
+        // bar, so each is moved down to the bar's middle: in the menu bar's horizontal layout SameLine returns
+        // the cursor to the top of the line, so the offset is applied before every button, not just the first.
         float centerX = (ImGui.GetWindowWidth() - totalWidth) * 0.5f;
         if (centerX > ImGui.GetCursorPosX())
             ImGui.SetCursorPosX(centerX);
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + inset);
+        float rowY = ImGui.GetCursorPosY() + MathF.Round((barHeight - size) * 0.5f);
+        ImGui.SetCursorPosY(rowY);
 
         var drawList = ImGui.GetWindowDrawList();
         bool playing = _state != EditorState.Edit;
+        Vector4 text = palette.Text;
 
-        // ── button helper ──────────────────────────────────────────────
-        // Returns (hovered, clicked) for one icon button at current cursor.
-        static (bool hovered, bool clicked) IconButton(string id, float sz)
+        Vector2 origin = ImGui.GetCursorScreenPos();
+        Vector2 capsuleMin = origin - new Vector2(inset, inset);
+        Vector2 capsuleMax = origin + new Vector2(transportWidth + inset, size + inset);
+        drawList.AddRectFilled(capsuleMin, capsuleMax, ImGui.GetColorU32(new Vector4(text.X, text.Y, text.Z, 0.05f)), 5.0f);
+        drawList.AddRect(capsuleMin, capsuleMax, ImGui.GetColorU32(new Vector4(text.X, text.Y, text.Z, 0.06f)), 5.0f);
+
+        // One square icon button at the cursor: paints its background for the state, returns (hovered, clicked).
+        (bool hovered, bool clicked) IconButton(string id, Vector4? onColor, bool enabled)
         {
-            ImGui.InvisibleButton(id, new Vector2(sz, sz));
-            return (ImGui.IsItemHovered(), ImGui.IsItemClicked(ImGuiMouseButton.Left));
+            ImGui.SetCursorPosY(rowY);
+            Vector2 p = ImGui.GetCursorScreenPos();
+            ImGui.InvisibleButton(id, new Vector2(size, size));
+            bool hovered = ImGui.IsItemHovered();
+            Vector4? fill = onColor is Vector4 on ? new Vector4(on.X, on.Y, on.Z, hovered ? 0.42f : 0.30f)
+                : hovered && enabled ? new Vector4(text.X, text.Y, text.Z, 0.10f)
+                : null;
+            if (fill is Vector4 f)
+                drawList.AddRectFilled(p, p + new Vector2(size, size), ImGui.GetColorU32(f), 3.0f);
+            return (hovered, enabled && ImGui.IsItemClicked(ImGuiMouseButton.Left));
         }
 
-        float pad = size * 0.22f;
+        float pad = MathF.Round(size * 0.27f);
 
         // ── 1. Play / Stop ─────────────────────────────────────────────
         Vector2 p0 = ImGui.GetCursorScreenPos();
-        var (h0, c0) = IconButton("##play", size);
-        if (h0) drawList.AddRectFilled(p0, p0 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+        var (h0, c0) = IconButton("##play", playing ? palette.LogError : null, enabled: true);
 
         if (!playing)
         {
             // Green triangle: Play
-            uint col = ImGui.GetColorU32(new Vector4(0.35f, 0.85f, 0.45f, 1.0f));
-            drawList.AddTriangleFilled(p0 + new Vector2(pad, pad), p0 + new Vector2(pad, size - pad), p0 + new Vector2(size - pad, size * 0.5f), col);
+            uint col = ImGui.GetColorU32(new Vector4(0.42f, 0.80f, 0.50f, 1.0f));
+            drawList.AddTriangleFilled(p0 + new Vector2(pad + 1, pad), p0 + new Vector2(pad + 1, size - pad), p0 + new Vector2(size - pad + 1, size * 0.5f), col);
             if (c0) OnPlay();
             if (h0) ImGui.SetTooltip("Play");
         }
@@ -2367,66 +2394,70 @@ public class EditorScene : Scene
         }
 
         ImGui.SameLine(0, gap);
+        ImGui.SetCursorPosY(rowY);
 
         // ── 2. Pause / Resume ──────────────────────────────────────────
         Vector2 p1 = ImGui.GetCursorScreenPos();
-        var (h1, c1) = IconButton("##pause", size);
+        var (h1, c1) = IconButton("##pause", playing && _isPlayPaused ? palette.Accent : null, enabled: playing);
         uint pauseCol = playing
             ? ImGui.GetColorU32(palette.Text)
             : ImGui.GetColorU32(palette.TextDisabled);
-        if (h1 && playing) drawList.AddRectFilled(p1, p1 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
 
         if (!_isPlayPaused)
         {
             // Two vertical bars (pause icon).
-            float bw = size * 0.18f;
+            float bw = MathF.Round(size * 0.16f);
             float bh = size - pad * 2;
-            drawList.AddRectFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad + bw, pad + bh), pauseCol, 1.0f);
-            drawList.AddRectFilled(p1 + new Vector2(size - pad - bw, pad), p1 + new Vector2(size - pad, pad + bh), pauseCol, 1.0f);
-            if (c1 && playing) OnPause();
+            float bx = MathF.Round((size - bw * 3) * 0.5f);
+            drawList.AddRectFilled(p1 + new Vector2(bx, pad), p1 + new Vector2(bx + bw, pad + bh), pauseCol, 1.0f);
+            drawList.AddRectFilled(p1 + new Vector2(bx + bw * 2, pad), p1 + new Vector2(bx + bw * 3, pad + bh), pauseCol, 1.0f);
+            if (c1) OnPause();
             if (h1) ImGui.SetTooltip(playing ? "Pause (Ctrl+P)" : "Pause (not playing)");
         }
         else
         {
             // Right-pointing triangle (resume icon).
-            drawList.AddTriangleFilled(p1 + new Vector2(pad, pad), p1 + new Vector2(pad, size - pad), p1 + new Vector2(size - pad, size * 0.5f), pauseCol);
-            if (c1 && playing) OnResume();
+            drawList.AddTriangleFilled(p1 + new Vector2(pad + 1, pad), p1 + new Vector2(pad + 1, size - pad), p1 + new Vector2(size - pad + 1, size * 0.5f), pauseCol);
+            if (c1) OnResume();
             if (h1) ImGui.SetTooltip("Resume (Ctrl+P)");
         }
 
         ImGui.SameLine(0, gap);
+        ImGui.SetCursorPosY(rowY);
 
         // ── 3. Step ────────────────────────────────────────────────────
         Vector2 p2 = ImGui.GetCursorScreenPos();
         bool stepEnabled = playing && _isPlayPaused;
-        var (h2, c2) = IconButton("##step", size);
+        var (h2, c2) = IconButton("##step", null, stepEnabled);
         uint stepCol = stepEnabled ? ImGui.GetColorU32(palette.Text) : ImGui.GetColorU32(palette.TextDisabled);
-        if (h2 && stepEnabled) drawList.AddRectFilled(p2, p2 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
 
         // Step icon: small triangle + vertical bar (>|)
-        float sw = size * 0.18f;
+        float sw = MathF.Round(size * 0.14f);
         drawList.AddTriangleFilled(p2 + new Vector2(pad, pad), p2 + new Vector2(pad, size - pad), p2 + new Vector2(size - pad - sw - gap, size * 0.5f), stepCol);
         drawList.AddRectFilled(p2 + new Vector2(size - pad - sw, pad), p2 + new Vector2(size - pad, size - pad), stepCol, 1.0f);
-        if (c2 && stepEnabled) OnStep();
+        if (c2) OnStep();
         if (h2) ImGui.SetTooltip(stepEnabled ? "Step (advance one frame)" : "Step (pause first)");
 
         // ── 4. Game / editor camera ────────────────────────────────────
         // Shows which camera the viewport looks through (gamepad = game, camera = editor), lit while it is the
         // game's; clicking switches, as F8 does.
-        ImGui.SameLine(0, groupGap);
+        ImGui.SameLine(0, inset + groupGap);
+        ImGui.SetCursorPosY(rowY);
         Vector2 p3 = ImGui.GetCursorScreenPos();
         OpenSceneData? viewTarget = GameViewTarget;
         bool gameView = viewTarget?.GameView ?? false;
-        var (h3, c3) = IconButton("##gameview", size);
+        ImGui.InvisibleButton("##gameview", new Vector2(size, size));
+        bool h3 = ImGui.IsItemHovered();
+        bool c3 = ImGui.IsItemClicked(ImGuiMouseButton.Left);
         if (gameView)
-            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(palette.Accent), 4.0f);
+            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(h3 ? palette.AccentHovered : palette.Accent), 3.0f);
         else if (h3 && viewTarget != null)
-            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(palette.FrameBgHovered), 4.0f);
+            drawList.AddRectFilled(p3, p3 + new Vector2(size, size), ImGui.GetColorU32(new Vector4(text.X, text.Y, text.Z, 0.10f)), 3.0f);
 
         string glyph = gameView ? EditorIcons.Gamepad : EditorIcons.Camera;
         Vector2 glyphSize = ImGui.CalcTextSize(glyph);
-        uint glyphCol = viewTarget != null ? ImGui.GetColorU32(palette.Text) : ImGui.GetColorU32(palette.TextDisabled);
-        drawList.AddText(p3 + (new Vector2(size, size) - glyphSize) * 0.5f, glyphCol, glyph);
+        Vector4 glyphColor = gameView ? new Vector4(1.0f, 1.0f, 1.0f, 1.0f) : viewTarget != null ? palette.Text : palette.TextDisabled;
+        drawList.AddText(p3 + (new Vector2(size, size) - glyphSize) * 0.5f, ImGui.GetColorU32(glyphColor), glyph);
 
         if (c3) ToggleGameView();
         if (h3)

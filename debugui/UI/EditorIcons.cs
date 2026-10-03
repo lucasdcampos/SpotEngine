@@ -38,6 +38,11 @@ public static class EditorIcons
     public const string Music = "";   // music
     public const string Fire = "\uf06d";    // fire (used for particles)
     public const string Gamepad = "\uf11b"; // gamepad (the viewport is looking through the game camera)
+    public const string Eye = "\uf06e";          // eye
+    public const string VectorSquare = "\uf5cb"; // vector-square (collider overlay toggle)
+    public const string DrawPolygon = "\uf5ee";  // draw-polygon (wireframe toggle)
+    public const string Plus = "\uf067";         // plus
+    public const string CaretDown = "\uf0d7";    // caret-down (drop-down affordance)
 
     // Every codepoint above; the engine bakes exactly these (as an ImGui [lo,hi,…,0] range) so the
     // atlas stays small instead of loading all ~1500 Font Awesome glyphs.
@@ -46,7 +51,7 @@ public static class EditorIcons
         0xf030, 0xf03d, 0xf0eb, 0xf1b2, 0xf1b3, 0xf03e, 0xf0c2, 0xf111,
         0xf121, 0xf15b, 0xf07b, 0xf07c, 0xf53f, 0xf0e8, 0xf185, 0xf013,
         0xf002, 0xf0b2, 0xf2f1, 0xf31e, 0xf04b, 0xf04d, 0xf142, 0xf00d,
-        0xf001, 0xf06d, 0xf11b,
+        0xf001, 0xf06d, 0xf11b, 0xf06e, 0xf5cb, 0xf5ee, 0xf067, 0xf0d7,
     };
 
     /// <summary>The ImGui glyph range (<c>[lo, hi, …, 0]</c>) covering exactly <see cref="Codepoints"/>.</summary>
