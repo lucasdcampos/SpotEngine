@@ -13,7 +13,7 @@ Spot comes in three levels, each usable on its own (see [docs/levels.md](docs/le
 - **Engine** (`Spot.Engine`) — the full engine: scenes, the lit renderer, physics, particles, UI, assets,
   the editor and the CLI.
 
-<img src="assets/screenshot4.png">
+<img src="assets/editor.png">
 
 ## Requirements
 
