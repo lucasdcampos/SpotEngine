@@ -28,27 +28,16 @@
         "Enabled": true,
         "Type": 0,
         "Color": [
-          1.0,
+          1,
           0.96,
           0.88
         ],
         "Intensity": 1.1,
         "AmbientIntensity": 0.35,
         "CastShadows": true,
-        "Range": 10
-      },
-      "Skybox": {
-        "Enabled": true,
-        "SkyColor": [
-          0.216,
-          0.415,
-          0.602
-        ],
-        "GroundColor": [
-          0.259,
-          0.39,
-          0.469
-        ]
+        "Range": 10,
+        "SpotAngle": 15,
+        "SpotOuterAngle": 30
       },
       "DynamicClouds": {
         "Enabled": true,
@@ -67,6 +56,19 @@
         "Height": 0.3,
         "Opacity": 0.5,
         "Volume": 1.35
+      },
+      "Skybox": {
+        "Enabled": true,
+        "SkyColor": [
+          0.216,
+          0.415,
+          0.602
+        ],
+        "GroundColor": [
+          0.259,
+          0.39,
+          0.469
+        ]
       }
     },
     {
@@ -103,7 +105,10 @@
         "EnableFXAA": true,
         "EnableBloom": true,
         "BloomThreshold": 1,
-        "BloomIntensity": 1
+        "BloomIntensity": 1,
+        "EnableLut": false,
+        "LutTexturePath": null,
+        "LutIntensity": 1
       }
     },
     {
@@ -150,7 +155,17 @@
         "Enabled": true,
         "Items": [
           {
-            "Type": "CameraOrbit"
+            "Type": "CameraOrbit",
+            "Fields": {
+              "Target": [
+                0,
+                1,
+                0
+              ],
+              "Distance": 15,
+              "Pitch": 25,
+              "IdleSpeed": 6
+            }
           }
         ]
       }
@@ -221,7 +236,9 @@
           0
         ],
         "IsTrigger": false,
-        "Layer": 0
+        "Layer": 0,
+        "Friction": 0.8,
+        "Restitution": 0
       }
     },
     {
@@ -234,7 +251,7 @@
         "Enabled": true,
         "Position": [
           0,
-          1.4,
+          0.8606651,
           0
         ],
         "Rotation": [
@@ -254,7 +271,7 @@
         "SubmeshIndex": -1,
         "MaterialPath": null,
         "Color": [
-          1.0,
+          1,
           0.55,
           0.15,
           1
@@ -290,13 +307,19 @@
           0
         ],
         "IsTrigger": false,
-        "Layer": 0
+        "Layer": 0,
+        "Friction": 0.8,
+        "Restitution": 0
       },
       "Scripts": {
         "Enabled": true,
         "Items": [
           {
-            "Type": "Spinner"
+            "Type": "Spinner",
+            "Fields": {
+              "DegreesPerSecond": 40,
+              "BobHeight": 0.5
+            }
           }
         ]
       }
@@ -329,7 +352,17 @@
         "Enabled": true,
         "Items": [
           {
-            "Type": "GlowRing"
+            "Type": "GlowRing",
+            "Fields": {
+              "Radius": 3.2,
+              "Dots": 48,
+              "Color": [
+                0.35,
+                0.9,
+                2.6,
+                1
+              ]
+            }
           }
         ]
       }
@@ -378,13 +411,13 @@
         "StartSize": 0.45,
         "SpinSpeed": 120,
         "StartColor": [
-          1.0,
+          1,
           0.7,
           0.25,
           1
         ],
         "EndColor": [
-          1.0,
+          1,
           0.2,
           0.05,
           0
@@ -431,7 +464,12 @@
         "Enabled": true,
         "Items": [
           {
-            "Type": "CubeRain"
+            "Type": "CubeRain",
+            "Fields": {
+              "MaxCubes": 80,
+              "DropHeight": 9,
+              "DropInterval": 0.75
+            }
           }
         ]
       }
