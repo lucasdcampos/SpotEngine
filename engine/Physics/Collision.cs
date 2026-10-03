@@ -5,7 +5,7 @@ namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Describes a contact between the entity receiving a collision callback and another entity, passed to
-/// <see cref="EntityBehaviour.OnCollisionEnter"/> and its stay/exit counterparts.
+/// <see cref="Component.OnCollisionEnter"/> and its stay/exit counterparts.
 /// </summary>
 public readonly struct Collision
 {

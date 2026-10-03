@@ -4,19 +4,19 @@ using Spot.Framework;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// Per-script bookkeeping for coroutines and delayed invocations. Created lazily by an
-/// <see cref="EntityBehaviour"/> the first time it schedules work, and ticked once per frame by the
-/// <see cref="ScriptSystem"/> after the owner's <see cref="EntityBehaviour.OnUpdate"/>. A coroutine or
+/// Per-component bookkeeping for coroutines and delayed invocations. Created lazily by a user
+/// <see cref="Component"/> the first time it schedules work, and ticked once per frame by the
+/// <see cref="ComponentSystem"/> after the owner's <see cref="Component.OnUpdate"/>. A coroutine or
 /// invoke callback that throws is stopped and logged (never crashing the engine or faulting the whole
 /// script), honoring the engine's never-crash directive.
 /// </summary>
 internal sealed class ScriptScheduler
 {
-    private readonly object _owner;
+    private readonly Component _owner;
     private readonly List<Coroutine> _coroutines = new();
     private readonly List<ScheduledInvoke> _invokes = new();
 
-    internal ScriptScheduler(object owner) => _owner = owner;
+    internal ScriptScheduler(Component owner) => _owner = owner;
 
     /// <summary>Registers a coroutine. Its first step runs on the next scheduler tick, not immediately.</summary>
     internal Coroutine StartCoroutine(IEnumerator routine)
@@ -26,7 +26,7 @@ internal sealed class ScriptScheduler
         return coroutine;
     }
 
-    /// <summary>Stops a coroutine started on this script; a no-op if it already finished or is unknown.</summary>
+    /// <summary>Stops a coroutine started on this component; a no-op if it already finished or is unknown.</summary>
     internal void StopCoroutine(Coroutine coroutine)
     {
         if (_coroutines.Contains(coroutine))
@@ -35,7 +35,7 @@ internal sealed class ScriptScheduler
         }
     }
 
-    /// <summary>Stops every coroutine currently running on this script.</summary>
+    /// <summary>Stops every coroutine currently running on this component.</summary>
     internal void StopAllCoroutines()
     {
         foreach (Coroutine coroutine in _coroutines)
@@ -55,7 +55,7 @@ internal sealed class ScriptScheduler
     internal void InvokeRepeating(Action action, float delay, float interval) =>
         _invokes.Add(new ScheduledInvoke(action, MathF.Max(0.0f, delay), MathF.Max(0.0001f, interval)));
 
-    /// <summary>Cancels every pending invocation on this script.</summary>
+    /// <summary>Cancels every pending invocation on this component.</summary>
     internal void CancelInvoke()
     {
         foreach (ScheduledInvoke invoke in _invokes)
@@ -76,7 +76,7 @@ internal sealed class ScriptScheduler
         }
     }
 
-    /// <summary>Reports whether any invocation is still pending on this script.</summary>
+    /// <summary>Reports whether any invocation is still pending on this component.</summary>
     internal bool IsInvoking()
     {
         foreach (ScheduledInvoke invoke in _invokes)
@@ -125,7 +125,7 @@ internal sealed class ScriptScheduler
             catch (Exception ex)
             {
                 coroutine.Stopped = true;
-                Log.CoreError("Coroutine on script '{0}' threw and was stopped. {1}", _owner.GetType().Name, ex);
+                Log.CoreError("Coroutine on component '{0}' threw and was stopped. {1}", _owner.GetType().Name, ex);
             }
         }
 
@@ -202,7 +202,7 @@ internal sealed class ScriptScheduler
             catch (Exception ex)
             {
                 invoke.Cancelled = true;
-                Log.CoreError("Invoke callback on script '{0}' threw and was cancelled. {1}", _owner.GetType().Name, ex);
+                Log.CoreError("Invoke callback on component '{0}' threw and was cancelled. {1}", _owner.GetType().Name, ex);
                 continue;
             }
 

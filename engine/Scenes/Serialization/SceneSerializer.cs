@@ -16,7 +16,7 @@ namespace Spot.Engine.Scenes;
 /// <see cref="LabelComponent"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>),
 /// the user components (written in order under <c>"Components"</c> by guid and class name with their public
 /// fields, and resolved and instantiated at load — an unresolvable one is kept verbatim in
-/// <see cref="MissingComponents"/>), and the legacy <see cref="ScriptComponent"/>. The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
+/// <see cref="MissingComponents"/>). The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
 /// component keys, and missing assets — logging and continuing rather than throwing.
 /// </summary>
 public class SceneSerializer
@@ -102,12 +102,6 @@ public class SceneSerializer
             obj["Components"] = userComponents;
         }
 
-        // Scripts are special: only the class names are stored (runtime instances are rebuilt on load).
-        if (entity.TryGetComponent(out ScriptComponent? scripts))
-        {
-            obj["Scripts"] = SerializeScripts(scripts);
-        }
-
         var children = entity.Children.ToList();
         if (children.Count > 0)
         {
@@ -163,45 +157,6 @@ public class SceneSerializer
         }
 
         return entry;
-    }
-
-    private static JsonObject SerializeScripts(ScriptComponent scripts)
-    {
-        var items = new JsonArray();
-        foreach (ScriptInstance item in scripts.Items)
-        {
-            var entry = new JsonObject { ["Type"] = item.ClassName };
-
-            // Persist the stable guid as the primary reference so a class rename never breaks the scene. If
-            // the entry has none yet but the registry knows the resolved type, capture it now (this upgrades
-            // pre-guid scenes to a stable reference on their next save).
-            string guid = item.Guid;
-            if (string.IsNullOrEmpty(guid) && item.Instance is not null
-                && ScriptRegistry.TryGetByName(item.ClassName, out ScriptDescriptor? descriptor))
-            {
-                guid = descriptor!.Guid;
-            }
-
-            if (!string.IsNullOrEmpty(guid))
-            {
-                entry["Guid"] = guid;
-            }
-
-            // Persist the script's authored field values when the instance is available. Unresolved
-            // scripts (no instance) keep just their class name so the reference survives.
-            if (item.Instance is not null)
-            {
-                JsonObject fields = ComponentSerialization.SerializeMembers(item.Instance);
-                if (fields.Count > 0)
-                {
-                    entry["Fields"] = fields;
-                }
-            }
-
-            items.Add(entry);
-        }
-
-        return new JsonObject { ["Enabled"] = scripts.Enabled, ["Items"] = items };
     }
 
     public void Serialize(string filepath)
@@ -341,12 +296,6 @@ public class SceneSerializer
                 continue;
             }
 
-            if (key == "Scripts")
-            {
-                DeserializeScripts(entity, componentObj, refs);
-                continue;
-            }
-
             if (ComponentSerialization.TryResolveKey(key, out Type? type))
             {
                 try
@@ -376,43 +325,6 @@ public class SceneSerializer
         }
 
         return entity;
-    }
-
-    private static void DeserializeScripts(Entity entity, JsonObject data, SceneReferences refs)
-    {
-        var scripts = new ScriptComponent { Enabled = data["Enabled"]?.GetValue<bool>() ?? true };
-        entity.AddComponent(scripts);
-
-        if (data["Items"] is JsonArray items)
-        {
-            // New format: each entry carries the class name and its serialized field values.
-            foreach (JsonNode? node in items)
-            {
-                if (node is not JsonObject entry)
-                {
-                    continue;
-                }
-
-                string? className = entry["Type"]?.GetValue<string>();
-                string? guid = entry["Guid"]?.GetValue<string>();
-                if (!string.IsNullOrEmpty(className) || !string.IsNullOrEmpty(guid))
-                {
-                    AddScript(entity, scripts, guid, className ?? string.Empty, entry["Fields"] as JsonObject, refs);
-                }
-            }
-        }
-        else if (data["ScriptNames"] is JsonArray names)
-        {
-            // Legacy format: a plain array of class names (no persisted field values).
-            foreach (JsonNode? node in names)
-            {
-                string? className = node?.GetValue<string>();
-                if (!string.IsNullOrEmpty(className))
-                {
-                    AddScript(entity, scripts, null, className, null, refs);
-                }
-            }
-        }
     }
 
     private static void ReadUserComponents(Entity entity, JsonArray items, SceneReferences refs)
@@ -547,26 +459,6 @@ public class SceneSerializer
         }
 
         return count;
-    }
-
-    private static void AddScript(
-        Entity entity, ScriptComponent scripts, string? guid, string className, JsonObject? fields, SceneReferences refs)
-    {
-        EntityBehaviour? instance = ScriptResolver.Create(guid, className, entity);
-
-        // If the class name was lost (guid-only reference) but the guid resolved, recover the readable name
-        // from the resolved instance so the inspector and later saves keep both.
-        if (string.IsNullOrEmpty(className) && instance is not null)
-        {
-            className = instance.GetType().Name;
-        }
-
-        if (instance != null && fields != null)
-        {
-            ComponentSerialization.ApplyMembers(instance, fields, refs);
-        }
-
-        scripts.Items.Add(new ScriptInstance(className, instance, guid ?? string.Empty));
     }
 
     public bool Deserialize(string filepath)

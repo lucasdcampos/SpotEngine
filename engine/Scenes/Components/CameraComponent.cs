@@ -16,7 +16,7 @@ public enum SceneCameraProjection
 /// </summary>
 [ComponentMenu("Camera", Order = 30)]
 [SceneComponent("Camera")]
-public class CameraComponent : Component
+public sealed class CameraComponent : Component
 {
     public bool Primary { get; set; } = true;
     public bool FixedAspectRatio { get; set; } = false;

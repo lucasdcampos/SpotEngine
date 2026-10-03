@@ -499,7 +499,7 @@ public class EditorScene : Scene
 
     /// <summary>
     /// Rebuilds the active project and swaps in the freshly compiled script assembly without restarting the
-    /// editor, preserving each live script's authored field values and entity references across the reload.
+    /// editor, preserving each component's authored field values and entity references across the reload.
     /// Only runs in edit mode; a failed build or load logs and leaves the current scripts in place.
     /// </summary>
     private void ReloadScripts()
@@ -527,25 +527,11 @@ public class EditorScene : Scene
             return;
         }
 
-        // 2. Snapshot every live script's fields and drop the instance references, so the old load context has
-        //    nothing keeping it alive and can be collected. User components from the old assembly go back to
-        //    scene data (MissingComponents) and leave the registry, taking their types with them.
-        var snapshots = new List<ScriptReloadSnapshot>();
+        // 2. Turn every component from the old assembly back into scene data (MissingComponents), so nothing in
+        //    the open scenes keeps the old load context alive and it can be collected.
         foreach (OpenSceneData sceneData in _openScenes)
         {
             SceneSerializer.UnresolveUserComponents(sceneData.Scene, type => type.Assembly.IsCollectible);
-
-            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
-            {
-                var comp = entity.GetComponent<ScriptComponent>();
-                foreach (ScriptInstance item in comp.Items)
-                {
-                    System.Text.Json.Nodes.JsonObject? fields =
-                        item.Instance != null ? ComponentSerialization.SerializeMembers(item.Instance) : null;
-                    snapshots.Add(new ScriptReloadSnapshot(sceneData.Scene, entity, item, fields));
-                    item.Instance = null;
-                }
-            }
         }
 
         // 3. Swap the assembly, first forgetting the reflection caches that still reference the old types.
@@ -559,29 +545,7 @@ public class EditorScene : Scene
             return;
         }
 
-        // 4. Re-resolve each script from the new assembly and restore its fields. Entity references are rebound
-        //    per scene through a SceneReferences map keyed on the entities' stable ids.
-        foreach (var group in System.Linq.Enumerable.GroupBy(snapshots, s => s.Scene))
-        {
-            var refs = new SceneReferences();
-            foreach (Entity entity in group.Key.View<LabelComponent>())
-            {
-                refs.Register(entity.EnsurePersistentId(), entity);
-            }
-
-            foreach (ScriptReloadSnapshot snap in group)
-            {
-                EntityBehaviour? instance = ScriptResolver.Create(snap.Item.Guid, snap.Item.ClassName, snap.Entity);
-                snap.Item.Instance = instance;
-                if (instance != null && snap.Fields != null)
-                {
-                    ComponentSerialization.ApplyMembers(instance, snap.Fields, refs);
-                }
-            }
-
-            refs.ResolveDeferred();
-        }
-
+        // 4. Rebuild the components from the new assembly, fields and entity references included.
         foreach (OpenSceneData sceneData in _openScenes)
         {
             SceneSerializer.ResolveMissingComponents(sceneData.Scene);
@@ -589,9 +553,6 @@ public class EditorScene : Scene
 
         Spot.Framework.Log.Info("Scripts reloaded.");
     }
-
-    private readonly record struct ScriptReloadSnapshot(
-        Scene Scene, Entity Entity, ScriptInstance Item, System.Text.Json.Nodes.JsonObject? Fields);
 
     private void LoadStartScene()
     {
@@ -2002,7 +1963,7 @@ public class EditorScene : Scene
         if (_playSceneData != null)
         {
             var scene = _playSceneData.Scene;
-            ScriptSystem.DestroyAll(scene);
+            ComponentSystem.DestroyAll(scene);
 
             // What the game built beside its entities — its UI, its render passes — goes with it, even when no
             // snapshot is restored below; otherwise the edit-mode viewport would keep drawing the game's HUD.
@@ -2056,23 +2017,10 @@ public class EditorScene : Scene
             return;
         }
 
-        // Re-resolve any ScriptInstance whose Instance is still null, and any user component that was waiting
-        // for its type: the assembly is now available.
+        // Resolve every component that was waiting for its type: the assembly is now available.
         foreach (var sceneData in _openScenes)
         {
             SceneSerializer.ResolveMissingComponents(sceneData.Scene);
-
-            foreach (Entity entity in sceneData.Scene.View<ScriptComponent>())
-            {
-                var comp = entity.GetComponent<ScriptComponent>();
-                foreach (ScriptInstance item in comp.Items)
-                {
-                    if (item.Instance == null)
-                    {
-                        item.Instance = ScriptResolver.Create(item.Guid, item.ClassName, entity);
-                    }
-                }
-            }
         }
     }
 

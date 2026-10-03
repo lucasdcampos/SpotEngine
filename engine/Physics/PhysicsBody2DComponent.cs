@@ -10,7 +10,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Physics Body 2D", Order = 40)]
 [SceneComponent("PhysicsBody2D")]
-public class PhysicsBody2DComponent : Component
+public sealed class PhysicsBody2DComponent : Component
 {
     /// <summary>
     /// Gets or sets the linear velocity. Written back by the backend each step so scripts can read the

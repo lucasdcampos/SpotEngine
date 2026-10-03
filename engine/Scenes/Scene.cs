@@ -38,7 +38,7 @@ public class Scene
     private UIRoot? _ui;
 
     /// <summary>
-    /// This scene's screen-space UI tree. Built in code from scripts (see <c>EntityBehaviour.UI</c>): add
+    /// This scene's screen-space UI tree. Built in code from components (see <c>Component.UI</c>): add
     /// <see cref="Widget"/>s to it and the engine lays them out, routes pointer input each play-mode frame,
     /// and draws them as the final pass. Created on first access, so scenes without UI cost nothing.
     /// </summary>
@@ -59,13 +59,13 @@ public class Scene
 
         Systems.Add(new DelegateSystem(SystemOrder.UICanvas,           UICanvasSystem.Update,                              "UI Canvas"));
         Systems.Add(new DelegateSystem(SystemOrder.CharacterController, CharacterController3DSystem.Update,                 "Character Controller"));
-        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ScriptSystem.FixedUpdate,                           "Fixed Update"));
+        Systems.Add(new DelegateSystem(SystemOrder.FixedUpdate,         ComponentSystem.FixedUpdate,                        "Fixed Update"));
         Systems.Add(new DelegateSystem(SystemOrder.Physics2D,           static (scene, dt) => scene.StepPhysics2D(dt),      "Physics 2D"));
         Systems.Add(new DelegateSystem(SystemOrder.Physics3D,           static (scene, dt) => scene.StepPhysics3D(dt),      "Physics 3D"));
         Systems.Add(new DelegateSystem(SystemOrder.Animation,           AnimationSystem.Update,                             "Animation"));
         Systems.Add(new DelegateSystem(SystemOrder.Particles,           ParticleSystem.Update,                              "Particles"));
         Systems.Add(new DelegateSystem(SystemOrder.Audio,               AudioSystem.Update,                                 "Audio"));
-        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ScriptSystem.Update,                                "Scripts"));
+        Systems.Add(new DelegateSystem(SystemOrder.Scripts,             ComponentSystem.Update,                             "Scripts"));
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ public class Scene
     /// </summary>
     public virtual void OnImGuiRender()
     {
-        ScriptSystem.ImGuiRender(this);
+        ComponentSystem.ImGuiRender(this);
     }
 
     /// <summary>
@@ -426,41 +426,6 @@ public class Scene
             }
         }
 
-        if (_registry.TryGet(typeof(ScriptComponent), id, out Component? value))
-        {
-            foreach (EntityBehaviour script in ((ScriptComponent)value).Scripts)
-            {
-                if (!script.Started)
-                {
-                    continue;
-                }
-
-                // A still-enabled script gets OnDisable before OnDestroy, mirroring OnEnable/OnCreate. Both
-                // are guarded so a throwing teardown hook cannot abort destruction of the rest of the tree.
-                if (script.ActiveLastFrame)
-                {
-                    script.ActiveLastFrame = false;
-                    try
-                    {
-                        script.OnDisable();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.CoreError("Script '{0}' threw from OnDisable; ignoring. {1}", script.GetType().Name, ex);
-                    }
-                }
-
-                try
-                {
-                    script.OnDestroy();
-                }
-                catch (Exception ex)
-                {
-                    Log.CoreError("Script '{0}' threw from OnDestroy; ignoring. {1}", script.GetType().Name, ex);
-                }
-            }
-        }
-
         foreach (Component component in _registry.ComponentsOf(id).ToArray())
         {
             ComponentSystem.Teardown(component);
@@ -502,7 +467,7 @@ public class Scene
 
     /// <summary>
     /// Moves every persistent root entity (marked via <see cref="Entity.DontDestroyOnLoad"/>) and its
-    /// subtree from this scene into <paramref name="target"/>, preserving live component and script
+    /// subtree from this scene into <paramref name="target"/>, preserving live component
     /// state. Called by the <see cref="SceneManager"/> during a scene switch, before this scene is
     /// torn down, so persistent objects carry over rather than being destroyed with the scene.
     /// </summary>
@@ -533,9 +498,9 @@ public class Scene
 
     /// <summary>
     /// Adopts the entity <paramref name="rootId"/> and all of its descendants from
-    /// <paramref name="source"/> into this scene, reusing the existing component and script instances so
+    /// <paramref name="source"/> into this scene, reusing the existing component instances so
     /// their runtime state is preserved. Entity ids are re-minted in this scene and every stored entity
-    /// handle (transform, relationship, script) is rebound to the new ids and this scene.
+    /// handle (each component's entity, the relationships) is rebound to the new ids and this scene.
     /// </summary>
     private void AdoptSubtree(Scene source, int rootId)
     {
@@ -578,14 +543,6 @@ public class Scene
                     {
                         rel.Children[i] = mapped.Value;
                     }
-                }
-            }
-
-            if (TryGetComponent(entity, out ScriptComponent? scripts))
-            {
-                foreach (EntityBehaviour script in scripts.Scripts)
-                {
-                    script.Entity = entity;
                 }
             }
         }

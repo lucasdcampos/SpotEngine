@@ -9,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Circle Collider 2D", Order = 51)]
 [SceneComponent("CircleCollider2D")]
-public class CircleCollider2DComponent : Collider2DComponent
+public sealed class CircleCollider2DComponent : Collider2DComponent
 {
     /// <summary>The radius of the circle, in local units (scaled by the entity's world scale).</summary>
     public float Radius { get; set; } = 0.5f;

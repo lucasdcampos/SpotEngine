@@ -11,7 +11,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Capsule Collider 3D", Order = 72)]
 [SceneComponent("CapsuleCollider3D")]
-public class CapsuleCollider3DComponent : Collider3DComponent
+public sealed class CapsuleCollider3DComponent : Collider3DComponent
 {
     public float Radius { get; set; } = 0.3f;
     public float Length { get; set; } = 1.0f;

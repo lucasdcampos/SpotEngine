@@ -32,14 +32,14 @@ referenced in the script, not configured on the Animator. Ask the entity for its
 by name — the names come from the model's baked clips (see `animator.ClipNames`):
 
 ```csharp
-public class PlayerAnimations : EntityBehaviour
+public class PlayerAnimations : Component
 {
     public string IdleClip = "Idle";
     public string RunClip = "Run";
 
     private AnimatorComponent _animator = null!;
 
-    public override void OnCreate() => _animator = GetComponent<AnimatorComponent>();
+    public override void OnStart() => _animator = GetComponent<AnimatorComponent>();
 
     public override void OnUpdate(float dt)
     {

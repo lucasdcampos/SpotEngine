@@ -7,8 +7,7 @@ namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// One resolvable script: its stable <see cref="Guid"/> (from the <c>.cs.meta</c> sidecar), its class
-/// <see cref="Name"/>, the concrete user <see cref="Component"/> (or legacy <see cref="EntityBehaviour"/>)
-/// <see cref="Type"/>, and a
+/// <see cref="Name"/>, the concrete user <see cref="Component"/> <see cref="Type"/>, and a
 /// <see cref="Factory"/> that constructs an instance without reflection. Emitted by the script source
 /// generator so the runtime never needs <c>Activator</c> or an assembly scan — the AOT/trimming-safe path
 /// the browser build depends on.
@@ -17,7 +16,7 @@ namespace Spot.Engine.Scenes;
 /// <param name="Name">The script's class name (the legacy serialized reference).</param>
 /// <param name="Type">The concrete script type.</param>
 /// <param name="Factory">Constructs a new instance of the script.</param>
-public sealed record ScriptDescriptor(string Guid, string Name, Type Type, Func<object> Factory);
+public sealed record ScriptDescriptor(string Guid, string Name, Type Type, Func<Component> Factory);
 
 /// <summary>
 /// Supplies the scripts a single assembly contains. The script source generator emits one implementation

@@ -104,7 +104,7 @@ NetworkSpawner.RegisterPrefab("Player", scene =>
     Entity e = scene.Instantiate("Player");
     e.AddComponent(new NetworkObject());
     e.AddComponent(new NetworkTransform());
-    e.AddScript<PlayerController>();
+    e.AddComponent<PlayerController>();
     return e;
 });
 
@@ -129,7 +129,7 @@ movement looks continuous. The server validates that a client may only move the 
 
 ## Behaviours, RPCs, and synchronized variables
 
-Derive gameplay scripts from `NetworkBehaviour` (instead of `EntityBehaviour`) to get `IsServer`,
+Derive gameplay components from `NetworkBehaviour` (instead of `Component`) to get `IsServer`,
 `IsClient`, `IsOwner`, RPCs, and synchronized variables:
 
 ```csharp

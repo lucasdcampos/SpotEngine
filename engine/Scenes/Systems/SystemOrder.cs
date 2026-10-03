@@ -33,6 +33,6 @@ public static class SystemOrder
     /// <summary>Spatial audio: voice positions and the listener.</summary>
     public const int Audio = 600;
 
-    /// <summary>User scripts (<see cref="EntityBehaviour"/>), run last so they see the resolved world.</summary>
+    /// <summary>User components (their <see cref="Component.OnUpdate"/> and <see cref="Component.OnLateUpdate"/>), run last so they see the resolved world.</summary>
     public const int Scripts = 700;
 }

@@ -9,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Sphere Collider 3D", Order = 71)]
 [SceneComponent("SphereCollider3D")]
-public class SphereCollider3DComponent : Collider3DComponent
+public sealed class SphereCollider3DComponent : Collider3DComponent
 {
     public float Radius { get; set; } = 0.5f;
 }

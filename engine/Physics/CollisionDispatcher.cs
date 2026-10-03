@@ -5,7 +5,7 @@ namespace Spot.Engine.Physics;
 
 /// <summary>
 /// Turns the flat list of overlapping pairs a physics backend reports each step into the enter/stay/exit
-/// script callbacks (<see cref="EntityBehaviour.OnCollisionEnter"/>, <see cref="EntityBehaviour.OnTriggerEnter"/>,
+/// component callbacks (<see cref="Component.OnCollisionEnter"/>, <see cref="Component.OnTriggerEnter"/>,
 /// and their counterparts). One instance lives per scene for the duration of a play session, remembering the
 /// previous step's pairs so it can diff them against the current step. Every callback is delivered through the
 /// script system's guard, so a throwing handler is quarantined rather than crashing the step.
@@ -71,24 +71,17 @@ internal sealed class CollisionDispatcher
         // The stored normal points from B toward A; each side receives it oriented toward itself.
         var toA = new Collision(pair.B, pair.Normal, pair.Point);
         var toB = new Collision(pair.A, -pair.Normal, pair.Point);
-        Deliver(pair.A, phase, "collision", s => Call(s, phase, toA));
-        Deliver(pair.B, phase, "collision", s => Call(s, phase, toB));
-        DeliverToComponents(pair.A, phase, "collision", c => Call(c, phase, toA));
-        DeliverToComponents(pair.B, phase, "collision", c => Call(c, phase, toB));
+        Deliver(pair.A, phase, "collision", c => Call(c, phase, toA));
+        Deliver(pair.B, phase, "collision", c => Call(c, phase, toB));
     }
 
     private static void DispatchTrigger(ContactPair pair, Phase phase)
     {
-        Deliver(pair.A, phase, "trigger", s => Call(s, phase, pair.B, trigger: true));
-        Deliver(pair.B, phase, "trigger", s => Call(s, phase, pair.A, trigger: true));
-        DeliverToComponents(pair.A, phase, "trigger", c => Call(c, phase, pair.B));
-        DeliverToComponents(pair.B, phase, "trigger", c => Call(c, phase, pair.A));
+        Deliver(pair.A, phase, "trigger", c => Call(c, phase, pair.B));
+        Deliver(pair.B, phase, "trigger", c => Call(c, phase, pair.A));
     }
 
-    private static void Deliver(Entity entity, Phase phase, string kind, System.Action<EntityBehaviour> call) =>
-        ScriptSystem.ForEachLiveScript(entity, kind + ":" + phase, call);
-
-    private static void DeliverToComponents(Entity entity, Phase phase, string kind, System.Action<Component> call) =>
+    private static void Deliver(Entity entity, Phase phase, string kind, System.Action<Component> call) =>
         ComponentSystem.ForEachLive(entity, kind + ":" + phase, call);
 
     private static void Call(Component component, Phase phase, Collision collision)
@@ -108,26 +101,6 @@ internal sealed class CollisionDispatcher
             case Phase.Enter: component.OnTriggerEnter(other); break;
             case Phase.Stay: component.OnTriggerStay(other); break;
             case Phase.Exit: component.OnTriggerExit(other); break;
-        }
-    }
-
-    private static void Call(EntityBehaviour script, Phase phase, Collision collision)
-    {
-        switch (phase)
-        {
-            case Phase.Enter: script.OnCollisionEnter(collision); break;
-            case Phase.Stay: script.OnCollisionStay(collision); break;
-            case Phase.Exit: script.OnCollisionExit(collision); break;
-        }
-    }
-
-    private static void Call(EntityBehaviour script, Phase phase, Entity other, bool trigger)
-    {
-        switch (phase)
-        {
-            case Phase.Enter: script.OnTriggerEnter(other); break;
-            case Phase.Stay: script.OnTriggerStay(other); break;
-            case Phase.Exit: script.OnTriggerExit(other); break;
         }
     }
 

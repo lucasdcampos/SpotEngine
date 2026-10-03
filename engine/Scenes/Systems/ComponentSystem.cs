@@ -12,12 +12,18 @@ namespace Spot.Engine.Scenes;
 internal static class ComponentSystem
 {
     /// <summary>
-    /// Starts, enables/disables and updates every user component, then advances its coroutines and invokes.
-    /// Iterates a snapshot so a component that spawns or destroys entities cannot invalidate the loop, and
-    /// observes disabled components too so they fire <see cref="Component.OnDisable"/> on the frame they go
-    /// inactive.
+    /// The per-frame pass: starts, enables/disables and updates every user component (advancing its coroutines
+    /// and invokes), then runs <see cref="Component.OnLateUpdate"/> once every component has updated.
     /// </summary>
     public static void Update(Scene scene, float deltaTime)
+    {
+        UpdatePass(scene, deltaTime);
+        LateUpdate(scene, deltaTime);
+    }
+
+    // Iterates a snapshot so a component that spawns or destroys entities cannot invalidate the loop, and
+    // observes disabled components too so they fire OnDisable on the frame they go inactive.
+    private static void UpdatePass(Scene scene, float deltaTime)
     {
         foreach (Component component in scene.UserComponents)
         {
@@ -67,7 +73,7 @@ internal static class ComponentSystem
     /// Runs <see cref="Component.OnLateUpdate"/> after every component's <see cref="Component.OnUpdate"/> this
     /// frame, so it observes their changes (a follow camera sees its target's moved position).
     /// </summary>
-    public static void LateUpdate(Scene scene, float deltaTime) =>
+    private static void LateUpdate(Scene scene, float deltaTime) =>
         ForEachLive(scene, "late_update", component => component.OnLateUpdate(deltaTime));
 
     /// <summary>

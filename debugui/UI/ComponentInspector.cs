@@ -22,8 +22,8 @@ namespace Spot.DebugUI.UI;
 /// <see cref="InspectorRangeAttribute"/>, <see cref="InspectorColorAttribute"/>, <see cref="ShowIfAttribute"/>,
 /// <see cref="AssetReferenceAttribute"/>, ...); this class reflects over a component's public properties and
 /// renders each with the matching <see cref="EditorGui"/> widget, so the inspector needs no per-component code.
-/// Property types that need bespoke UI (asset slots) and whole components that do (the script list) register a
-/// custom drawer here.
+/// Property types that need bespoke UI (asset slots) and whole components that do (a UI canvas) register a
+/// custom drawer here. User components are drawn from their public fields and properties.
 /// </summary>
 internal static class ComponentInspector
 {
@@ -598,7 +598,6 @@ internal static class ComponentInspector
 
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
     {
-        [typeof(ScriptComponent)] = DrawScriptComponent,
         [typeof(UICanvasComponent)] = DrawUICanvasComponent,
     };
 
@@ -884,75 +883,6 @@ internal static class ComponentInspector
         }
     }
 
-    private static void DrawScriptComponent(Entity entity, object component)
-    {
-        var scriptComp = (ScriptComponent)component;
-        bool enabled = scriptComp.Enabled;
-        if (EditorGui.Checkbox("Enabled", ref enabled))
-            scriptComp.Enabled = enabled;
-
-        // Each attached script is a row: a code glyph, its class name (dim + tagged only when the script
-        // genuinely can't be found), and a remove button. A project's scripts aren't compiled into the
-        // editor, so a null instance is normal here — a script counts as "known" when it has a backing .cs
-        // file (or a loaded type). "(not found)" is reserved for a name with no file and no type, which
-        // usually means it was renamed or deleted.
-        int scriptToRemove = -1;
-        for (int i = 0; i < scriptComp.Items.Count; i++)
-        {
-            ScriptInstance item = scriptComp.Items[i];
-            bool known = item.Instance != null || EditorGui.ScriptExists(item.ClassName);
-
-            ImGui.PushID(i);
-            ImGui.AlignTextToFramePadding();
-            ImGui.TextColored(ScriptGlyphColor, EditorIcons.Code);
-            ImGui.SameLine();
-            if (known)
-                ImGui.TextUnformatted(item.ClassName);
-            else
-                ImGui.TextColored(ScriptMissingColor, $"{item.ClassName}  (not found)");
-
-            // Right-align the remove button to the card's inner edge.
-            ImGui.SameLine();
-            ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - ImGui.GetFrameHeight());
-            if (ImGui.Button(EditorIcons.Times, new Vector2(ImGui.GetFrameHeight(), ImGui.GetFrameHeight())))
-                scriptToRemove = i;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Remove script");
-
-            // Editable tunables: the script's public fields/properties, drawn indented under its row.
-            if (item.Instance != null)
-            {
-                ImGui.Indent();
-                DrawScriptFields(item.Instance);
-                ImGui.Unindent();
-            }
-
-            ImGui.PopID();
-        }
-
-        if (scriptToRemove >= 0)
-            scriptComp.Items.RemoveAt(scriptToRemove);
-
-        ImGui.Spacing();
-        // The slot both accepts a dragged script file and, on click, opens a searchable list of every
-        // script the project knows about — no more typing class names by hand. A project's scripts live
-        // as .cs files that are only compiled into the game, so their type usually isn't loaded in the
-        // editor: attach by name (it resolves at runtime) and only instantiate when the type happens to
-        // be loaded here, without logging the expected "not found".
-        if (EditorGui.ScriptSlot("Add Script", scriptComp.ClassNames.ToList(), out string? chosen)
-            && chosen != null && !scriptComp.ClassNames.Contains(chosen))
-        {
-            // Capture (or mint) the script's stable guid so the attachment survives a class rename. The type
-            // usually isn't loaded in the editor, so attach by name+guid and only instantiate when it happens
-            // to be resolvable here, without logging the expected "not found".
-            string guid = EditorGui.GetOrCreateScriptGuid(chosen);
-            EntityBehaviour? instance = ScriptResolver.Resolve(guid, chosen) != null
-                ? ScriptResolver.Create(guid, chosen, entity)
-                : null;
-            scriptComp.Items.Add(new ScriptInstance(chosen, instance, guid));
-        }
-    }
-
-    private static readonly Vector4 ScriptGlyphColor = new(0.36f, 0.66f, 0.98f, 1.0f);
     private static readonly Vector4 ScriptMissingColor = new(0.95f, 0.70f, 0.25f, 1.0f);
 
     // ----- Script field editing --------------------------------------------------------------------
@@ -978,8 +908,6 @@ internal static class ComponentInspector
 
     // Draws a script's public fields and read/write properties as inline editors. Editing a value marks
     // the scene dirty automatically, since script fields are now part of the serialized scene.
-    private static void DrawScriptFields(EntityBehaviour script) => DrawScriptFields(script, script.Entity.Scene);
-
     private static void DrawScriptFields(object script, Scene scene)
     {
         foreach (ScriptFieldMeta meta in ScriptFieldsFor(script.GetType()))
@@ -993,8 +921,6 @@ internal static class ComponentInspector
                 {
                     if (script is Component component)
                         ComponentSystem.InvokeValidate(component);
-                    else if (script is EntityBehaviour behaviour)
-                        ScriptSystem.InvokeValidate(behaviour);
                 }
             }
             catch (Exception ex)

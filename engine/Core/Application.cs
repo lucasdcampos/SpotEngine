@@ -360,7 +360,7 @@ public class Application
         }
 
         // Apply the project's default input bindings before any scene loads, since a scene's scripts
-        // may query actions in OnCreate. Works for editor play and shipped games alike, as both build
+        // may query actions in OnStart. Works for editor play and shipped games alike, as both build
         // the spec in code.
         Input.SetDefaultBindings(_spec.DefaultBindings);
         Spot.Framework.Audio.AudioMixer.SetLayout(_spec.AudioBuses);

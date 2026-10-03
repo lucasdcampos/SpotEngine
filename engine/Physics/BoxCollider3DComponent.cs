@@ -9,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Box Collider 3D", Order = 70)]
 [SceneComponent("BoxCollider3D")]
-public class BoxCollider3DComponent : Collider3DComponent
+public sealed class BoxCollider3DComponent : Collider3DComponent
 {
     public Vector3 Size { get; set; } = Vector3.One;
 

@@ -287,7 +287,7 @@ internal static class ComponentSerialization
 
     /// <summary>
     /// Writes an object's public fields and read/write properties of supported types into a JSON object.
-    /// Used for script instances (<see cref="EntityBehaviour"/>), which expose tunables as public fields.
+    /// Used for user components, which expose tunables as public fields.
     /// </summary>
     public static JsonObject SerializeMembers(object obj)
     {

@@ -4,7 +4,7 @@ namespace Spot.Engine.Tests;
 
 public class ScriptRegistryTests
 {
-    private sealed class RegisteredBehaviour : EntityBehaviour
+    private sealed class RegisteredBehaviour : Component
     {
     }
 
@@ -27,11 +27,8 @@ public class ScriptRegistryTests
         ScriptRegistry.Register(provider);
         try
         {
-            var scene = new Scene();
-            Entity entity = scene.Instantiate();
-
             // The class name no longer matches (simulating a rename); the guid still resolves.
-            EntityBehaviour? instance = ScriptResolver.Create("guid-prefers", "SomeRenamedClass", entity);
+            Component? instance = ScriptResolver.CreateComponent("guid-prefers", "SomeRenamedClass");
 
             Assert.IsType<RegisteredBehaviour>(instance);
         }
@@ -92,10 +89,7 @@ public class ScriptRegistryTests
     public void Create_FallsBackToReflection_WhenRegistryMisses()
     {
         // No provider registered for this type; the reflection scan of loaded assemblies still finds it.
-        var scene = new Scene();
-        Entity entity = scene.Instantiate();
-
-        EntityBehaviour? instance = ScriptResolver.Create(nameof(RegisteredBehaviour), entity);
+        Component? instance = ScriptResolver.CreateComponent(null, nameof(RegisteredBehaviour));
 
         Assert.IsType<RegisteredBehaviour>(instance);
     }

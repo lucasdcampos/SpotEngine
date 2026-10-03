@@ -11,7 +11,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Box Collider 2D", Order = 50)]
 [SceneComponent("BoxCollider2D")]
-public class BoxCollider2DComponent : Collider2DComponent
+public sealed class BoxCollider2DComponent : Collider2DComponent
 {
     /// <summary>
     /// The full width and height of the box.

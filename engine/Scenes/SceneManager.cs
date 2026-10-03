@@ -84,7 +84,7 @@ public static class SceneManager
             // Carry persistent entities (DontDestroyOnLoad) into the incoming scene before the old one
             // is torn down, so their live state survives and their scripts are not destroyed.
             s_current.MigratePersistentEntitiesTo(s_pending);
-            ScriptSystem.DestroyAll(s_current);
+            ComponentSystem.DestroyAll(s_current);
             s_current.OnExit();
             s_current.TeardownPhysics();
         }
@@ -114,7 +114,7 @@ public static class SceneManager
     {
         if (s_current is not null)
         {
-            ScriptSystem.DestroyAll(s_current);
+            ComponentSystem.DestroyAll(s_current);
             s_current.OnExit();
             s_current.TeardownPhysics();
         }

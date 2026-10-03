@@ -8,7 +8,7 @@ public class SystemRegistryTests
 {
     private const float Dt = 1f / 60f;
 
-    private sealed class OrderProbe : EntityBehaviour
+    private sealed class OrderProbe : Component
     {
         public int ObservedFlag = -1;
     }
@@ -30,7 +30,7 @@ public class SystemRegistryTests
     public void CustomSystem_BeforeScripts_IsObservedByScriptsSameFrame()
     {
         var scene = new Scene();
-        var probe = scene.Instantiate().AddScript(new OrderProbe());
+        var probe = scene.Instantiate().AddComponent(new OrderProbe());
 
         // A system ordered just before the built-in script system flips a value the script then reads.
         int flag = 0;

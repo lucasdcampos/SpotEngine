@@ -7,11 +7,11 @@ namespace Spot.Engine.Tests;
 
 public class SchedulingTests
 {
-    private sealed class WaitSecondsBehaviour : EntityBehaviour
+    private sealed class WaitSecondsBehaviour : Component
     {
         public int Phase;
 
-        public override void OnCreate() => StartCoroutine(Run());
+        public override void OnStart() => StartCoroutine(Run());
 
         private IEnumerator Run()
         {
@@ -21,11 +21,11 @@ public class SchedulingTests
         }
     }
 
-    private sealed class WaitFramesBehaviour : EntityBehaviour
+    private sealed class WaitFramesBehaviour : Component
     {
         public int Phase;
 
-        public override void OnCreate() => StartCoroutine(Run());
+        public override void OnStart() => StartCoroutine(Run());
 
         private IEnumerator Run()
         {
@@ -35,12 +35,12 @@ public class SchedulingTests
         }
     }
 
-    private sealed class WaitUntilBehaviour : EntityBehaviour
+    private sealed class WaitUntilBehaviour : Component
     {
         public bool Gate;
         public int Phase;
 
-        public override void OnCreate() => StartCoroutine(Run());
+        public override void OnStart() => StartCoroutine(Run());
 
         private IEnumerator Run()
         {
@@ -50,11 +50,11 @@ public class SchedulingTests
         }
     }
 
-    private sealed class NestedBehaviour : EntityBehaviour
+    private sealed class NestedBehaviour : Component
     {
         public int Phase;
 
-        public override void OnCreate() => StartCoroutine(Parent());
+        public override void OnStart() => StartCoroutine(Parent());
 
         private IEnumerator Parent()
         {
@@ -70,12 +70,12 @@ public class SchedulingTests
         }
     }
 
-    private sealed class LoopingBehaviour : EntityBehaviour
+    private sealed class LoopingBehaviour : Component
     {
         public int Ticks;
         public Coroutine? Handle;
 
-        public override void OnCreate() => Handle = StartCoroutine(Run());
+        public override void OnStart() => Handle = StartCoroutine(Run());
 
         public void Stop() => StopCoroutine(Handle!);
 
@@ -89,11 +89,11 @@ public class SchedulingTests
         }
     }
 
-    private sealed class ThrowingCoroutineBehaviour : EntityBehaviour
+    private sealed class ThrowingCoroutineBehaviour : Component
     {
         public int Updates;
 
-        public override void OnCreate() => StartCoroutine(Boom());
+        public override void OnStart() => StartCoroutine(Boom());
 
         public override void OnUpdate(float deltaTime) => Updates++;
 
@@ -104,28 +104,28 @@ public class SchedulingTests
         }
     }
 
-    private sealed class InvokeBehaviour : EntityBehaviour
+    private sealed class InvokeBehaviour : Component
     {
         public int Count;
 
-        public override void OnCreate() => Invoke(() => Count++, 1.0f);
+        public override void OnStart() => Invoke(() => Count++, 1.0f);
     }
 
-    private sealed class InvokeRepeatingBehaviour : EntityBehaviour
+    private sealed class InvokeRepeatingBehaviour : Component
     {
         public int Count;
 
-        public override void OnCreate() => InvokeRepeating(() => Count++, 0.0f, 1.0f);
+        public override void OnStart() => InvokeRepeating(() => Count++, 0.0f, 1.0f);
 
         public void Cancel() => CancelInvoke();
     }
 
-    private sealed class TweenBehaviour : EntityBehaviour
+    private sealed class TweenBehaviour : Component
     {
         public float Value = -1.0f;
         public bool Completed;
 
-        public override void OnCreate() =>
+        public override void OnStart() =>
             Tween(0.0f, 10.0f, 1.0f, v => Value = v, Ease.Linear, () => Completed = true);
     }
 
@@ -133,15 +133,15 @@ public class SchedulingTests
     public void WaitForSeconds_ResumesAfterDurationElapses()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new WaitSecondsBehaviour());
+        var script = scene.Instantiate().AddComponent(new WaitSecondsBehaviour());
 
-        ScriptSystem.Update(scene, 0.1f);   // OnCreate + first coroutine step
+        ComponentSystem.Update(scene, 0.1f);   // OnStart + first coroutine step
         Assert.Equal(1, script.Phase);
 
-        ScriptSystem.Update(scene, 0.5f);   // 0.5s elapsed, still waiting
+        ComponentSystem.Update(scene, 0.5f);   // 0.5s elapsed, still waiting
         Assert.Equal(1, script.Phase);
 
-        ScriptSystem.Update(scene, 0.5f);   // 1.0s elapsed, resumes
+        ComponentSystem.Update(scene, 0.5f);   // 1.0s elapsed, resumes
         Assert.Equal(2, script.Phase);
     }
 
@@ -149,15 +149,15 @@ public class SchedulingTests
     public void WaitForFrames_ResumesAfterFrameCount()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new WaitFramesBehaviour());
+        var script = scene.Instantiate().AddComponent(new WaitFramesBehaviour());
 
-        ScriptSystem.Update(scene, 0.016f); // suspends on WaitForFrames(2)
+        ComponentSystem.Update(scene, 0.016f); // suspends on WaitForFrames(2)
         Assert.Equal(1, script.Phase);
 
-        ScriptSystem.Update(scene, 0.016f); // frame 1
+        ComponentSystem.Update(scene, 0.016f); // frame 1
         Assert.Equal(1, script.Phase);
 
-        ScriptSystem.Update(scene, 0.016f); // frame 2, resumes
+        ComponentSystem.Update(scene, 0.016f); // frame 2, resumes
         Assert.Equal(2, script.Phase);
     }
 
@@ -165,14 +165,14 @@ public class SchedulingTests
     public void WaitUntil_ResumesWhenPredicateBecomesTrue()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new WaitUntilBehaviour());
+        var script = scene.Instantiate().AddComponent(new WaitUntilBehaviour());
 
-        ScriptSystem.Update(scene, 0.1f);
-        ScriptSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
         Assert.Equal(1, script.Phase); // predicate still false
 
         script.Gate = true;
-        ScriptSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
         Assert.Equal(2, script.Phase);
     }
 
@@ -180,12 +180,12 @@ public class SchedulingTests
     public void NestedCoroutine_RunsToCompletionBeforeParentResumes()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new NestedBehaviour());
+        var script = scene.Instantiate().AddComponent(new NestedBehaviour());
 
-        ScriptSystem.Update(scene, 0.1f); // parent starts child; child runs to its yield
+        ComponentSystem.Update(scene, 0.1f); // parent starts child; child runs to its yield
         Assert.Equal(2, script.Phase);
 
-        ScriptSystem.Update(scene, 0.1f); // child finishes, parent resumes
+        ComponentSystem.Update(scene, 0.1f); // child finishes, parent resumes
         Assert.Equal(3, script.Phase);
     }
 
@@ -193,14 +193,14 @@ public class SchedulingTests
     public void StopCoroutine_HaltsIt()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new LoopingBehaviour());
+        var script = scene.Instantiate().AddComponent(new LoopingBehaviour());
 
-        ScriptSystem.Update(scene, 0.1f);
-        ScriptSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
         Assert.Equal(2, script.Ticks);
 
         script.Stop();
-        ScriptSystem.Update(scene, 0.1f);
+        ComponentSystem.Update(scene, 0.1f);
         Assert.Equal(2, script.Ticks); // no further ticks after stopping
         Assert.False(script.Handle!.IsRunning);
     }
@@ -209,13 +209,13 @@ public class SchedulingTests
     public void ThrowingCoroutine_IsStoppedWithoutFaultingTheScript()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new ThrowingCoroutineBehaviour());
+        var script = scene.Instantiate().AddComponent(new ThrowingCoroutineBehaviour());
 
         var exception = Record.Exception(() =>
         {
-            ScriptSystem.Update(scene, 0.1f); // coroutine suspends on yield null
-            ScriptSystem.Update(scene, 0.1f); // coroutine resumes and throws
-            ScriptSystem.Update(scene, 0.1f);
+            ComponentSystem.Update(scene, 0.1f); // coroutine suspends on yield null
+            ComponentSystem.Update(scene, 0.1f); // coroutine resumes and throws
+            ComponentSystem.Update(scene, 0.1f);
         });
 
         Assert.Null(exception);
@@ -227,15 +227,15 @@ public class SchedulingTests
     public void Invoke_FiresOnceAfterDelay()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new InvokeBehaviour());
+        var script = scene.Instantiate().AddComponent(new InvokeBehaviour());
 
-        ScriptSystem.Update(scene, 0.5f);
+        ComponentSystem.Update(scene, 0.5f);
         Assert.Equal(0, script.Count);
 
-        ScriptSystem.Update(scene, 0.5f); // 1.0s elapsed
+        ComponentSystem.Update(scene, 0.5f); // 1.0s elapsed
         Assert.Equal(1, script.Count);
 
-        ScriptSystem.Update(scene, 1.0f); // does not fire again
+        ComponentSystem.Update(scene, 1.0f); // does not fire again
         Assert.Equal(1, script.Count);
     }
 
@@ -243,16 +243,16 @@ public class SchedulingTests
     public void InvokeRepeating_FiresOnCadenceUntilCancelled()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new InvokeRepeatingBehaviour());
+        var script = scene.Instantiate().AddComponent(new InvokeRepeatingBehaviour());
 
-        ScriptSystem.Update(scene, 1.0f); // fires at t=0 with zero delay
+        ComponentSystem.Update(scene, 1.0f); // fires at t=0 with zero delay
         Assert.Equal(1, script.Count);
 
-        ScriptSystem.Update(scene, 1.0f);
+        ComponentSystem.Update(scene, 1.0f);
         Assert.Equal(2, script.Count);
 
         script.Cancel();
-        ScriptSystem.Update(scene, 1.0f);
+        ComponentSystem.Update(scene, 1.0f);
         Assert.Equal(2, script.Count); // cancelled: no further fires
     }
 
@@ -260,18 +260,18 @@ public class SchedulingTests
     public void Tween_InterpolatesToTargetAndCompletes()
     {
         var scene = new Scene();
-        var script = scene.Instantiate().AddScript(new TweenBehaviour());
+        var script = scene.Instantiate().AddComponent(new TweenBehaviour());
 
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f); // starts tween, Value = start (0)
+        ComponentSystem.Update(scene, 0.5f); // starts tween, Value = start (0)
         Assert.Equal(0.0f, script.Value, 3);
 
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f); // halfway
+        ComponentSystem.Update(scene, 0.5f); // halfway
         Assert.Equal(5.0f, script.Value, 3);
 
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f); // reaches the end
+        ComponentSystem.Update(scene, 0.5f); // reaches the end
         Assert.Equal(10.0f, script.Value, 3);
         Assert.True(script.Completed);
     }
@@ -283,25 +283,25 @@ public class SchedulingTests
         Vector3 result = Vector3.Zero;
 
         // A tiny script that tweens a captured local instead of a transform, to exercise the Vector3 path.
-        scene.Instantiate().AddScript(new VectorTweenBehaviour(v => result = v));
+        scene.Instantiate().AddComponent(new VectorTweenBehaviour(v => result = v));
 
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f);
+        ComponentSystem.Update(scene, 0.5f);
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f);
+        ComponentSystem.Update(scene, 0.5f);
         Time.NewFrame(0.5f);
-        ScriptSystem.Update(scene, 0.5f);
+        ComponentSystem.Update(scene, 0.5f);
 
         Assert.Equal(new Vector3(0.0f, 10.0f, 0.0f), result);
     }
 
-    private sealed class VectorTweenBehaviour : EntityBehaviour
+    private sealed class VectorTweenBehaviour : Component
     {
         private readonly Action<Vector3> _sink;
 
         public VectorTweenBehaviour(Action<Vector3> sink) => _sink = sink;
 
-        public override void OnCreate() =>
+        public override void OnStart() =>
             Tween(Vector3.Zero, new Vector3(0.0f, 10.0f, 0.0f), 1.0f, _sink);
     }
 }

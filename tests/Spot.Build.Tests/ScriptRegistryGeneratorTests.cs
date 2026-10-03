@@ -31,10 +31,10 @@ public class ScriptRegistryGeneratorTests
     {
         SyntaxTree tree = CSharpSyntaxTree.ParseText(source, path: sourcePath);
 
-        // Reference every loaded assembly so the compilation resolves Spot.Engine.Scenes.EntityBehaviour and friends.
+        // Reference every loaded assembly so the compilation resolves Spot.Engine.Scenes.Component and friends.
         // Load the engine and everything it references first (the framework levels its types derive from):
         // nothing else guarantees they are loaded when this test runs, and the test order varies.
-        System.Reflection.Assembly engine = typeof(Spot.Engine.Scenes.EntityBehaviour).Assembly;
+        System.Reflection.Assembly engine = typeof(Spot.Engine.Scenes.Component).Assembly;
         foreach (System.Reflection.AssemblyName dependency in engine.GetReferencedAssemblies())
         {
             System.Reflection.Assembly.Load(dependency);
@@ -69,7 +69,7 @@ public class ScriptRegistryGeneratorTests
             using Spot.Engine.Scenes;
             namespace Game
             {
-                public class Enemy : EntityBehaviour { }
+                public class Enemy : Component { }
             }
             """;
         var meta = new InMemoryAdditionalText(scriptPath + ".meta", "{ \"guid\": \"enemy-guid-99\", \"importer\": \"script\" }");
@@ -89,7 +89,7 @@ public class ScriptRegistryGeneratorTests
         const string scriptPath = "C:/proj/Assets/Scripts/NoMeta.cs";
         const string source = """
             using Spot.Engine.Scenes;
-            public class NoMeta : EntityBehaviour { }
+            public class NoMeta : Component { }
             """;
 
         string generated = RunGenerator(source, scriptPath);
@@ -105,9 +105,9 @@ public class ScriptRegistryGeneratorTests
         const string scriptPath = "C:/proj/Assets/Scripts/Mixed.cs";
         const string source = """
             using Spot.Engine.Scenes;
-            public abstract class BaseThing : EntityBehaviour { }
+            public abstract class BaseThing : Component { }
             public class PlainClass { }
-            public class Concrete : EntityBehaviour { }
+            public class Concrete : Component { }
             """;
 
         string generated = RunGenerator(source, scriptPath);

@@ -80,12 +80,12 @@ public class SceneManagerTests : IDisposable
         Assert.Null(SceneManager.Current);
     }
 
-    private sealed class Counter : EntityBehaviour
+    private sealed class Counter : Component
     {
         public int Created;
         public int Destroyed;
 
-        public override void OnCreate() => Created++;
+        public override void OnStart() => Created++;
 
         public override void OnDestroy() => Destroyed++;
     }
@@ -98,8 +98,8 @@ public class SceneManagerTests : IDisposable
         SceneManager.ApplyPendingSwitch();
 
         var entity = a.Instantiate("Player");
-        var counter = entity.AddScript<Counter>();
-        ScriptSystem.Update(a, 0f); // runs OnCreate, marks the script started
+        var counter = entity.AddComponent<Counter>();
+        ComponentSystem.Update(a, 0f); // runs OnStart, marks the script started
         Assert.Equal(1, counter.Created);
 
         entity.DontDestroyOnLoad();
@@ -157,8 +157,8 @@ public class SceneManagerTests : IDisposable
         SceneManager.ApplyPendingSwitch();
 
         var entity = a.Instantiate("Temp");
-        var counter = entity.AddScript<Counter>();
-        ScriptSystem.Update(a, 0f);
+        var counter = entity.AddComponent<Counter>();
+        ComponentSystem.Update(a, 0f);
 
         var b = new RecordingScene("B", new List<string>());
         SceneManager.Load(b);

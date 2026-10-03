@@ -15,8 +15,8 @@ namespace Spot.Editor;
 /// Loads the active project's compiled assembly so the editor can resolve and instantiate its scripts, and —
 /// unlike a plain <c>Assembly.Load</c> — can drop and reload it without restarting. The assembly lives in a
 /// collectible <see cref="AssemblyLoadContext"/>; everything it references (the engine, Silk.NET, …) resolves
-/// through the default context, so only the project's own script types are unloadable and every
-/// <see cref="EntityBehaviour"/> subclass still shares the one engine <see cref="EntityBehaviour"/> type.
+/// through the default context, so only the project's own component types are unloadable and every one of them
+/// still derives from the one engine <see cref="Component"/> type.
 /// </summary>
 /// <remarks>
 /// The project assembly's generated <see cref="IScriptProvider"/> registers itself with
