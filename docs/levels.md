@@ -176,13 +176,14 @@ The `samples/` folder has small programs for each level. The framework ones are 
 | `HelloEngine` | 3 | a project: a scene with lighting, shadows, sky and post-processing, physics, particles, a UI document, scripts, and a custom render pass |
 | `SolarSystem` | 3 | a showcase project: the solar system in real time, with procedural planet shaders in custom render passes, an instanced asteroid belt, hover info cards, and an icon toolbar with a settings pop-up built from restyled engine widgets |
 | `ProvingGrounds` | 3 | a first-person shooter playground: the character controller, hitscan raycasts and grenades, impulses, explosive chain reactions, kinematic lifts and drones, trigger volumes, weapon effects in custom render passes, synthesized sound, and a full HUD and pause menu |
+| `Voxelcraft` | 3 | an infinite block world: chunks generated and meshed on worker threads and streamed around the player, greedy meshing with ambient occlusion and flood-filled light, a renderer built entirely from custom render passes (shadow map, sky, terrain, water), a day and night cycle, and a first-person player that walks, swims, flies, breaks and places blocks |
 
 `HelloEngine` is an engine project like any other: open `samples/HelloEngine/HelloEngine.sptproj` in the
 editor, or cook and run it with `spot run --project samples/HelloEngine` (and publish it with
 `spot build windows` or `spot build browser`). It uses no binary assets — primitives and generated textures
-only. `SolarSystem` and `ProvingGrounds` are opened and run the same way; they ship no assets either —
-`SolarSystem` draws every surface with its own shaders, and `ProvingGrounds` builds its level and weapons from
-primitives and synthesizes every sound.
+only. `SolarSystem`, `ProvingGrounds` and `Voxelcraft` are opened and run the same way; they ship no assets
+either — `SolarSystem` draws every surface with its own shaders, `ProvingGrounds` builds its level and weapons
+from primitives and synthesizes every sound, and `Voxelcraft` paints its block textures in code at startup.
 
 ## Related
 

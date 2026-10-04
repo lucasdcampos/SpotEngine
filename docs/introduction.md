@@ -41,8 +41,9 @@ Spot is made up of a few cooperating parts:
   self-contained application you can distribute. The same logic runs inside the editor and on the
   command line.
 - **The samples** are small programs, one per level: framework programs that write their own loop,
-  and three engine projects you open in the editor or run with the `spot` CLI: `HelloEngine`, a minimal one,
-  `SolarSystem`, a showcase of the renderer and the UI, and `ProvingGrounds`, a first-person shooter playground.
+  and four engine projects you open in the editor or run with the `spot` CLI: `HelloEngine`, a minimal one,
+  `SolarSystem`, a showcase of the renderer and the UI, `ProvingGrounds`, a first-person shooter playground, and
+  `Voxelcraft`, an infinite procedural world of blocks with a day and night cycle.
 
 ## How a game runs
 

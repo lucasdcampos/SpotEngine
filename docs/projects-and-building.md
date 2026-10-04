@@ -12,8 +12,9 @@ A project is a folder on disk containing:
   scene the game starts on.
 
 The editor and the command-line tool both read and write this format, so you can move between them
-freely. `samples/HelloEngine` is a minimal example project, and `samples/SolarSystem` and
-`samples/ProvingGrounds` (a first-person shooter playground) larger showcases.
+freely. `samples/HelloEngine` is a minimal example project, and `samples/SolarSystem`,
+`samples/ProvingGrounds` (a first-person shooter playground) and `samples/Voxelcraft` (an infinite block world)
+larger showcases.
 
 ## The build tooling
 

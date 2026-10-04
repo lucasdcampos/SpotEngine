@@ -1,0 +1,223 @@
+{
+  "Entities": [
+    {
+      "Tag": {
+        "Name": "Game",
+        "Enabled": true,
+        "Id": "89edb380c90a4dd9b143c224a1eea76e"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Components": [
+        {
+          "Type": "Game",
+          "Enabled": true,
+          "Fields": {
+            "SpawnRadius": 3
+          }
+        },
+        {
+          "Type": "GameHud",
+          "Enabled": true,
+          "Fields": {}
+        }
+      ]
+    },
+    {
+      "Tag": {
+        "Name": "World",
+        "Enabled": true,
+        "Id": "97f46502c343464e8c00c62cb5688a47"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Components": [
+        {
+          "Type": "VoxelWorld",
+          "Enabled": true,
+          "Fields": {
+            "Seed": 1337,
+            "RandomSeed": false,
+            "RenderDistance": 16,
+            "StreamingBudget": 3
+          }
+        },
+        {
+          "Type": "DayNightCycle",
+          "Enabled": true,
+          "Fields": {
+            "DayLengthMinutes": 14,
+            "StartTime": 0.31,
+            "TimeLapseSpeed": 40,
+            "SunTilt": 28
+          }
+        },
+        {
+          "Type": "WorldRenderer",
+          "Enabled": true,
+          "Fields": {
+            "Shadows": true,
+            "ShadowResolution": 2048,
+            "ShadowDistance": 80
+          }
+        }
+      ]
+    },
+    {
+      "Tag": {
+        "Name": "Player",
+        "Enabled": true,
+        "Id": "61287e837c4b483e97e474c55a3488af"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          80,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "Components": [
+        {
+          "Type": "PlayerController",
+          "Enabled": true,
+          "Fields": {
+            "WalkSpeed": 4.3,
+            "SprintSpeed": 5.8,
+            "FlySpeed": 11,
+            "JumpHeight": 1.25,
+            "Gravity": 32,
+            "MouseSensitivity": 0.11,
+            "Reach": 6,
+            "FieldOfView": 74
+          }
+        }
+      ],
+      "Children": [
+        {
+          "Tag": {
+            "Name": "Camera",
+            "Enabled": true,
+            "Id": "6bf69a23230b43a6a96cc01f07a592b8"
+          },
+          "Transform": {
+            "Enabled": true,
+            "Position": [
+              0,
+              1.62,
+              0
+            ],
+            "Rotation": [
+              0,
+              0,
+              0
+            ],
+            "Scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "Camera": {
+            "Enabled": true,
+            "Primary": true,
+            "FixedAspectRatio": false,
+            "BackgroundColor": [
+              0.58,
+              0.74,
+              0.96,
+              1
+            ],
+            "ProjectionType": 1,
+            "ZoomLevel": 5,
+            "FieldOfView": 74,
+            "NearClip": 0.06,
+            "FarClip": 300
+          }
+        }
+      ]
+    },
+    {
+      "Tag": {
+        "Name": "Post Processing",
+        "Enabled": true,
+        "Id": "f1297c9f1fa04b018982485f0f869e42"
+      },
+      "Transform": {
+        "Enabled": true,
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "PostProcessing": {
+        "Enabled": true,
+        "Tonemap": 2,
+        "Exposure": 1.0,
+        "Gamma": 2.2,
+        "EnableVignette": true,
+        "VignetteIntensity": 0.18,
+        "EnableFXAA": true,
+        "EnableBloom": true,
+        "BloomThreshold": 1.1,
+        "BloomIntensity": 0.55,
+        "EnableLut": false,
+        "LutTexturePath": null,
+        "LutIntensity": 1
+      }
+    }
+  ]
+}

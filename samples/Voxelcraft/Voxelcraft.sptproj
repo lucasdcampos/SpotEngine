@@ -1,0 +1,5 @@
+{
+  "Name": "Voxelcraft",
+  "StartScene": "Scenes/Voxelcraft.sptscene",
+  "AssetDirectory": "Assets"
+}

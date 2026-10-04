@@ -17,6 +17,7 @@ dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, Hel
 dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L3 sample project: generate + cook + run
 dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # L3 showcase project (custom shaders, UI)
 dotnet run --project tools/Spot.Cli -- run --project samples/ProvingGrounds  # L3 FPS playground (physics, weapons, HUD)
+dotnet run --project tools/Spot.Cli -- run --project samples/Voxelcraft  # L3 infinite block world (chunk streaming, custom renderer)
 ```
 
 ## Projects
@@ -32,7 +33,7 @@ dotnet run --project tools/Spot.Cli -- run --project samples/ProvingGrounds  # L
 | `tools/Spot.Build` | library | `.sptproj` → buildable app (used by editor + CLI) |
 | `tools/Spot.Cli` | exe (`spot`) | thin CLI front-end over Spot.Build |
 | `net/Spot.Net` | library | WebSocket networking (server-authoritative) |
-| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and the L3 `.sptproj` projects `samples/HelloEngine`, `samples/SolarSystem` (a showcase) and `samples/ProvingGrounds` (an FPS playground): only their source is committed (their `.csproj`/`.sln` are regenerated and gitignored, so they are not in the solution); keep them free of binary assets. `SampleProjectTests` check their scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
+| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and the L3 `.sptproj` projects `samples/HelloEngine`, `samples/SolarSystem` (a showcase), `samples/ProvingGrounds` (an FPS playground) and `samples/Voxelcraft` (a block world): only their source is committed (their `.csproj`/`.sln` are regenerated and gitignored, so they are not in the solution); keep them free of binary assets. `SampleProjectTests` check their scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
 | `tests/*` | xUnit | `Spot.Framework.Tests` (framework only, no engine reference), `Spot.Engine.Tests` (includes the architecture tests that pin the layering), `Spot.Build.Tests`, `Spot.Net.Tests`; shared fakes (e.g. `RecordingGraphicsDevice`) in `tests/Shared`, binary fixtures in `tests/Fixtures` |
 
 ## Rules

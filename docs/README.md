@@ -49,6 +49,7 @@ dotnet run --project samples/HelloQuad       # a level-1 program: your own loop 
 dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # cook and run the engine sample
 dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # the solar-system showcase
 dotnet run --project tools/Spot.Cli -- run --project samples/ProvingGrounds  # the FPS playground
+dotnet run --project tools/Spot.Cli -- run --project samples/Voxelcraft  # the infinite block world
 ```
 
 See the repository [README](../README.md) for build and run instructions.
