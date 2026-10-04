@@ -118,6 +118,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- `spot run` failed for every project when given a relative `--project` path (the game could not find its `.csproj`, then its cooked content): the CLI now resolves the project to an absolute path, and a game resolves its content against the folder of the `game.manifest` it loaded
 - The editor could close without any message (a native heap corruption) about a minute after the Inspector showed two asset slots in one card, such as a Mesh Renderer's Mesh and Material or a material's Texture and Normal Map: each asset slot popped one ImGui ID too many
 - A 3D character inside a trigger volume was considered grounded (its ground probe hit the trigger), so it braked in mid-air and could jump again from it
 - UI clip rectangles were applied as pixels in a scaled UI (any scale-with-height layout off its reference height) and ignored the viewport's origin, clipping the wrong area

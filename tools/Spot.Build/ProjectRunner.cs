@@ -44,14 +44,16 @@ public static class ProjectRunner
         // what makes `spot run` behave like a real build rather than only working inside the editor. Cook into
         // a dedicated Build/run folder (with game.manifest beside it) and run from there, so the project root
         // stays clean and only Build/ is produced.
-        string runDir = Path.Combine(project.ProjectDirectory, ProjectStructure.BuildFolder, "run");
+        string projectDir = Path.GetFullPath(project.ProjectDirectory);
+        string runDir = Path.Combine(projectDir, ProjectStructure.BuildFolder, "run");
         if (!ProjectBuilder.StageRuntimePayload(project, runDir, onOutput, onError))
         {
             return -1;
         }
 
-        // Absolute so the project resolves regardless of the working directory we run the game from.
-        string csprojFile = Path.Combine(project.ProjectDirectory, project.Config.Name + ".csproj");
+        // Absolute (even when the project was loaded from a relative path) so it resolves from Build/run, the
+        // working directory the game runs in.
+        string csprojFile = Path.Combine(projectDir, project.Config.Name + ".csproj");
         string config = release ? "Release" : "Debug";
 
         // WorkingDirectory is Build/run so the launched game's current directory holds the cooked

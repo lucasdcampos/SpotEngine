@@ -47,7 +47,8 @@ Everything a build or a Play/Run produces lands under **`Build/`** — the proje
 
 - **`Play`** (in the editor) publishes a fast Debug build to `Build/play`, cooks the assets into
   `Build/play/Content`, writes `game.manifest` beside the game, and launches it from that folder.
-- **`spot run`** cooks into `Build/run` and runs the game from there.
+- **`spot run`** cooks into `Build/run` and runs the game from there (its executable stays in the
+  `dotnet run` output folder).
 - **`spot build <platform>`** publishes the self-contained app into `Build/<platform>` with its
   `Content/` and `game.manifest` alongside.
 
@@ -55,6 +56,10 @@ The cooked `Content/` and the `game.manifest` are **generated build outputs**, n
 commit — they live only inside `Build/`, never at the project root. `game.manifest` is rewritten on
 every build/run from the `.sptproj` config, so changing the start scene in Project Settings takes
 effect on the next Play with no manual cleanup.
+
+The game reads `game.manifest` from its working directory, and resolves the relative content paths in it
+against the manifest's own folder — so the content is found wherever the executable lives. A game started
+with no `game.manifest` in its working directory falls back to its executable's folder.
 
 ## Using the `spot` CLI
 

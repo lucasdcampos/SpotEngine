@@ -105,6 +105,13 @@ public class ApplicationSpec
         !string.IsNullOrEmpty(ContentDirectory) ? ContentDirectory : AssetDirectory;
 
     /// <summary>
+    /// Gets or sets the folder relative content paths resolve against: the folder of the manifest file the spec
+    /// was loaded from, or <see langword="null"/> for the executable's folder.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? BaseDirectory { get; set; }
+
+    /// <summary>
     /// Loads an ApplicationSpec from a JSON file. If the file does not exist, returns a default spec.
     /// </summary>
     public static ApplicationSpec Load(string path)
@@ -114,7 +121,12 @@ public class ApplicationSpec
 
         string json = System.IO.File.ReadAllText(path);
         var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        return System.Text.Json.JsonSerializer.Deserialize<ApplicationSpec>(json, options) ?? new ApplicationSpec();
+        ApplicationSpec spec = System.Text.Json.JsonSerializer.Deserialize<ApplicationSpec>(json, options) ?? new ApplicationSpec();
+
+        // Content listed in the manifest sits beside it, wherever the executable is (`spot run` runs the game
+        // from Build/run while its executable stays in bin/).
+        spec.BaseDirectory = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path));
+        return spec;
     }
 }
 
@@ -417,11 +429,12 @@ public class Application
         }
     }
 
-    // Cooked content ships next to the executable, so a relative content path must resolve against the
-    // app's base directory — not the current working directory, which lets a shipped game run from any
-    // launch location (e.g. `dotnet run` from the repo root). Absolute paths are returned unchanged.
-    private static string ResolveContentPath(string path) =>
-        Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
+    // A relative content path resolves against the folder of the manifest that named it (cooked content ships
+    // beside game.manifest, also under `spot run`, whose game runs from Build/run while its executable stays
+    // in bin/), else against the app's base directory — never the bare working directory, so a game with no
+    // manifest file still finds its content from any launch location. Absolute paths are returned unchanged.
+    private string ResolveContentPath(string path) =>
+        Path.IsPathRooted(path) ? path : Path.Combine(_spec.BaseDirectory ?? AppContext.BaseDirectory, path);
 
     private void PollEvents()
     {

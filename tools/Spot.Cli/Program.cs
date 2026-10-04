@@ -210,6 +210,9 @@ internal static class Program
             throw new FileNotFoundException($"Project path not found: '{path}'.");
         }
 
+        // Absolute, so every path derived from the project still resolves once a child process (the game in
+        // `spot run`) is started from another working directory.
+        sptproj = Path.GetFullPath(sptproj);
         return Project.Load(sptproj) ?? throw new InvalidOperationException($"Failed to load project: '{sptproj}'.");
     }
 
