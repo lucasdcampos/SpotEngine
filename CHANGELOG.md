@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Work in progress toward **v0.3**. The list below is provisional and will be finalized when 0.3 is tagged.
 
 ### Added
+- Console logs support individual and multiple selection, range selection, and copying selected entries with Ctrl+C or the context menu.
+- Editor Console: compact toolbar with Clear, clickable Trace/Info/Warning/Error icons with counts and active backgrounds, inline message search, filtered copy, and Ctrl+F/Ctrl+L shortcuts.
 - **Fullscreen windows**: `WindowSpec.Mode` and `Window.Mode` switch between `Windowed`, `BorderlessFullscreen` and exclusive `Fullscreen` at startup or at runtime, restoring the windowed position and size on the way back
 - **Text entry**: `Input.TypedText` returns the characters typed this frame (layout, shift and key repeat applied; control characters left out), empty while input is captured
 - **Fonts baked at any size**: `Font.CreateDefault(pixelSize)` and `Font.FromFile(path, pixelSize)` rasterize at 8–256 px (`Font.PixelSize`) so large display text stays sharp; layout is unchanged across bakes

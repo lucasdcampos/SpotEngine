@@ -24,7 +24,7 @@ public sealed class DevConsoleSink : ILogSink
     }
 
     /// <inheritdoc />
-    public void Write(in LogEntry entry) => _console.Print(entry.ToString(), ColorFor(entry.Level));
+    public void Write(in LogEntry entry) => _console.Print(entry.ToString(), ColorFor(entry.Level), entry.Level);
 
     private static Vector4 ColorFor(LogLevel level) => level switch
     {

@@ -62,6 +62,7 @@ public enum ConsolePresentation
 public sealed class DevConsole
 {
     private const int MaxLines = 500;
+    private static readonly LogLevel[] Levels = Enum.GetValues<LogLevel>();
 
     /// <summary>
     /// Gets or sets the color used for regular console output. Exposed so the editor's theming can
@@ -82,6 +83,18 @@ public sealed class DevConsole
     /// </summary>
     public static ImFontPtr? MonospaceFont { get; set; }
 
+    /// <summary>
+    /// Gets or sets the severity icons supplied by the host's UI font. Defaults to simple symbols
+    /// supported by the default font; the editor supplies its Font Awesome glyphs.
+    /// </summary>
+    public static IReadOnlyDictionary<LogLevel, string> LevelIcons { get; set; } = new Dictionary<LogLevel, string>
+    {
+        [LogLevel.Trace] = "...",
+        [LogLevel.Info] = "i",
+        [LogLevel.Warn] = "!",
+        [LogLevel.Error] = "x",
+    };
+
     private readonly Dictionary<string, CommandInfo> _commands = new();
     private readonly List<ConsoleLine> _lines = new();
 
@@ -90,6 +103,14 @@ public sealed class DevConsole
     // buffer under the lock and then draws from it, keeping the lock off the ImGui calls.
     private readonly object _linesLock = new();
     private readonly List<ConsoleLine> _renderBuffer = new();
+    private readonly List<ConsoleLine> _visibleLines = new();
+    private readonly LogSelection _selection = new();
+    private long _nextLineId;
+    private bool _outputTakesFocus;
+    private readonly HashSet<LogLevel> _visibleLevels = new(Levels);
+    private string _searchText = string.Empty;
+    private bool _focusSearch;
+    private bool _searchTakesFocus;
 
     private readonly List<string> _history = new();
     private readonly byte[] _inputBuf = new byte[256];
@@ -137,6 +158,44 @@ public sealed class DevConsole
     /// owns input from its own panel focus.
     /// </remarks>
     public bool IsHosted => _hostFocusRequest is not null;
+
+    /// <summary>Gets or sets the editor's case-insensitive search over console messages.</summary>
+    public string SearchText
+    {
+        get => _searchText;
+        set => _searchText = value ?? string.Empty;
+    }
+
+    /// <summary>Gets whether a severity is included in the editor's output.</summary>
+    public bool IsLevelVisible(LogLevel level) => _visibleLevels.Contains(level);
+
+    /// <summary>Includes or excludes a severity without discarding its messages.</summary>
+    public void SetLevelVisible(LogLevel level, bool visible)
+    {
+        if (visible) _visibleLevels.Add(level);
+        else _visibleLevels.Remove(level);
+    }
+
+    /// <summary>Returns a thread-safe snapshot of retained lines, optionally applying the editor filters.</summary>
+    public ConsoleLine[] GetLines(bool applyFilters = false)
+    {
+        lock (_linesLock)
+        {
+            return applyFilters ? _lines.Where(MatchesFilters).ToArray() : _lines.ToArray();
+        }
+    }
+
+    /// <summary>Counts retained entries of a severity, regardless of the editor filters.</summary>
+    public int GetLineCount(LogLevel level)
+    {
+        lock (_linesLock)
+        {
+            return _lines.Count(line => line.Level == level);
+        }
+    }
+
+    private bool MatchesFilters(ConsoleLine line) => IsLevelVisible(line.Level)
+        && line.Text.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Gets the most recently printed line, if any.</summary>
     public ConsoleLine? LastLine
@@ -220,11 +279,15 @@ public sealed class DevConsole
     /// </summary>
     /// <param name="text">The text to append.</param>
     /// <param name="color">The color to render the line with.</param>
-    public void Print(string text, Vector4 color)
+    public void Print(string text, Vector4 color) =>
+        Print(text, color, text.StartsWith("[error]", StringComparison.Ordinal) ? LogLevel.Error : LogLevel.Info);
+
+    /// <summary>Appends a line with its original severity and an explicit display color.</summary>
+    public void Print(string text, Vector4 color, LogLevel level)
     {
         lock (_linesLock)
         {
-            _lines.Add(new ConsoleLine(text, color));
+            _lines.Add(new ConsoleLine(text, color, level, ++_nextLineId));
             if (_lines.Count > MaxLines)
             {
                 _lines.RemoveRange(0, _lines.Count - MaxLines);
@@ -330,14 +393,6 @@ public sealed class DevConsole
     {
         bool editor = presentation == ConsolePresentation.Editor;
 
-        // A monospaced face (when the host provides one) makes logs, timestamps and typed commands line
-        // up like a terminal. Pushed around the whole body so the output and input share it.
-        bool pushedFont = MonospaceFont.HasValue;
-        if (pushedFont)
-        {
-            ImGui.PushFont(MonospaceFont!.Value);
-        }
-
         // The runtime console overlays a live game, so it uses a roomier, Source-style command line
         // (pushed for the whole body so the footer height and prompt share the padding). The editor
         // panel instead keeps the active theme's frame metrics so it reads as a native dockable panel.
@@ -347,6 +402,26 @@ public sealed class DevConsole
         }
 
         bool consoleFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
+
+        // Use one snapshot for the toolbar counts and output, even when a build logs on another thread.
+        lock (_linesLock)
+        {
+            _renderBuffer.Clear();
+            _renderBuffer.AddRange(_lines);
+        }
+
+        if (editor)
+        {
+            // Toolbar icons are merged into the host's body font, not the console's monospaced font.
+            DrawEditorToolbar(consoleFocused);
+        }
+
+        // Keep the output and command input monospaced while the toolbar uses the UI's body font.
+        bool pushedFont = MonospaceFont.HasValue;
+        if (pushedFont)
+        {
+            ImGui.PushFont(MonospaceFont!.Value);
+        }
 
         float footerHeight = ImGui.GetStyle().ItemSpacing.Y + ImGui.GetFrameHeightWithSpacing() + 4.0f;
 
@@ -368,8 +443,94 @@ public sealed class DevConsole
         }
     }
 
-    // Draws the scrolling, colored log region. Right-clicking it offers copy/clear, the pragmatic
-    // stand-in for character-level selection (which ImGui can't do while keeping per-line colors).
+    private void DrawEditorToolbar(bool consoleFocused)
+    {
+        ImGuiIOPtr io = ImGui.GetIO();
+        if (consoleFocused && io.KeyCtrl)
+        {
+            if (ImGui.IsKeyPressed(ImGuiKey.F, false))
+            {
+                _focusSearch = true;
+                _justOpened = false;
+                _reclaimFocus = false;
+            }
+
+            if (ImGui.IsKeyPressed(ImGuiKey.L, false))
+            {
+                ClearLines();
+                _renderBuffer.Clear();
+            }
+        }
+
+        float rightEdge = ImGui.GetCursorScreenPos().X + ImGui.GetContentRegionAvail().X;
+        if (ImGui.Button("Clear"))
+        {
+            ClearLines();
+            _renderBuffer.Clear();
+        }
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Clear all console output (Ctrl+L)");
+
+        foreach (LogLevel level in Levels)
+        {
+            int count = _renderBuffer.Count(line => line.Level == level);
+            string name = level == LogLevel.Warn ? "Warning" : level.ToString();
+            string icon = LevelIcons.TryGetValue(level, out string? glyph) ? glyph : "?";
+            // Reserve the maximum retained count so incoming logs don't move the click targets.
+            float width = Math.Max(ImGui.GetFrameHeight(),
+                ImGui.CalcTextSize($"{icon}  {MaxLines}").X + ImGui.GetStyle().FramePadding.X * 2);
+            if (ImGui.GetItemRectMax().X + ImGui.GetStyle().ItemSpacing.X + width <= rightEdge)
+            {
+                ImGui.SameLine();
+            }
+
+            bool visible = IsLevelVisible(level);
+            Vector4 tint = level switch
+            {
+                LogLevel.Info => ImGui.GetStyle().Colors[(int)ImGuiCol.NavHighlight],
+                LogLevel.Warn => CommandColor,
+                LogLevel.Error => ErrorColor,
+                _ => ImGui.GetStyle().Colors[(int)ImGuiCol.Text],
+            };
+            Vector4 background = ImGui.GetStyle().Colors[(int)ImGuiCol.FrameBg];
+            ImGui.PushStyleColor(ImGuiCol.Button, visible ? Vector4.Lerp(background, tint, 0.24f) : background);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Lerp(background, tint, visible ? 0.38f : 0.14f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Lerp(background, tint, 0.48f));
+            ImGui.PushStyleColor(ImGuiCol.Border, visible
+                ? Vector4.Lerp(background, tint, 0.65f) : ImGui.GetStyle().Colors[(int)ImGuiCol.Border]);
+            ImGui.PushStyleColor(ImGuiCol.Text, visible ? tint : ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1f);
+            if (ImGui.Button($"{icon}  {count}###console_level_{level}", new Vector2(width, 0)))
+            {
+                SetLevelVisible(level, !visible);
+            }
+            ImGui.PopStyleVar();
+            ImGui.PopStyleColor(5);
+            if (ImGui.IsItemHovered())
+            {
+                bool enabled = IsLevelVisible(level);
+                ImGui.SetTooltip($"{name}: {count} entries | {(enabled ? "Shown" : "Hidden")}\n"
+                    + $"Click to {(enabled ? "hide" : "show")}. Count includes hidden entries.");
+            }
+        }
+
+        // Fill the rest of the toolbar with search; wrap only when a narrow dock cannot fit a usable field.
+        float searchLeft = ImGui.GetItemRectMax().X + ImGui.GetStyle().ItemSpacing.X;
+        if (rightEdge - searchLeft >= 120) ImGui.SameLine();
+        ImGui.SetNextItemWidth(Math.Max(1, ImGui.GetContentRegionAvail().X));
+        _searchTakesFocus = _focusSearch;
+        if (_focusSearch)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _focusSearch = false;
+        }
+        ImGui.InputTextWithHint("##console_search", "Search messages...", ref _searchText, 512,
+            ImGuiInputTextFlags.EscapeClearsAll);
+        _searchTakesFocus |= ImGui.IsItemActive();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Search messages (Ctrl+F). Matches without case sensitivity. Escape clears the search.");
+    }
+
+    // Each entry is one selectable row, including messages with multiple lines or literal ImGui markers.
     private void DrawOutput(Vector2 size, bool editor)
     {
         // Editor: derive the inset frame from the active theme (ChildBg + a hairline Border) so it
@@ -391,19 +552,16 @@ public sealed class DevConsole
 
         ImGui.BeginChild("##output", size, ImGuiChildFlags.Border, ImGuiWindowFlags.HorizontalScrollbar);
 
+        _visibleLines.Clear();
+        _visibleLines.AddRange(editor ? _renderBuffer.Where(MatchesFilters) : _renderBuffer);
+        _selection.Update(_visibleLines);
+        _outputTakesFocus = ImGui.IsWindowFocused();
+
         // Was the view pinned to the bottom coming into this frame? Checked before drawing this frame's
         // content (so GetScrollMaxY still reflects last frame's height) so a new log line keeps the console
         // stuck to the bottom only when the user was already there — never yanking them off history they
         // scrolled up to read.
         bool stickToBottom = ImGui.GetScrollMaxY() <= 0f || ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 1.0f;
-
-        // Snapshot the lines under the lock so a background thread appending output cannot mutate the
-        // list while we enumerate it, then render from the copy without holding the lock.
-        lock (_linesLock)
-        {
-            _renderBuffer.Clear();
-            _renderBuffer.AddRange(_lines);
-        }
 
         // A touch more vertical spacing between log lines keeps a busy console legible.
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(ImGui.GetStyle().ItemSpacing.X, 3.0f));
@@ -411,11 +569,34 @@ public sealed class DevConsole
         ImGui.Dummy(new Vector2(0, 2.0f));
         ImGui.Indent(6.0f);
 
-        foreach (ConsoleLine line in _renderBuffer)
+        foreach (ConsoleLine line in _visibleLines)
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, line.Color);
-            ImGui.TextUnformatted(line.Text);
-            ImGui.PopStyleColor();
+            Vector2 position = ImGui.GetCursorScreenPos();
+            Vector2 textSize = ImGui.CalcTextSize(line.Text);
+            Vector2 rowSize = new(Math.Max(ImGui.GetContentRegionAvail().X, textSize.X),
+                Math.Max(ImGui.GetTextLineHeight(), textSize.Y));
+            bool clicked = ImGui.Selectable($"##log_{line.Id}", _selection.Contains(line.Id),
+                ImGuiSelectableFlags.None, rowSize);
+            bool rightClicked = ImGui.IsItemClicked(ImGuiMouseButton.Right);
+            if (clicked || rightClicked)
+            {
+                ImGuiIOPtr io = ImGui.GetIO();
+                if (clicked || !_selection.Contains(line.Id))
+                    _selection.Select(line.Id, _visibleLines, clicked && io.KeyCtrl, clicked && io.KeyShift);
+                FocusOutput();
+            }
+
+            // Draw separately so ## in a message remains literal and a multiline entry shares one hit target.
+            ImGui.GetWindowDrawList().AddText(position, ImGui.GetColorU32(line.Color), line.Text);
+        }
+
+        if (_renderBuffer.Count == 0)
+        {
+            ImGui.TextDisabled("No logs yet.");
+        }
+        else if (_visibleLines.Count == 0)
+        {
+            ImGui.TextDisabled("No logs match the selected types and search.");
         }
 
         ImGui.Unindent(6.0f);
@@ -423,12 +604,43 @@ public sealed class DevConsole
 
         ImGui.PopStyleVar();
 
+        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered())
+        {
+            if (!ImGui.GetIO().KeyCtrl && !ImGui.GetIO().KeyShift) _selection.Clear();
+            FocusOutput();
+        }
+
+        bool popupOpen = ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup);
+        if (ImGui.IsWindowFocused() && !ImGui.IsAnyItemActive() && !popupOpen)
+        {
+            ImGuiIOPtr io = ImGui.GetIO();
+            if (io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.C, false) && _selection.Count > 0)
+                ImGui.SetClipboardText(_selection.BuildText(_visibleLines));
+            if (io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.A, false)) _selection.SelectAll(_visibleLines);
+            if (ImGui.IsKeyPressed(ImGuiKey.Escape, false)) _selection.Clear();
+        }
+
         if (ImGui.BeginPopupContextWindow("##output_ctx"))
         {
+            if (ImGui.MenuItem("Copy selected", "Ctrl+C", false, _selection.Count > 0))
+            {
+                ImGui.SetClipboardText(_selection.BuildText(_visibleLines));
+            }
+
             if (ImGui.MenuItem("Copy all"))
             {
                 ImGui.SetClipboardText(BuildLogText());
             }
+
+            if (editor && ImGui.MenuItem("Copy filtered"))
+            {
+                ImGui.SetClipboardText(string.Join('\n', _visibleLines.Select(line => line.Text)));
+            }
+
+            ImGui.Separator();
+            if (ImGui.MenuItem("Select all visible", "Ctrl+A", false, _visibleLines.Count > 0))
+                _selection.SelectAll(_visibleLines);
+            if (ImGui.MenuItem("Clear selection", "Esc", false, _selection.Count > 0)) _selection.Clear();
 
             if (ImGui.MenuItem("Clear"))
             {
@@ -453,6 +665,14 @@ public sealed class DevConsole
         }
     }
 
+    private void FocusOutput()
+    {
+        ImGui.SetWindowFocus();
+        _outputTakesFocus = true;
+        _justOpened = false;
+        _reclaimFocus = false;
+    }
+
     // Draws the "] input" command line and keeps it focused while the console is open. The runtime skin
     // boxes the input and adds a Submit button; the editor skin is a clean, theme-driven line where
     // Enter submits.
@@ -464,7 +684,7 @@ public sealed class DevConsole
 
         // Grab focus when the console just opened, or when we lost it for a non-deliberate reason last
         // frame (see below). SetKeyboardFocusHere(0) targets the next widget: the input.
-        if (_justOpened || _reclaimFocus)
+        if (_justOpened || (_reclaimFocus && !_outputTakesFocus && !(editor && _searchTakesFocus)))
         {
             ImGui.SetKeyboardFocusHere(0);
             _justOpened = false;
@@ -545,7 +765,8 @@ public sealed class DevConsole
         bool escape = ImGui.IsKeyPressed(ImGuiKey.Escape, false);
         bool popupOpen = ImGui.IsPopupOpen(string.Empty, ImGuiPopupFlags.AnyPopup);
         bool interactingWithItem = ImGui.IsAnyItemActive();
-        if ((submitted || (inputDeactivated && !interactingWithItem)) && consoleFocused && !escape && !popupOpen)
+        if ((submitted || (inputDeactivated && !interactingWithItem)) && consoleFocused && !escape && !popupOpen
+            && !_outputTakesFocus && !(editor && _searchTakesFocus))
         {
             _reclaimFocus = true;
         }
@@ -566,7 +787,8 @@ public sealed class DevConsole
         return sb.ToString();
     }
 
-    private void ClearLines()
+    /// <summary>Clears retained output, preserving command history and editor filters.</summary>
+    public void ClearLines()
     {
         lock (_linesLock)
         {
@@ -885,13 +1107,87 @@ public sealed class DevConsole
     public readonly struct ConsoleLine
     {
         public ConsoleLine(string text, System.Numerics.Vector4 color)
+            : this(text, color, LogLevel.Info)
+        {
+        }
+
+        public ConsoleLine(string text, Vector4 color, LogLevel level)
+            : this(text, color, level, 0)
+        {
+        }
+
+        internal ConsoleLine(string text, Vector4 color, LogLevel level, long id)
         {
             Text = text;
             Color = color;
+            Level = level;
+            Id = id;
         }
 
         public string Text { get; }
 
         public Vector4 Color { get; }
+
+        /// <summary>Gets the severity used by the editor's counters and filters.</summary>
+        public LogLevel Level { get; }
+
+        internal long Id { get; }
+    }
+
+    // Selection belongs to the UI thread; background writers only change the retained log buffer.
+    internal sealed class LogSelection
+    {
+        private readonly HashSet<long> _ids = new();
+        private readonly HashSet<long> _visibleIds = new();
+        private long? _anchor;
+        public int Count => _ids.Count;
+        public bool Contains(long id) => _ids.Contains(id);
+
+        public void Update(IReadOnlyList<ConsoleLine> visibleLines)
+        {
+            _visibleIds.Clear();
+            foreach (ConsoleLine line in visibleLines) _visibleIds.Add(line.Id);
+            _ids.IntersectWith(_visibleIds);
+            if (_anchor.HasValue && !_visibleIds.Contains(_anchor.Value)) _anchor = null;
+        }
+
+        public void Select(long id, IReadOnlyList<ConsoleLine> visibleLines, bool additive, bool range)
+        {
+            int clicked = -1;
+            int anchor = -1;
+            for (int i = 0; i < visibleLines.Count; i++)
+            {
+                if (visibleLines[i].Id == id) clicked = i;
+                if (visibleLines[i].Id == _anchor) anchor = i;
+            }
+            if (clicked < 0) return;
+            if (!additive) _ids.Clear();
+            if (range && anchor >= 0)
+            {
+                for (int i = Math.Min(anchor, clicked); i <= Math.Max(anchor, clicked); i++)
+                    _ids.Add(visibleLines[i].Id);
+            }
+            else
+            {
+                if (!_ids.Add(id)) _ids.Remove(id);
+                _anchor = id;
+            }
+        }
+
+        public void SelectAll(IReadOnlyList<ConsoleLine> visibleLines)
+        {
+            _ids.Clear();
+            _ids.UnionWith(visibleLines.Select(line => line.Id));
+            _anchor = visibleLines.Count > 0 ? visibleLines[0].Id : null;
+        }
+
+        public string BuildText(IReadOnlyList<ConsoleLine> visibleLines) =>
+            string.Join('\n', visibleLines.Where(line => _ids.Contains(line.Id)).Select(line => line.Text));
+
+        public void Clear()
+        {
+            _ids.Clear();
+            _anchor = null;
+        }
     }
 }

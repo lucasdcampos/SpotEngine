@@ -250,6 +250,13 @@ public sealed class EditorTheme
         Spot.Engine.Console.DevConsole.CommandColor = p.LogCommand;
         Spot.Engine.Console.DevConsole.ErrorColor = p.LogError;
         Spot.Engine.Console.DevConsole.MonospaceFont = EditorFonts.Mono;
+        Spot.Engine.Console.DevConsole.LevelIcons = new Dictionary<Spot.Engine.LogLevel, string>
+        {
+            [Spot.Engine.LogLevel.Trace] = EditorIcons.Bug,
+            [Spot.Engine.LogLevel.Info] = EditorIcons.Info,
+            [Spot.Engine.LogLevel.Warn] = EditorIcons.Warning,
+            [Spot.Engine.LogLevel.Error] = EditorIcons.Error,
+        };
     }
 
     private static Vector4 WithAlpha(Vector4 c, float a) => new(c.X, c.Y, c.Z, a);

@@ -55,6 +55,9 @@ public static class EditorIcons
     public const string Copy = "\uf0c5";         // copy
     public const string Trash = "\uf2ed";        // trash-can
     public const string Warning = "\uf071";      // triangle-exclamation
+    public const string Bug = "\uf188";          // bug (trace diagnostics)
+    public const string Info = "\uf05a";         // circle-info
+    public const string Error = "\uf057";        // circle-xmark
     public const string VolumeHigh = "\uf028";   // volume-high (audio source)
     public const string Headphones = "\uf025";   // headphones (audio listener)
     public const string PersonRunning = "\uf70c"; // person-running (character controller)
@@ -80,7 +83,7 @@ public static class EditorIcons
         0xf141, 0xf02d, 0xf126, 0xf08e, 0xf009, 0xf03a, 0xf160, 0xf017,
         0xf00c, 0xf0c5, 0xf2ed, 0xf071, 0xf028, 0xf025, 0xf70c, 0xf5cd,
         0xf46b, 0xf0c8, 0xf008, 0xf031, 0xf72b, 0xf6ff, 0xf2d0, 0xf5d2,
-        0xf6fc,
+        0xf6fc, 0xf188, 0xf05a, 0xf057,
     };
 
     /// <summary>The ImGui glyph range (<c>[lo, hi, …, 0]</c>) covering exactly <see cref="Codepoints"/>.</summary>

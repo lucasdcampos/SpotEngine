@@ -95,6 +95,22 @@ The editor is organized into dockable panels you can rearrange and save into a l
   **Fit to Mesh** refits it at any time.
 - **Console** — engine and game log output, plus a command line (Enter to submit). Rendered with the
   editor theme so it reads as a native panel; the standalone in-game console keeps its own overlay look.
+  **Clear** (`Ctrl+L` while the panel is focused) removes all retained entries without clearing command
+  history. Click the **Trace** (bug), **Info** (information circle), **Warning** (triangle) and **Error**
+  (crossed circle) icon buttons to show or hide each type. Each button includes its count; enabled
+  filters have a tinted background and border, while hidden types are dimmed. Hover for the type name,
+  count and current state. Counts cover the retained output, including hidden entries. The compact toolbar
+  places **Search messages** (`Ctrl+F`) beside the level icons, filling the remaining width (wrapping
+  in narrow docks). Search combines with the type filters and matches text without case sensitivity;
+  `Esc` clears the search. The panel keeps the latest 500 entries.
+  Click a log to select it, `Ctrl+click` to add/remove individual entries,
+  or `Shift+click` to select a visible range (`Ctrl+Shift+click` adds the range to the selection).
+  With the log list focused, `Ctrl+C` copies selected entries in their displayed order, `Ctrl+A`
+  selects all visible entries, and `Esc` clears the selection. Each multiline message is one row.
+  Changing filters removes hidden entries from the selection; incoming logs keep existing selections
+  until those entries leave the 500-entry buffer. Right-click an entry to select it (preserving an
+  existing multi-selection) and **Copy selected**; the output menu also offers **Copy all**,
+  **Copy filtered**, **Select all visible**, **Clear selection**, and **Clear**.
   The `'` key brings this panel forward and puts the caret in the prompt, from anywhere in the editor —
   including while the game has the controls during play, where it also hands the cursor and input back to
   the editor (same as `Esc`), so what you type doesn't drive the game as well. Click the game view to take
