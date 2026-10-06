@@ -3,8 +3,6 @@ using Spot.Engine.Physics;
 using Spot.Engine.Graphics;
 using Spot.Engine.Scenes;
 using Spot.Engine;
-using Spot.Engine;
-using Spot.Engine.Graphics;
 
 namespace ProvingGrounds;
 

@@ -1,9 +1,7 @@
 using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Engine;
 using Spot.Engine.UI;
-using Spot.Engine;
 using Spot.Engine.Audio;
 
 namespace ProvingGrounds;

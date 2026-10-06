@@ -67,6 +67,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - A user component whose script is missing or not yet compiled keeps its data (`MissingComponents`), shows as a pending/missing card in the Inspector, is saved unchanged and resolves once its type loads
 
 ### Changed
+- Consolidated all Engine components into engine/Components, normalized namespaces to Spot.Engine, and removed the Component suffix.
 - **Scripts are components** (breaking): a script is now a class deriving from `Component` attached with `AddComponent`, shown as its own Inspector card and saved in the scene's ordered `"Components"` array; `EntityBehaviour`, `ScriptComponent` and `AddScript` are gone, and `OnCreate` is now `OnStart`. `NetworkBehaviour` derives from `Component`
 - The engine's components are `sealed`; one component per type per entity, and adding a second replaces (and tears down) the first
 - Setting a dynamic 3D body's position or rotation from a script now teleports it (and stops its spin) instead of being overwritten by the simulation, so props can be reset and characters respawned
@@ -201,6 +202,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - Setup scripts
 
 ### Changed
+- Consolidated all Engine components into engine/Components, normalized namespaces to Spot.Engine, and removed the Component suffix.
 - Inspector asset picker now shows preview tiles for every entry (image thumbnails and live material sphere previews) and a cleaner row layout; material reference slots render a preview instead of a flat glyph
 - Application Startup factory method initialization
 - Standardized the codebase: added an `.editorconfig` and a CI workflow (build + test on push/PR), centralized common build settings, and brought the Sandbox under warnings-as-errors
