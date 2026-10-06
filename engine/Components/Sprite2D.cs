@@ -6,7 +6,7 @@ namespace Spot.Engine;
 
 /// <summary>
 /// A component that marks an entity as a drawable 2D sprite. It carries what to draw (an optional
-/// texture and a color); a render system reads it and, together with the entity's <see cref="TransformComponent"/>,
+/// texture and a color); a render system reads it and, together with the entity's <see cref="Transform"/>,
 /// issues the actual draw call.
 /// </summary>
 /// <remarks>
@@ -15,7 +15,7 @@ namespace Spot.Engine;
 /// </remarks>
 [ComponentMenu("Sprite 2D", Order = 10, Category = "Rendering")]
 [SceneComponent("Sprite")]
-public sealed class Sprite2DComponent : Component
+public sealed class Sprite2D : Component
 {
     /// <summary>
     /// Gets or sets the texture to draw. When <see langword="null"/>, the sprite is a solid

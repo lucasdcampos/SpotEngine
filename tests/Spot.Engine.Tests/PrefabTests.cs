@@ -13,14 +13,14 @@ public class PrefabTests
     {
         var source = new Scene();
         var root = source.Instantiate("Turret");
-        var t = root.GetComponent<TransformComponent>();
+        var t = root.GetComponent<Transform>();
         t.Position = new Vector3(5, 0, -2);
         t.Scale = new Vector3(2, 2, 2);
-        root.AddComponent(new LightComponent { Type = LightType.Point, Intensity = 3f });
+        root.AddComponent(new Light { Type = LightType.Point, Intensity = 3f });
 
         var barrel = source.Instantiate("Barrel");
         barrel.SetParent(root);
-        barrel.GetComponent<TransformComponent>().Position = new Vector3(0, 1, 0);
+        barrel.GetComponent<Transform>().Position = new Vector3(0, 1, 0);
 
         string prefabJson = Prefab.Serialize(root);
 
@@ -30,16 +30,16 @@ public class PrefabTests
 
         Assert.NotNull(instance);
         Assert.Equal("Turret", instance!.Value.Name);
-        Assert.Equal(new Vector3(5, 0, -2), instance.Value.GetComponent<TransformComponent>().Position);
-        Assert.Equal(new Vector3(2, 2, 2), instance.Value.GetComponent<TransformComponent>().Scale);
+        Assert.Equal(new Vector3(5, 0, -2), instance.Value.GetComponent<Transform>().Position);
+        Assert.Equal(new Vector3(2, 2, 2), instance.Value.GetComponent<Transform>().Scale);
 
-        var light = instance.Value.GetComponent<LightComponent>();
+        var light = instance.Value.GetComponent<Light>();
         Assert.Equal(LightType.Point, light.Type);
         Assert.Equal(3f, light.Intensity);
 
         var child = Assert.Single(instance.Value.Children.ToList());
         Assert.Equal("Barrel", child.Name);
-        Assert.Equal(new Vector3(0, 1, 0), child.GetComponent<TransformComponent>().Position);
+        Assert.Equal(new Vector3(0, 1, 0), child.GetComponent<Transform>().Position);
         Assert.True(child.Parent.HasValue);
         Assert.Equal("Turret", child.Parent!.Value.Name);
     }
@@ -50,7 +50,7 @@ public class PrefabTests
         // A source entity that is itself an instance must not carry that link into the new prefab definition.
         var scene = new Scene();
         var entity = scene.Instantiate("Crate");
-        entity.AddComponent(new PrefabComponent { PrefabRef = "guid:deadbeef" });
+        entity.AddComponent(new PrefabInstance { PrefabRef = "guid:deadbeef" });
 
         string prefabJson = Prefab.Serialize(entity);
 
@@ -58,7 +58,7 @@ public class PrefabTests
         Entity? instance = Prefab.InstantiateInto(target, prefabJson, null);
 
         Assert.NotNull(instance);
-        Assert.False(instance!.Value.HasComponent<PrefabComponent>());
+        Assert.False(instance!.Value.HasComponent<PrefabInstance>());
     }
 
     [Fact]

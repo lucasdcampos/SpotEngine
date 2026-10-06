@@ -62,8 +62,8 @@ public class ModelInstantiatorTests
         Assert.NotNull(root);
         Assert.Equal("model", root!.Value.Name);
 
-        List<MeshComponent> parts = scene.View<MeshComponent>()
-            .Select(e => e.GetComponent<MeshComponent>())
+        List<MeshRenderer> parts = scene.View<MeshRenderer>()
+            .Select(e => e.GetComponent<MeshRenderer>())
             .ToList();
 
         // One renderer per submesh, each pointing at the shared model but a different submesh.
@@ -90,7 +90,7 @@ public class ModelInstantiatorTests
         Entity? root = ModelInstantiator.Instantiate(scene, Path.Combine(temp.Path, "nope.obj"));
 
         Assert.Null(root);
-        Assert.Empty(scene.View<MeshComponent>());
+        Assert.Empty(scene.View<MeshRenderer>());
     }
 
     private static void Collect(ModelNodeInfo node, List<int> accumulator)

@@ -251,17 +251,17 @@ internal static class ComponentInspector
             }
         }
 
-        if (component is Collider3DComponent collider)
+        if (component is Collider3D collider)
             DrawFitToMesh(entity, collider);
     }
 
     // A 3D collider can size itself to the mesh its entity draws.
-    private static void DrawFitToMesh(Entity entity, Collider3DComponent collider)
+    private static void DrawFitToMesh(Entity entity, Collider3D collider)
     {
-        if (collider is not (BoxCollider3DComponent or SphereCollider3DComponent or CapsuleCollider3DComponent))
+        if (collider is not (BoxCollider3D or SphereCollider3D or CapsuleCollider3D))
             return;
 
-        bool hasMesh = entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null;
+        bool hasMesh = entity.TryGetComponent(out MeshRenderer? mesh) && mesh is not null;
         ImGui.Spacing();
         ImGui.BeginDisabled(!hasMesh);
         if (ImGui.Button("Fit to Mesh", new Vector2(-1.0f, 0.0f)) && hasMesh && !ColliderFitting.FitToMesh(collider, mesh!))
@@ -600,14 +600,14 @@ internal static class ComponentInspector
 
     private static readonly Dictionary<Type, Action<Entity, object>> _componentDrawers = new()
     {
-        [typeof(UICanvasComponent)] = DrawUICanvasComponent,
+        [typeof(UICanvas)] = DrawUICanvasComponent,
     };
 
     private static readonly string[] UIDocumentPatterns = { "*.sptui" };
 
     private static void DrawUICanvasComponent(Entity entity, object component)
     {
-        var canvas = (UICanvasComponent)component;
+        var canvas = (UICanvas)component;
 
         bool enabled = canvas.Enabled;
         if (EditorGui.Checkbox("Enabled", ref enabled))
@@ -705,7 +705,7 @@ internal static class ComponentInspector
             }
         }
 
-        if (component is MeshComponent mesh)
+        if (component is MeshRenderer mesh)
             DrawPrimitiveParameters(entity, mesh);
     }
 
@@ -714,7 +714,7 @@ internal static class ComponentInspector
     // The in-progress edit of a built-in mesh's parameters. While a field is dragged, the renderer shows a
     // throwaway model of each intermediate shape (so the shared primitive cache only ever holds the shapes that
     // were kept); when the field is released the reference is committed and recorded as one undo step.
-    private static MeshComponent? s_shapeMesh;
+    private static MeshRenderer? s_shapeMesh;
     private static PrimitiveSpec? s_shapeSpec;
     private static Model? s_shapePreview;
     private static string? s_shapeBefore;
@@ -723,11 +723,11 @@ internal static class ComponentInspector
 
     // Undo/redo writes a mesh renderer's model reference and reloads the model to match.
     private static readonly MemberAccessor MeshReferenceAccessor = MemberAccessor.FromDelegates(
-        "ModelPath", typeof(string), "MeshComponent.SetModel",
-        target => ((MeshComponent)target).ModelPath,
-        (target, value) => ((MeshComponent)target).SetModel((string?)value));
+        "ModelPath", typeof(string), "MeshRenderer.SetModel",
+        target => ((MeshRenderer)target).ModelPath,
+        (target, value) => ((MeshRenderer)target).SetModel((string?)value));
 
-    private static void DrawPrimitiveParameters(Entity entity, MeshComponent mesh)
+    private static void DrawPrimitiveParameters(Entity entity, MeshRenderer mesh)
     {
         // An edit left open on another renderer (selection moved mid-drag) is committed first.
         if (s_shapeMesh != null && !ReferenceEquals(s_shapeMesh, mesh))
@@ -771,7 +771,7 @@ internal static class ComponentInspector
             CommitShapeEdit();
     }
 
-    private static void PreviewShapeEdit(Entity entity, MeshComponent mesh, PrimitiveSpec spec, string label)
+    private static void PreviewShapeEdit(Entity entity, MeshRenderer mesh, PrimitiveSpec spec, string label)
     {
         if (!ReferenceEquals(s_shapeMesh, mesh))
         {
@@ -797,7 +797,7 @@ internal static class ComponentInspector
 
     private static void CommitShapeEdit()
     {
-        MeshComponent? mesh = s_shapeMesh;
+        MeshRenderer? mesh = s_shapeMesh;
         PrimitiveSpec? spec = s_shapeSpec;
         string? before = s_shapeBefore;
         Entity entity = s_shapeEntity;
@@ -824,7 +824,7 @@ internal static class ComponentInspector
             label,
             before,
             () => mesh.ModelPath,
-            (b, a) => new ComponentValueAction(label, scene, entityId, typeof(MeshComponent), MeshReferenceAccessor, b, a, document),
+            (b, a) => new ComponentValueAction(label, scene, entityId, typeof(MeshRenderer), MeshReferenceAccessor, b, a, document),
             changed: true);
     }
 

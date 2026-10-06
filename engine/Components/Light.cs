@@ -12,7 +12,7 @@ public enum LightType
 
 [ComponentMenu("Light", Order = 80, Category = "Rendering")]
 [SceneComponent("Light")]
-public sealed class LightComponent : Component
+public sealed class Light : Component
 {
     public LightType Type { get; set; } = LightType.Directional;
 

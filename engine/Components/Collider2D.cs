@@ -2,17 +2,17 @@ using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// Shared state for 2D colliders: a local offset plus the trigger flag and collision layer honored by the
-/// Aether backend. Concrete colliders — <see cref="BoxCollider2DComponent"/> and
-/// <see cref="CircleCollider2DComponent"/> — add their shape. Mirrors <see cref="Collider3DComponent"/>.
+/// Aether backend. Concrete colliders — <see cref="BoxCollider2D"/> and
+/// <see cref="CircleCollider2D"/> — add their shape. Mirrors <see cref="Collider3D"/>.
 /// </summary>
-public abstract class Collider2DComponent : Component
+public abstract class Collider2D : Component
 {
     // Only the engine's collider shapes derive from this: the physics backends know each concrete shape.
-    private protected Collider2DComponent()
+    private protected Collider2D()
     {
     }
 

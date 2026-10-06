@@ -177,40 +177,40 @@ public class HierarchyPanel
     /// <summary>Creates an empty entity, selects it, and returns it.</summary>
     public Entity CreateEmpty() => CreateEntity("Empty Entity");
 
-    /// <summary>Creates an entity with a <see cref="CameraComponent"/>, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with a <see cref="Camera"/>, selects it, and returns it.</summary>
     public Entity CreateCamera()
     {
         var entity = CreateEntity("Camera");
-        entity.AddComponent(new CameraComponent());
+        entity.AddComponent(new Camera());
         return entity;
     }
 
-    /// <summary>Creates an entity with a <see cref="Sprite2DComponent"/> component, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with a <see cref="Sprite2D"/> component, selects it, and returns it.</summary>
     public Entity CreateSprite()
     {
         var entity = CreateEntity("Sprite");
-        entity.AddComponent(new Sprite2DComponent());
+        entity.AddComponent(new Sprite2D());
         return entity;
     }
 
-    /// <summary>Creates an entity with an empty <see cref="MeshComponent"/> component, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with an empty <see cref="MeshRenderer"/> component, selects it, and returns it.</summary>
     public Entity CreateMesh()
     {
         var entity = CreateEntity("Mesh");
-        entity.AddComponent(new MeshComponent());
+        entity.AddComponent(new MeshRenderer());
         return entity;
     }
 
-    /// <summary>Creates an entity with a <see cref="LightComponent"/>, selects it, and returns it.</summary>
+    /// <summary>Creates an entity with a <see cref="Light"/>, selects it, and returns it.</summary>
     public Entity CreateLight(LightType type)
     {
         var entity = CreateEntity(type == LightType.Directional ? "Directional Light" : "Point Light");
-        var transform = entity.GetComponent<TransformComponent>();
+        var transform = entity.GetComponent<Transform>();
         if (type == LightType.Directional)
         {
             transform.Rotation = new System.Numerics.Vector3(-45.0f, 45.0f, 0.0f);
         }
-        var light = new LightComponent { Type = type };
+        var light = new Light { Type = type };
         entity.AddComponent(light);
         return entity;
     }
@@ -222,7 +222,7 @@ public class HierarchyPanel
     public Entity CreatePrimitive(PrimitiveShape shape)
     {
         var entity = CreateEntity(shape.ToString());
-        var meshRenderer = new MeshComponent { ModelPath = BuiltinAssets.MeshReference(PrimitiveSpec.For(shape)) };
+        var meshRenderer = new MeshRenderer { ModelPath = BuiltinAssets.MeshReference(PrimitiveSpec.For(shape)) };
         try
         {
             meshRenderer.Model = BuiltinAssets.LoadModel(meshRenderer.ModelPath!);
@@ -236,13 +236,13 @@ public class HierarchyPanel
     }
 
     /// <summary>
-    /// Creates an entity with a <see cref="MeshComponent"/> loaded from the given model file, selects it,
+    /// Creates an entity with a <see cref="MeshRenderer"/> loaded from the given model file, selects it,
     /// and returns it. The model is loaded eagerly; failures are logged and leave the renderer empty.
     /// </summary>
     public Entity CreateMeshFromModel(string modelPath)
     {
         var entity = CreateEntity(System.IO.Path.GetFileNameWithoutExtension(modelPath));
-        var meshRenderer = new MeshComponent { ModelPath = modelPath };
+        var meshRenderer = new MeshRenderer { ModelPath = modelPath };
         try
         {
             meshRenderer.Model = Spot.Engine.Graphics.Model.Load(modelPath);
@@ -313,7 +313,7 @@ public class HierarchyPanel
 
         // Prefab instances read in a distinct color; a disabled entity is dimmed and takes precedence.
         bool active = entity.IsActiveInHierarchy();
-        bool isPrefab = entity.HasComponent<PrefabComponent>();
+        bool isPrefab = entity.HasComponent<PrefabInstance>();
         Vector4? textColor = !active ? ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]
                            : isPrefab ? PrefabColor
                            : null;
@@ -613,7 +613,7 @@ public class HierarchyPanel
     {
         var siblingNames = (parent != null
                 ? parent.Value.Children
-                : scene.View<LabelComponent>().Where(e => e.Parent == null))
+                : scene.View<Label>().Where(e => e.Parent == null))
             .Select(e => e.Name)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -659,7 +659,7 @@ public class HierarchyPanel
     private void SyncRootOrder()
     {
         _rootScratch.Clear();
-        foreach (Entity e in _context.ActiveScene!.View<LabelComponent>())
+        foreach (Entity e in _context.ActiveScene!.View<Label>())
         {
             if (e.Parent == null)
             {
@@ -691,7 +691,7 @@ public class HierarchyPanel
         else
         {
             var parent = entity.Parent.Value;
-            var children = parent.GetComponent<RelationshipComponent>().Children;
+            var children = parent.GetComponent<Relationship>().Children;
             int idx = children.IndexOf(entity);
             if (idx > 0)
             {
@@ -710,7 +710,7 @@ public class HierarchyPanel
                 }
                 else
                 {
-                    var gpRel = grandparent.Value.GetComponent<RelationshipComponent>();
+                    var gpRel = grandparent.Value.GetComponent<Relationship>();
                     int parentIdx = gpRel.Children.IndexOf(parent);
                     entity.SetParent(grandparent);
                     // SetParent appends; move it to just before the former parent.
@@ -736,7 +736,7 @@ public class HierarchyPanel
         }
         else
         {
-            var children = entity.Parent.Value.GetComponent<RelationshipComponent>().Children;
+            var children = entity.Parent.Value.GetComponent<Relationship>().Children;
             int idx = children.IndexOf(entity);
             if (idx >= 0 && idx < children.Count - 1)
                 (children[idx], children[idx + 1]) = (children[idx + 1], children[idx]);
@@ -917,7 +917,7 @@ public class HierarchyPanel
             Entity? parent = e.Parent;
             if (parent == null) continue;
             if (!visitedParents.Add(parent.Value.Id)) continue;
-            var children = parent.Value.GetComponent<RelationshipComponent>().Children;
+            var children = parent.Value.GetComponent<Relationship>().Children;
             ReorderBlock(children, static ch => ch.Id, ids, up);
         }
     }

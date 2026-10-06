@@ -5,7 +5,7 @@ namespace Spot.Engine.Audio;
 /// <summary>
 /// The simple, fire-and-forget audio API for game scripts. For one-shot sounds that need no follow-up
 /// control (a jump, a pickup, a UI click) these one-liners are all a script needs; for looping music or a
-/// sound you later stop or reposition, drive an <c>AudioSourceComponent</c> instead, which holds its own
+/// sound you later stop or reposition, drive an <c>AudioSource</c> instead, which holds its own
 /// <see cref="Voice"/>. Both route through <see cref="AudioManager"/>, so both are safe no-ops when there
 /// is no audio device.
 /// </summary>

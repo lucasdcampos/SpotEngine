@@ -116,7 +116,7 @@ public sealed class Playground : Component
 
     public Entity Player { get; private set; }
 
-    public CharacterController3DComponent? Controller { get; private set; }
+    public CharacterController3D? Controller { get; private set; }
 
     private readonly List<FeedEntry> _feed = new();
     private WorldPopups? _popups;
@@ -134,10 +134,10 @@ public sealed class Playground : Component
         PhysicsSettings.SetLayerCollision(Layers.Projectile, Layers.Projectile, false);
         PhysicsSettings.SetLayerCollision(Layers.Player, Layers.Debris, false);
 
-        foreach (Entity entity in Scene.View<CharacterController3DComponent>())
+        foreach (Entity entity in Scene.View<CharacterController3D>())
         {
             Player = entity;
-            Controller = entity.GetComponent<CharacterController3DComponent>();
+            Controller = entity.GetComponent<CharacterController3D>();
             break;
         }
 
@@ -214,7 +214,7 @@ public sealed class Playground : Component
             _settleFrames--;
         }
 
-        if (!Started && Player.TryGetComponent(out PhysicsBody3DComponent? body))
+        if (!Started && Player.TryGetComponent(out PhysicsBody3D? body))
         {
             body.Velocity = new Vector3(0.0f, MathF.Min(body.Velocity.Y, 0.0f), 0.0f);
         }
@@ -307,9 +307,9 @@ public sealed class Playground : Component
     {
         if (!Player.IsValid) return;
 
-        TransformComponent spawn = SpawnPoint.IsValid ? SpawnPoint.GetComponent<TransformComponent>() : GetComponent<TransformComponent>();
-        Player.GetComponent<TransformComponent>().Position = spawn.WorldPosition;
-        if (Player.TryGetComponent(out PhysicsBody3DComponent? body))
+        Transform spawn = SpawnPoint.IsValid ? SpawnPoint.GetComponent<Transform>() : GetComponent<Transform>();
+        Player.GetComponent<Transform>().Position = spawn.WorldPosition;
+        if (Player.TryGetComponent(out PhysicsBody3D? body))
         {
             body.Velocity = Vector3.Zero;
         }
@@ -377,7 +377,7 @@ public sealed class Playground : Component
     {
         if (!Player.IsValid) return;
 
-        Vector3 position = Player.GetComponent<TransformComponent>().Position;
+        Vector3 position = Player.GetComponent<Transform>().Position;
         if (position.Y < -25.0f)
         {
             Respawn();
@@ -399,7 +399,7 @@ public sealed class Playground : Component
         _lastPosition = position;
         _hasLastPosition = true;
 
-        if (Player.TryGetComponent(out PhysicsBody3DComponent? body))
+        if (Player.TryGetComponent(out PhysicsBody3D? body))
         {
             float speed = new Vector2(body.Velocity.X, body.Velocity.Z).Length();
             Stats.TopSpeed = MathF.Max(Stats.TopSpeed, speed);

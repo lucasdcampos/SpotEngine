@@ -45,7 +45,7 @@ public class UserComponentSerializationTests
     }
 
     private static Entity FindByName(Scene scene, string name) =>
-        scene.View<LabelComponent>().Single(e => e.Name == name);
+        scene.View<Label>().Single(e => e.Name == name);
 
     [Fact]
     public void UserComponent_RoundTripsFieldsEnabledStateAndEntityReferences()

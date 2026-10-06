@@ -22,7 +22,7 @@ public class PlayerMovement : Component
 
     public override void OnUpdate(float deltaTime)
     {
-        var transform = GetComponent<TransformComponent>();
+        var transform = GetComponent<Transform>();
         transform.Position += new Vector3(Speed * deltaTime, 0, 0);
     }
 }

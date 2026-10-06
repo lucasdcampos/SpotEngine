@@ -43,7 +43,7 @@ public sealed class GlowRing : Component
 
     private void Draw(RenderContext context)
     {
-        Vector3 center = GetComponent<TransformComponent>().Position;
+        Vector3 center = GetComponent<Transform>().Position;
 
         BillboardBatch.Begin(context.ViewProjection);
         for (int i = 0; i < Dots; i++)

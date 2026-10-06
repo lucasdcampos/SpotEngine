@@ -49,13 +49,13 @@ public class CollisionEventsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) });
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) });
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        box.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        box.GetComponent<TransformComponent>().Position = new Vector3(0, 3, 0);
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        box.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        box.GetComponent<Transform>().Position = new Vector3(0, 3, 0);
 
         using var physics = new BepuPhysics3D();
 
@@ -75,7 +75,7 @@ public class CollisionEventsTests
         }
 
         Assert.True(sawContact, "the falling box should produce a non-trigger contact with the floor");
-        Assert.True(box.GetComponent<TransformComponent>().Position.Y > 0.5f, "a solid box should rest on the floor, not pass through");
+        Assert.True(box.GetComponent<Transform>().Position.Y > 0.5f, "a solid box should rest on the floor, not pass through");
     }
 
     [Fact]
@@ -83,13 +83,13 @@ public class CollisionEventsTests
     {
         var scene = new Scene();
         var zone = scene.Instantiate("zone");
-        zone.AddComponent(new BoxCollider3DComponent { Size = new Vector3(2, 2, 2), IsTrigger = true });
-        zone.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        zone.AddComponent(new BoxCollider3D { Size = new Vector3(2, 2, 2), IsTrigger = true });
+        zone.GetComponent<Transform>().Position = Vector3.Zero;
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        box.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        box.GetComponent<TransformComponent>().Position = new Vector3(0, 5, 0);
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        box.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        box.GetComponent<Transform>().Position = new Vector3(0, 5, 0);
 
         using var physics = new BepuPhysics3D();
 
@@ -109,7 +109,7 @@ public class CollisionEventsTests
         }
 
         Assert.True(sawTrigger, "the box should register a trigger overlap while passing through the zone");
-        Assert.True(box.GetComponent<TransformComponent>().Position.Y < -1f, "a trigger must not block the body; it should fall through");
+        Assert.True(box.GetComponent<Transform>().Position.Y < -1f, "a trigger must not block the body; it should fall through");
     }
 
     [Fact]
@@ -122,13 +122,13 @@ public class CollisionEventsTests
 
             var scene = new Scene();
             var floor = scene.Instantiate("floor");
-            floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20), Layer = 1 });
-            floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+            floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20), Layer = 1 });
+            floor.GetComponent<Transform>().Position = Vector3.Zero;
 
             var box = scene.Instantiate("box");
-            box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One, Layer = 2 });
-            box.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-            box.GetComponent<TransformComponent>().Position = new Vector3(0, 3, 0);
+            box.AddComponent(new BoxCollider3D { Size = Vector3.One, Layer = 2 });
+            box.AddComponent(new PhysicsBody3D { IsDynamic = true });
+            box.GetComponent<Transform>().Position = new Vector3(0, 3, 0);
 
             using var physics = new BepuPhysics3D();
             bool sawContact = false;
@@ -139,7 +139,7 @@ public class CollisionEventsTests
             }
 
             Assert.False(sawContact, "layers set not to collide must not report contacts");
-            Assert.True(box.GetComponent<TransformComponent>().Position.Y < -1f, "the box should pass through the floor it does not collide with");
+            Assert.True(box.GetComponent<Transform>().Position.Y < -1f, "the box should pass through the floor it does not collide with");
         }
         finally
         {

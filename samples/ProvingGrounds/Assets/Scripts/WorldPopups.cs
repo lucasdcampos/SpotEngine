@@ -6,7 +6,7 @@ namespace ProvingGrounds;
 
 /// <summary>
 /// Score popups in the world ("+100" over a bullseye): a small pool of entities carrying a billboarded
-/// <see cref="TextComponent"/>, reused rather than created per hit. Each rises, pops in scale and fades; its world
+/// <see cref="TextRenderer"/>, reused rather than created per hit. Each rises, pops in scale and fades; its world
 /// size grows with distance so it reads the same on screen near or far.
 /// </summary>
 internal sealed class WorldPopups : IDisposable
@@ -24,7 +24,7 @@ internal sealed class WorldPopups : IDisposable
         for (int i = 0; i < PoolSize; i++)
         {
             Entity entity = scene.Instantiate("Popup");
-            var text = entity.AddComponent(new TextComponent { Text = "", FontSize = 44.0f, Billboard = true, Enabled = false });
+            var text = entity.AddComponent(new TextRenderer { Text = "", FontSize = 44.0f, Billboard = true, Enabled = false });
             _pool.Add(new Popup { Entity = entity, Text = text });
         }
     }
@@ -60,7 +60,7 @@ internal sealed class WorldPopups : IDisposable
 
             float rise = 1.0f - (1.0f - t) * (1.0f - t);
             Vector3 position = popup.Origin + new Vector3(0.0f, 0.9f * rise, 0.0f) + popup.Drift * rise;
-            popup.Entity.GetComponent<TransformComponent>().Position = position;
+            popup.Entity.GetComponent<Transform>().Position = position;
 
             // Overshoot in, settle, then fade over the last half.
             float pop = t < 0.12f ? 0.6f + 0.65f * (t / 0.12f) : 1.25f - 0.25f * MathF.Min(1.0f, (t - 0.12f) / 0.15f);
@@ -85,12 +85,12 @@ internal sealed class WorldPopups : IDisposable
     }
 
     private Vector3 CameraPosition() =>
-        _scene.TryGetActivePrimaryCamera(out Entity camera) ? camera.GetComponent<TransformComponent>().WorldPosition : Vector3.Zero;
+        _scene.TryGetActivePrimaryCamera(out Entity camera) ? camera.GetComponent<Transform>().WorldPosition : Vector3.Zero;
 
     private sealed class Popup
     {
         public Entity Entity;
-        public TextComponent Text = null!;
+        public TextRenderer Text = null!;
         public Vector3 Origin;
         public Vector3 Drift;
         public Vector4 Color;

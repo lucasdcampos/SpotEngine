@@ -33,14 +33,14 @@ public sealed class SceneIcons
         Entity? hovered = null;
         float hoveredDist = DiscRadiusPx;
 
-        foreach (var entity in scene.View<TransformComponent>())
+        foreach (var entity in scene.View<Transform>())
         {
             if (!TryPickIcon(entity, out _))
             {
                 continue;
             }
 
-            Vector3 world = entity.GetComponent<TransformComponent>().WorldPosition;
+            Vector3 world = entity.GetComponent<Transform>().WorldPosition;
             if (!WorldToScreen(vp, world, viewportPos, viewportSize, out Vector2 screen))
             {
                 continue; // behind the camera
@@ -83,9 +83,9 @@ public sealed class SceneIcons
     // Maps an entity to an icon only if it is one of the otherwise-invisible types we mark.
     private static bool TryPickIcon(Entity entity, out EditorGui.EntityIcon kind)
     {
-        if (entity.HasComponent<CameraComponent>()) { kind = EditorGui.EntityIcon.Camera; return true; }
-        if (entity.HasComponent<LightComponent>()) { kind = EditorGui.EntityIcon.Light; return true; }
-        if (entity.HasComponent<DynamicCloudsComponent>() || entity.HasComponent<SkyboxComponent>()) { kind = EditorGui.EntityIcon.Skybox; return true; }
+        if (entity.HasComponent<Camera>()) { kind = EditorGui.EntityIcon.Camera; return true; }
+        if (entity.HasComponent<Light>()) { kind = EditorGui.EntityIcon.Light; return true; }
+        if (entity.HasComponent<DynamicClouds>() || entity.HasComponent<Skybox>()) { kind = EditorGui.EntityIcon.Skybox; return true; }
         kind = EditorGui.EntityIcon.Empty;
         return false;
     }

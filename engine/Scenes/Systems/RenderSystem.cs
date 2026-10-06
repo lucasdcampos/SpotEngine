@@ -9,8 +9,8 @@ using Spot.Engine.Mathematics;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// Draws every entity's 3D mesh (<see cref="MeshComponent"/>) and 2D sprite (<see cref="Sprite2DComponent"/>),
-/// each together with its <see cref="TransformComponent"/>.
+/// Draws every entity's 3D mesh (<see cref="MeshRenderer"/>) and 2D sprite (<see cref="Sprite2D"/>),
+/// each together with its <see cref="Transform"/>.
 /// </summary>
 /// <remarks>
 /// This is the convenient, automatic path — the engine renders your meshes and sprites for you. It is
@@ -28,9 +28,9 @@ public static class RenderSystem
     /// </summary>
     public static IScenePostProcessor? PostProcessor { get; set; }
 
-    // Synthesized when HDR is on but the scene has no PostProcessingComponent, so tone mapping and FXAA
+    // Synthesized when HDR is on but the scene has no PostProcessing, so tone mapping and FXAA
     // still apply. Reused across frames rather than reallocated each render.
-    private static PostProcessingComponent? s_defaultPostProcess;
+    private static PostProcessing? s_defaultPostProcess;
 
     // Instancing buckets for the standard rigid mesh pass: entities sharing a (mesh, material) draw in one
     // instanced call. Both the dictionary and its lists are reused frame to frame (lists returned to a pool
@@ -91,11 +91,11 @@ public static class RenderSystem
             cameraPos = new Vector3(p.X, p.Y, p.Z) / p.W;
         }
 
-        PostProcessingComponent? postProcess = null;
-        foreach (Entity entity in scene.View<PostProcessingComponent>())
+        PostProcessing? postProcess = null;
+        foreach (Entity entity in scene.View<PostProcessing>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var pp = entity.GetComponent<PostProcessingComponent>();
+            var pp = entity.GetComponent<PostProcessing>();
             if (pp.Enabled)
             {
                 postProcess = pp;
@@ -103,7 +103,7 @@ public static class RenderSystem
             }
         }
 
-        // With HDR always-on, a scene without a PostProcessingComponent still renders through the HDR
+        // With HDR always-on, a scene without a PostProcessing still renders through the HDR
         // buffer with the full default look — the same defaults a freshly added component would have:
         // ACES tone mapping, FXAA, threshold-gated bloom that only responds to genuine HDR highlights
         // (the sun disc, emissive surfaces), and only a very faint vignette. The baseline exalts the
@@ -111,7 +111,7 @@ public static class RenderSystem
         // component is for *customizing* that look, not for switching quality on.
         if (postProcess is null && Spot.Engine.Graphics.RenderSettings.Hdr)
         {
-            postProcess = s_defaultPostProcess ??= new PostProcessingComponent();
+            postProcess = s_defaultPostProcess ??= new PostProcessing();
         }
 
         // Post-processing (HDR capture + bloom + tone mapping + FXAA) runs behind a seam so this render path
@@ -133,11 +133,11 @@ public static class RenderSystem
         Renderer3D.PointLightData[] pointLights = s_pointLightScratch;
         int pointLightCount = 0;
 
-        foreach (Entity entity in scene.View<TransformComponent, LightComponent>())
+        foreach (Entity entity in scene.View<Transform, Light>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var transform = entity.GetComponent<TransformComponent>();
-            var light = entity.GetComponent<LightComponent>();
+            var transform = entity.GetComponent<Transform>();
+            var light = entity.GetComponent<Light>();
             if (!transform.Enabled || !light.Enabled) continue;
             
             if (light.Type == LightType.Directional)
@@ -224,18 +224,18 @@ public static class RenderSystem
 
             Renderer3D.EnsureShadowMapResolution(Spot.Engine.Graphics.RenderSettings.ShadowMapResolution);
             Renderer3D.BeginShadowPass(lightSpaceMatrix);
-            foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+            foreach (Entity entity in scene.View<Transform, MeshRenderer>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
-                MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
-                var transform = entity.GetComponent<TransformComponent>();
+                MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
+                var transform = entity.GetComponent<Transform>();
                 if (!meshRenderer.Enabled || !transform.Enabled) continue;
 
                 ResolveAssets(meshRenderer);
                 if (meshRenderer.Model is null) continue;
 
                 Matrix4x4[]? palette = null;
-                bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                bool isSkinned = entity.TryGetComponent(out SkinnedMeshRenderer? skinned) && skinned.Enabled &&
                     skinned.TryBuildPalette(entity, out palette);
 
                 if (cull && !IsVisible(shadowFrustum, meshRenderer.Model, transform.Matrix, isSkinned))
@@ -274,11 +274,11 @@ public static class RenderSystem
                 Matrix4x4 lightSpace = view * proj;
                 Renderer3D.BeginPointShadowFace(face, lightSpace, caster.Position);
 
-                foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+                foreach (Entity entity in scene.View<Transform, MeshRenderer>())
                 {
                     if (!entity.IsActiveInHierarchy()) continue;
-                    MeshComponent mc = entity.GetComponent<MeshComponent>();
-                    var tf = entity.GetComponent<TransformComponent>();
+                    MeshRenderer mc = entity.GetComponent<MeshRenderer>();
+                    var tf = entity.GetComponent<Transform>();
                     if (!mc.Enabled || !tf.Enabled) continue;
 
                     ResolveAssets(mc);
@@ -289,7 +289,7 @@ public static class RenderSystem
                     if (cull && distSq > caster.Range * caster.Range * 4.0f) continue;
 
                     Matrix4x4[]? palette = null;
-                    bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+                    bool isSkinned = entity.TryGetComponent(out SkinnedMeshRenderer? skinned) && skinned.Enabled &&
                         skinned.TryBuildPalette(entity, out palette);
 
                     if (isSkinned)
@@ -317,20 +317,20 @@ public static class RenderSystem
             lightSpaceMatrix, castShadows, pointLights.AsSpan(0, pointLightCount), cameraPos,
             hasPointShadow, pointShadowIdx, pointShadowFar);
         
-        foreach (Entity entity in scene.View<SkyboxComponent>())
+        foreach (Entity entity in scene.View<Skybox>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var skybox = entity.GetComponent<SkyboxComponent>();
+            var skybox = entity.GetComponent<Skybox>();
             if (!skybox.Enabled) continue;
 
             Renderer3D.DrawSkybox(skybox.SkyColor, skybox.GroundColor);
             break;
         }
 
-        foreach (Entity entity in scene.View<DynamicCloudsComponent>())
+        foreach (Entity entity in scene.View<DynamicClouds>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var clouds = entity.GetComponent<DynamicCloudsComponent>();
+            var clouds = entity.GetComponent<DynamicClouds>();
             if (!clouds.Enabled) continue;
             
             Renderer3D.DrawDynamicClouds(
@@ -347,11 +347,11 @@ public static class RenderSystem
         int culled = 0;
         int occluded = 0;
 
-        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+        foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
-            var transform = entity.GetComponent<TransformComponent>();
+            MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
+            var transform = entity.GetComponent<Transform>();
             if (!meshRenderer.Enabled || !transform.Enabled) continue;
 
             ResolveAssets(meshRenderer);
@@ -362,7 +362,7 @@ public static class RenderSystem
             }
 
             Matrix4x4[]? palette = null;
-            bool isSkinned = entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled &&
+            bool isSkinned = entity.TryGetComponent(out SkinnedMeshRenderer? skinned) && skinned.Enabled &&
                 skinned.TryBuildPalette(entity, out palette);
 
             if (cull)
@@ -423,11 +423,11 @@ public static class RenderSystem
 
         Renderer2D.BeginScene(viewProjection);
 
-        foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
+        foreach (Entity entity in scene.View<Transform, Sprite2D>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            TransformComponent transform = entity.GetComponent<TransformComponent>();
-            Sprite2DComponent sprite = entity.GetComponent<Sprite2DComponent>();
+            Transform transform = entity.GetComponent<Transform>();
+            Sprite2D sprite = entity.GetComponent<Sprite2D>();
             if (!transform.Enabled || !sprite.Enabled) continue;
 
             if (sprite.Texture is not null)
@@ -442,21 +442,21 @@ public static class RenderSystem
 
         if (Spot.Engine.Physics.PhysicsDebug.ShowColliders)
         {
-            foreach (var entity in scene.View<Spot.Engine.Physics.BoxCollider2DComponent, TransformComponent>())
+            foreach (var entity in scene.View<BoxCollider2D, Transform>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
-                var transform = entity.GetComponent<TransformComponent>();
-                var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
+                var transform = entity.GetComponent<Transform>();
+                var collider = entity.GetComponent<BoxCollider2D>();
                 if (!transform.Enabled || !collider.Enabled) continue;
                 var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                 Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
             }
 
-            foreach (var entity in scene.View<Spot.Engine.Physics.BoxCollider3DComponent, TransformComponent>())
+            foreach (var entity in scene.View<BoxCollider3D, Transform>())
             {
                 if (!entity.IsActiveInHierarchy()) continue;
-                var transform = entity.GetComponent<TransformComponent>();
-                var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
+                var transform = entity.GetComponent<Transform>();
+                var collider = entity.GetComponent<BoxCollider3D>();
                 if (!transform.Enabled || !collider.Enabled) continue;
                 var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                 Vector3 min = bounds.Min;
@@ -490,7 +490,7 @@ public static class RenderSystem
         // additive particles feed bloom. In 3D scenes they still blend over the meshes drawn earlier.
         ParticleRenderSystem.Render(scene, viewProjection);
 
-        // World-space text (TextComponent) draws alongside particles — blended, camera-facing, and before
+        // World-space text (TextRenderer) draws alongside particles — blended, camera-facing, and before
         // post-processing so it is tone-mapped/bloomed like the rest of the scene, and occluded by geometry
         // via the shared depth test.
         TextRenderSystem.Render(scene, viewProjection);
@@ -647,11 +647,11 @@ public static class RenderSystem
         List<OccluderCandidate> candidates = s_occluderScratch;
         candidates.Clear();
 
-        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+        foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            MeshComponent meshRenderer = entity.GetComponent<MeshComponent>();
-            var transform = entity.GetComponent<TransformComponent>();
+            MeshRenderer meshRenderer = entity.GetComponent<MeshRenderer>();
+            var transform = entity.GetComponent<Transform>();
             if (!meshRenderer.Occluder || !meshRenderer.Enabled || !transform.Enabled) continue;
 
             ResolveAssets(meshRenderer);
@@ -659,7 +659,7 @@ public static class RenderSystem
 
             // Skinned geometry leaves its bind pose, and a see-through surface shows what is behind it:
             // neither can be trusted to block, whatever the flag says.
-            if (entity.TryGetComponent(out SkinnedMeshComponent? skinned) && skinned.Enabled) continue;
+            if (entity.TryGetComponent(out SkinnedMeshRenderer? skinned) && skinned.Enabled) continue;
             Vector4 color = meshRenderer.Material?.Color ?? meshRenderer.Color;
             if (color.W < 0.999f) continue;
             if ((meshRenderer.Material?.ShaderType ?? MaterialShaderType.Standard) != MaterialShaderType.Standard) continue;
@@ -705,7 +705,7 @@ public static class RenderSystem
     /// one, otherwise the whole model. Taking the model's box for a one-submesh renderer would claim the
     /// other parts of the volume as solid too, which could hide geometry that is actually visible.
     /// </summary>
-    private static Spot.Engine.Mathematics.Aabb3d OccluderLocalBounds(MeshComponent meshRenderer)
+    private static Spot.Engine.Mathematics.Aabb3d OccluderLocalBounds(MeshRenderer meshRenderer)
     {
         Model model = meshRenderer.Model!;
         int index = meshRenderer.SubmeshIndex;
@@ -719,10 +719,10 @@ public static class RenderSystem
 
     /// <summary>
     /// Gathers a standard rigid renderer's submesh(es) into the instancing buckets, honoring
-    /// <see cref="MeshComponent.SubmeshIndex"/> exactly as <see cref="DrawMeshes"/> does. The actual draws
+    /// <see cref="MeshRenderer.SubmeshIndex"/> exactly as <see cref="DrawMeshes"/> does. The actual draws
     /// happen in <see cref="FlushBatches"/>, one instanced call per (mesh, material) bucket.
     /// </summary>
-    private static void CollectInstances(MeshComponent meshRenderer, Matrix4x4 world, Vector4 color)
+    private static void CollectInstances(MeshRenderer meshRenderer, Matrix4x4 world, Vector4 color)
     {
         IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
         int index = meshRenderer.SubmeshIndex;
@@ -779,10 +779,10 @@ public static class RenderSystem
     }
 
     /// <summary>
-    /// Draws a renderer's geometry, honoring <see cref="MeshComponent.SubmeshIndex"/>: the whole model
+    /// Draws a renderer's geometry, honoring <see cref="MeshRenderer.SubmeshIndex"/>: the whole model
     /// when it is negative, otherwise the single named submesh (skipped silently when out of range).
     /// </summary>
-    private static void DrawMeshes(MeshComponent meshRenderer, Matrix4x4 world, Vector4 color, Texture2D? texture, int shaderType)
+    private static void DrawMeshes(MeshRenderer meshRenderer, Matrix4x4 world, Vector4 color, Texture2D? texture, int shaderType)
     {
         IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
         int index = meshRenderer.SubmeshIndex;
@@ -800,7 +800,7 @@ public static class RenderSystem
     }
 
     /// <summary>The <see cref="DrawMeshes"/> counterpart for the shadow pass (depth only).</summary>
-    private static void DrawShadowMeshes(MeshComponent meshRenderer, Matrix4x4 world)
+    private static void DrawShadowMeshes(MeshRenderer meshRenderer, Matrix4x4 world)
     {
         IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
         int index = meshRenderer.SubmeshIndex;
@@ -819,10 +819,10 @@ public static class RenderSystem
 
     /// <summary>
     /// Draws a skinned renderer's submesh with the bone palette produced from the live skeleton. A skinned
-    /// part always names a single submesh (its <see cref="MeshComponent.SubmeshIndex"/>), so only that one is
+    /// part always names a single submesh (its <see cref="MeshRenderer.SubmeshIndex"/>), so only that one is
     /// drawn — and only when it actually uses the skinned vertex layout.
     /// </summary>
-    private static void DrawSkinnedMeshes(MeshComponent meshRenderer, ReadOnlySpan<Matrix4x4> palette, Vector4 color, Texture2D? texture)
+    private static void DrawSkinnedMeshes(MeshRenderer meshRenderer, ReadOnlySpan<Matrix4x4> palette, Vector4 color, Texture2D? texture)
     {
         IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
         int index = meshRenderer.SubmeshIndex;
@@ -833,7 +833,7 @@ public static class RenderSystem
     }
 
     /// <summary>The <see cref="DrawSkinnedMeshes"/> counterpart for the shadow pass (depth only).</summary>
-    private static void DrawSkinnedShadowMeshes(MeshComponent meshRenderer, ReadOnlySpan<Matrix4x4> palette)
+    private static void DrawSkinnedShadowMeshes(MeshRenderer meshRenderer, ReadOnlySpan<Matrix4x4> palette)
     {
         IReadOnlyList<Mesh> meshes = meshRenderer.Model!.Meshes;
         int index = meshRenderer.SubmeshIndex;
@@ -844,14 +844,14 @@ public static class RenderSystem
     }
 
     /// <summary>
-    /// Lazily fills in a mesh renderer's <see cref="MeshComponent.Model"/> and <see cref="MeshComponent.Material"/>
+    /// Lazily fills in a mesh renderer's <see cref="MeshRenderer.Model"/> and <see cref="MeshRenderer.Material"/>
     /// from their stored paths. Scene loading stores only the paths (so it never blocks startup on a heavy
     /// asset); this resolves them at draw time. Built-in meshes and materials load synchronously — they're cheap —
     /// while model files load asynchronously in the background and stay <see langword="null"/> (skipping the
     /// draw) until ready. Because it runs only after the render loops have skipped disabled entities, a
     /// disabled object never pays to load its assets.
     /// </summary>
-    private static void ResolveAssets(MeshComponent meshRenderer)
+    private static void ResolveAssets(MeshRenderer meshRenderer)
     {
         if (meshRenderer.Model is null && !string.IsNullOrEmpty(meshRenderer.ModelPath))
         {

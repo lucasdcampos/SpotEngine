@@ -13,7 +13,7 @@ namespace Spot.Engine.Scenes;
 /// by reflection through <see cref="ComponentSerialization"/> — every component tagged with
 /// <see cref="SceneComponentAttribute"/> is written and read automatically, so adding a serializable
 /// component needs no changes here. The structural pieces are handled explicitly: the
-/// <see cref="LabelComponent"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>),
+/// <see cref="Label"/> (it carries the entity name and drives <see cref="Scene.Instantiate"/>),
 /// the user components (written in order under <c>"Components"</c> by guid and class name with their public
 /// fields, and resolved and instantiated at load — an unresolvable one is kept verbatim in
 /// <see cref="MissingComponents"/>). The reader tolerates missing files, empty input, a UTF-8 BOM, malformed JSON, unknown
@@ -32,13 +32,13 @@ public class SceneSerializer
     {
         // Give every entity a stable id before writing so an Entity-typed script field can reference a target
         // that is written later in the file — the reference stores the target's id, which must already exist.
-        foreach (Entity entity in _scene.View<LabelComponent>())
+        foreach (Entity entity in _scene.View<Label>())
         {
             entity.EnsurePersistentId();
         }
 
         var entities = new JsonArray();
-        foreach (var entity in _scene.View<LabelComponent>())
+        foreach (var entity in _scene.View<Label>())
         {
             if (entity.Parent == null)
             {
@@ -73,7 +73,7 @@ public class SceneSerializer
 
         // Tag is structural: it holds the name, the entity's enabled state, its category tag, and its stable
         // id (so entity references survive renames and reordering).
-        var tag = entity.GetComponent<LabelComponent>();
+        var tag = entity.GetComponent<Label>();
         var tagObj = new JsonObject { ["Name"] = tag.Name, ["Enabled"] = entity.Enabled };
         if (!string.IsNullOrEmpty(tag.Tag))
         {
@@ -401,7 +401,7 @@ public class SceneSerializer
         }
 
         var refs = new SceneReferences();
-        foreach (Entity entity in scene.View<LabelComponent>())
+        foreach (Entity entity in scene.View<Label>())
         {
             refs.Register(entity.EnsurePersistentId(), entity);
         }
@@ -433,7 +433,7 @@ public class SceneSerializer
     internal static int UnresolveUserComponents(Scene scene, Func<Type, bool> unload)
     {
         // Every entity needs a stable id first, so an Entity field captured below can be rebound afterwards.
-        foreach (Entity entity in scene.View<LabelComponent>())
+        foreach (Entity entity in scene.View<Label>())
         {
             entity.EnsurePersistentId();
         }

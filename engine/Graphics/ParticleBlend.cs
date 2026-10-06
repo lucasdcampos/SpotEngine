@@ -4,7 +4,7 @@ namespace Spot.Engine.Graphics;
 /// <summary>How particle pixels combine with what's already on screen.</summary>
 /// <remarks>
 /// Lives apart from the desktop <see cref="ParticleRenderer"/> because it is a plain rendering enum carried
-/// by the neutral <c>ParticleSystemComponent</c>, so it must compile for the browser target too.
+/// by the neutral <c>ParticleSystemRenderer</c>, so it must compile for the browser target too.
 /// </remarks>
 public enum ParticleBlend
 {

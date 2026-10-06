@@ -3,16 +3,16 @@ using Spot.Engine;
 using Spot.Engine.Scenes;
 using Spot.Engine.Mathematics;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// A rectangular 2D collider. Provides AABB bounds for the legacy solver and a box fixture for the
-/// Aether backend. Inherits <see cref="Collider2DComponent.Offset"/>, <see cref="Collider2DComponent.IsTrigger"/>,
-/// and <see cref="Collider2DComponent.Layer"/>.
+/// Aether backend. Inherits <see cref="Collider2D.Offset"/>, <see cref="Collider2D.IsTrigger"/>,
+/// and <see cref="Collider2D.Layer"/>.
 /// </summary>
 [ComponentMenu("Box Collider 2D", Order = 50, Category = "Physics 2D")]
 [SceneComponent("BoxCollider2D")]
-public sealed class BoxCollider2DComponent : Collider2DComponent
+public sealed class BoxCollider2D : Collider2D
 {
     /// <summary>
     /// The full width and height of the box.

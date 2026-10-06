@@ -74,17 +74,17 @@ public sealed class ReflexChallenge : Component, IShootable, IResettable
         Color = new Vector4(0.1f, 0.3f, 0.4f, 1.0f), EmissiveColor = new Vector3(0.3f, 0.9f, 1.0f), EmissiveIntensity = 4.0f,
     };
 
-    private TransformComponent? _button;
-    private TransformComponent? _ring;
+    private Transform? _button;
+    private Transform? _ring;
     private Vector3 _ringScale;
-    private TextComponent? _label;
+    private TextRenderer? _label;
     private int _shotsAtStart;
     private int _hitsSeen;
     private int _shotsSeen;
     private float _reactionTotal;
     private int _countdownStep;
 
-    public Vector3 AimPoint => _button?.WorldPosition ?? GetComponent<TransformComponent>().WorldPosition;
+    public Vector3 AimPoint => _button?.WorldPosition ?? GetComponent<Transform>().WorldPosition;
 
     public override void OnStart()
     {
@@ -92,13 +92,13 @@ public sealed class ReflexChallenge : Component, IShootable, IResettable
         foreach (Entity child in Entity.Children)
         {
             if (child.Name != "Start Button") continue;
-            _button = child.GetComponent<TransformComponent>();
+            _button = child.GetComponent<Transform>();
             foreach (Entity part in child.Children)
             {
-                if (part.TryGetComponent(out TextComponent? text)) _label = text;
+                if (part.TryGetComponent(out TextRenderer? text)) _label = text;
                 if (part.Name == "Ring")
                 {
-                    _ring = part.GetComponent<TransformComponent>();
+                    _ring = part.GetComponent<Transform>();
                     _ringScale = _ring.Scale;
                 }
             }
@@ -279,7 +279,7 @@ public sealed class ReflexChallenge : Component, IShootable, IResettable
     {
         if (!Wall.IsValid) return;
 
-        TransformComponent wall = Wall.GetComponent<TransformComponent>();
+        Transform wall = Wall.GetComponent<Transform>();
         Vector3 size = wall.Scale;
         Vector3 center = wall.WorldPosition;
         Vector3 position = center;
@@ -294,12 +294,12 @@ public sealed class ReflexChallenge : Component, IShootable, IResettable
 
         Entity entity = Scene.Instantiate("Orb");
         entity.SetParent(Entity);
-        TransformComponent transform = entity.GetComponent<TransformComponent>();
-        Matrix4x4.Invert(GetComponent<TransformComponent>().Matrix, out Matrix4x4 toLocal);
+        Transform transform = entity.GetComponent<Transform>();
+        Matrix4x4.Invert(GetComponent<Transform>().Matrix, out Matrix4x4 toLocal);
         transform.Position = Vector3.Transform(position, toLocal);
         transform.Scale = new Vector3(0.01f);
-        entity.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Sphere", Material = _orbMaterial });
-        entity.AddComponent(new SphereCollider3DComponent { Radius = 0.5f });
+        entity.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Sphere", Material = _orbMaterial });
+        entity.AddComponent(new SphereCollider3D { Radius = 0.5f });
 
         var orb = new Orb { Entity = entity, Transform = transform, Position = position };
         _orbs.Add(orb);
@@ -368,7 +368,7 @@ public sealed class ReflexChallenge : Component, IShootable, IResettable
     private sealed class Orb
     {
         public Entity Entity;
-        public TransformComponent Transform = null!;
+        public Transform Transform = null!;
         public Vector3 Position;
         public float Age;
     }

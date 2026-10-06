@@ -14,7 +14,7 @@ namespace Spot.Engine;
 /// component and survives a reload.
 /// </remarks>
 [SceneComponent("Prefab")]
-public sealed class PrefabComponent : Component
+public sealed class PrefabInstance : Component
 {
     /// <summary>Gets or sets the <c>guid:</c> reference of the prefab asset this entity was instantiated from.</summary>
     public string? PrefabRef { get; set; }

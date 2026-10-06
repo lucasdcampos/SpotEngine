@@ -33,10 +33,10 @@ public sealed class Target : Component, IShootable, IResettable
     /// <summary>Gets or sets the seconds a knocked-down target stays down.</summary>
     public float ResetDelay { get; set; } = 2.2f;
 
-    private TransformComponent _transform = null!;
-    private TransformComponent? _pivot;
-    private TransformComponent? _face;
-    private MeshComponent? _status;
+    private Transform _transform = null!;
+    private Transform? _pivot;
+    private Transform? _face;
+    private MeshRenderer? _status;
     private Vector3 _origin;
     private float _slideTime;
     private bool _down;
@@ -46,7 +46,7 @@ public sealed class Target : Component, IShootable, IResettable
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _origin = _transform.Position;
         _slideTime = Random.Shared.NextSingle() * 10.0f;
         s_ready ??= new Material { Color = new Vector4(0.1f, 0.3f, 0.15f, 1.0f), EmissiveColor = new Vector3(0.2f, 1.0f, 0.45f), EmissiveIntensity = 3.0f };
@@ -54,15 +54,15 @@ public sealed class Target : Component, IShootable, IResettable
 
         foreach (Entity child in Entity.Children)
         {
-            if (child.Name == "Pivot") _pivot = child.GetComponent<TransformComponent>();
-            if (child.Name == "Status" && child.TryGetComponent(out MeshComponent? lamp)) _status = lamp;
+            if (child.Name == "Pivot") _pivot = child.GetComponent<Transform>();
+            if (child.Name == "Status" && child.TryGetComponent(out MeshRenderer? lamp)) _status = lamp;
         }
 
         if (_pivot?.Entity is { } pivot)
         {
             foreach (Entity child in pivot.Children)
             {
-                if (child.Name == "Face") _face = child.GetComponent<TransformComponent>();
+                if (child.Name == "Face") _face = child.GetComponent<Transform>();
             }
         }
 
@@ -83,7 +83,7 @@ public sealed class Target : Component, IShootable, IResettable
     {
         if (_down || _face is null || Playground.Current is not { } game) return HitResult.None;
 
-        float distance = game.Player.IsValid ? Vector3.Distance(game.Player.GetComponent<TransformComponent>().Position, AimPoint) : 0.0f;
+        float distance = game.Player.IsValid ? Vector3.Distance(game.Player.GetComponent<Transform>().Position, AimPoint) : 0.0f;
         float multiplier = 1.0f + MathF.Floor(distance / 10.0f) * 0.5f;
 
         if (shot.Kind == DamageKind.Explosion)
@@ -153,7 +153,7 @@ public sealed class Target : Component, IShootable, IResettable
         if (_pivot is null) return;
         if (_tween is not null) StopCoroutine(_tween);
 
-        TransformComponent pivot = _pivot;
+        Transform pivot = _pivot;
         _tween = Tween(pivot.Rotation.X, to, duration, angle => pivot.Rotation = new Vector3(angle, 0.0f, 0.0f), ease, done);
     }
 

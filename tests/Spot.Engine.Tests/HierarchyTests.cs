@@ -83,9 +83,9 @@ public class HierarchyTests
     {
         var scene = new Scene();
         var e = scene.Instantiate("initial");
-        Assert.Equal("initial", e.GetComponent<LabelComponent>().Name);
+        Assert.Equal("initial", e.GetComponent<Label>().Name);
 
         e.Name = "renamed";
-        Assert.Equal("renamed", e.GetComponent<LabelComponent>().Name);
+        Assert.Equal("renamed", e.GetComponent<Label>().Name);
     }
 }

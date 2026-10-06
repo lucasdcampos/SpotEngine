@@ -2,18 +2,18 @@ using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// A first-person character controller with Quake/CS-style movement: ground acceleration with
 /// friction, air-strafing (accelerate toward the look+strafe direction under a small air-speed cap,
 /// so turning the mouse while holding A/D builds speed), jumping, and smooth crouching. Pair it with a
-/// dynamic <see cref="PhysicsBody3DComponent"/>, a <see cref="BoxCollider3DComponent"/>, and a child
-/// entity carrying a <see cref="Spot.Engine.CameraComponent"/> for the eyes.
+/// dynamic <see cref="PhysicsBody3D"/>, a <see cref="BoxCollider3D"/>, and a child
+/// entity carrying a <see cref="Spot.Engine.Camera"/> for the eyes.
 /// </summary>
 [ComponentMenu("Character Controller 3D", Order = 65, Category = "Physics")]
 [SceneComponent("CharacterController3D")]
-public sealed class CharacterController3DComponent : Component
+public sealed class CharacterController3D : Component
 {
     // Speeds (units/second). Run is the default; hold Shift to walk, Ctrl to crouch.
     public float WalkSpeed { get; set; } = 4.0f;

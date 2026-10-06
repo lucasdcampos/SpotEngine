@@ -24,13 +24,13 @@ public enum AssetSpawnKind
     /// <summary>A model file or built-in mesh: its node hierarchy, with the model's materials applied.</summary>
     Model,
 
-    /// <summary>An image or built-in texture: a <see cref="Sprite2DComponent"/> drawing it.</summary>
+    /// <summary>An image or built-in texture: a <see cref="Sprite2D"/> drawing it.</summary>
     Sprite,
 
-    /// <summary>An audio clip: an <see cref="AudioSourceComponent"/> playing it.</summary>
+    /// <summary>An audio clip: an <see cref="AudioSource"/> playing it.</summary>
     AudioSource,
 
-    /// <summary>A <c>.sptui</c> document: a <see cref="UICanvasComponent"/> showing it.</summary>
+    /// <summary>A <c>.sptui</c> document: a <see cref="UICanvas"/> showing it.</summary>
     UICanvas,
 }
 
@@ -213,7 +213,7 @@ public static class AssetSpawner
     private static Entity? SpawnPrefab(Scene scene, string path, Entity? parent)
     {
         Entity? root = Prefab.InstantiateFile(scene, path, parent);
-        root?.AddComponent(new PrefabComponent { PrefabRef = AssetDatabase.ToGuidRef(path) });
+        root?.AddComponent(new PrefabInstance { PrefabRef = AssetDatabase.ToGuidRef(path) });
         return root;
     }
 
@@ -224,7 +224,7 @@ public static class AssetSpawner
         // Store a stable guid: reference (portable across rename/move) and preview the cooked texture, exactly
         // as assigning the texture in the Inspector does.
         string? reference = AssetDatabase.ToGuidRef(path);
-        var sprite = new Sprite2DComponent { TexturePath = reference };
+        var sprite = new Sprite2D { TexturePath = reference };
         if (reference != null)
         {
             try
@@ -241,7 +241,7 @@ public static class AssetSpawner
         // The sprite quad is a unit square: stretch it to the picture's proportions so it isn't distorted.
         if (sprite.Texture is { Width: > 0, Height: > 0 } texture)
         {
-            entity.GetComponent<TransformComponent>().Scale = new Vector3((float)texture.Width / texture.Height, 1.0f, 1.0f);
+            entity.GetComponent<Transform>().Scale = new Vector3((float)texture.Width / texture.Height, 1.0f, 1.0f);
         }
 
         return entity;
@@ -252,7 +252,7 @@ public static class AssetSpawner
         Entity entity = NewEntity(scene, path, parent);
 
         string? reference = AssetDatabase.ToGuidRef(path);
-        var source = new AudioSourceComponent { ClipPath = reference };
+        var source = new AudioSource { ClipPath = reference };
         if (reference != null)
         {
             try
@@ -271,7 +271,7 @@ public static class AssetSpawner
     private static Entity SpawnUICanvas(Scene scene, string path, Entity? parent)
     {
         Entity entity = NewEntity(scene, path, parent);
-        entity.AddComponent(new UICanvasComponent { DocumentRef = AssetDatabase.ToGuidRef(path) });
+        entity.AddComponent(new UICanvas { DocumentRef = AssetDatabase.ToGuidRef(path) });
         return entity;
     }
 

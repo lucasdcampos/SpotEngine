@@ -6,7 +6,7 @@ namespace Spot.Engine.Scenes;
 /// Marks a <see cref="Component"/> type as user-facing and tells the editor how to present it: the
 /// title shown on its inspector header, whether it appears in the "Add Component" menu, and whether
 /// it can be removed. Components without this attribute (e.g. internal ones like
-/// <see cref="RelationshipComponent"/>) are not drawn by the reflection-based inspector.
+/// <see cref="Relationship"/>) are not drawn by the reflection-based inspector.
 /// </summary>
 /// <remarks>
 /// This is pure metadata read by the editor via reflection; the engine itself never inspects it, so

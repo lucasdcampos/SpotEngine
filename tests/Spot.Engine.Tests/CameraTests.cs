@@ -9,7 +9,7 @@ public class CameraTests
     [Fact]
     public void Orthographic_ProducesAffineProjection()
     {
-        var cam = new CameraComponent { ProjectionType = SceneCameraProjection.Orthographic };
+        var cam = new Camera { ProjectionType = SceneCameraProjection.Orthographic };
 
         // Orthographic projections stay affine (M44 == 1); perspective sets M44 to 0.
         Assert.Equal(1.0, cam.Projection.M44, 3);
@@ -18,7 +18,7 @@ public class CameraTests
     [Fact]
     public void Perspective_ProducesProjectiveMatrix()
     {
-        var cam = new CameraComponent { ProjectionType = SceneCameraProjection.Perspective };
+        var cam = new Camera { ProjectionType = SceneCameraProjection.Perspective };
 
         Assert.Equal(0.0, cam.Projection.M44, 3);
         Assert.Equal(-1.0, cam.Projection.M34, 3);
@@ -27,7 +27,7 @@ public class CameraTests
     [Fact]
     public void SetViewportSize_ChangesAspectRatio()
     {
-        var cam = new CameraComponent { ProjectionType = SceneCameraProjection.Orthographic, ZoomLevel = 5f };
+        var cam = new Camera { ProjectionType = SceneCameraProjection.Orthographic, ZoomLevel = 5f };
         float square = cam.Projection.M11;
 
         cam.SetViewportSize(200, 100); // 2:1 aspect
@@ -39,7 +39,7 @@ public class CameraTests
     [Fact]
     public void SetViewportSize_IsIgnoredWhenFixedAspectRatio()
     {
-        var cam = new CameraComponent { FixedAspectRatio = true };
+        var cam = new Camera { FixedAspectRatio = true };
         float before = cam.Projection.M11;
 
         cam.SetViewportSize(1920, 1080);
@@ -50,9 +50,9 @@ public class CameraTests
     [Fact]
     public void GetViewProjection_AtOrigin_EqualsProjection()
     {
-        var cam = new CameraComponent { ProjectionType = SceneCameraProjection.Orthographic };
+        var cam = new Camera { ProjectionType = SceneCameraProjection.Orthographic };
         var scene = new Scene();
-        var transform = scene.Instantiate().GetComponent<TransformComponent>(); // identity at origin
+        var transform = scene.Instantiate().GetComponent<Transform>(); // identity at origin
 
         Matrix4x4 vp = cam.GetViewProjection(transform);
 
@@ -65,15 +65,15 @@ public class CameraTests
     {
         var scene = new Scene();
         Entity disabled = scene.Instantiate();
-        disabled.AddComponent(new CameraComponent()).Enabled = false;
+        disabled.AddComponent(new Camera()).Enabled = false;
         Entity secondary = scene.Instantiate();
-        secondary.AddComponent(new CameraComponent { Primary = false });
+        secondary.AddComponent(new Camera { Primary = false });
 
         Assert.False(scene.TryGetActivePrimaryCamera(out _));
         Assert.False(scene.HasActivePrimaryCamera());
 
         Entity primary = scene.Instantiate();
-        primary.AddComponent(new CameraComponent());
+        primary.AddComponent(new Camera());
 
         Assert.True(scene.TryGetActivePrimaryCamera(out Entity found));
         Assert.Equal(primary, found);

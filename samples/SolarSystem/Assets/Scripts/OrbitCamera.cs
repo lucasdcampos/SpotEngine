@@ -40,8 +40,8 @@ public sealed class OrbitCamera : Component
     [InspectorRange(0.5f, 30.0f, 0.1f)]
     public float Smoothing { get; set; } = 6.0f;
 
-    private TransformComponent _transform = null!;
-    private CameraComponent? _camera;
+    private Transform _transform = null!;
+    private Camera? _camera;
 
     private float _yaw = -35.0f;
     private float _pitch = 55.0f;
@@ -76,7 +76,7 @@ public sealed class OrbitCamera : Component
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         Entity.TryGetComponent(out _camera);
         _lastMouse = Input.MousePosition;
 

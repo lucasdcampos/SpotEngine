@@ -37,9 +37,9 @@ public class PlayerAnimations : Component
     public string IdleClip = "Idle";
     public string RunClip = "Run";
 
-    private AnimatorComponent _animator = null!;
+    private Animator _animator = null!;
 
-    public override void OnStart() => _animator = GetComponent<AnimatorComponent>();
+    public override void OnStart() => _animator = GetComponent<Animator>();
 
     public override void OnUpdate(float dt)
     {
@@ -104,7 +104,7 @@ outgoing transitions. Switching is instant today (the target clip starts from th
 Set parameters on the Animator and the controller does the rest:
 
 ```csharp
-var animator = GetComponent<AnimatorComponent>();
+var animator = GetComponent<Animator>();
 animator.SetFloat("Speed", velocity.Length());  // Idle <-> Run
 animator.SetBool("Grounded", isGrounded);
 animator.SetTrigger("Jump");                     // fires an Any State -> Jump edge once

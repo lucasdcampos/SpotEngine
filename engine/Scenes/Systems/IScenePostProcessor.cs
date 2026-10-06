@@ -18,12 +18,12 @@ public interface IScenePostProcessor
     /// </summary>
     /// <param name="settings">The active post-processing settings.</param>
     /// <returns>Whether the scene is being captured for a later <see cref="Resolve"/>.</returns>
-    bool Begin(PostProcessingComponent settings);
+    bool Begin(PostProcessing settings);
 
     /// <summary>
     /// Composites the captured scene back to the screen, applying bloom, tone mapping and FXAA per the
     /// settings. Called after the scene has been drawn, only when <see cref="Begin"/> returned true.
     /// </summary>
     /// <param name="settings">The active post-processing settings.</param>
-    void Resolve(PostProcessingComponent settings);
+    void Resolve(PostProcessing settings);
 }

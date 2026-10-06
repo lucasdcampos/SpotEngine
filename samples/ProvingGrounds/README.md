@@ -51,7 +51,7 @@ Fire one at your feet for a rocket jump.
 |---|---|
 | Character controller (Quake-style movement) | the Player entity; `Player` adds footsteps, landings, camera shake and strafe roll |
 | Hitscan with `Scene.Raycast(..., layerMask)` | `WeaponController.Hitscan`: the ray starts inside the player's capsule and leaves its layer out |
-| Impulses (`PhysicsBody3DComponent.AddImpulseAtPosition`) | bullets push props where they land; `Explosions.Detonate` blasts every body in reach |
+| Impulses (`PhysicsBody3D.AddImpulseAtPosition`) | bullets push props where they land; `Explosions.Detonate` blasts every body in reach |
 | Collision layers (`PhysicsSettings.SetLayerCollision`) | `Playground`: grenades ignore the player and each other, debris ignores the player |
 | Collision and trigger callbacks | `Grenade`, `Drone`, `PhysicsProp` (impact sounds); `JumpPad`, `Zone`, `SpeedTrap` |
 | Kinematic bodies | `Elevator` (a lift that carries you), `Drone` (until shot down) |

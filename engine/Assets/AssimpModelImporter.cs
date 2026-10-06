@@ -84,7 +84,7 @@ public sealed unsafe class AssimpModelImporter : IModelImporter
     /// material slot each submesh uses — without uploading anything to the GPU. The submesh ordering
     /// matches <see cref="ImportMeshData"/> (and therefore the cooked <c>.sptmesh</c>) exactly, because it
     /// imports with the same post-processing flags, so a node's mesh indices double as
-    /// <see cref="Scenes.MeshComponent.SubmeshIndex"/> values.
+    /// <see cref="Scenes.MeshRenderer.SubmeshIndex"/> values.
     /// </summary>
     /// <param name="path">The path to the model file.</param>
     /// <returns>The model's scene graph description.</returns>

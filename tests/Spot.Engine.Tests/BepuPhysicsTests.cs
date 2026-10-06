@@ -23,9 +23,9 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        e.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = e.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        var t = e.GetComponent<TransformComponent>();
+        e.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = e.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        var t = e.GetComponent<Transform>();
         t.Position = new Vector3(0, 10, 0);
 
         using var physics = new BepuPhysics3D();
@@ -41,13 +41,13 @@ public class BepuPhysicsTests
         var scene = new Scene();
 
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = box.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        var t = box.GetComponent<TransformComponent>();
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = box.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        var t = box.GetComponent<Transform>();
         t.Position = new Vector3(0, 5, 0);
 
         using var physics = new BepuPhysics3D();
@@ -63,8 +63,8 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt); // populate the simulation
@@ -82,8 +82,8 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(2, 1, 2) });
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(2, 1, 2) });
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt);
@@ -98,12 +98,12 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
 
         // A body on layer 1 sits between the ray's origin and the floor, like a shooter's own capsule.
         var shooter = scene.Instantiate("shooter");
-        shooter.AddComponent(new BoxCollider3DComponent { Size = Vector3.One, Layer = 1 });
-        shooter.GetComponent<TransformComponent>().Position = new Vector3(0, 3, 0);
+        shooter.AddComponent(new BoxCollider3D { Size = Vector3.One, Layer = 1 });
+        shooter.GetComponent<Transform>().Position = new Vector3(0, 3, 0);
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt);
@@ -120,11 +120,11 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) });
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) });
 
         var volume = scene.Instantiate("volume");
-        volume.AddComponent(new BoxCollider3DComponent { Size = new Vector3(4, 1, 4), IsTrigger = true });
-        volume.GetComponent<TransformComponent>().Position = new Vector3(0, 3, 0);
+        volume.AddComponent(new BoxCollider3D { Size = new Vector3(4, 1, 4), IsTrigger = true });
+        volume.GetComponent<Transform>().Position = new Vector3(0, 3, 0);
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt);
@@ -141,8 +141,8 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = box.AddComponent(new PhysicsBody3DComponent { Mass = 2f });
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = box.AddComponent(new PhysicsBody3D { Mass = 2f });
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt);
@@ -152,7 +152,7 @@ public class BepuPhysicsTests
         physics.Step(scene, Dt);
 
         Assert.InRange(body.Velocity.X, 4.9f, 5.1f); // 10 N·s / 2 kg
-        Assert.True(box.GetComponent<TransformComponent>().Position.X > 0f, "the body should move along the impulse");
+        Assert.True(box.GetComponent<Transform>().Position.X > 0f, "the body should move along the impulse");
         Assert.False(body.HasPendingImpulses, "an applied impulse is consumed");
     }
 
@@ -161,9 +161,9 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = box.AddComponent(new PhysicsBody3DComponent { Mass = 1f });
-        var transform = box.GetComponent<TransformComponent>();
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = box.AddComponent(new PhysicsBody3D { Mass = 1f });
+        var transform = box.GetComponent<Transform>();
 
         using var physics = new BepuPhysics3D();
         physics.Step(scene, Dt);
@@ -181,9 +181,9 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = box.AddComponent(new PhysicsBody3DComponent());
-        var transform = box.GetComponent<TransformComponent>();
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = box.AddComponent(new PhysicsBody3D());
+        var transform = box.GetComponent<Transform>();
         transform.Position = new Vector3(0, 10, 0);
 
         using var physics = new BepuPhysics3D();
@@ -204,9 +204,9 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        box.AddComponent(new PhysicsBody3DComponent());
-        var transform = box.GetComponent<TransformComponent>();
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        box.AddComponent(new PhysicsBody3D());
+        var transform = box.GetComponent<Transform>();
         transform.Position = new Vector3(0, 10, 0);
 
         using var physics = new BepuPhysics3D();
@@ -222,14 +222,14 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var lift = scene.Instantiate("lift");
-        lift.AddComponent(new BoxCollider3DComponent { Size = new Vector3(4, 0.5f, 4) });
-        lift.AddComponent(new PhysicsBody3DComponent { IsKinematic = true });
-        var liftTransform = lift.GetComponent<TransformComponent>();
+        lift.AddComponent(new BoxCollider3D { Size = new Vector3(4, 0.5f, 4) });
+        lift.AddComponent(new PhysicsBody3D { IsKinematic = true });
+        var liftTransform = lift.GetComponent<Transform>();
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        box.AddComponent(new PhysicsBody3DComponent { Mass = 5f });
-        var boxTransform = box.GetComponent<TransformComponent>();
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        box.AddComponent(new PhysicsBody3D { Mass = 5f });
+        var boxTransform = box.GetComponent<Transform>();
         boxTransform.Position = new Vector3(0, 0.75f, 0); // resting on the platform's top at 0.25
 
         using var physics = new BepuPhysics3D();
@@ -250,17 +250,17 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
+        floor.AddComponent(new BoxCollider3D { Size = new Vector3(20, 1, 20) }); // top at y = 0.5
 
         // A tall zone volume, like an area trigger the player walks and jumps through.
         var zone = scene.Instantiate("zone");
-        zone.AddComponent(new BoxCollider3DComponent { Size = new Vector3(20, 8, 20), IsTrigger = true });
-        zone.GetComponent<TransformComponent>().Position = new Vector3(0, 4, 0);
+        zone.AddComponent(new BoxCollider3D { Size = new Vector3(20, 8, 20), IsTrigger = true });
+        zone.GetComponent<Transform>().Position = new Vector3(0, 4, 0);
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = box.AddComponent(new PhysicsBody3DComponent());
-        box.GetComponent<TransformComponent>().Position = new Vector3(0, 5, 0);
+        box.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = box.AddComponent(new PhysicsBody3D());
+        box.GetComponent<Transform>().Position = new Vector3(0, 5, 0);
 
         using var physics = new BepuPhysics3D();
         Run(physics, scene, 5); // still high in the air, inside the volume
@@ -275,15 +275,15 @@ public class BepuPhysicsTests
     {
         var scene = new Scene();
         var wall = scene.Instantiate("wall");
-        wall.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = wall.AddComponent(new PhysicsBody3DComponent { IsDynamic = false });
+        wall.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = wall.AddComponent(new PhysicsBody3D { IsDynamic = false });
 
         using var physics = new BepuPhysics3D();
         body.AddImpulse(Vector3.UnitX);
         physics.Step(scene, Dt);
 
         Assert.False(body.HasPendingImpulses);
-        Assert.Equal(Vector3.Zero, wall.GetComponent<TransformComponent>().Position);
+        Assert.Equal(Vector3.Zero, wall.GetComponent<Transform>().Position);
     }
 
     [Theory]

@@ -13,7 +13,7 @@ namespace Spot.Engine;
 /// </remarks>
 [ComponentMenu("Transform", Addable = false, Removable = false, Order = 0)]
 [SceneComponent("Transform")]
-public sealed class TransformComponent : Component
+public sealed class Transform : Component
 {
     private const float DegreesToRadians = MathF.PI / 180.0f;
 
@@ -64,7 +64,7 @@ public sealed class TransformComponent : Component
         get
         {
             Vector3 worldRot = Rotation;
-            TransformComponent? parentTransform = GetParentTransform();
+            Transform? parentTransform = GetParentTransform();
             if (parentTransform != null)
             {
                 worldRot += parentTransform.WorldRotation;
@@ -104,11 +104,11 @@ public sealed class TransformComponent : Component
         Version++;
     }
 
-    private TransformComponent? GetParentTransform()
+    private Transform? GetParentTransform()
     {
-        if (Entity.HasScene && Entity.TryGetComponent(out RelationshipComponent? rel) && rel.Parent != null)
+        if (Entity.HasScene && Entity.TryGetComponent(out Relationship? rel) && rel.Parent != null)
         {
-            if (rel.Parent.Value.TryGetComponent(out TransformComponent? parentTransform))
+            if (rel.Parent.Value.TryGetComponent(out Transform? parentTransform))
             {
                 return parentTransform;
             }
@@ -144,7 +144,7 @@ public sealed class TransformComponent : Component
     {
         get
         {
-            TransformComponent? parentTransform = GetParentTransform();
+            Transform? parentTransform = GetParentTransform();
             Entity? currentParent = parentTransform is null ? null : parentTransform.Entity;
 
             // If reparented, force update

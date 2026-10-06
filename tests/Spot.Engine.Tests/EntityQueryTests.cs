@@ -52,16 +52,16 @@ public class EntityQueryTests
         var grandchild = scene.Instantiate("grandchild");
         child.SetParent(root);
         grandchild.SetParent(child);
-        grandchild.AddComponent(new SphereCollider3DComponent());
+        grandchild.AddComponent(new SphereCollider3D());
 
-        SphereCollider3DComponent? found = root.GetComponentInChildren<SphereCollider3DComponent>();
+        SphereCollider3D? found = root.GetComponentInChildren<SphereCollider3D>();
         Assert.NotNull(found);
 
         // A component on the entity itself is returned before descending.
-        root.AddComponent(new BoxCollider3DComponent());
-        Assert.NotNull(root.GetComponentInChildren<BoxCollider3DComponent>());
+        root.AddComponent(new BoxCollider3D());
+        Assert.NotNull(root.GetComponentInChildren<BoxCollider3D>());
 
-        Assert.Null(root.GetComponentInChildren<CapsuleCollider3DComponent>());
+        Assert.Null(root.GetComponentInChildren<CapsuleCollider3D>());
     }
 
     [Fact]
@@ -71,12 +71,12 @@ public class EntityQueryTests
         var root = scene.Instantiate("root");
         var child = scene.Instantiate("child");
         child.SetParent(root);
-        root.AddComponent(new BoxCollider3DComponent());
+        root.AddComponent(new BoxCollider3D());
 
-        BoxCollider3DComponent? found = child.GetComponentInParent<BoxCollider3DComponent>();
+        BoxCollider3D? found = child.GetComponentInParent<BoxCollider3D>();
         Assert.NotNull(found);
 
-        Assert.Null(child.GetComponentInParent<CapsuleCollider3DComponent>());
+        Assert.Null(child.GetComponentInParent<CapsuleCollider3D>());
     }
 
     [Fact]
@@ -101,17 +101,17 @@ public class EntityQueryTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        e.AddComponent(new BoxCollider3DComponent());
+        e.AddComponent(new BoxCollider3D());
 
         // Type-based access returns the component when present and null when absent, never throwing.
-        Assert.NotNull(e.GetComponent(typeof(BoxCollider3DComponent)));
-        Assert.Null(e.GetComponent(typeof(CapsuleCollider3DComponent)));
-        Assert.True(e.TryGetComponent(typeof(BoxCollider3DComponent), out object? found));
-        Assert.IsType<BoxCollider3DComponent>(found);
-        Assert.False(e.TryGetComponent(typeof(CapsuleCollider3DComponent), out object? missing));
+        Assert.NotNull(e.GetComponent(typeof(BoxCollider3D)));
+        Assert.Null(e.GetComponent(typeof(CapsuleCollider3D)));
+        Assert.True(e.TryGetComponent(typeof(BoxCollider3D), out object? found));
+        Assert.IsType<BoxCollider3D>(found);
+        Assert.False(e.TryGetComponent(typeof(CapsuleCollider3D), out object? missing));
         Assert.Null(missing);
 
         // The generic getter, by contrast, throws when the component is absent.
-        Assert.Throws<InvalidOperationException>(() => e.GetComponent<CapsuleCollider3DComponent>());
+        Assert.Throws<InvalidOperationException>(() => e.GetComponent<CapsuleCollider3D>());
     }
 }

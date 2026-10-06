@@ -4,7 +4,7 @@ using Spot.Engine;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// The play-mode system that advances every <see cref="ParticleSystemComponent"/>: it refreshes each
+/// The play-mode system that advances every <see cref="ParticleSystemRenderer"/>: it refreshes each
 /// emitter's cached world transform (so world-space spawning and a script's <c>Emit()</c> use the live
 /// position) and steps the simulation. Called from <see cref="Scene.UpdateRuntime"/>, so particles only
 /// move while a scene is running — never in the editor's edit mode. Each emitter is isolated in its own
@@ -14,7 +14,7 @@ public static class ParticleSystem
 {
     public static void Update(Scene scene, float deltaTime)
     {
-        foreach (Entity entity in scene.View<TransformComponent, ParticleSystemComponent>())
+        foreach (Entity entity in scene.View<Transform, ParticleSystemRenderer>())
         {
             UpdateEntity(entity, deltaTime);
         }
@@ -22,8 +22,8 @@ public static class ParticleSystem
 
     public static void UpdateEntity(Entity entity, float deltaTime)
     {
-        if (!entity.TryGetComponent(out ParticleSystemComponent? particles) || 
-            !entity.TryGetComponent(out TransformComponent? transform))
+        if (!entity.TryGetComponent(out ParticleSystemRenderer? particles) || 
+            !entity.TryGetComponent(out Transform? transform))
         {
             return;
         }

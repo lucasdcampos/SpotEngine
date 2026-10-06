@@ -23,14 +23,14 @@ public class AetherPhysics2DTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        e.AddComponent(new BoxCollider2DComponent { Size = Vector2.One });
-        var body = e.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-        e.GetComponent<TransformComponent>().Position = new Vector3(0, 10, 0);
+        e.AddComponent(new BoxCollider2D { Size = Vector2.One });
+        var body = e.AddComponent(new PhysicsBody2D { IsDynamic = true });
+        e.GetComponent<Transform>().Position = new Vector3(0, 10, 0);
 
         using var physics = new AetherPhysics2D();
         Run(physics, scene, 30);
 
-        var t = e.GetComponent<TransformComponent>();
+        var t = e.GetComponent<Transform>();
         Assert.True(t.Position.Y < 10f, "a dynamic body should fall");
         Assert.True(body.Velocity.Y < 0f, "a falling body should have downward velocity");
     }
@@ -41,19 +41,19 @@ public class AetherPhysics2DTests
         var scene = new Scene();
 
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider2DComponent { Size = new Vector2(20, 1) }); // top at y = 0.5
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider2D { Size = new Vector2(20, 1) }); // top at y = 0.5
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         var box = scene.Instantiate("box");
-        box.AddComponent(new BoxCollider2DComponent { Size = Vector2.One });
-        var body = box.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-        box.GetComponent<TransformComponent>().Position = new Vector3(0, 5, 0);
+        box.AddComponent(new BoxCollider2D { Size = Vector2.One });
+        var body = box.AddComponent(new PhysicsBody2D { IsDynamic = true });
+        box.GetComponent<Transform>().Position = new Vector3(0, 5, 0);
 
         using var physics = new AetherPhysics2D();
         Run(physics, scene, 240); // ~4 seconds
 
         // Floor top (0.5) + box half-height (0.5) = 1.0.
-        float y = box.GetComponent<TransformComponent>().Position.Y;
+        float y = box.GetComponent<Transform>().Position.Y;
         Assert.InRange(y, 0.8f, 1.25f);
         Assert.True(MathF.Abs(body.Velocity.Y) < 0.5f, "a rested body should have near-zero vertical velocity");
     }
@@ -64,19 +64,19 @@ public class AetherPhysics2DTests
         var scene = new Scene();
 
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider2DComponent { Size = new Vector2(20, 1) });
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider2D { Size = new Vector2(20, 1) });
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         var ball = scene.Instantiate("ball");
-        ball.AddComponent(new CircleCollider2DComponent { Radius = 0.5f });
-        ball.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-        ball.GetComponent<TransformComponent>().Position = new Vector3(0, 5, 0);
+        ball.AddComponent(new CircleCollider2D { Radius = 0.5f });
+        ball.AddComponent(new PhysicsBody2D { IsDynamic = true });
+        ball.GetComponent<Transform>().Position = new Vector3(0, 5, 0);
 
         using var physics = new AetherPhysics2D();
         Run(physics, scene, 240);
 
         // Floor top (0.5) + ball radius (0.5) = 1.0.
-        float y = ball.GetComponent<TransformComponent>().Position.Y;
+        float y = ball.GetComponent<Transform>().Position.Y;
         Assert.InRange(y, 0.8f, 1.25f);
     }
 
@@ -85,8 +85,8 @@ public class AetherPhysics2DTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider2DComponent { Size = new Vector2(20, 1) }); // top at y = 0.5
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider2D { Size = new Vector2(20, 1) }); // top at y = 0.5
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         using var physics = new AetherPhysics2D();
         physics.Step(scene, Dt); // populate the simulation
@@ -104,8 +104,8 @@ public class AetherPhysics2DTests
     {
         var scene = new Scene();
         var floor = scene.Instantiate("floor");
-        floor.AddComponent(new BoxCollider2DComponent { Size = new Vector2(2, 1) });
-        floor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+        floor.AddComponent(new BoxCollider2D { Size = new Vector2(2, 1) });
+        floor.GetComponent<Transform>().Position = Vector3.Zero;
 
         using var physics = new AetherPhysics2D();
         physics.Step(scene, Dt);
@@ -125,13 +125,13 @@ public class AetherPhysics2DTests
             var scene = new Scene();
 
             var sensor = scene.Instantiate("sensor");
-            sensor.AddComponent(new BoxCollider2DComponent { Size = Vector2.One, IsTrigger = true });
-            sensor.GetComponent<TransformComponent>().Position = Vector3.Zero;
+            sensor.AddComponent(new BoxCollider2D { Size = Vector2.One, IsTrigger = true });
+            sensor.GetComponent<Transform>().Position = Vector3.Zero;
 
             var mover = scene.Instantiate("mover");
-            mover.AddComponent(new BoxCollider2DComponent { Size = Vector2.One });
-            mover.AddComponent(new PhysicsBody2DComponent { IsDynamic = true });
-            mover.GetComponent<TransformComponent>().Position = new Vector3(0.3f, 0, 0);
+            mover.AddComponent(new BoxCollider2D { Size = Vector2.One });
+            mover.AddComponent(new PhysicsBody2D { IsDynamic = true });
+            mover.GetComponent<Transform>().Position = new Vector3(0.3f, 0, 0);
 
             using var physics = new AetherPhysics2D();
             Run(physics, scene, 3);

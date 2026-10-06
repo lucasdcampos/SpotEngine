@@ -7,7 +7,7 @@ using Spot.Engine.Mathematics;
 namespace Spot.Engine.Physics;
 
 /// <summary>
-/// Drives every <see cref="CharacterController3DComponent"/>: mouse look, Quake/CS-style ground and
+/// Drives every <see cref="CharacterController3D"/>: mouse look, Quake/CS-style ground and
 /// air movement, jumping, and smooth crouching. Runs before <see cref="Physics3DSystem"/> each tick so
 /// the body velocity it writes is integrated the same frame.
 /// </summary>
@@ -20,22 +20,22 @@ internal static class CharacterController3DSystem
     {
         if (deltaTime <= 0f) return;
 
-        foreach (var entity in scene.View<CharacterController3DComponent>())
+        foreach (var entity in scene.View<CharacterController3D>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
 
-            var cc = entity.GetComponent<CharacterController3DComponent>();
-            if (!entity.TryGetComponent(out TransformComponent? transform) || !transform.Enabled) continue;
+            var cc = entity.GetComponent<CharacterController3D>();
+            if (!entity.TryGetComponent(out Transform? transform) || !transform.Enabled) continue;
 
             // A character needs a dynamic, upright body and a collider; create sensible defaults if missing.
-            if (!entity.TryGetComponent(out PhysicsBody3DComponent? body))
+            if (!entity.TryGetComponent(out PhysicsBody3D? body))
             {
                 if (!cc.LoggedMissingBodyWarning)
                 {
-                    Log.CoreWarn("CharacterController3D on Entity {0} is missing a PhysicsBody3DComponent. Adding one.", entity.Id);
+                    Log.CoreWarn("CharacterController3D on Entity {0} is missing a PhysicsBody3D. Adding one.", entity.Id);
                     cc.LoggedMissingBodyWarning = true;
                 }
-                body = new PhysicsBody3DComponent { IsDynamic = true };
+                body = new PhysicsBody3D { IsDynamic = true };
                 entity.AddComponent(body);
             }
             body.FreezeRotation = true; // an upright character must never tip over under the simulation
@@ -48,7 +48,7 @@ internal static class CharacterController3DSystem
                     Log.CoreWarn("CharacterController3D on Entity {0} is missing a collider. Adding a capsule.", entity.Id);
                     cc.LoggedMissingColliderWarning = true;
                 }
-                var capsule = new CapsuleCollider3DComponent
+                var capsule = new CapsuleCollider3D
                 {
                     Radius = 0.3f,
                     Length = MathF.Max(0.1f, cc.StandHeight - 0.6f),
@@ -110,7 +110,7 @@ internal static class CharacterController3DSystem
         }
     }
 
-    private static void ApplyMouseLook(CharacterController3DComponent cc)
+    private static void ApplyMouseLook(CharacterController3D cc)
     {
         // Only steer while the cursor is captured (unless locking is disabled).
         if (!cc.LockMouse || Input.CursorLocked)
@@ -122,7 +122,7 @@ internal static class CharacterController3DSystem
         cc.LastMousePos = Input.MousePosition;
     }
 
-    private static void ApplyCrouch(CharacterController3DComponent cc, CharacterCollider collider, float deltaTime)
+    private static void ApplyCrouch(CharacterController3D cc, CharacterCollider collider, float deltaTime)
     {
         cc.IsCrouching = Input.GetKey(Key.LeftControl);
         float target = cc.IsCrouching ? 1f : 0f;
@@ -136,8 +136,8 @@ internal static class CharacterController3DSystem
 
     private static CharacterCollider? ResolveCollider(Entity entity)
     {
-        if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule)) return new CharacterCollider(capsule);
-        if (entity.TryGetComponent(out BoxCollider3DComponent? box)) return new CharacterCollider(box);
+        if (entity.TryGetComponent(out CapsuleCollider3D? capsule)) return new CharacterCollider(capsule);
+        if (entity.TryGetComponent(out BoxCollider3D? box)) return new CharacterCollider(box);
         return null;
     }
 
@@ -147,11 +147,11 @@ internal static class CharacterController3DSystem
     /// </summary>
     private sealed class CharacterCollider
     {
-        private readonly BoxCollider3DComponent? _box;
-        private readonly CapsuleCollider3DComponent? _capsule;
+        private readonly BoxCollider3D? _box;
+        private readonly CapsuleCollider3D? _capsule;
 
-        public CharacterCollider(BoxCollider3DComponent box) => _box = box;
-        public CharacterCollider(CapsuleCollider3DComponent capsule) => _capsule = capsule;
+        public CharacterCollider(BoxCollider3D box) => _box = box;
+        public CharacterCollider(CapsuleCollider3D capsule) => _capsule = capsule;
 
         public bool Enabled
         {
@@ -179,13 +179,13 @@ internal static class CharacterController3DSystem
         }
     }
 
-    private static Entity? ResolveCamera(Scene scene, Entity player, CharacterController3DComponent cc)
+    private static Entity? ResolveCamera(Scene scene, Entity player, CharacterController3D cc)
     {
-        if (player.TryGetComponent(out RelationshipComponent? rel))
+        if (player.TryGetComponent(out Relationship? rel))
         {
             foreach (var child in rel.Children)
             {
-                if (child.HasComponent<CameraComponent>())
+                if (child.HasComponent<Camera>())
                     return child;
             }
         }
@@ -196,18 +196,18 @@ internal static class CharacterController3DSystem
             Log.CoreWarn("CharacterController3D on Entity {0} has no child Camera; using the primary camera.", player.Id);
             cc.LoggedFallbackCameraWarning = true;
         }
-        foreach (var camEnt in scene.View<CameraComponent>())
+        foreach (var camEnt in scene.View<Camera>())
         {
-            if (camEnt.GetComponent<CameraComponent>().Primary)
+            if (camEnt.GetComponent<Camera>().Primary)
                 return camEnt;
         }
         return null;
     }
 
-    private static void ApplyCameraPose(Entity player, Entity? cameraEntity, TransformComponent bodyTransform, CharacterController3DComponent cc, PhysicsBody3DComponent body, float deltaTime)
+    private static void ApplyCameraPose(Entity player, Entity? cameraEntity, Transform bodyTransform, CharacterController3D cc, PhysicsBody3D body, float deltaTime)
     {
         if (!cameraEntity.HasValue) return;
-        if (!cameraEntity.Value.TryGetComponent(out TransformComponent? camTransform)) return;
+        if (!cameraEntity.Value.TryGetComponent(out Transform? camTransform)) return;
 
         float crouchDrop = (cc.StandHeight - cc.CrouchHeight) * cc.CrouchAmount;
         float bobOffset = 0f;
@@ -227,7 +227,7 @@ internal static class CharacterController3DSystem
             bobOffset = MathF.Sin(cc.BobTimer) * cc.BobAmplitude * amplitudeFactor;
         }
 
-        bool isChild = cameraEntity.Value.TryGetComponent(out RelationshipComponent? camRel)
+        bool isChild = cameraEntity.Value.TryGetComponent(out Relationship? camRel)
                        && camRel.Parent?.Id == player.Id;
 
         if (isChild)
@@ -250,7 +250,7 @@ internal static class CharacterController3DSystem
         }
     }
 
-    private static void NoClipMove(CharacterController3DComponent cc, TransformComponent transform, float deltaTime)
+    private static void NoClipMove(CharacterController3D cc, Transform transform, float deltaTime)
     {
         Vector3 input = Vector3.Zero;
         if (Input.GetKey(Key.W)) input.Z -= 1;
@@ -272,7 +272,7 @@ internal static class CharacterController3DSystem
         transform.Position += wishDir * speed * deltaTime;
     }
 
-    private static void Move(CharacterController3DComponent cc, PhysicsBody3DComponent body, float deltaTime)
+    private static void Move(CharacterController3D cc, PhysicsBody3D body, float deltaTime)
     {
         // Local input: X = strafe (A/D), Z = forward (W/S, forward is -Z).
         Vector3 input = Vector3.Zero;

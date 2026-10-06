@@ -15,10 +15,10 @@ namespace Spot.Engine.Physics.Bepu;
 /// A BepuPhysics v2 backend for the engine's 3D physics. Owns a <see cref="Simulation"/> and mirrors
 /// the scene's physics entities into it each step: entities with a collider (box/sphere/capsule) become
 /// Bepu bodies (dynamic/kinematic) or statics, are simulated, and their results are written back onto
-/// the <see cref="TransformComponent"/>.
+/// the <see cref="Transform"/>.
 /// </summary>
 /// <remarks>
-/// Contract: dynamic bodies are driven by velocity (set <see cref="PhysicsBody3DComponent.Velocity"/>
+/// Contract: dynamic bodies are driven by velocity (set <see cref="PhysicsBody3D.Velocity"/>
 /// from scripts); their transform is owned by the simulation. Kinematic/static bodies are the reverse —
 /// move them by their transform. Physics entities are treated as root-level for transform sync.
 /// </remarks>
@@ -115,10 +115,10 @@ internal sealed class BepuPhysics3D : IPhysics3D
     {
         _seen.Clear();
 
-        foreach (var entity in scene.View<TransformComponent>())
+        foreach (var entity in scene.View<Transform>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var transform = entity.GetComponent<TransformComponent>();
+            var transform = entity.GetComponent<Transform>();
             if (!transform.Enabled) continue;
 
             // Use the authored local scale, not WorldScale: the latter is decomposed from the world
@@ -127,7 +127,7 @@ internal sealed class BepuPhysics3D : IPhysics3D
             // velocity). Physics entities are treated as root-level, so local scale is the right value.
             if (!TryDescribeCollider(entity, transform.Scale, out ColliderDesc desc)) continue;
 
-            bool hasBody = entity.TryGetComponent(out PhysicsBody3DComponent? body) && body.Enabled;
+            bool hasBody = entity.TryGetComponent(out PhysicsBody3D? body) && body.Enabled;
             int kind = !hasBody ? 0 : body!.IsKinematic ? 1 : body.IsDynamic ? 2 : 0;
             bool freeze = hasBody && body!.FreezeRotation;
             float mass = hasBody ? MathF.Max(0.0001f, body!.Mass) : 1f;
@@ -247,7 +247,7 @@ internal sealed class BepuPhysics3D : IPhysics3D
     // Applies the impulses scripts queued on a dynamic body since the last step: a point impulse is offset from the
     // body's center of mass, so it spins the body as well as moving it (a frozen body has no inverse inertia, so it
     // only moves).
-    private static void ApplyImpulses(BodyReference b, PhysicsBody3DComponent body)
+    private static void ApplyImpulses(BodyReference b, PhysicsBody3D body)
     {
         if (!body.HasPendingImpulses) return;
 
@@ -326,8 +326,8 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
             var entity = scene.EntityById(kvp.Key);
             if (entity is null) continue;
-            if (!entity.Value.TryGetComponent(out TransformComponent? transform)) continue;
-            if (!entity.Value.TryGetComponent(out PhysicsBody3DComponent? body)) continue;
+            if (!entity.Value.TryGetComponent(out Transform? transform)) continue;
+            if (!entity.Value.TryGetComponent(out PhysicsBody3D? body)) continue;
             if (body!.IsKinematic) continue; // kinematic pose is authored, not simulated
 
             var b = _simulation.Bodies[tracked.Body];
@@ -394,19 +394,19 @@ internal sealed class BepuPhysics3D : IPhysics3D
 
     private static bool TryDescribeCollider(Entity entity, Vector3 scale, out ColliderDesc desc)
     {
-        if (entity.TryGetComponent(out BoxCollider3DComponent? box) && box!.Enabled)
+        if (entity.TryGetComponent(out BoxCollider3D? box) && box!.Enabled)
         {
             Vector3 s = box.Size * scale;
             desc = new ColliderDesc(0, s.X, s.Y, s.Z, box.Offset * scale, s.Y * 0.5f, box.IsTrigger, box.Layer, box.Friction, box.Restitution);
             return true;
         }
-        if (entity.TryGetComponent(out SphereCollider3DComponent? sphere) && sphere!.Enabled)
+        if (entity.TryGetComponent(out SphereCollider3D? sphere) && sphere!.Enabled)
         {
             float r = sphere.Radius * scale.X;
             desc = new ColliderDesc(1, r, 0f, 0f, sphere.Offset * scale, r, sphere.IsTrigger, sphere.Layer, sphere.Friction, sphere.Restitution);
             return true;
         }
-        if (entity.TryGetComponent(out CapsuleCollider3DComponent? capsule) && capsule!.Enabled)
+        if (entity.TryGetComponent(out CapsuleCollider3D? capsule) && capsule!.Enabled)
         {
             float r = capsule.Radius * scale.X;
             float len = capsule.Length * scale.Y;

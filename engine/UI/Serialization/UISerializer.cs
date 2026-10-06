@@ -11,7 +11,7 @@ namespace Spot.Engine.UI;
 /// Reads and writes a <c>.sptui</c> UI document — a <see cref="UIRoot"/>'s scale settings and its retained
 /// <see cref="Widget"/> tree — as JSON. This is the on-disk counterpart to building UI in code: the editor
 /// edits a live widget tree and saves it here, and the runtime loads it back and instantiates it into a
-/// scene's UI (see <c>UICanvasComponent</c>). The format mirrors scene serialization conventions (vectors as
+/// scene's UI (see <c>UICanvas</c>). The format mirrors scene serialization conventions (vectors as
 /// number arrays, asset references as stored ref strings) and never throws on load: unknown widget types and
 /// unconvertible fields are skipped and logged so a hand-edited or older document keeps loading.
 /// </summary>

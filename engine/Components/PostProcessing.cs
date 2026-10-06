@@ -22,7 +22,7 @@ public enum TonemapMode
 
 [ComponentMenu("Post Processing", Order = 110, Category = "Environment")]
 [SceneComponent("PostProcessing")]
-public sealed class PostProcessingComponent : Component
+public sealed class PostProcessing : Component
 {
     /// <summary>The tone-mapping curve applied to the HDR scene before gamma correction.</summary>
     public TonemapMode Tonemap { get; set; } = TonemapMode.Aces;

@@ -6,7 +6,7 @@ using Spot.Engine.Scenes;
 namespace ProvingGrounds;
 
 /// <summary>
-/// What the engine's <see cref="CharacterController3DComponent"/> leaves to the game: footsteps and landings you can
+/// What the engine's <see cref="CharacterController3D"/> leaves to the game: footsteps and landings you can
 /// hear and feel, camera shake from explosions, a slight roll into strafes, and launches from jump pads. Movement
 /// itself — Quake-style acceleration, air strafing, crouching, jumping, mouse look — is the component's.
 /// </summary>
@@ -33,10 +33,10 @@ public sealed class Player : Component
 
     public bool Flying => _controller?.IsNoClip ?? false;
 
-    private CharacterController3DComponent? _controller;
-    private PhysicsBody3DComponent? _body;
-    private TransformComponent _transform = null!;
-    private TransformComponent? _camera;
+    private CharacterController3D? _controller;
+    private PhysicsBody3D? _body;
+    private Transform _transform = null!;
+    private Transform? _camera;
     private bool _wasGrounded = true;
     private Vector3 _launch;
     private float _launchHold;
@@ -50,14 +50,14 @@ public sealed class Player : Component
     public override void OnStart()
     {
         Current = this;
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         Entity.TryGetComponent(out _controller);
         Entity.TryGetComponent(out _body);
         foreach (Entity child in Entity.Children)
         {
-            if (child.HasComponent<CameraComponent>())
+            if (child.HasComponent<Camera>())
             {
-                _camera = child.GetComponent<TransformComponent>();
+                _camera = child.GetComponent<Transform>();
                 break;
             }
         }

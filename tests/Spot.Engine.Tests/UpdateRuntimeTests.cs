@@ -37,7 +37,7 @@ public class UpdateRuntimeTests
         {
             if (Observed) return;
             Observed = true;
-            ObservedVelocityY = Entity.GetComponent<PhysicsBody3DComponent>().Velocity.Y;
+            ObservedVelocityY = Entity.GetComponent<PhysicsBody3D>().Velocity.Y;
         }
     }
 
@@ -73,16 +73,16 @@ public class UpdateRuntimeTests
     {
         var scene = new Scene();
         Entity e = scene.Instantiate();
-        e.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        var body = e.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        e.GetComponent<TransformComponent>().Position = new Vector3(0, 10, 0);
+        e.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        var body = e.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        e.GetComponent<Transform>().Position = new Vector3(0, 10, 0);
 
         for (int i = 0; i < 30; i++)
         {
             scene.UpdateRuntime(Dt);
         }
 
-        Assert.True(e.GetComponent<TransformComponent>().Position.Y < 10f, "UpdateRuntime should step physics so a dynamic body falls");
+        Assert.True(e.GetComponent<Transform>().Position.Y < 10f, "UpdateRuntime should step physics so a dynamic body falls");
         Assert.True(body.Velocity.Y < 0f);
     }
 
@@ -91,9 +91,9 @@ public class UpdateRuntimeTests
     {
         var scene = new Scene();
         Entity e = scene.Instantiate();
-        e.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        e.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        e.GetComponent<TransformComponent>().Position = new Vector3(0, 10, 0);
+        e.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        e.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        e.GetComponent<Transform>().Position = new Vector3(0, 10, 0);
         var probe = e.AddComponent(new VelocityProbe());
 
         scene.UpdateRuntime(Dt);
@@ -108,12 +108,12 @@ public class UpdateRuntimeTests
         var scene = new Scene();
 
         Entity body = scene.Instantiate("Body");
-        body.AddComponent(new BoxCollider3DComponent { Size = Vector3.One });
-        body.AddComponent(new PhysicsBody3DComponent { IsDynamic = true });
-        body.GetComponent<TransformComponent>().Position = new Vector3(0, 5, 0);
+        body.AddComponent(new BoxCollider3D { Size = Vector3.One });
+        body.AddComponent(new PhysicsBody3D { IsDynamic = true });
+        body.GetComponent<Transform>().Position = new Vector3(0, 5, 0);
 
-        scene.Instantiate("Emitter").AddComponent(new ParticleSystemComponent());
-        scene.Instantiate("Speaker").AddComponent(new AudioSourceComponent());
+        scene.Instantiate("Emitter").AddComponent(new ParticleSystemRenderer());
+        scene.Instantiate("Speaker").AddComponent(new AudioSource());
         scene.Instantiate("Scripted").AddComponent(new UpdateCounter());
 
         var exception = Record.Exception(() =>

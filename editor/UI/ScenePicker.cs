@@ -11,7 +11,7 @@ namespace Spot.Editor.UI;
 /// Mouse picking for the editor viewport. Casts a ray from the cursor through the camera and finds
 /// the entity under it. Works identically for the 2D orthographic and 3D perspective cameras because
 /// every candidate is tested in its own local space, so rotation and scale are handled for free:
-/// <see cref="Sprite2DComponent"/> quads against the unit quad, and <see cref="MeshComponent"/> models
+/// <see cref="Sprite2D"/> quads against the unit quad, and <see cref="MeshRenderer"/> models
 /// against their local-space bounding box.
 /// </summary>
 public static class ScenePicker
@@ -45,12 +45,12 @@ public static class ScenePicker
         Entity? bestIcon = null;
         float bestPix = IconRadiusPx;
 
-        foreach (Entity entity in scene.View<TransformComponent>())
+        foreach (Entity entity in scene.View<Transform>())
         {
-            if (entity.HasComponent<Sprite2DComponent>())
+            if (entity.HasComponent<Sprite2D>())
                 continue;
 
-            TransformComponent t = entity.GetComponent<TransformComponent>();
+            Transform t = entity.GetComponent<Transform>();
             if (!TryProject(t.WorldPosition, viewProjection, viewportPos, viewportSize, out Vector2 screen))
                 continue;
 
@@ -77,7 +77,7 @@ public static class ScenePicker
             return null;
 
         Entity? hit = RaycastDrawables(scene, rayOrigin, rayDir, ignoreEnclosing: true, out _);
-        return hit is Entity entity && entity.HasComponent<MeshComponent>() ? entity : null;
+        return hit is Entity entity && entity.HasComponent<MeshRenderer>() ? entity : null;
     }
 
     /// <summary>
@@ -87,10 +87,10 @@ public static class ScenePicker
     public static bool TryGetMeshBounds(Entity entity, out Aabb3d bounds)
     {
         bounds = default;
-        if (!entity.HasComponent<MeshComponent>())
+        if (!entity.HasComponent<MeshRenderer>())
             return false;
 
-        MeshComponent mesh = entity.GetComponent<MeshComponent>();
+        MeshRenderer mesh = entity.GetComponent<MeshRenderer>();
         Model? model = mesh.Model;
         if (model is null || model.Meshes.Count == 0)
             return false;
@@ -103,7 +103,7 @@ public static class ScenePicker
 
         // Skinned parts are posed by bones, not this transform, so pad the bind-pose box the same way the render
         // culling does, keeping animated geometry inside the box.
-        if (entity.HasComponent<SkinnedMeshComponent>())
+        if (entity.HasComponent<SkinnedMeshRenderer>())
             bounds = bounds.Expanded(2.0f);
 
         return true;
@@ -192,9 +192,9 @@ public static class ScenePicker
         Entity? best = null;
         float bestDist = float.MaxValue;
 
-        foreach (Entity entity in scene.View<TransformComponent, Sprite2DComponent>())
+        foreach (Entity entity in scene.View<Transform, Sprite2D>())
         {
-            TransformComponent t = entity.GetComponent<TransformComponent>();
+            Transform t = entity.GetComponent<Transform>();
             if (!Matrix4x4.Invert(t.Matrix, out Matrix4x4 invModel))
                 continue;
 
@@ -223,12 +223,12 @@ public static class ScenePicker
         // Pass 2: the 3D meshes (primitives and imported models). Test the ray against each mesh's
         // local-space bounding box, transformed into the entity's local space so rotation and scale are
         // handled for free. Competes with the quad pass on depth so the nearest thing under the cursor wins.
-        foreach (Entity entity in scene.View<TransformComponent, MeshComponent>())
+        foreach (Entity entity in scene.View<Transform, MeshRenderer>())
         {
             if (!TryGetMeshBounds(entity, out Aabb3d local))
                 continue;
 
-            TransformComponent t = entity.GetComponent<TransformComponent>();
+            Transform t = entity.GetComponent<Transform>();
             if (!Matrix4x4.Invert(t.Matrix, out Matrix4x4 invModel))
                 continue;
 

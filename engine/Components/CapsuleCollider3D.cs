@@ -2,7 +2,7 @@ using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// A capsule collider (an upright cylinder capped by hemispheres) for 3D physics. Ideal for
@@ -12,7 +12,7 @@ namespace Spot.Engine.Physics;
 /// </summary>
 [ComponentMenu("Capsule Collider 3D", Order = 72, Category = "Physics")]
 [SceneComponent("CapsuleCollider3D")]
-public sealed class CapsuleCollider3DComponent : Collider3DComponent
+public sealed class CapsuleCollider3D : Collider3D
 {
     public float Radius { get; set; } = 0.3f;
     public float Length { get; set; } = 1.0f;

@@ -11,10 +11,10 @@ public enum ParticleEmitterShape
     /// <summary>All particles spawn at the emitter origin and travel straight up (local +Y).</summary>
     Point,
 
-    /// <summary>Particles spawn anywhere inside a box (<see cref="ParticleSystemComponent.BoxSize"/>) and travel up.</summary>
+    /// <summary>Particles spawn anywhere inside a box (<see cref="ParticleSystemRenderer.BoxSize"/>) and travel up.</summary>
     Box,
 
-    /// <summary>Particles spawn inside a sphere (<see cref="ParticleSystemComponent.Radius"/>) and travel outward.</summary>
+    /// <summary>Particles spawn inside a sphere (<see cref="ParticleSystemRenderer.Radius"/>) and travel outward.</summary>
     Sphere,
 
     /// <summary>Particles spawn on a disc and travel within a cone — a fountain/fire shape.</summary>
@@ -48,12 +48,12 @@ public enum ParticleRenderMode
 /// components it is plain data plus a small control surface for scripts
 /// (<see cref="Play"/>/<see cref="Stop"/>/<see cref="Emit"/>); <c>ParticleSystem</c> advances it each
 /// play-mode frame and <c>ParticleRenderSystem</c> draws it together with the entity's
-/// <see cref="TransformComponent"/>. Simulation runs only in play mode, so particles are static in the
+/// <see cref="Transform"/>. Simulation runs only in play mode, so particles are static in the
 /// editor's edit view until you press Play.
 /// </summary>
 [ComponentMenu("Particle System", Order = 30, Category = "Effects")]
 [SceneComponent("ParticleSystem")]
-public sealed class ParticleSystemComponent : Component
+public sealed class ParticleSystemRenderer : Component
 {
     // ----- Runtime state (never serialized: internal fields, not public properties) ----------------
 

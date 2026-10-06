@@ -6,14 +6,14 @@ namespace Spot.Engine;
 
 /// <summary>
 /// Marks an entity as a sound emitter: it carries what to play (a clip) and how (volume, pitch, looping,
-/// 2D vs 3D spatial, and which mixer bus it is grouped under). It is the audio counterpart to <see cref="Sprite2DComponent"/> — data plus a small
+/// 2D vs 3D spatial, and which mixer bus it is grouped under). It is the audio counterpart to <see cref="Sprite2D"/> — data plus a small
 /// control surface for scripts (<see cref="Play"/>/<see cref="Stop"/>). <c>AudioSystem</c> reads it each
 /// play-mode frame to honor <see cref="PlayOnAwake"/> and to keep a spatial voice positioned at the
 /// entity's transform.
 /// </summary>
 [ComponentMenu("Audio Source", Order = 60, Category = "Audio")]
 [SceneComponent("AudioSource")]
-public sealed class AudioSourceComponent : Component
+public sealed class AudioSource : Component
 {
     // Runtime state, never serialized (internal fields, not public properties). AudioSystem keeps
     // WorldPosition fresh each frame so a script's Play() emits from the right place immediately.

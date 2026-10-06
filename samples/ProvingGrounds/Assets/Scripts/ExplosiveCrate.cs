@@ -34,11 +34,11 @@ public sealed class ExplosiveCrate : Component, IShootable, IResettable
 
     private readonly List<(Entity Shard, float Age)> _shards = new();
     private readonly List<Entity> _parts = new();
-    private TransformComponent _transform = null!;
-    private MeshComponent? _mesh;
-    private BoxCollider3DComponent? _collider;
-    private PhysicsBody3DComponent? _body;
-    private MeshComponent? _lamp;
+    private Transform _transform = null!;
+    private MeshRenderer? _mesh;
+    private BoxCollider3D? _collider;
+    private PhysicsBody3D? _body;
+    private MeshRenderer? _lamp;
     private Vector3 _origin;
     private Vector3 _originRotation;
     private Vector3 _originScale;
@@ -51,7 +51,7 @@ public sealed class ExplosiveCrate : Component, IShootable, IResettable
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _origin = _transform.Position;
         _originRotation = _transform.Rotation;
         _originScale = _transform.Scale;
@@ -100,7 +100,7 @@ public sealed class ExplosiveCrate : Component, IShootable, IResettable
             _shards[i] = (shard, age);
             if (age > 5.0f)
             {
-                shard.GetComponent<TransformComponent>().Scale *= MathF.Max(0.0f, 1.0f - deltaTime * 4.0f);
+                shard.GetComponent<Transform>().Scale *= MathF.Max(0.0f, 1.0f - deltaTime * 4.0f);
             }
         }
     }
@@ -169,13 +169,13 @@ public sealed class ExplosiveCrate : Component, IShootable, IResettable
         {
             Vector3 dir = Vector3.Normalize(new Vector3(Random.Shared.NextSingle() * 2.0f - 1.0f, 0.6f + Random.Shared.NextSingle(), Random.Shared.NextSingle() * 2.0f - 1.0f));
             Entity shard = Scene.Instantiate("Crate Shard");
-            TransformComponent transform = shard.GetComponent<TransformComponent>();
+            Transform transform = shard.GetComponent<Transform>();
             transform.Position = at + dir * size * 0.3f;
             transform.Rotation = new Vector3(Random.Shared.NextSingle() * 360.0f, Random.Shared.NextSingle() * 360.0f, 0.0f);
             transform.Scale = new Vector3(0.12f + 0.2f * Random.Shared.NextSingle(), 0.05f + 0.08f * Random.Shared.NextSingle(), 0.12f + 0.25f * Random.Shared.NextSingle()) * size;
-            shard.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Cube", Material = s_shard });
-            shard.AddComponent(new BoxCollider3DComponent { Layer = Layers.Debris });
-            var body = shard.AddComponent(new PhysicsBody3DComponent { Mass = 0.6f, Friction = 0.7f, Velocity = inherited + dir * (6.0f + 8.0f * Random.Shared.NextSingle()) });
+            shard.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Cube", Material = s_shard });
+            shard.AddComponent(new BoxCollider3D { Layer = Layers.Debris });
+            var body = shard.AddComponent(new PhysicsBody3D { Mass = 0.6f, Friction = 0.7f, Velocity = inherited + dir * (6.0f + 8.0f * Random.Shared.NextSingle()) });
             body.AddImpulseAtPosition(dir * 0.4f, transform.Position + new Vector3(0.05f, 0.05f, 0.0f));
             _shards.Add((shard, 0.0f));
         }

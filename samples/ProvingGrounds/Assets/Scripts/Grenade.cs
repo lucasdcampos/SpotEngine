@@ -24,14 +24,14 @@ public sealed class Grenade : Component
     /// <summary>Gets or sets the seconds before it goes off on its own.</summary>
     public float Fuse { get; set; } = 4.0f;
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
     private Vector3 _last;
     private float _age;
     private bool _exploded;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _last = _transform.Position;
     }
 

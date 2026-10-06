@@ -120,7 +120,7 @@ public sealed class AnimatorTransition
 
 /// <summary>
 /// A reusable animation state machine asset: parameters, states (each a clip by name), and the transitions
-/// between them. Assign one to an <see cref="Spot.Engine.AnimatorComponent"/> to drive which clip plays from
+/// between them. Assign one to an <see cref="Spot.Engine.Animator"/> to drive which clip plays from
 /// parameters instead of calling <c>Play</c> by hand; because states reference clips by name, one controller
 /// drives any model whose clips share those names. Stored on disk as ".sptcontroller" JSON, this class mirrors
 /// <see cref="Spot.Engine.Assets.Material"/>: <see cref="Load"/> caches by path so edits show up everywhere live.

@@ -6,7 +6,7 @@ namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The play-mode system that brings editor-authored UI to life: for each active
-/// <see cref="UICanvasComponent"/> it loads the referenced <c>.sptui</c> document once and adds its widgets to
+/// <see cref="UICanvas"/> it loads the referenced <c>.sptui</c> document once and adds its widgets to
 /// the scene's <see cref="Scene.UI"/> tree, applying the document's scale settings. It runs before scripts so
 /// a script's <c>OnStart</c> can already look the instantiated widgets up by name. Each canvas is isolated in
 /// its own guard, so one broken document can neither crash nor block the rest.
@@ -17,9 +17,9 @@ internal static class UICanvasSystem
     {
         _ = deltaTime;
 
-        foreach (Entity entity in scene.View<UICanvasComponent>())
+        foreach (Entity entity in scene.View<UICanvas>())
         {
-            UICanvasComponent canvas = entity.GetComponent<UICanvasComponent>();
+            UICanvas canvas = entity.GetComponent<UICanvas>();
             if (canvas.Instantiated || !canvas.Enabled || !entity.IsActiveInHierarchy())
             {
                 continue;

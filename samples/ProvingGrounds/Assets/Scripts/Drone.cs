@@ -30,11 +30,11 @@ public sealed class Drone : Component, IShootable, IResettable
     public int Points { get; set; } = 150;
 
     private readonly List<Entity> _parts = new();
-    private TransformComponent _transform = null!;
-    private PhysicsBody3DComponent? _body;
-    private SphereCollider3DComponent? _collider;
-    private TransformComponent? _rotorLeft;
-    private TransformComponent? _rotorRight;
+    private Transform _transform = null!;
+    private PhysicsBody3D? _body;
+    private SphereCollider3D? _collider;
+    private Transform? _rotorLeft;
+    private Transform? _rotorRight;
     private Vector3 _home;
     private float _phase;
     private float _health;
@@ -50,7 +50,7 @@ public sealed class Drone : Component, IShootable, IResettable
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         Entity.TryGetComponent(out _body);
         Entity.TryGetComponent(out _collider);
         _home = _transform.Position;
@@ -61,8 +61,8 @@ public sealed class Drone : Component, IShootable, IResettable
         foreach (Entity child in Entity.Children)
         {
             _parts.Add(child);
-            if (child.Name == "Rotor L") _rotorLeft = child.GetComponent<TransformComponent>();
-            if (child.Name == "Rotor R") _rotorRight = child.GetComponent<TransformComponent>();
+            if (child.Name == "Rotor L") _rotorLeft = child.GetComponent<Transform>();
+            if (child.Name == "Rotor R") _rotorRight = child.GetComponent<Transform>();
         }
 
         StartHum();
@@ -122,7 +122,7 @@ public sealed class Drone : Component, IShootable, IResettable
         float yaw = _transform.Rotation.Y;
         if (Playground.Current is { Player.IsValid: true } game)
         {
-            Vector3 to = game.Player.GetComponent<TransformComponent>().Position - _transform.Position;
+            Vector3 to = game.Player.GetComponent<Transform>().Position - _transform.Position;
             float target = MathF.Atan2(to.X, to.Z) * 180.0f / MathF.PI;
             yaw += DeltaAngle(yaw, target) * (1.0f - MathF.Exp(-4.0f * deltaTime));
         }

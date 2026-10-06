@@ -10,7 +10,7 @@ Check an item off when it ships.
 > Blocks real game development today.
 
 - [x] **Play-in-viewport** — editor launches an external process for Play mode; in-process play/pause/step is the single biggest workflow gap
-- [x] **Spotlight** — `LightComponent` only has Directional and Point types; cone angle and falloff are absent
+- [x] **Spotlight** — `Light` only has Directional and Point types; cone angle and falloff are absent
 - [ ] **Mesh collider (3D)** — only Box/Sphere/Capsule shapes exist; non-trivial level geometry cannot be made solid
 - [ ] **Blend trees** — `AnimatorController` has a state machine but no blend-tree nodes; smooth locomotion blends (walk↔run by a float parameter) are not possible
 - [x] **Audio mixer / bus routing** — no volume groups (Music, SFX, UI); every source is a flat, ungrouped emitter
@@ -33,12 +33,12 @@ Check an item off when it ships.
 - [ ] **Full PBR material** — `Material` has a `Metallic` slot but no `Roughness` or ambient-occlusion map slot; the lighting model is PBR by half
 - [ ] **Cascaded Shadow Maps (CSM)** — single shadow frustum with `ShadowDistance`; large outdoor scenes get blocky shadows at distance
 - [ ] **SSAO** — no screen-space ambient occlusion; `AmbientIntensity` on the directional light is a flat constant, not geometry-aware
-- [ ] **Depth of Field** — `PostProcessingComponent` has bloom/vignette/FXAA but no DoF effect
+- [ ] **Depth of Field** — `PostProcessing` has bloom/vignette/FXAA but no DoF effect
 
 **Physics**
 - [ ] **Physics joints / constraints** — no hinge, fixed, or spring joint for 3D; doors, ragdolls, and chains require custom script workarounds
 - [x] **Physics materials** — no per-surface friction or restitution; all colliders share the same implicit defaults
-- [x] **2D trigger callbacks** — `BoxCollider2DComponent` exists but there are no `OnTriggerEnter2D` / `OnTriggerExit2D` script hooks
+- [x] **2D trigger callbacks** — `BoxCollider2D` exists but there are no `OnTriggerEnter2D` / `OnTriggerExit2D` script hooks
 
 **Animation**
 - [ ] **Animation events** — no per-frame callback on a clip; the current workaround is manual time polling in a script
@@ -54,7 +54,7 @@ Check an item off when it ships.
 - [x] **Profiler window** — no per-system frame-time visualization; only raw log output
 
 **Rendering**
-- [x] **Color grading / LUT** — no LUT texture slot in `PostProcessingComponent`; stylistic grading requires a custom shader
+- [x] **Color grading / LUT** — no LUT texture slot in `PostProcessing`; stylistic grading requires a custom shader
 - [x] **Occlusion culling** — only frustum culling exists; objects behind walls are submitted to the GPU
 
 **Physics**

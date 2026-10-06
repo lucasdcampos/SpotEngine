@@ -2,16 +2,16 @@ using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
-/// A 2D rigid body. Paired with a collider (<see cref="BoxCollider2DComponent"/> or
-/// <see cref="CircleCollider2DComponent"/>) it is simulated by the active <see cref="IPhysics2D"/> backend:
+/// A 2D rigid body. Paired with a collider (<see cref="BoxCollider2D"/> or
+/// <see cref="CircleCollider2D"/>) it is simulated by the active <see cref="IPhysics2D"/> backend:
 /// gravity, collision response, and (on the Aether backend) rotation, friction, and restitution.
 /// </summary>
 [ComponentMenu("Physics Body 2D", Order = 40, Category = "Physics 2D")]
 [SceneComponent("PhysicsBody2D")]
-public sealed class PhysicsBody2DComponent : Component
+public sealed class PhysicsBody2D : Component
 {
     /// <summary>
     /// Gets or sets the linear velocity. Written back by the backend each step so scripts can read the

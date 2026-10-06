@@ -30,7 +30,7 @@ public sealed class SolarHud : Component
     private OrbitCamera? _camera;
     private SpaceRenderer? _renderer;
     private AsteroidBelt? _belt;
-    private PostProcessingComponent? _post;
+    private PostProcessing? _post;
     private HudKit? _kit;
     private SolarOverlay? _overlay;
     private HudControls? _controls;
@@ -68,9 +68,9 @@ public sealed class SolarHud : Component
         _renderer = Scene.GetComponents<SpaceRenderer>().FirstOrDefault();
         _belt = Scene.GetComponents<AsteroidBelt>().FirstOrDefault();
 
-        foreach (Entity entity in Scene.View<PostProcessingComponent>())
+        foreach (Entity entity in Scene.View<PostProcessing>())
         {
-            _post ??= entity.GetComponent<PostProcessingComponent>();
+            _post ??= entity.GetComponent<PostProcessing>();
         }
 
         _autoTour = AutoTourAfter > 0.0f;
@@ -125,8 +125,8 @@ public sealed class SolarHud : Component
             return false;
         }
 
-        CameraComponent component = camera.GetComponent<CameraComponent>();
-        TransformComponent transform = camera.GetComponent<TransformComponent>();
+        Camera component = camera.GetComponent<Camera>();
+        Transform transform = camera.GetComponent<Transform>();
         viewProjection = component.GetViewProjection(transform);
         position = transform.WorldPosition;
         focal = component.Projection.M22;

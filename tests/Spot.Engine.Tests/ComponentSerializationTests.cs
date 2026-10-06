@@ -12,7 +12,7 @@ public class ComponentSerializationTests
     [Fact]
     public void RoundTrips_ScalarsEnumsAndVectors()
     {
-        var camera = new CameraComponent
+        var camera = new Camera
         {
             Primary = true,
             ProjectionType = SceneCameraProjection.Perspective,
@@ -24,7 +24,7 @@ public class ComponentSerializationTests
         };
 
         JsonObject json = ComponentSerialization.Serialize(camera);
-        var loaded = (CameraComponent)ComponentSerialization.Deserialize(typeof(CameraComponent), json);
+        var loaded = (Camera)ComponentSerialization.Deserialize(typeof(Camera), json);
 
         Assert.True(loaded.Primary);
         Assert.Equal(SceneCameraProjection.Perspective, loaded.ProjectionType);
@@ -38,7 +38,7 @@ public class ComponentSerializationTests
     [Fact]
     public void SerializesEnumsAsIntAndVectorsAsArrays()
     {
-        var light = new LightComponent { Type = LightType.Point, Color = new Vector3(1, 0, 0.5f), Range = 12f };
+        var light = new Light { Type = LightType.Point, Color = new Vector3(1, 0, 0.5f), Range = 12f };
 
         JsonObject json = ComponentSerialization.Serialize(light);
 
@@ -53,13 +53,13 @@ public class ComponentSerializationTests
     public void PreservesAssetPathProperty()
     {
         // Built-in references pass through MakeRelative unchanged, so this needs no asset root.
-        var mesh = new MeshComponent { ModelPath = "builtin:Mesh/Capsule?radius=0.3", MaterialPath = "builtin:Material/Grid", Color = Vector4.One };
+        var mesh = new MeshRenderer { ModelPath = "builtin:Mesh/Capsule?radius=0.3", MaterialPath = "builtin:Material/Grid", Color = Vector4.One };
 
         JsonObject json = ComponentSerialization.Serialize(mesh);
         Assert.Equal("builtin:Mesh/Capsule?radius=0.3", json["ModelPath"]!.GetValue<string>());
         Assert.Equal("builtin:Material/Grid", json["MaterialPath"]!.GetValue<string>());
 
-        var loaded = (MeshComponent)ComponentSerialization.Deserialize(typeof(MeshComponent), json);
+        var loaded = (MeshRenderer)ComponentSerialization.Deserialize(typeof(MeshRenderer), json);
         Assert.Equal("builtin:Mesh/Capsule?radius=0.3", loaded.ModelPath);
         Assert.Equal("builtin:Material/Grid", loaded.MaterialPath);
     }
@@ -69,19 +69,19 @@ public class ComponentSerializationTests
     {
         // SubmeshIndex is [HideInInspector] but [SerializeHidden] — authored in code (by ModelInstantiator for
         // a multi-part model) and must survive save/load, or a skinned part loses which submesh it draws.
-        var mesh = new MeshComponent { ModelPath = "builtin:Mesh/Cube", SubmeshIndex = 2 };
+        var mesh = new MeshRenderer { ModelPath = "builtin:Mesh/Cube", SubmeshIndex = 2 };
 
         JsonObject json = ComponentSerialization.Serialize(mesh);
         Assert.Equal(2, json["SubmeshIndex"]!.GetValue<int>());
 
-        var loaded = (MeshComponent)ComponentSerialization.Deserialize(typeof(MeshComponent), json);
+        var loaded = (MeshRenderer)ComponentSerialization.Deserialize(typeof(MeshRenderer), json);
         Assert.Equal(2, loaded.SubmeshIndex);
     }
 
     [Fact]
     public void SkipsInspectorHiddenRuntimeState()
     {
-        var cc = new CharacterController3DComponent { WalkSpeed = 5f };
+        var cc = new CharacterController3D { WalkSpeed = 5f };
         cc.Yaw = 42f;          // [HideInInspector] runtime state — must not be persisted.
         cc.IsGrounded = true;
 
@@ -91,7 +91,7 @@ public class ComponentSerializationTests
         Assert.False(json.ContainsKey("Yaw"));
         Assert.False(json.ContainsKey("IsGrounded"));
 
-        var loaded = (CharacterController3DComponent)ComponentSerialization.Deserialize(typeof(CharacterController3DComponent), json);
+        var loaded = (CharacterController3D)ComponentSerialization.Deserialize(typeof(CharacterController3D), json);
         Assert.Equal(5f, loaded.WalkSpeed);
         Assert.Equal(0f, loaded.Yaw);
     }
@@ -100,13 +100,13 @@ public class ComponentSerializationTests
     public void Registry_ResolvesKeysIncludingLegacyAlias()
     {
         Assert.True(ComponentSerialization.TryResolveKey("Sprite", out var sprite));
-        Assert.Equal(typeof(Sprite2DComponent), sprite);
+        Assert.Equal(typeof(Sprite2D), sprite);
 
         Assert.True(ComponentSerialization.TryResolveKey("MeshRenderer", out var mesh));
-        Assert.Equal(typeof(MeshComponent), mesh);
+        Assert.Equal(typeof(MeshRenderer), mesh);
 
-        // Legacy directional-light key maps onto the unified LightComponent.
+        // Legacy directional-light key maps onto the unified Light.
         Assert.True(ComponentSerialization.TryResolveKey("DirectionalLight", out var legacy));
-        Assert.Equal(typeof(LightComponent), legacy);
+        Assert.Equal(typeof(Light), legacy);
     }
 }

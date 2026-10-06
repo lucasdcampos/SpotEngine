@@ -131,7 +131,7 @@ public class InspectorPanel : IDisposable
 
     private static void DrawTagRow(Entity entity)
     {
-        var tag = entity.GetComponent<LabelComponent>();
+        var tag = entity.GetComponent<Label>();
         bool active = tag.Enabled;
         if (ImGui.Checkbox("##Active", ref active))
             tag.Enabled = active;
@@ -412,8 +412,8 @@ public class InspectorPanel : IDisposable
             var component = (Component)Activator.CreateInstance(type)!;
 
             // A new 3D collider starts out matching the entity's mesh, as it would be sized by hand.
-            if (component is Spot.Engine.Physics.Collider3DComponent collider
-                && entity.TryGetComponent(out MeshComponent? mesh) && mesh is not null)
+            if (component is Collider3D collider
+                && entity.TryGetComponent(out MeshRenderer? mesh) && mesh is not null)
             {
                 Spot.Engine.Physics.ColliderFitting.FitToMesh(collider, mesh);
             }

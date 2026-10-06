@@ -16,13 +16,13 @@ public sealed class Spinner : Component
     /// <summary>Gets or sets how far the entity bobs above and below where it started.</summary>
     public float BobHeight { get; set; } = 0.5f;
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
     private Vector3 _origin;
     private float _time;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _origin = _transform.Position;
     }
 

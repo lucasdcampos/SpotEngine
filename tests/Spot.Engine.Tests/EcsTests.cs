@@ -14,9 +14,9 @@ public class EcsTests
 
         Assert.True(e.IsValid);
         Assert.Equal("Player", e.Name);
-        Assert.True(e.HasComponent<LabelComponent>());
-        Assert.True(e.HasComponent<RelationshipComponent>());
-        Assert.True(e.HasComponent<TransformComponent>());
+        Assert.True(e.HasComponent<Label>());
+        Assert.True(e.HasComponent<Relationship>());
+        Assert.True(e.HasComponent<Transform>());
     }
 
     [Fact]
@@ -24,19 +24,19 @@ public class EcsTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        var body = new PhysicsBody2DComponent();
+        var body = new PhysicsBody2D();
 
         var added = e.AddComponent(body);
         Assert.Same(body, added);
-        Assert.True(e.HasComponent<PhysicsBody2DComponent>());
-        Assert.Same(body, e.GetComponent<PhysicsBody2DComponent>());
-        Assert.True(e.TryGetComponent(out PhysicsBody2DComponent? fetched));
+        Assert.True(e.HasComponent<PhysicsBody2D>());
+        Assert.Same(body, e.GetComponent<PhysicsBody2D>());
+        Assert.True(e.TryGetComponent(out PhysicsBody2D? fetched));
         Assert.Same(body, fetched);
 
-        e.RemoveComponent<PhysicsBody2DComponent>();
-        Assert.False(e.HasComponent<PhysicsBody2DComponent>());
-        Assert.False(e.TryGetComponent(out PhysicsBody2DComponent? _));
-        Assert.Throws<InvalidOperationException>(() => e.GetComponent<PhysicsBody2DComponent>());
+        e.RemoveComponent<PhysicsBody2D>();
+        Assert.False(e.HasComponent<PhysicsBody2D>());
+        Assert.False(e.TryGetComponent(out PhysicsBody2D? _));
+        Assert.Throws<InvalidOperationException>(() => e.GetComponent<PhysicsBody2D>());
     }
 
     [Fact]
@@ -44,11 +44,11 @@ public class EcsTests
     {
         var scene = new Scene();
         var e = scene.Instantiate();
-        var first = e.AddComponent(new PhysicsBody2DComponent());
-        var second = e.AddComponent(new PhysicsBody2DComponent());
+        var first = e.AddComponent(new PhysicsBody2D());
+        var second = e.AddComponent(new PhysicsBody2D());
 
         Assert.NotSame(first, second);
-        Assert.Same(second, e.GetComponent<PhysicsBody2DComponent>());
+        Assert.Same(second, e.GetComponent<PhysicsBody2D>());
     }
 
     [Fact]
@@ -58,10 +58,10 @@ public class EcsTests
         var a = scene.Instantiate();
         var b = scene.Instantiate();
         scene.Instantiate(); // no light component
-        a.AddComponent(new LightComponent());
-        b.AddComponent(new LightComponent());
+        a.AddComponent(new Light());
+        b.AddComponent(new Light());
 
-        Assert.Equal(2, scene.View<LightComponent>().Count);
+        Assert.Equal(2, scene.View<Light>().Count);
     }
 
     [Fact]
@@ -70,11 +70,11 @@ public class EcsTests
         var scene = new Scene();
         var both = scene.Instantiate();
         var onlyBody = scene.Instantiate();
-        both.AddComponent(new PhysicsBody2DComponent());
-        both.AddComponent(new BoxCollider2DComponent());
-        onlyBody.AddComponent(new PhysicsBody2DComponent());
+        both.AddComponent(new PhysicsBody2D());
+        both.AddComponent(new BoxCollider2D());
+        onlyBody.AddComponent(new PhysicsBody2D());
 
-        var view = scene.View<PhysicsBody2DComponent, BoxCollider2DComponent>();
+        var view = scene.View<PhysicsBody2D, BoxCollider2D>();
 
         Assert.Single(view);
         Assert.Equal(both, view[0]);
@@ -86,15 +86,15 @@ public class EcsTests
         var scene = new Scene();
         for (int i = 0; i < 3; i++)
         {
-            scene.Instantiate().AddComponent(new LightComponent());
+            scene.Instantiate().AddComponent(new Light());
         }
 
         // The view is a materialized snapshot, so adding/destroying during iteration must not throw.
         var exception = Record.Exception(() =>
         {
-            foreach (var e in scene.View<LightComponent>())
+            foreach (var e in scene.View<Light>())
             {
-                scene.Instantiate().AddComponent(new LightComponent());
+                scene.Instantiate().AddComponent(new Light());
                 scene.Destroy(e);
             }
             scene.FlushDestroyed();

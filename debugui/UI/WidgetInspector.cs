@@ -21,7 +21,7 @@ public static class WidgetInspector
     private static readonly string[] FontPatterns = { "*.ttf", "*.otf" };
 
     /// <summary>
-    /// Raised when the user asks to edit a UI document (e.g. the "Edit UI" button on a UICanvasComponent),
+    /// Raised when the user asks to edit a UI document (e.g. the "Edit UI" button on a UICanvas),
     /// carrying the document's source path. The editor subscribes to open it in the UI authoring panels.
     /// </summary>
     public static Action<string>? OpenDocumentRequested;

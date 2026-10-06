@@ -13,7 +13,7 @@ namespace Spot.Engine.Scenes;
 /// <summary>
 /// Turns a model file (FBX, OBJ, glTF, ...) into a live entity hierarchy: it rebuilds the source's node
 /// tree as parented entities — one per node, each with its local transform — and points every mesh part at
-/// the shared model via <see cref="MeshComponent.SubmeshIndex"/>. Optionally it extracts the model's
+/// the shared model via <see cref="MeshRenderer.SubmeshIndex"/>. Optionally it extracts the model's
 /// materials and assigns the right one to each part. This is the engine side of dragging a model into the
 /// scene; the editor panels just call <see cref="Instantiate"/>.
 /// </summary>
@@ -55,7 +55,7 @@ public static class ModelInstantiator
         {
             Entity shape = scene.Instantiate(primitive.Shape.ToString());
             shape.SetParent(parent);
-            shape.AddComponent(new MeshComponent { ModelPath = BuiltinAssets.MeshReference(primitive) });
+            shape.AddComponent(new MeshRenderer { ModelPath = BuiltinAssets.MeshReference(primitive) });
             return shape;
         }
 
@@ -96,7 +96,7 @@ public static class ModelInstantiator
     {
         Entity entity = scene.Instantiate(name);
         entity.SetParent(parent);
-        ApplyTransform(entity.GetComponent<TransformComponent>(), node.LocalTransform);
+        ApplyTransform(entity.GetComponent<Transform>(), node.LocalTransform);
 
         if (node.MeshIndices.Count == 1)
         {
@@ -125,7 +125,7 @@ public static class ModelInstantiator
 
     private static void AddMesh(Entity entity, string modelPath, int meshIndex, ModelSceneInfo info, IReadOnlyDictionary<int, string> materials)
     {
-        var mesh = new MeshComponent
+        var mesh = new MeshRenderer
         {
             ModelPath = modelPath,
             SubmeshIndex = meshIndex,
@@ -143,7 +143,7 @@ public static class ModelInstantiator
         // posing it from the bone entities rather than this entity's transform.
         if (meshIndex >= 0 && meshIndex < info.MeshSkinned.Count && info.MeshSkinned[meshIndex])
         {
-            entity.AddComponent(new SkinnedMeshComponent());
+            entity.AddComponent(new SkinnedMeshRenderer());
         }
     }
 
@@ -168,10 +168,10 @@ public static class ModelInstantiator
 
         // The animator carries only its model (the clip + skeleton source); which clip plays is decided by an
         // assigned controller or by a script that owns the clips — not configured on the component itself.
-        root.AddComponent(new AnimatorComponent { ModelPath = modelPath });
+        root.AddComponent(new Animator { ModelPath = modelPath });
     }
 
-    private static void ApplyTransform(TransformComponent transform, Matrix4x4 local)
+    private static void ApplyTransform(Transform transform, Matrix4x4 local)
     {
         if (!Matrix4x4.Decompose(local, out Vector3 scale, out Quaternion rotation, out Vector3 translation))
         {

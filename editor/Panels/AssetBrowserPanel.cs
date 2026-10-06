@@ -1468,7 +1468,7 @@ public class AssetBrowserPanel
 
             // Link the source entity to the new prefab so the hierarchy tints it as an instance.
             string? reference = Spot.Engine.Assets.AssetDatabase.ToGuidRef(path);
-            entity.AddComponent(new PrefabComponent { PrefabRef = reference });
+            entity.AddComponent(new PrefabInstance { PrefabRef = reference });
 
             SelectSingle(path);
             ClearThumbnails();

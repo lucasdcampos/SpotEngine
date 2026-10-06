@@ -36,22 +36,22 @@ public readonly struct Entity : IEquatable<Entity>
     internal bool HasScene => _scene is not null;
 
     /// <summary>
-    /// Gets or sets the entity's name (stored in its <see cref="LabelComponent"/>).
+    /// Gets or sets the entity's name (stored in its <see cref="Label"/>).
     /// </summary>
     public string Name
     {
-        get => GetComponent<LabelComponent>().Name;
-        set => GetComponent<LabelComponent>().Name = value;
+        get => GetComponent<Label>().Name;
+        set => GetComponent<Label>().Name = value;
     }
 
     /// <summary>
-    /// Gets or sets the entity's tag (stored in its <see cref="LabelComponent"/>). Tags classify
+    /// Gets or sets the entity's tag (stored in its <see cref="Label"/>). Tags classify
     /// entities for lookup; see <see cref="Scene.FindByTag"/> and <see cref="CompareTag"/>.
     /// </summary>
     public string Tag
     {
-        get => GetComponent<LabelComponent>().Tag;
-        set => GetComponent<LabelComponent>().Tag = value ?? string.Empty;
+        get => GetComponent<Label>().Tag;
+        set => GetComponent<Label>().Tag = value ?? string.Empty;
     }
 
     /// <summary>
@@ -66,8 +66,8 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public bool Enabled
     {
-        get => GetComponent<LabelComponent>().Enabled;
-        set => GetComponent<LabelComponent>().Enabled = value;
+        get => GetComponent<Label>().Enabled;
+        set => GetComponent<Label>().Enabled = value;
     }
 
     /// <summary>
@@ -80,14 +80,14 @@ public readonly struct Entity : IEquatable<Entity>
 
     /// <summary>
     /// Gets or sets the entity's stable, serialization-time identifier (stored in its
-    /// <see cref="LabelComponent"/>). Used to reference the entity from serialized data such as an
+    /// <see cref="Label"/>). Used to reference the entity from serialized data such as an
     /// <see cref="Entity"/>-typed script field. Empty until the entity is first serialized; use
     /// <see cref="EnsurePersistentId"/> to allocate one.
     /// </summary>
     internal string PersistentId
     {
-        get => GetComponent<LabelComponent>().EntityGuid;
-        set => GetComponent<LabelComponent>().EntityGuid = value ?? string.Empty;
+        get => GetComponent<Label>().EntityGuid;
+        set => GetComponent<Label>().EntityGuid = value ?? string.Empty;
     }
 
     /// <summary>
@@ -96,7 +96,7 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     internal string EnsurePersistentId()
     {
-        LabelComponent label = GetComponent<LabelComponent>();
+        Label label = GetComponent<Label>();
         if (string.IsNullOrEmpty(label.EntityGuid))
         {
             label.EntityGuid = System.Guid.NewGuid().ToString("N");
@@ -118,7 +118,7 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public Entity? Parent
     {
-        get => TryGetComponent(out RelationshipComponent? rel) ? rel.Parent : null;
+        get => TryGetComponent(out Relationship? rel) ? rel.Parent : null;
     }
 
     /// <summary>
@@ -126,7 +126,7 @@ public readonly struct Entity : IEquatable<Entity>
     /// </summary>
     public IEnumerable<Entity> Children
     {
-        get => TryGetComponent(out RelationshipComponent? rel) ? rel.Children : Enumerable.Empty<Entity>();
+        get => TryGetComponent(out Relationship? rel) ? rel.Children : Enumerable.Empty<Entity>();
     }
 
     /// <summary>
@@ -154,14 +154,14 @@ public readonly struct Entity : IEquatable<Entity>
             return; // Prevent circular hierarchy
         }
 
-        if (!TryGetComponent(out RelationshipComponent? rel))
-            rel = AddComponent(new RelationshipComponent());
+        if (!TryGetComponent(out Relationship? rel))
+            rel = AddComponent(new Relationship());
 
         if (rel.Parent == parent) return;
 
         if (rel.Parent != null)
         {
-            if (rel.Parent.Value.TryGetComponent(out RelationshipComponent? currentParentRel))
+            if (rel.Parent.Value.TryGetComponent(out Relationship? currentParentRel))
             {
                 currentParentRel.Children.Remove(this);
             }
@@ -171,8 +171,8 @@ public readonly struct Entity : IEquatable<Entity>
 
         if (parent != null)
         {
-            if (!parent.Value.TryGetComponent(out RelationshipComponent? parentRel))
-                parentRel = parent.Value.AddComponent(new RelationshipComponent());
+            if (!parent.Value.TryGetComponent(out Relationship? parentRel))
+                parentRel = parent.Value.AddComponent(new Relationship());
 
             parentRel.Children.Add(this);
         }
@@ -348,7 +348,7 @@ public readonly struct Entity : IEquatable<Entity>
             SetParent(null);
         }
 
-        GetComponent<LabelComponent>().Persistent = true;
+        GetComponent<Label>().Persistent = true;
     }
 
     /// <inheritdoc />

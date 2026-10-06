@@ -8,6 +8,6 @@ namespace Spot.Engine;
 /// </summary>
 [ComponentMenu("Audio Listener", Order = 61, Category = "Audio")]
 [SceneComponent("AudioListener")]
-public sealed class AudioListenerComponent : Component
+public sealed class AudioListener : Component
 {
 }

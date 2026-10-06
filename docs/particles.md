@@ -1,13 +1,13 @@
 # Particle Systems
 
-Spot includes a CPU-based **particle system** for creating visual effects like fire, smoke, dust, magic, and explosions. A particle system is an entity with a `ParticleSystemComponent` attached.
+Spot includes a CPU-based **particle system** for creating visual effects like fire, smoke, dust, magic, and explosions. A particle system is an entity with a `ParticleSystemRenderer` attached.
 
 ## Overview
 
 Unlike massive GPU-based particle systems, Spot's implementation is a lightweight CPU simulator that emits and manages a pool of camera-facing (or flat) quads. It is designed to be a solid baseline for adding life to your scenes without the complexity of a node graph or custom shaders. 
 
 Particle data and logic reside in two places:
-- **`ParticleSystemComponent`**: The data container holding all configuration properties (emission rates, shapes, lifetimes, colors) and the internal simulation state.
+- **`ParticleSystemRenderer`**: The data container holding all configuration properties (emission rates, shapes, lifetimes, colors) and the internal simulation state.
 - **`ParticleSystem`** & **`ParticleRenderSystem`**: The underlying engine systems that simulate particle aging and motion every frame (only in play mode) and submit batched quads for rendering.
 
 ## Emitter Shapes

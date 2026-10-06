@@ -12,10 +12,10 @@ namespace Spot.Engine.Physics.Aether;
 /// An Aether.Physics2D backend for the engine's 2D physics. Owns a <see cref="World"/> and mirrors the
 /// scene's physics entities into it each step: entities with a 2D collider (box/circle) become Aether bodies
 /// (dynamic/kinematic/static), are simulated, and their results are written back onto the
-/// <see cref="TransformComponent"/>. Mirrors <see cref="Bepu.BepuPhysics3D"/>.
+/// <see cref="Transform"/>. Mirrors <see cref="Bepu.BepuPhysics3D"/>.
 /// </summary>
 /// <remarks>
-/// Contract: dynamic bodies are driven by velocity (set <see cref="PhysicsBody2DComponent.Velocity"/> from
+/// Contract: dynamic bodies are driven by velocity (set <see cref="PhysicsBody2D.Velocity"/> from
 /// scripts); their transform is owned by the simulation. Kinematic/static bodies are the reverse — move them
 /// by their transform. Physics entities are treated as root-level for transform sync. Aether is metric (MKS):
 /// keep collider sizes in a sane range (~0.1–10 units) for a stable solve.
@@ -59,10 +59,10 @@ internal sealed class AetherPhysics2D : IPhysics2D
     {
         _seen.Clear();
 
-        foreach (var entity in scene.View<TransformComponent>())
+        foreach (var entity in scene.View<Transform>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var transform = entity.GetComponent<TransformComponent>();
+            var transform = entity.GetComponent<Transform>();
             if (!transform.Enabled) continue;
 
             // Local scale (not WorldScale) so residual float noise from matrix decomposition never thrashes
@@ -70,7 +70,7 @@ internal sealed class AetherPhysics2D : IPhysics2D
             var scale = new Vector2(transform.Scale.X, transform.Scale.Y);
             if (!TryDescribeCollider(entity, scale, out ColliderDesc desc)) continue;
 
-            bool hasBody = entity.TryGetComponent(out PhysicsBody2DComponent? body) && body!.Enabled;
+            bool hasBody = entity.TryGetComponent(out PhysicsBody2D? body) && body!.Enabled;
             BodyType type = BodyTypeOf(hasBody ? body : null);
 
             var key = new ShapeKey(desc.Type, Q(desc.A), Q(desc.B), Q(desc.Offset.X), Q(desc.Offset.Y));
@@ -173,8 +173,8 @@ internal sealed class AetherPhysics2D : IPhysics2D
 
             var entity = scene.EntityById(kvp.Key);
             if (entity is null) continue;
-            if (!entity.Value.TryGetComponent(out TransformComponent? transform)) continue;
-            if (!entity.Value.TryGetComponent(out PhysicsBody2DComponent? phys)) continue;
+            if (!entity.Value.TryGetComponent(out Transform? transform)) continue;
+            if (!entity.Value.TryGetComponent(out PhysicsBody2D? phys)) continue;
 
             Vector2 p = ToNumerics(body.Position);
             transform!.Position = new Vector3(p.X, p.Y, transform.Position.Z);
@@ -259,14 +259,14 @@ internal sealed class AetherPhysics2D : IPhysics2D
 
     private static bool TryDescribeCollider(Entity entity, Vector2 scale, out ColliderDesc desc)
     {
-        if (entity.TryGetComponent(out BoxCollider2DComponent? box) && box!.Enabled)
+        if (entity.TryGetComponent(out BoxCollider2D? box) && box!.Enabled)
         {
             float w = MathF.Abs(box.Size.X * scale.X);
             float h = MathF.Abs(box.Size.Y * scale.Y);
             desc = new ColliderDesc(0, w, h, box.Offset * scale, box.IsTrigger, box.Layer);
             return true;
         }
-        if (entity.TryGetComponent(out CircleCollider2DComponent? circle) && circle!.Enabled)
+        if (entity.TryGetComponent(out CircleCollider2D? circle) && circle!.Enabled)
         {
             float r = MathF.Abs(circle.Radius * scale.X);
             desc = new ColliderDesc(1, r, 0f, circle.Offset * scale, circle.IsTrigger, circle.Layer);
@@ -276,7 +276,7 @@ internal sealed class AetherPhysics2D : IPhysics2D
         return false;
     }
 
-    private static BodyType BodyTypeOf(PhysicsBody2DComponent? body)
+    private static BodyType BodyTypeOf(PhysicsBody2D? body)
     {
         if (body is null) return BodyType.Static;
         if (body.IsKinematic) return BodyType.Kinematic;

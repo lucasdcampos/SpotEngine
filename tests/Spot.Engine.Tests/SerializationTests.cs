@@ -80,14 +80,14 @@ public class SerializationTests
     {
         var scene = new Scene();
         var hero = scene.Instantiate("Hero");
-        var t = hero.GetComponent<TransformComponent>();
+        var t = hero.GetComponent<Transform>();
         t.Position = new Vector3(1, 2, 3);
         t.Rotation = new Vector3(0, 45, 0);
         t.Scale = new Vector3(2, 2, 2);
-        hero.AddComponent(new CameraComponent { Primary = true, ZoomLevel = 7f, ProjectionType = SceneCameraProjection.Perspective });
-        hero.AddComponent(new PhysicsBody2DComponent { GravityScale = 0.5f, IsDynamic = false, Velocity = new Vector2(1, 2) });
-        hero.AddComponent(new BoxCollider2DComponent { Size = new Vector2(3, 4), Offset = new Vector2(1, 1) });
-        hero.AddComponent(new LightComponent { Type = LightType.Directional, Intensity = 2f, AmbientIntensity = 0.1f, Color = new Vector3(1, 0, 0) });
+        hero.AddComponent(new Camera { Primary = true, ZoomLevel = 7f, ProjectionType = SceneCameraProjection.Perspective });
+        hero.AddComponent(new PhysicsBody2D { GravityScale = 0.5f, IsDynamic = false, Velocity = new Vector2(1, 2) });
+        hero.AddComponent(new BoxCollider2D { Size = new Vector2(3, 4), Offset = new Vector2(1, 1) });
+        hero.AddComponent(new Light { Type = LightType.Directional, Intensity = 2f, AmbientIntensity = 0.1f, Color = new Vector3(1, 0, 0) });
 
         var sidekick = scene.Instantiate("Sidekick");
         sidekick.SetParent(hero);
@@ -98,25 +98,25 @@ public class SerializationTests
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
         var loadedHero = FindByName(loaded, "Hero");
-        var ht = loadedHero.GetComponent<TransformComponent>();
+        var ht = loadedHero.GetComponent<Transform>();
         Assert.Equal(new Vector3(1, 2, 3), ht.Position);
         Assert.Equal(new Vector3(0, 45, 0), ht.Rotation);
         Assert.Equal(new Vector3(2, 2, 2), ht.Scale);
 
-        var cam = loadedHero.GetComponent<CameraComponent>();
+        var cam = loadedHero.GetComponent<Camera>();
         Assert.Equal(SceneCameraProjection.Perspective, cam.ProjectionType);
         Assert.Equal(7f, cam.ZoomLevel);
 
-        var body = loadedHero.GetComponent<PhysicsBody2DComponent>();
+        var body = loadedHero.GetComponent<PhysicsBody2D>();
         Assert.False(body.IsDynamic);
         Assert.Equal(0.5f, body.GravityScale);
         Assert.Equal(new Vector2(1, 2), body.Velocity);
 
-        var collider = loadedHero.GetComponent<BoxCollider2DComponent>();
+        var collider = loadedHero.GetComponent<BoxCollider2D>();
         Assert.Equal(new Vector2(3, 4), collider.Size);
         Assert.Equal(new Vector2(1, 1), collider.Offset);
 
-        var light = loadedHero.GetComponent<LightComponent>();
+        var light = loadedHero.GetComponent<Light>();
         Assert.Equal(2f, light.Intensity);
         Assert.Equal(new Vector3(1, 0, 0), light.Color);
         Assert.Equal(LightType.Directional, light.Type);
@@ -279,7 +279,7 @@ public class SerializationTests
 
     private static Entity? FindByNameOrNull(Scene scene, string name)
     {
-        foreach (var e in scene.View<LabelComponent>())
+        foreach (var e in scene.View<Label>())
         {
             if (e.Name == name)
             {

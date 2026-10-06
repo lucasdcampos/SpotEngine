@@ -18,7 +18,7 @@ namespace Spot.Engine;
 /// </remarks>
 [ComponentMenu("UI Canvas", Order = 20, Category = "UI")]
 [SceneComponent("UICanvas")]
-public sealed class UICanvasComponent : Component
+public sealed class UICanvas : Component
 {
     /// <summary>
     /// Gets or sets the reference (a <c>guid:</c> reference or a source path) to the <c>.sptui</c> document

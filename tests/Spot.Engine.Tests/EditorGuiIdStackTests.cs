@@ -45,9 +45,9 @@ public sealed class EditorGuiIdStackTests : IDisposable
         ["AssetSlot (set)"] = () => EditorGui.AssetSlot("Mesh", "MODEL_FILE", new[] { "*.fbx" }, "Models/rock.fbx", out _),
         ["EntityField"] = () => { Entity v = default; EditorGui.EntityField("Target", new Scene(), ref v); },
         ["Component card"] = () => EditorGui.Component(
-            new Scene().Instantiate(), typeof(TransformComponent), "Transform", removable: true, () => { }),
+            new Scene().Instantiate(), typeof(Transform), "Transform", removable: true, () => { }),
         ["Component card (custom id)"] = () => EditorGui.Component(
-            new Scene().Instantiate(), typeof(TransformComponent), "Pending", removable: true, () => { },
+            new Scene().Instantiate(), typeof(Transform), "Pending", removable: true, () => { },
             id: "missing0", onRemove: () => { }),
     };
 

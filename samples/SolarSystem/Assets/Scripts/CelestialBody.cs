@@ -154,7 +154,7 @@ public sealed class CelestialBody : Component
     }
 
     /// <summary>Gets the body's current world position.</summary>
-    public Vector3 Position => GetComponent<TransformComponent>().WorldPosition;
+    public Vector3 Position => GetComponent<Transform>().WorldPosition;
 
     /// <summary>Gets the body's spin and axial tilt, as a rotation matrix.</summary>
     public Matrix4x4 Orientation { get; private set; } = Matrix4x4.Identity;
@@ -174,7 +174,7 @@ public sealed class CelestialBody : Component
     public override void OnStart()
     {
         // The editor shows a placeholder sphere for each body; in play the space renderer draws the real thing.
-        if (Entity.TryGetComponent(out MeshComponent? placeholder))
+        if (Entity.TryGetComponent(out MeshRenderer? placeholder))
         {
             placeholder.Enabled = false;
         }
@@ -192,7 +192,7 @@ public sealed class CelestialBody : Component
         {
             double turns = days / OrbitPeriodDays;
             OrbitAngle = (float)((MeanLongitudeDeg * Deg2Rad + (turns - Math.Floor(turns)) * Math.Tau) % Math.Tau);
-            GetComponent<TransformComponent>().Position =
+            GetComponent<Transform>().Position =
                 new Vector3(MathF.Cos(OrbitAngle), 0.0f, -MathF.Sin(OrbitAngle)) * OrbitRadius;
         }
 

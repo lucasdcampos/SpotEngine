@@ -36,14 +36,14 @@ public static class Explosions
             if (result > best) best = result;
         }
 
-        foreach (Entity entity in scene.View<PhysicsBody3DComponent>())
+        foreach (Entity entity in scene.View<PhysicsBody3D>())
         {
             if (!entity.IsActiveInHierarchy() || (game is not null && entity == game.Player)) continue;
 
-            PhysicsBody3DComponent body = entity.GetComponent<PhysicsBody3DComponent>();
+            PhysicsBody3D body = entity.GetComponent<PhysicsBody3D>();
             if (!body.Enabled || !body.IsDynamic || body.IsKinematic) continue;
 
-            Vector3 position = entity.GetComponent<TransformComponent>().WorldPosition;
+            Vector3 position = entity.GetComponent<Transform>().WorldPosition;
             float distance = Vector3.Distance(position, center);
             if (distance > radius) continue;
 
@@ -67,9 +67,9 @@ public static class Explosions
     // A blast lifts the player: from below it is a rocket jump.
     private static void ThrowPlayer(Playground game, Vector3 center, float radius)
     {
-        if (!game.Player.IsValid || !game.Player.TryGetComponent(out PhysicsBody3DComponent? body)) return;
+        if (!game.Player.IsValid || !game.Player.TryGetComponent(out PhysicsBody3D? body)) return;
 
-        Vector3 chest = game.Player.GetComponent<TransformComponent>().Position + new Vector3(0.0f, 0.9f, 0.0f);
+        Vector3 chest = game.Player.GetComponent<Transform>().Position + new Vector3(0.0f, 0.9f, 0.0f);
         float distance = Vector3.Distance(chest, center);
         float reach = radius * 0.9f;
         if (distance > reach) return;

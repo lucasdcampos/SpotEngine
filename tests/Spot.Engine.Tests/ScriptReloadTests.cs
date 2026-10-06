@@ -98,7 +98,7 @@ public class ScriptReloadTests
         entity.AddComponent(component);
 
         // Exercise the paths that cache per-type data: views, serialization and the per-frame update.
-        _ = scene.View<TransformComponent>();
+        _ = scene.View<Transform>();
         _ = new SceneSerializer(scene).SerializeToString();
         scene.UpdateRuntime(0.0f);
 

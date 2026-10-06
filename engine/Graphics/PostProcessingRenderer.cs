@@ -214,7 +214,7 @@ void main()
     /// <param name="screenTexture">The HDR scene color texture.</param>
     /// <param name="config">The post-processing parameters.</param>
     /// <param name="bloomTexture">The blurred bloom texture from <see cref="BloomRenderer"/>, or 0 for none.</param>
-    public static unsafe void Draw(uint screenTexture, PostProcessingComponent config, uint bloomTexture = 0)
+    public static unsafe void Draw(uint screenTexture, PostProcessing config, uint bloomTexture = 0)
     {
         if (s_shader == null || s_quadVAO == null) return;
 

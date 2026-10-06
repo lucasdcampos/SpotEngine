@@ -116,8 +116,8 @@ public class SceneManagerTests : IDisposable
         // It now lives in the new scene (rebound), and is gone from the old one.
         Assert.Same(b, counter.Entity.Scene);
         Assert.True(counter.Entity.IsValid);
-        Assert.Contains(b.View<LabelComponent>(), x => x.Name == "Player");
-        Assert.Empty(a.View<LabelComponent>());
+        Assert.Contains(b.View<Label>(), x => x.Name == "Player");
+        Assert.Empty(a.View<Label>());
     }
 
     [Fact]
@@ -136,9 +136,9 @@ public class SceneManagerTests : IDisposable
         SceneManager.Load(b);
         SceneManager.ApplyPendingSwitch();
 
-        Assert.Equal(2, b.View<LabelComponent>().Count);
+        Assert.Equal(2, b.View<Label>().Count);
         var roots = new List<Entity>();
-        foreach (var e in b.View<LabelComponent>())
+        foreach (var e in b.View<Label>())
         {
             if (e.Parent == null) roots.Add(e);
         }
@@ -166,6 +166,6 @@ public class SceneManagerTests : IDisposable
         SceneManager.ApplyPendingSwitch();
 
         Assert.Equal(1, counter.Destroyed);
-        Assert.Empty(b.View<LabelComponent>());
+        Assert.Empty(b.View<Label>());
     }
 }

@@ -18,7 +18,7 @@ public static class AabbTransforms
         /// </summary>
         /// <param name="transform">The transform to build the box from.</param>
         /// <returns>The bounding box.</returns>
-        public static Aabb FromTransform(TransformComponent transform) => new(
+        public static Aabb FromTransform(Transform transform) => new(
             new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y),
             new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
     }

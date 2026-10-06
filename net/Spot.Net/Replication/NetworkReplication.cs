@@ -411,7 +411,7 @@ internal sealed class NetworkReplication
             if (!entity.IsValid ||
                 !entity.TryGetComponent(out NetworkTransform? nt) || !nt.HasTarget ||
                 !entity.TryGetComponent(out NetworkObject? obj) || obj.OwnerId == localId ||
-                !entity.TryGetComponent(out TransformComponent? transform))
+                !entity.TryGetComponent(out Transform? transform))
             {
                 continue;
             }
@@ -477,7 +477,7 @@ internal sealed class NetworkReplication
         obj.OwnerId = owner;
         obj.PrefabKey = prefabKey;
 
-        if (entity.TryGetComponent(out TransformComponent? transform))
+        if (entity.TryGetComponent(out Transform? transform))
         {
             transform.Position = position;
             transform.Rotation = rotation;
@@ -562,7 +562,7 @@ internal sealed class NetworkReplication
             nt.HasTarget = true;
         }
 
-        if (snap && entity.TryGetComponent(out TransformComponent? transform))
+        if (snap && entity.TryGetComponent(out Transform? transform))
         {
             transform.Position = position;
             transform.Rotation = rotation;
@@ -580,7 +580,7 @@ internal sealed class NetworkReplication
                 !entity.TryGetComponent(out NetworkObject? obj) ||
                 !entity.HasComponent<NetworkTransform>() ||
                 !include(entity, obj) ||
-                !entity.TryGetComponent(out TransformComponent? transform))
+                !entity.TryGetComponent(out Transform? transform))
             {
                 continue;
             }
@@ -614,7 +614,7 @@ internal sealed class NetworkReplication
 
         Vector3 position = Vector3.Zero;
         Vector3 rotation = Vector3.Zero;
-        if (entity.TryGetComponent(out TransformComponent? transform))
+        if (entity.TryGetComponent(out Transform? transform))
         {
             position = transform.Position;
             rotation = transform.Rotation;

@@ -341,7 +341,7 @@ public class BuiltinAssetsTests
         Entity shape = Assert.NotNull(created);
         Assert.Equal("Cylinder", shape.Name);
         Assert.Equal(parent, shape.Parent);
-        Assert.Equal("builtin:Mesh/Cylinder?segments=8", shape.GetComponent<MeshComponent>().ModelPath);
+        Assert.Equal("builtin:Mesh/Cylinder?segments=8", shape.GetComponent<MeshRenderer>().ModelPath);
         Assert.Null(ModelInstantiator.Instantiate(scene, "builtin:Mesh/Teapot"));
     }
 
@@ -377,7 +377,7 @@ public class BuiltinAssetsTests
 
         var scene = new Scene();
         Assert.True(new SceneSerializer(scene).DeserializeFromString(json));
-        MeshComponent mesh = scene.View<MeshComponent>().Select(e => e.GetComponent<MeshComponent>()).Single();
+        MeshRenderer mesh = scene.View<MeshRenderer>().Select(e => e.GetComponent<MeshRenderer>()).Single();
         Assert.Equal(("builtin:Mesh/Plane", "builtin:Material/Checker"), (mesh.ModelPath, mesh.MaterialPath));
 
         string resaved = new SceneSerializer(scene).SerializeToString();
@@ -393,11 +393,11 @@ public class BuiltinAssetsTests
         Renderer.SetViewport(0, 0, 320, 180);
         var scene = new Scene();
         Entity capsule = scene.Instantiate("Capsule");
-        capsule.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Capsule?segments=12", MaterialPath = "builtin:Material/Grid" });
+        capsule.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Capsule?segments=12", MaterialPath = "builtin:Material/Grid" });
 
         RenderSystem.Render(scene, Matrix4x4.CreateScale(0.25f), new Vector3(0, 0, 5));
 
-        var mesh = capsule.GetComponent<MeshComponent>();
+        var mesh = capsule.GetComponent<MeshRenderer>();
         Assert.Same(PrimitiveModelFactory.Get("Capsule?segments=12"), mesh.Model);
         Assert.Same(BuiltinAssets.LoadMaterial("builtin:Material/Grid"), mesh.Material);
         int indices = PrimitiveSpec.Parse("Capsule?segments=12").Build().Indices.Length;

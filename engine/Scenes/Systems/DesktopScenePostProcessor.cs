@@ -36,7 +36,7 @@ public sealed class DesktopScenePostProcessor : IScenePostProcessor
     private uint _prevH;
 
     /// <inheritdoc />
-    public unsafe bool Begin(PostProcessingComponent settings)
+    public unsafe bool Begin(PostProcessing settings)
     {
         _ = settings;
 
@@ -72,7 +72,7 @@ public sealed class DesktopScenePostProcessor : IScenePostProcessor
     }
 
     /// <inheritdoc />
-    public void Resolve(PostProcessingComponent settings)
+    public void Resolve(PostProcessing settings)
     {
         if (_hdrFramebuffer == null)
         {

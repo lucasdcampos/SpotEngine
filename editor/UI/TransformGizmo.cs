@@ -21,12 +21,12 @@ public enum GizmoMode
 /// A hand-rolled transform gizmo (translate / rotate / scale) that works with both the 2D
 /// orthographic and the 3D perspective editor cameras. Handles are placed in world space and
 /// projected through the camera's view-projection so they line up with the rendered scene, then
-/// drawn with the ImGui draw list. Editing writes straight back to the selected <see cref="TransformComponent"/>.
+/// drawn with the ImGui draw list. Editing writes straight back to the selected <see cref="Transform"/>.
 /// </summary>
 /// <remarks>
 /// In 2D only the X and Y axes are shown (rotation is around Z); in 3D all three axes / rings are
 /// shown. Handle geometry is sized in screen pixels so the gizmo keeps a constant size regardless
-/// of zoom or camera distance. Deltas are applied to the TransformComponent's local fields, matching the
+/// of zoom or camera distance. Deltas are applied to the Transform's local fields, matching the
 /// engine's existing convention (parent transforms are not compensated for).
 /// </remarks>
 public sealed class TransformGizmo
@@ -71,7 +71,7 @@ public sealed class TransformGizmo
     private ImDrawListPtr _draw;
     private EditorPalette _pal = null!;
 
-    public void Draw(TransformComponent transform, EditorCamera camera, Vector2 viewportPos, Vector2 viewportSize, bool viewportHovered)
+    public void Draw(Transform transform, EditorCamera camera, Vector2 viewportPos, Vector2 viewportSize, bool viewportHovered)
     {
         _cam = camera;
         _vp = camera.ViewProjection;
@@ -104,7 +104,7 @@ public sealed class TransformGizmo
     // Ends a drag, recording it as a single undo entry. The gizmo writes the transform continuously
     // while the mouse is down (so the object tracks the cursor), but only the whole gesture is
     // interesting to undo — and `_dragStart` already holds the value it began from.
-    private void EndDrag(TransformComponent transform)
+    private void EndDrag(Transform transform)
     {
         if (_active == Handle.None)
         {
@@ -121,9 +121,9 @@ public sealed class TransformGizmo
 
         (string member, Vector3 after, string verb) = Mode switch
         {
-            GizmoMode.Translate => (nameof(TransformComponent.Position), transform.Position, "Move"),
-            GizmoMode.Rotate => (nameof(TransformComponent.Rotation), transform.Rotation, "Rotate"),
-            _ => (nameof(TransformComponent.Scale), transform.Scale, "Scale"),
+            GizmoMode.Translate => (nameof(Transform.Position), transform.Position, "Move"),
+            GizmoMode.Rotate => (nameof(Transform.Rotation), transform.Rotation, "Rotate"),
+            _ => (nameof(Transform.Scale), transform.Scale, "Scale"),
         };
 
         // A click that grabbed a handle without moving it is not an edit.
@@ -132,7 +132,7 @@ public sealed class TransformGizmo
             return;
         }
 
-        PropertyInfo? prop = typeof(TransformComponent).GetProperty(member);
+        PropertyInfo? prop = typeof(Transform).GetProperty(member);
         if (prop == null)
         {
             return;
@@ -143,7 +143,7 @@ public sealed class TransformGizmo
             $"{verb} {entity.Name}",
             scene,
             entity.EnsurePersistentId(),
-            typeof(TransformComponent),
+            typeof(Transform),
             MemberAccessor.FromProperty(prop),
             _dragStart,
             after,
@@ -152,7 +152,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Translate
 
-    private void DoTranslate(TransformComponent t, bool viewportHovered)
+    private void DoTranslate(Transform t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
 
@@ -221,7 +221,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Rotate
 
-    private void DoRotate(TransformComponent t, bool viewportHovered)
+    private void DoRotate(Transform t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
         float worldRadius = WorldRadius(RingRadiusPx);
@@ -278,7 +278,7 @@ public sealed class TransformGizmo
 
     // ------------------------------------------------------------------ Scale
 
-    private void DoScale(TransformComponent t, bool viewportHovered)
+    private void DoScale(Transform t, bool viewportHovered)
     {
         Vector2 mouse = _io.MousePos;
 

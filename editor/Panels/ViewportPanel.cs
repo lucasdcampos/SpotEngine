@@ -188,7 +188,7 @@ public class ViewportPanel
                     ImGui.EndPopup();
                 }
 
-                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.CameraComponent>())
+                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.Camera>())
                 {
                     // Camera preview in the bottom-right corner: a floating card with a caption strip above
                     // the picture, in the same chrome as the toolbar.
@@ -243,9 +243,9 @@ public class ViewportPanel
                 }
 
                 // --- TRANSFORM GIZMO (2D & 3D: translate / rotate / scale) ---
-                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<TransformComponent>())
+                if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Transform>())
                 {
-                    var transform = _context.Selection.Value.GetComponent<TransformComponent>();
+                    var transform = _context.Selection.Value.GetComponent<Transform>();
                     _gizmo.Draw(transform, _camera, cursorPos, viewportSize, isHovered && !isFlyingCamera);
 
                     // Unity-style mode switch, plus F to frame the selection. Guarded so it does not fire
@@ -387,7 +387,7 @@ public class ViewportPanel
 
         foreach (Entity root in spawned)
         {
-            var transform = root.GetComponent<TransformComponent>();
+            var transform = root.GetComponent<Transform>();
             transform.Position = _camera.Is3D ? point : new Vector3(point.X, point.Y, transform.Position.Z);
         }
 
@@ -457,7 +457,7 @@ public class ViewportPanel
 
         if (ScenePicker.TryGetMeshBounds(mesh, out var bounds))
         {
-            Matrix4x4 model = mesh.GetComponent<TransformComponent>().Matrix;
+            Matrix4x4 model = mesh.GetComponent<Transform>().Matrix;
             Matrix4x4 vp = _camera.ViewProjection;
             Span<Vector2> corners = stackalloc Vector2[8];
             bool visible = true;

@@ -193,7 +193,7 @@ internal sealed class HudOverlay : Widget
         // Landmarks: a diamond at their bearing, pinned to the edge when they are behind you.
         if (f.Game.Player.IsValid)
         {
-            Vector3 player = f.Game.Player.GetComponent<Spot.Engine.TransformComponent>().Position;
+            Vector3 player = f.Game.Player.GetComponent<Spot.Engine.Transform>().Position;
             foreach ((string label, Vector3 position) in _hud.Landmarks)
             {
                 Vector3 to = position - player;

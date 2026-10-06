@@ -11,7 +11,7 @@ namespace Spot.Engine.Graphics;
 /// <remarks>
 /// Mesh indices are positions into the flat submesh list the importer produces (and that the cooked
 /// <c>.sptmesh</c> preserves in order), so a node's <see cref="MeshIndices"/> line up one-to-one with
-/// <see cref="Assets.Model.Meshes"/> and with <see cref="Scenes.MeshComponent.SubmeshIndex"/>.
+/// <see cref="Assets.Model.Meshes"/> and with <see cref="Scenes.MeshRenderer.SubmeshIndex"/>.
 /// </remarks>
 public sealed class ModelNodeInfo
 {

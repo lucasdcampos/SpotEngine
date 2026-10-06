@@ -22,7 +22,7 @@ public sealed class JumpPad : Component
         if (_cooldown > 0.0f || Player.Current is not { } player || other != player.Entity) return;
 
         _cooldown = 0.4f;
-        TransformComponent transform = GetComponent<TransformComponent>();
+        Transform transform = GetComponent<Transform>();
         Matrix4x4 yaw = Matrix4x4.CreateRotationY(transform.WorldRotation.Y * MathF.PI / 180.0f);
         player.Launch(Vector3.TransformNormal(Launch, yaw));
 

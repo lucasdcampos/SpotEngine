@@ -272,7 +272,7 @@ public class ComponentModelTests
         Counter counter = entity.AddComponent<Counter>();
 
         Assert.Equal(new Component[] { counter }, scene.UserComponents);
-        Assert.Equal(entity, entity.GetComponent<TransformComponent>().Entity);
+        Assert.Equal(entity, entity.GetComponent<Transform>().Entity);
         Assert.Equal(entity, counter.Entity);
     }
 
@@ -349,7 +349,7 @@ public class ComponentModelTests
         Assert.Equal(2, damageables.Count);
         Assert.Contains(a, damageables);
         Assert.Contains(b, damageables);
-        Assert.Equal(3, scene.GetComponents<TransformComponent>().Count);
+        Assert.Equal(3, scene.GetComponents<Transform>().Count);
     }
 
     [Fact]

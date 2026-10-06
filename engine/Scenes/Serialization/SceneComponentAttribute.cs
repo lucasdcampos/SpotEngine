@@ -11,8 +11,8 @@ namespace Spot.Engine.Scenes;
 /// The scene serializer discovers every component carrying this attribute by reflection and reads and
 /// writes its public properties automatically (see <see cref="ComponentSerialization"/>), so adding a
 /// serializable component means adding the attribute — no per-component serialization code. Components
-/// without it are not written (for example <see cref="RelationshipComponent"/>, reconstructed from the
-/// entity hierarchy; <see cref="LabelComponent"/> and user components, handled specially by
+/// without it are not written (for example <see cref="Relationship"/>, reconstructed from the
+/// entity hierarchy; <see cref="Label"/> and user components, handled specially by
 /// the serializer).
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]

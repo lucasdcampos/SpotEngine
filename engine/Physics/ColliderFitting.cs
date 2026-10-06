@@ -21,7 +21,7 @@ public static class ColliderFitting
     /// </summary>
     /// <param name="mesh">The mesh renderer.</param>
     /// <returns>The bounds, or <see langword="null"/> when the geometry is not known yet (a model still loading).</returns>
-    public static Aabb3d? MeshBounds(MeshComponent mesh)
+    public static Aabb3d? MeshBounds(MeshRenderer mesh)
     {
         ArgumentNullException.ThrowIfNull(mesh);
         if (BuiltinAssets.TryGetPrimitive(mesh.ModelPath, out PrimitiveSpec spec))
@@ -48,7 +48,7 @@ public static class ColliderFitting
     /// <param name="collider">The collider to resize (box, sphere or capsule).</param>
     /// <param name="mesh">The mesh renderer whose geometry it should match.</param>
     /// <returns><see langword="false"/> when the geometry is not known yet or the collider type is not supported.</returns>
-    public static bool FitToMesh(Collider3DComponent collider, MeshComponent mesh)
+    public static bool FitToMesh(Collider3D collider, MeshRenderer mesh)
     {
         ArgumentNullException.ThrowIfNull(collider);
         if (MeshBounds(mesh) is not { } bounds)
@@ -59,13 +59,13 @@ public static class ColliderFitting
         Vector3 size = bounds.HalfExtents * 2;
         switch (collider)
         {
-            case BoxCollider3DComponent box:
+            case BoxCollider3D box:
                 box.Size = Vector3.Max(size, new Vector3(MinThickness));
                 break;
-            case SphereCollider3DComponent sphere:
+            case SphereCollider3D sphere:
                 sphere.Radius = MathF.Max(0.5f * MathF.Max(size.X, MathF.Max(size.Y, size.Z)), MinThickness);
                 break;
-            case CapsuleCollider3DComponent capsule:
+            case CapsuleCollider3D capsule:
                 capsule.Radius = MathF.Max(0.5f * MathF.Max(size.X, size.Z), MinThickness);
                 capsule.Length = MathF.Max(0, size.Y - 2 * capsule.Radius);
                 break;

@@ -16,13 +16,13 @@ public sealed class Hover : Component
     /// <summary>Gets or sets the float frequency, in cycles per second.</summary>
     public float Frequency { get; set; } = 0.4f;
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
     private Vector3 _origin;
     private float _time;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _origin = _transform.Position;
         _time = Random.Shared.NextSingle() * 10.0f;
     }

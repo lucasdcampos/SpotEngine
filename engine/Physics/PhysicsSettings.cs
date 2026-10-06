@@ -58,7 +58,7 @@ public static class PhysicsSettings
     /// <summary>
     /// Enables or disables collisions between two layers (0..<see cref="LayerCount"/>-1). Symmetric, so
     /// <c>SetLayerCollision(a, b, …)</c> also affects <c>(b, a)</c>. A collider's layer is set on its
-    /// component (<see cref="Collider3DComponent.Layer"/>, <see cref="Collider2DComponent.Layer"/>). Honored by
+    /// component (<see cref="Collider3D.Layer"/>, <see cref="Collider2D.Layer"/>). Honored by
     /// the Bepu and Aether backends (the 2D backend maps layers 0..30 onto collision categories).
     /// </summary>
     public static void SetLayerCollision(int layerA, int layerB, bool shouldCollide)

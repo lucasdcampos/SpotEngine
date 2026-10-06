@@ -22,13 +22,13 @@ public sealed class CameraOrbit : Component
     /// <summary>Gets or sets the idle orbit speed, in degrees per second.</summary>
     public float IdleSpeed { get; set; } = 6.0f;
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
     private Vector2 _lastMouse;
     private float _yaw;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _lastMouse = Input.MousePosition;
     }
 

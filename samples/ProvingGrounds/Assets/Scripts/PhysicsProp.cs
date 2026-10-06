@@ -21,15 +21,15 @@ public sealed class PhysicsProp : Component, IResettable
     /// <summary>Gets or sets how loud its impacts are.</summary>
     public float ImpactVolume { get; set; } = 1.0f;
 
-    private TransformComponent _transform = null!;
-    private PhysicsBody3DComponent? _body;
+    private Transform _transform = null!;
+    private PhysicsBody3D? _body;
     private Vector3 _position;
     private Vector3 _rotation;
     private float _lastSound;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         Entity.TryGetComponent(out _body);
         _position = _transform.Position;
         _rotation = _transform.Rotation;

@@ -7,17 +7,17 @@ namespace Spot.Engine;
 /// <summary>
 /// A component that draws a string of text in the world, at the entity's transform. It is the world-space
 /// counterpart to the screen-space UI text (<c>Spot.UI</c>): use it for floating labels, damage numbers,
-/// signposts and nameplates. A render system reads it together with the entity's <see cref="TransformComponent"/>
+/// signposts and nameplates. A render system reads it together with the entity's <see cref="Transform"/>
 /// and draws the text as camera-facing (or transform-oriented) quads through the shared font atlas.
 /// </summary>
 /// <remarks>
-/// Like <see cref="Sprite2DComponent"/> this is data only — the engine's renderer does the drawing. When no
+/// Like <see cref="Sprite2D"/> this is data only — the engine's renderer does the drawing. When no
 /// <see cref="Font"/> is set it falls back to the engine's built-in default font, so text renders with zero
 /// setup.
 /// </remarks>
 [ComponentMenu("Text", Order = 15, Category = "Rendering")]
 [SceneComponent("Text")]
-public sealed class TextComponent : Component
+public sealed class TextRenderer : Component
 {
     /// <summary>
     /// Gets or sets the font to draw with. When <see langword="null"/> the engine's built-in default font is

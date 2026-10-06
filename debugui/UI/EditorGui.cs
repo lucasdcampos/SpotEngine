@@ -298,12 +298,12 @@ public static class EditorGui
     /// <summary>Picks the icon that best represents what an entity is.</summary>
     public static EntityIcon IconFor(Entity entity)
     {
-        if (entity.HasComponent<CameraComponent>()) return EntityIcon.Camera;
-        if (entity.HasComponent<LightComponent>()) return EntityIcon.Light;
-        if (entity.HasComponent<ParticleSystemComponent>()) return EntityIcon.Particles;
-        if (entity.HasComponent<DynamicCloudsComponent>() || entity.HasComponent<SkyboxComponent>()) return EntityIcon.Skybox;
-        if (entity.HasComponent<MeshComponent>()) return EntityIcon.Mesh;
-        if (entity.HasComponent<Sprite2DComponent>()) return EntityIcon.Sprite;
+        if (entity.HasComponent<Camera>()) return EntityIcon.Camera;
+        if (entity.HasComponent<Light>()) return EntityIcon.Light;
+        if (entity.HasComponent<ParticleSystemRenderer>()) return EntityIcon.Particles;
+        if (entity.HasComponent<DynamicClouds>() || entity.HasComponent<Skybox>()) return EntityIcon.Skybox;
+        if (entity.HasComponent<MeshRenderer>()) return EntityIcon.Mesh;
+        if (entity.HasComponent<Sprite2D>()) return EntityIcon.Sprite;
         return EntityIcon.Empty;
     }
 

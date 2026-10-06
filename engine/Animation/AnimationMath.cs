@@ -9,7 +9,7 @@ public static class AnimationMath
 
     /// <summary>
     /// Converts a rotation quaternion to Euler angles in degrees using the same yaw(Y)/pitch(X)/roll(Z)
-    /// convention the engine's <c>TransformComponent.LocalMatrix</c> rebuilds them with (via
+    /// convention the engine's <c>Transform.LocalMatrix</c> rebuilds them with (via
     /// <see cref="Matrix4x4.CreateFromYawPitchRoll"/>), so a transform written from these angles round-trips.
     /// </summary>
     /// <param name="q">The rotation to convert.</param>

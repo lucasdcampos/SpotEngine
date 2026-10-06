@@ -142,7 +142,7 @@ public sealed class PlayerController : NetworkBehaviour
     public override void OnUpdate(float dt)
     {
         if (!IsOwner) return;                                   // only the owner reads input
-        var t = GetComponent<TransformComponent>();
+        var t = GetComponent<Transform>();
         var move = new Vector3(Input.GetAxis("horizontal"), 0, Input.GetAxis("vertical"));
         t.Position += move * 5f * dt;                           // NetworkTransform replicates this
 

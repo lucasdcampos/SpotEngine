@@ -74,7 +74,7 @@ public class ActiveStateTests
     {
         var scene = new Scene();
         var entity = scene.Instantiate("Entity");
-        var sprite = entity.AddComponent(new Sprite2DComponent());
+        var sprite = entity.AddComponent(new Sprite2D());
 
         Assert.True(sprite.Enabled);
     }

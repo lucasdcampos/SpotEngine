@@ -7,7 +7,7 @@ namespace Spot.Engine;
 
 /// <summary>
 /// Base class for everything attached to an <see cref="Entity"/>. The engine's built-in components
-/// (<see cref="TransformComponent"/>, <see cref="MeshComponent"/>, …) are sealed data driven by the engine's
+/// (<see cref="Transform"/>, <see cref="MeshRenderer"/>, …) are sealed data driven by the engine's
 /// systems; a game's own logic is a component too — derive from this class, override the lifecycle hooks
 /// (<see cref="OnStart"/>, <see cref="OnUpdate"/>, …) and attach it with <see cref="Entity.AddComponent{T}()"/>.
 /// The engine runs the hooks of every component defined outside the engine for the active scene.
@@ -220,7 +220,7 @@ public abstract class Component
         StartCoroutine(TweenRoutine(
             t => onUpdate(Vector3.Lerp(from, to, t)), duration, ease, onComplete, unscaled));
 
-    /// <summary>Tweens this entity's local <see cref="TransformComponent.Position"/> to <paramref name="to"/>.</summary>
+    /// <summary>Tweens this entity's local <see cref="Transform.Position"/> to <paramref name="to"/>.</summary>
     /// <param name="to">The target local position.</param>
     /// <param name="duration">The duration in seconds.</param>
     /// <param name="ease">The easing curve.</param>
@@ -230,11 +230,11 @@ public abstract class Component
     protected Coroutine TweenPosition(
         Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
     {
-        var transform = GetComponent<TransformComponent>();
+        var transform = GetComponent<Transform>();
         return Tween(transform.Position, to, duration, v => transform.Position = v, ease, onComplete, unscaled);
     }
 
-    /// <summary>Tweens this entity's <see cref="TransformComponent.Scale"/> to <paramref name="to"/>.</summary>
+    /// <summary>Tweens this entity's <see cref="Transform.Scale"/> to <paramref name="to"/>.</summary>
     /// <param name="to">The target scale.</param>
     /// <param name="duration">The duration in seconds.</param>
     /// <param name="ease">The easing curve.</param>
@@ -244,12 +244,12 @@ public abstract class Component
     protected Coroutine TweenScale(
         Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
     {
-        var transform = GetComponent<TransformComponent>();
+        var transform = GetComponent<Transform>();
         return Tween(transform.Scale, to, duration, v => transform.Scale = v, ease, onComplete, unscaled);
     }
 
     /// <summary>
-    /// Tweens this entity's <see cref="TransformComponent.Rotation"/> (Euler degrees) to
+    /// Tweens this entity's <see cref="Transform.Rotation"/> (Euler degrees) to
     /// <paramref name="to"/>, interpolating each axis linearly.
     /// </summary>
     /// <param name="to">The target Euler rotation in degrees.</param>
@@ -261,7 +261,7 @@ public abstract class Component
     protected Coroutine TweenRotation(
         Vector3 to, float duration, Ease ease = Ease.Linear, Action? onComplete = null, bool unscaled = false)
     {
-        var transform = GetComponent<TransformComponent>();
+        var transform = GetComponent<Transform>();
         return Tween(transform.Rotation, to, duration, v => transform.Rotation = v, ease, onComplete, unscaled);
     }
 

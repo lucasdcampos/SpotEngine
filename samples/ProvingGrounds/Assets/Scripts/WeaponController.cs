@@ -51,8 +51,8 @@ public sealed class WeaponController : Component
         Color = new Vector4(0.3f, 0.15f, 0.05f, 1.0f), EmissiveColor = new Vector3(1.0f, 0.5f, 0.15f), EmissiveIntensity = 5.0f,
     };
 
-    private CameraComponent _camera = null!;
-    private TransformComponent _transform = null!;
+    private Camera _camera = null!;
+    private Transform _transform = null!;
     private Viewmodel? _viewmodel;
     private WeaponSpec? _pending;
     private float _swapTime;
@@ -69,8 +69,8 @@ public sealed class WeaponController : Component
     public override void OnStart()
     {
         Current = this;
-        _camera = GetComponent<CameraComponent>();
-        _transform = GetComponent<TransformComponent>();
+        _camera = GetComponent<Camera>();
+        _transform = GetComponent<Transform>();
         _viewmodel = new Viewmodel(Scene, Entity);
         _lastMouse = Input.MousePosition;
     }
@@ -217,7 +217,7 @@ public sealed class WeaponController : Component
 
         Vector3 origin = _transform.WorldPosition;
         Vector3 forward = Forward();
-        TransformComponent muzzle = _viewmodel!.Muzzle(Weapon);
+        Transform muzzle = _viewmodel!.Muzzle(Weapon);
         Vector3 muzzlePosition = muzzle.WorldPosition;
 
         Kick(game);
@@ -257,7 +257,7 @@ public sealed class WeaponController : Component
             game.RegisterHit(result);
         }
 
-        if (hit.Entity.IsValid && hit.Entity.TryGetComponent(out PhysicsBody3DComponent? body) && body.IsDynamic && !body.IsKinematic)
+        if (hit.Entity.IsValid && hit.Entity.TryGetComponent(out PhysicsBody3D? body) && body.IsDynamic && !body.IsKinematic)
         {
             body.AddImpulseAtPosition(direction * Weapon.Impulse, hit.Point);
         }
@@ -277,19 +277,19 @@ public sealed class WeaponController : Component
         }
 
         Vector3 inherited = Vector3.Zero;
-        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3DComponent? playerBody))
+        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3D? playerBody))
         {
             inherited = playerBody.Velocity * 0.5f;
         }
 
         Vector3 direction = Scatter(forward, Spread);
         Entity grenade = Scene.Instantiate("Grenade");
-        TransformComponent transform = grenade.GetComponent<TransformComponent>();
+        Transform transform = grenade.GetComponent<Transform>();
         transform.Position = start;
         transform.Scale = new Vector3(0.16f);
-        grenade.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Sphere", Material = _grenadeMaterial });
-        grenade.AddComponent(new SphereCollider3DComponent { Radius = 0.5f, Layer = Layers.Projectile, Restitution = 0.3f });
-        grenade.AddComponent(new PhysicsBody3DComponent
+        grenade.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Sphere", Material = _grenadeMaterial });
+        grenade.AddComponent(new SphereCollider3D { Radius = 0.5f, Layer = Layers.Projectile, Restitution = 0.3f });
+        grenade.AddComponent(new PhysicsBody3D
         {
             Mass = 0.5f, Velocity = direction * Weapon.ProjectileSpeed + inherited + Vector3.UnitY * 1.2f, Restitution = 0.3f,
         });
@@ -320,7 +320,7 @@ public sealed class WeaponController : Component
     private float CurrentSpread(Playground game, float aim)
     {
         float spread = Weapon.HipSpread + (Weapon.AimSpread - Weapon.HipSpread) * aim + _bloom * (1.0f - 0.6f * aim);
-        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3DComponent? body))
+        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3D? body))
         {
             float speed = new Vector2(body.Velocity.X, body.Velocity.Z).Length();
             spread += Weapon.MoveSpread * MathF.Min(speed / 8.0f, 1.0f) * (1.0f - 0.5f * aim);
@@ -340,7 +340,7 @@ public sealed class WeaponController : Component
         float speed = 0.0f;
         bool grounded = true;
         float crouch = 0.0f;
-        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3DComponent? body))
+        if (game.Player.IsValid && game.Player.TryGetComponent(out PhysicsBody3D? body))
         {
             speed = new Vector2(body.Velocity.X, body.Velocity.Z).Length();
         }

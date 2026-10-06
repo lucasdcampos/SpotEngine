@@ -5,7 +5,7 @@ namespace Spot.Engine;
 
 [ComponentMenu("Dynamic Clouds", Order = 90, Category = "Environment")]
 [SceneComponent("DynamicClouds")]
-public sealed class DynamicCloudsComponent : Component
+public sealed class DynamicClouds : Component
 {
     [InspectorColor]
     public Vector3 ColorTop { get; set; } = new Vector3(1.0f, 1.0f, 1.0f);

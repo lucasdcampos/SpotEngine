@@ -59,7 +59,7 @@ public class AssetSpawnerTests
         Assert.NotNull(root);
         Assert.Equal("Turret", root!.Value.Name);
         Assert.Equal("Barrel", Assert.Single(root.Value.Children.ToList()).Name);
-        Assert.False(string.IsNullOrEmpty(root.Value.GetComponent<PrefabComponent>().PrefabRef));
+        Assert.False(string.IsNullOrEmpty(root.Value.GetComponent<PrefabInstance>().PrefabRef));
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class AssetSpawnerTests
 
         Assert.NotNull(root);
         Assert.Equal(cube.Name, root!.Value.Name);
-        Assert.Equal(cube.Reference, root.Value.GetComponent<MeshComponent>().ModelPath);
+        Assert.Equal(cube.Reference, root.Value.GetComponent<MeshRenderer>().ModelPath);
     }
 
     [Fact]
@@ -95,12 +95,12 @@ public class AssetSpawnerTests
 
             Assert.NotNull(sprite);
             Assert.Equal("banner", sprite!.Value.Name);
-            var component = sprite.Value.GetComponent<Sprite2DComponent>();
+            var component = sprite.Value.GetComponent<Sprite2D>();
             Assert.Equal(AssetDatabase.ToGuidRef(image), component.TexturePath);
             Assert.NotNull(component.Texture);
 
             // A 4x2 picture on the unit quad is stretched to twice as wide as tall.
-            Assert.Equal(new Vector3(2, 1, 1), sprite.Value.GetComponent<TransformComponent>().Scale);
+            Assert.Equal(new Vector3(2, 1, 1), sprite.Value.GetComponent<Transform>().Scale);
         }
         finally
         {
@@ -120,8 +120,8 @@ public class AssetSpawnerTests
         Entity? sprite = AssetSpawner.Spawn(scene, image);
 
         Assert.NotNull(sprite);
-        Assert.NotNull(sprite!.Value.GetComponent<Sprite2DComponent>().TexturePath);
-        Assert.Equal(Vector3.One, sprite.Value.GetComponent<TransformComponent>().Scale);
+        Assert.NotNull(sprite!.Value.GetComponent<Sprite2D>().TexturePath);
+        Assert.Equal(Vector3.One, sprite.Value.GetComponent<Transform>().Scale);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class AssetSpawnerTests
 
         Assert.NotNull(entity);
         Assert.Equal("jump", entity!.Value.Name);
-        Assert.Equal(AssetDatabase.ToGuidRef(clip), entity.Value.GetComponent<AudioSourceComponent>().ClipPath);
+        Assert.Equal(AssetDatabase.ToGuidRef(clip), entity.Value.GetComponent<AudioSource>().ClipPath);
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class AssetSpawnerTests
 
         Assert.NotNull(entity);
         Assert.Equal("Hud", entity!.Value.Name);
-        Assert.Equal(AssetDatabase.ToGuidRef(document), entity.Value.GetComponent<UICanvasComponent>().DocumentRef);
+        Assert.Equal(AssetDatabase.ToGuidRef(document), entity.Value.GetComponent<UICanvas>().DocumentRef);
     }
 
     [Fact]
@@ -179,6 +179,6 @@ public class AssetSpawnerTests
         var spawned = AssetSpawner.SpawnAll(scene, paths);
 
         Assert.Single(spawned);
-        Assert.Single(scene.View<TransformComponent>());
+        Assert.Single(scene.View<Transform>());
     }
 }

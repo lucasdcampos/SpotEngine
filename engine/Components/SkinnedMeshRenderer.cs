@@ -7,7 +7,7 @@ using Spot.Engine.Graphics;
 namespace Spot.Engine;
 
 /// <summary>
-/// Marks the sibling <see cref="MeshComponent"/> as skinned: the render system draws it through the skinning
+/// Marks the sibling <see cref="MeshRenderer"/> as skinned: the render system draws it through the skinning
 /// path, posing it from the model's bone entities instead of this entity's transform. It carries no authorable
 /// data — the bones (names and inverse-bind matrices) come from the <see cref="Assets.Model"/> and are bound,
 /// by name, to the entities of the instantiated skeleton. Added automatically to skinned mesh parts by
@@ -15,7 +15,7 @@ namespace Spot.Engine;
 /// </summary>
 [ComponentMenu("Skinned Mesh Renderer", Addable = false, Order = 21, Category = "Rendering")]
 [SceneComponent("SkinnedMeshRenderer")]
-public sealed class SkinnedMeshComponent : Component
+public sealed class SkinnedMeshRenderer : Component
 {
     // Bone entities resolved by name (indexed like the submesh's bone list), and the reusable palette buffer.
     // Both are runtime-only; the serializer skips them (arrays are unsupported types).
@@ -27,14 +27,14 @@ public sealed class SkinnedMeshComponent : Component
     /// transforms, resolving (and caching) the bone entities by name on first use. Returns
     /// <see langword="false"/> when the mesh is not ready or not skinned, so the caller draws it rigidly.
     /// </summary>
-    /// <param name="self">The entity carrying this component and its <see cref="MeshComponent"/>.</param>
+    /// <param name="self">The entity carrying this component and its <see cref="MeshRenderer"/>.</param>
     /// <param name="palette">The per-bone skinning matrices (<c>InverseBind * boneWorld</c>).</param>
     /// <returns><see langword="true"/> if a palette was produced.</returns>
     internal bool TryBuildPalette(Entity self, out Matrix4x4[] palette)
     {
         palette = System.Array.Empty<Matrix4x4>();
 
-        if (!self.TryGetComponent(out MeshComponent? mesh) || mesh.Model is null)
+        if (!self.TryGetComponent(out MeshRenderer? mesh) || mesh.Model is null)
         {
             return false;
         }
@@ -55,7 +55,7 @@ public sealed class SkinnedMeshComponent : Component
         for (int i = 0; i < bones.Count; i++)
         {
             Entity bone = boneEntities[i];
-            result[i] = bone.IsValid && bone.TryGetComponent(out TransformComponent? transform)
+            result[i] = bone.IsValid && bone.TryGetComponent(out Transform? transform)
                 ? bones[i].InverseBind * transform.Matrix
                 : Matrix4x4.Identity;
         }
@@ -91,7 +91,7 @@ public sealed class SkinnedMeshComponent : Component
         while (current is Entity entity)
         {
             topMost = entity;
-            if (entity.HasComponent<AnimatorComponent>())
+            if (entity.HasComponent<Animator>())
             {
                 return entity;
             }

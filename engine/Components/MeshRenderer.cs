@@ -6,13 +6,13 @@ using Spot.Engine.Graphics;
 namespace Spot.Engine;
 
 /// <summary>
-/// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2DComponent"/> it is
+/// A component that marks an entity as a drawable 3D model. Like <see cref="Sprite2D"/> it is
 /// data-only: it holds what to draw (a <see cref="Assets.Model"/> and a color) and a render system
-/// draws it together with the entity's <see cref="TransformComponent"/>.
+/// draws it together with the entity's <see cref="Transform"/>.
 /// </summary>
 [ComponentMenu("Mesh Renderer", Order = 20, Category = "Rendering")]
 [SceneComponent("MeshRenderer")]
-public sealed class MeshComponent : Component
+public sealed class MeshRenderer : Component
 {
     private string? _modelPath;
     private string? _materialPath;

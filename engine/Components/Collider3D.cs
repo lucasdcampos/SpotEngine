@@ -2,17 +2,17 @@ using System.Numerics;
 using Spot.Engine;
 using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// Shared state for 3D colliders: a local offset plus the trigger flag and collision layer honored by the
-/// Bepu backend. Concrete colliders — <see cref="BoxCollider3DComponent"/>,
-/// <see cref="SphereCollider3DComponent"/>, and <see cref="CapsuleCollider3DComponent"/> — add their shape.
+/// Bepu backend. Concrete colliders — <see cref="BoxCollider3D"/>,
+/// <see cref="SphereCollider3D"/>, and <see cref="CapsuleCollider3D"/> — add their shape.
 /// </summary>
-public abstract class Collider3DComponent : Component
+public abstract class Collider3D : Component
 {
     // Only the engine's collider shapes derive from this: the physics backends know each concrete shape.
-    private protected Collider3DComponent()
+    private protected Collider3D()
     {
     }
 
@@ -33,14 +33,14 @@ public abstract class Collider3DComponent : Component
 
     /// <summary>
     /// Coefficient of friction for this surface. For static bodies this is the collider value; for dynamic
-    /// bodies the <see cref="PhysicsBody3DComponent.Friction"/> takes precedence. Bepu backend only.
+    /// bodies the <see cref="PhysicsBody3D.Friction"/> takes precedence. Bepu backend only.
     /// </summary>
     [InspectorRange(0.0f, 2.0f, 0.01f)]
     public float Friction { get; set; } = 0.8f;
 
     /// <summary>
     /// Bounciness: 0 = no bounce, 1 = fully elastic. For static bodies this is the collider value; for
-    /// dynamic bodies the <see cref="PhysicsBody3DComponent.Restitution"/> takes precedence. Bepu backend only.
+    /// dynamic bodies the <see cref="PhysicsBody3D.Restitution"/> takes precedence. Bepu backend only.
     /// </summary>
     [InspectorRange(0.0f, 1.0f, 0.01f)]
     public float Restitution { get; set; } = 0.0f;

@@ -40,17 +40,17 @@ public class SceneSerializerBackCompatTests
         Assert.True(new SceneSerializer(scene).DeserializeFromString(json));
 
         Entity sun = FindByName(scene, "Sun");
-        Assert.Equal(new Vector3(0, 10, 0), sun.GetComponent<TransformComponent>().Position);
+        Assert.Equal(new Vector3(0, 10, 0), sun.GetComponent<Transform>().Position);
 
-        // The legacy "DirectionalLight" slot maps onto LightComponent with Type defaulting to Directional.
-        var light = sun.GetComponent<LightComponent>();
+        // The legacy "DirectionalLight" slot maps onto Light with Type defaulting to Directional.
+        var light = sun.GetComponent<Light>();
         Assert.Equal(LightType.Directional, light.Type);
         Assert.Equal(2f, light.Intensity);
 
-        Assert.True(sun.HasComponent<SkyboxComponent>());
+        Assert.True(sun.HasComponent<Skybox>());
         // A null slot must not create the component.
-        Assert.False(sun.HasComponent<CameraComponent>());
-        Assert.False(sun.HasComponent<Spot.Engine.Physics.PhysicsBody2DComponent>());
+        Assert.False(sun.HasComponent<Camera>());
+        Assert.False(sun.HasComponent<PhysicsBody2D>());
     }
 
     [Fact]
@@ -58,13 +58,13 @@ public class SceneSerializerBackCompatTests
     {
         var scene = new Scene();
         var ground = scene.Instantiate("Ground");
-        ground.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Plane", Color = new Vector4(0.5f, 0.6f, 0.7f, 1f) });
-        ground.AddComponent(new SkyboxComponent { SkyColor = new Vector3(0.1f, 0.2f, 0.3f) });
-        ground.AddComponent(new PostProcessingComponent { Exposure = 1.5f, EnableBloom = false });
+        ground.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Plane", Color = new Vector4(0.5f, 0.6f, 0.7f, 1f) });
+        ground.AddComponent(new Skybox { SkyColor = new Vector3(0.1f, 0.2f, 0.3f) });
+        ground.AddComponent(new PostProcessing { Exposure = 1.5f, EnableBloom = false });
 
         var detail = scene.Instantiate("Detail");
         detail.SetParent(ground);
-        detail.AddComponent(new DynamicCloudsComponent { Density = 0.42f });
+        detail.AddComponent(new DynamicClouds { Density = 0.42f });
 
         string json = new SceneSerializer(scene).SerializeToString();
 
@@ -72,23 +72,23 @@ public class SceneSerializerBackCompatTests
         Assert.True(new SceneSerializer(loaded).DeserializeFromString(json));
 
         Entity g = FindByName(loaded, "Ground");
-        var mesh = g.GetComponent<MeshComponent>();
+        var mesh = g.GetComponent<MeshRenderer>();
         Assert.Equal("builtin:Mesh/Plane", mesh.ModelPath);
         Assert.Equal(new Vector4(0.5f, 0.6f, 0.7f, 1f), mesh.Color);
-        Assert.Equal(new Vector3(0.1f, 0.2f, 0.3f), g.GetComponent<SkyboxComponent>().SkyColor);
+        Assert.Equal(new Vector3(0.1f, 0.2f, 0.3f), g.GetComponent<Skybox>().SkyColor);
 
-        var pp = g.GetComponent<PostProcessingComponent>();
+        var pp = g.GetComponent<PostProcessing>();
         Assert.Equal(1.5f, pp.Exposure);
         Assert.False(pp.EnableBloom);
 
         Entity d = FindByName(loaded, "Detail");
         Assert.Equal("Ground", d.Parent!.Value.Name);
-        Assert.Equal(0.42f, d.GetComponent<DynamicCloudsComponent>().Density);
+        Assert.Equal(0.42f, d.GetComponent<DynamicClouds>().Density);
     }
 
     private static Entity FindByName(Scene scene, string name)
     {
-        foreach (var e in scene.View<LabelComponent>())
+        foreach (var e in scene.View<Label>())
         {
             if (e.Name == name)
             {

@@ -45,8 +45,8 @@ internal sealed class Viewmodel
     private const string Sphere = "builtin:Mesh/Sphere";
 
     private readonly Scene _scene;
-    private readonly TransformComponent _rig;
-    private readonly TransformComponent _drum;
+    private readonly Transform _rig;
+    private readonly Transform _drum;
     private readonly Material _metal = new() { Color = new Vector4(0.1f, 0.105f, 0.115f, 1.0f), Metallic = 0.6f };
     private readonly Material _polymer = new() { Color = new Vector4(0.17f, 0.18f, 0.2f, 1.0f), Metallic = 0.1f };
     private readonly Material _dark = new() { Color = new Vector4(0.07f, 0.075f, 0.085f, 1.0f), Metallic = 0.4f };
@@ -70,13 +70,13 @@ internal sealed class Viewmodel
         _scene = scene;
         Entity rig = scene.Instantiate("Weapon Rig");
         rig.SetParent(camera);
-        _rig = rig.GetComponent<TransformComponent>();
+        _rig = rig.GetComponent<Transform>();
 
         Rifle = BuildRifle(rig, out Entity rifleMuzzle);
-        RifleMuzzle = rifleMuzzle.GetComponent<TransformComponent>();
+        RifleMuzzle = rifleMuzzle.GetComponent<Transform>();
         Launcher = BuildLauncher(rig, out Entity launcherMuzzle, out Entity drum);
-        LauncherMuzzle = launcherMuzzle.GetComponent<TransformComponent>();
-        _drum = drum.GetComponent<TransformComponent>();
+        LauncherMuzzle = launcherMuzzle.GetComponent<Transform>();
+        _drum = drum.GetComponent<Transform>();
         Show(Arsenal.Rifle);
     }
 
@@ -84,9 +84,9 @@ internal sealed class Viewmodel
 
     public Entity Launcher { get; }
 
-    public TransformComponent RifleMuzzle { get; }
+    public Transform RifleMuzzle { get; }
 
-    public TransformComponent LauncherMuzzle { get; }
+    public Transform LauncherMuzzle { get; }
 
     /// <summary>Shows one weapon's model and hides the other.</summary>
     public void Show(WeaponSpec weapon)
@@ -98,7 +98,7 @@ internal sealed class Viewmodel
         launcher.Enabled = weapon == Arsenal.Launcher;
     }
 
-    public TransformComponent Muzzle(WeaponSpec weapon) => weapon == Arsenal.Launcher ? LauncherMuzzle : RifleMuzzle;
+    public Transform Muzzle(WeaponSpec weapon) => weapon == Arsenal.Launcher ? LauncherMuzzle : RifleMuzzle;
 
     /// <summary>Kicks the model back for a shot.</summary>
     public void Kick(WeaponSpec weapon)
@@ -230,16 +230,16 @@ internal sealed class Viewmodel
     {
         Entity entity = _scene.Instantiate(name);
         entity.SetParent(parent);
-        entity.GetComponent<TransformComponent>().Position = position;
+        entity.GetComponent<Transform>().Position = position;
         return entity;
     }
 
     private void Part(Entity parent, string name, string mesh, Vector3 position, Vector3 rotation, Vector3 scale, Material material)
     {
         Entity entity = Node(parent, name, position);
-        TransformComponent transform = entity.GetComponent<TransformComponent>();
+        Transform transform = entity.GetComponent<Transform>();
         transform.Rotation = rotation;
         transform.Scale = scale;
-        entity.AddComponent(new MeshComponent { ModelPath = mesh, Material = material });
+        entity.AddComponent(new MeshRenderer { ModelPath = mesh, Material = material });
     }
 }

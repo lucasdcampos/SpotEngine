@@ -25,11 +25,11 @@ public static class MaterialDrop
     // Swaps the reference and drops the loaded material, so the renderer resolves the new one on its next draw.
     // Undo and redo write through the same accessor, so they swap the material exactly the same way.
     private static readonly MemberAccessor s_materialAccessor = MemberAccessor.FromDelegates(
-        nameof(MeshComponent.MaterialPath), typeof(string), "MeshComponent.MaterialDrop",
-        target => ((MeshComponent)target).MaterialPath,
+        nameof(MeshRenderer.MaterialPath), typeof(string), "MeshRenderer.MaterialDrop",
+        target => ((MeshRenderer)target).MaterialPath,
         (target, value) =>
         {
-            var mesh = (MeshComponent)target;
+            var mesh = (MeshRenderer)target;
             mesh.MaterialPath = (string?)value;
             mesh.Material = null;
         });
@@ -56,7 +56,7 @@ public static class MaterialDrop
             return targets;
         }
 
-        if (entity.HasComponent<MeshComponent>())
+        if (entity.HasComponent<MeshRenderer>())
         {
             targets.Add(entity);
             return targets;
@@ -98,7 +98,7 @@ public static class MaterialDrop
     /// <summary>
     /// Assigns the material to every target that does not already use it, recorded as one undo step.
     /// </summary>
-    /// <param name="targets">Entities with a <see cref="MeshComponent"/>; others are skipped.</param>
+    /// <param name="targets">Entities with a <see cref="MeshRenderer"/>; others are skipped.</param>
     /// <param name="materialPath">The material's source path or built-in reference.</param>
     /// <param name="history">The history to record into; the editor's own when <see langword="null"/>.</param>
     /// <returns>How many meshes changed.</returns>
@@ -108,8 +108,8 @@ public static class MaterialDrop
         string? reference = BuiltinAssets.Canonicalize(AssetDatabase.ToGuidRef(materialPath));
 
         List<Entity> changed = targets
-            .Where(e => e.IsValid && e.HasComponent<MeshComponent>()
-                && e.GetComponent<MeshComponent>().MaterialPath != reference)
+            .Where(e => e.IsValid && e.HasComponent<MeshRenderer>()
+                && e.GetComponent<MeshRenderer>().MaterialPath != reference)
             .ToList();
         if (changed.Count == 0)
         {
@@ -121,13 +121,13 @@ public static class MaterialDrop
         {
             foreach (Entity entity in changed)
             {
-                var mesh = entity.GetComponent<MeshComponent>();
+                var mesh = entity.GetComponent<MeshRenderer>();
                 string? before = mesh.MaterialPath;
                 s_materialAccessor.Set(mesh, reference);
 
                 Scene scene = entity.Scene;
                 history.Push(new ComponentValueAction(
-                    label, scene, entity.EnsurePersistentId(), typeof(MeshComponent), s_materialAccessor,
+                    label, scene, entity.EnsurePersistentId(), typeof(MeshRenderer), s_materialAccessor,
                     before, mesh.MaterialPath, EditorHistory.DocumentFor(scene)));
             }
         }
@@ -139,7 +139,7 @@ public static class MaterialDrop
     {
         foreach (Entity child in entity.Children)
         {
-            if (child.HasComponent<MeshComponent>()) into.Add(child);
+            if (child.HasComponent<MeshRenderer>()) into.Add(child);
             CollectMeshes(child, into);
         }
     }

@@ -5,13 +5,13 @@ namespace Spot.Engine;
 /// A human-readable name attached to an entity. Every entity created by
 /// <see cref="Scene.Instantiate"/> has one.
 /// </summary>
-public sealed class LabelComponent : Component
+public sealed class Label : Component
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="LabelComponent"/> class.
+    /// Initializes a new instance of the <see cref="Label"/> class.
     /// </summary>
     /// <param name="name">The entity name.</param>
-    public LabelComponent(string name)
+    public Label(string name)
     {
         Name = name;
     }

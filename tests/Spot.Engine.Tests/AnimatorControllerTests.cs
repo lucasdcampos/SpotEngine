@@ -15,7 +15,7 @@ public class AnimatorComponentTests
     [Fact]
     public void Play_ClipObject_SetsPlayingAndCurrentClip()
     {
-        var animator = new AnimatorComponent();
+        var animator = new Animator();
         animator.Play(Clip("Run"));
 
         Assert.True(animator.IsPlaying);
@@ -28,7 +28,7 @@ public class AnimatorComponentTests
     [Fact]
     public void Play_UnknownClipName_DoesNotThrowAndStaysStopped()
     {
-        var animator = new AnimatorComponent();
+        var animator = new Animator();
 
         // No model/controller means no clips resolve; playing an unknown name logs and no-ops.
         animator.Play("Missing");
@@ -40,7 +40,7 @@ public class AnimatorComponentTests
     [Fact]
     public void Parameters_AreNoOps_WithoutController()
     {
-        var animator = new AnimatorComponent();
+        var animator = new Animator();
 
         animator.SetFloat("Speed", 5.0f);
         animator.SetBool("Grounded", true);

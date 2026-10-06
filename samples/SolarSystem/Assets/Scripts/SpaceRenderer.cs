@@ -15,7 +15,7 @@ namespace SolarSystem;
 /// <item><see cref="RenderStage.AfterTransparent"/>: orbit trails (the framework's <see cref="BillboardBatch"/>),
 /// then atmospheres, the corona and the rings, blended over the bodies.</item>
 /// </list>
-/// The Sun's <see cref="LightComponent"/> lights the bodies, and the scene's directional light supplies the faint
+/// The Sun's <see cref="Light"/> lights the bodies, and the scene's directional light supplies the faint
 /// ambient fill, so the same lights drive these shaders and the engine's own lit renderer.
 /// </summary>
 public sealed class SpaceRenderer : Component
@@ -379,7 +379,7 @@ public sealed class SpaceRenderer : Component
         }
 
         position = sun.Position;
-        if (sun.Entity.TryGetComponent(out LightComponent? light) && light.Enabled)
+        if (sun.Entity.TryGetComponent(out Light? light) && light.Enabled)
         {
             color = light.Color * light.Intensity;
         }
@@ -388,9 +388,9 @@ public sealed class SpaceRenderer : Component
     // The fill light: the scene's directional light, as the engine itself uses it for ambient.
     private Vector3 AmbientLight()
     {
-        foreach (Entity entity in Scene.View<LightComponent>())
+        foreach (Entity entity in Scene.View<Light>())
         {
-            LightComponent light = entity.GetComponent<LightComponent>();
+            Light light = entity.GetComponent<Light>();
             if (light.Enabled && light.Type == LightType.Directional && entity.IsActiveInHierarchy())
             {
                 return light.Color * light.Intensity * light.AmbientIntensity;

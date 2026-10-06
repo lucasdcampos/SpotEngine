@@ -2,7 +2,7 @@ namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// Memoizes <c>IsActiveInHierarchy</c> per entity id for one scene. An entity's active state — its
-/// <see cref="LabelComponent"/>.<c>Enabled</c> flag walked up the parent chain — is queried many times per
+/// <see cref="Label"/>.<c>Enabled</c> flag walked up the parent chain — is queried many times per
 /// frame (every <c>ViewActive</c> and each <see cref="RenderSystem"/> pass), so it is cached and recomputed
 /// only when something that affects it changes.
 /// </summary>
@@ -39,7 +39,7 @@ internal sealed class HierarchyCache
         while (true)
         {
             // An entity with no label, or a disabled label anywhere up the chain, is inactive.
-            if (_registry.Get(typeof(LabelComponent), currentId) is not LabelComponent label)
+            if (_registry.Get(typeof(Label), currentId) is not Label label)
             {
                 return false;
             }
@@ -48,7 +48,7 @@ internal sealed class HierarchyCache
                 return false;
             }
 
-            if (_registry.Get(typeof(RelationshipComponent), currentId) is RelationshipComponent rel &&
+            if (_registry.Get(typeof(Relationship), currentId) is Relationship rel &&
                 rel.Parent is Entity parent)
             {
                 currentId = parent.Id;

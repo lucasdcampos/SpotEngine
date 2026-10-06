@@ -3,14 +3,14 @@ using Spot.Engine;
 using Spot.Engine.Scenes;
 using Spot.Engine.Mathematics;
 
-namespace Spot.Engine.Physics;
+namespace Spot.Engine;
 
 /// <summary>
 /// A component to define a simple 3D box for AABB collisions.
 /// </summary>
 [ComponentMenu("Box Collider 3D", Order = 70, Category = "Physics")]
 [SceneComponent("BoxCollider3D")]
-public sealed class BoxCollider3DComponent : Collider3DComponent
+public sealed class BoxCollider3D : Collider3D
 {
     public Vector3 Size { get; set; } = Vector3.One;
 

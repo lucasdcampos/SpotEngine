@@ -45,7 +45,7 @@ public partial class SampleProjectTests
 
         // Script types live in the project, not in this test assembly; those are checked by the next test.
         Assert.DoesNotContain(log.Entries, e => e.Level >= LogLevel.Warn && !e.Message.Contains("Type not found", StringComparison.Ordinal));
-        Assert.NotEmpty(scene.View<TransformComponent>());
+        Assert.NotEmpty(scene.View<Transform>());
     }
 
     [Theory]

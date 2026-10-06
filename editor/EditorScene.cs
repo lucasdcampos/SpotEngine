@@ -219,9 +219,9 @@ public class EditorScene : Scene
 
         _hierarchyPanel.OnEntityDoubleClicked += entity =>
         {
-            if (entity.HasComponent<TransformComponent>() && _activeSceneData != null)
+            if (entity.HasComponent<Transform>() && _activeSceneData != null)
             {
-                _activeSceneData.EditorCamera.Focus(entity.GetComponent<TransformComponent>().WorldPosition);
+                _activeSceneData.EditorCamera.Focus(entity.GetComponent<Transform>().WorldPosition);
             }
         };
     }
@@ -883,7 +883,7 @@ public class EditorScene : Scene
                 // Only clear if the entity is still alive in the scene
                 if (_activeSceneData != null && _activeSceneData.Scene.IsAlive(_lastSelectedParticleEntity.Value))
                 {
-                    if (_lastSelectedParticleEntity.Value.TryGetComponent(out ParticleSystemComponent? oldParticles))
+                    if (_lastSelectedParticleEntity.Value.TryGetComponent(out ParticleSystemRenderer? oldParticles))
                     {
                         oldParticles.Clear();
                         oldParticles.Stop();
@@ -891,7 +891,7 @@ public class EditorScene : Scene
                 }
             }
 
-            if (currentSelected.HasValue && currentSelected.Value.IsActiveInHierarchy() && currentSelected.Value.TryGetComponent(out ParticleSystemComponent? particles))
+            if (currentSelected.HasValue && currentSelected.Value.IsActiveInHierarchy() && currentSelected.Value.TryGetComponent(out ParticleSystemRenderer? particles))
             {
                 if (!particles.IsPlaying)
                 {
@@ -987,23 +987,23 @@ public class EditorScene : Scene
 
                 void DrawEntityColliders(Entity entity)
                 {
-                    if (entity.HasComponent<Spot.Engine.Physics.BoxCollider2DComponent>() && entity.HasComponent<TransformComponent>())
+                    if (entity.HasComponent<BoxCollider2D>() && entity.HasComponent<Transform>())
                     {
-                        var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
+                        var transform = entity.GetComponent<Transform>();
+                        var collider = entity.GetComponent<BoxCollider2D>();
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
 
-                    if (entity.HasComponent<Spot.Engine.Physics.BoxCollider3DComponent>() && entity.HasComponent<TransformComponent>())
+                    if (entity.HasComponent<BoxCollider3D>() && entity.HasComponent<Transform>())
                     {
-                        var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
+                        var transform = entity.GetComponent<Transform>();
+                        var collider = entity.GetComponent<BoxCollider3D>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                         DrawBox3DWire(bounds.Min, bounds.Max);
                     }
 
-                    if (entity.TryGetComponent(out Spot.Engine.RelationshipComponent? rel))
+                    if (entity.TryGetComponent(out Spot.Engine.Relationship? rel))
                     {
                         foreach (var child in rel.Children)
                             DrawEntityColliders(child);
@@ -1015,20 +1015,20 @@ public class EditorScene : Scene
                 if (showAll)
                 {
                     // ShowColliders is on: draw every entity in the scene, not just the selection.
-                    foreach (var entity in sceneData.Scene.View<Spot.Engine.Physics.BoxCollider2DComponent, TransformComponent>())
+                    foreach (var entity in sceneData.Scene.View<BoxCollider2D, Transform>())
                     {
                         if (!entity.IsActiveInHierarchy()) continue;
-                        var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider2DComponent>();
+                        var transform = entity.GetComponent<Transform>();
+                        var collider = entity.GetComponent<BoxCollider2D>();
                         var bounds = collider.GetWorldBounds(new Vector2(transform.WorldPosition.X, transform.WorldPosition.Y), new Vector2(transform.WorldScale.X, transform.WorldScale.Y));
                         Renderer2D.DrawRect(bounds.Center, bounds.HalfExtents * 2.0f, new Vector4(0.0f, 1.0f, 0.0f, 1.0f), 0.02f);
                     }
 
-                    foreach (var entity in sceneData.Scene.View<Spot.Engine.Physics.BoxCollider3DComponent, TransformComponent>())
+                    foreach (var entity in sceneData.Scene.View<BoxCollider3D, Transform>())
                     {
                         if (!entity.IsActiveInHierarchy()) continue;
-                        var transform = entity.GetComponent<TransformComponent>();
-                        var collider = entity.GetComponent<Spot.Engine.Physics.BoxCollider3DComponent>();
+                        var transform = entity.GetComponent<Transform>();
+                        var collider = entity.GetComponent<BoxCollider3D>();
                         var bounds = collider.GetWorldBounds(transform.WorldPosition, transform.WorldScale);
                         DrawBox3DWire(bounds.Min, bounds.Max);
                     }
@@ -1044,12 +1044,12 @@ public class EditorScene : Scene
 
             // Camera frustum gizmo: draw where the selected camera is looking.
             if (_context.Selection.HasValue && sceneData == _activeSceneData
-                && _context.Selection.Value.HasComponent<CameraComponent>()
-                && _context.Selection.Value.HasComponent<TransformComponent>())
+                && _context.Selection.Value.HasComponent<Camera>()
+                && _context.Selection.Value.HasComponent<Transform>())
             {
                 var camEntity = _context.Selection.Value;
-                var camComp = camEntity.GetComponent<CameraComponent>();
-                var camTransform = camEntity.GetComponent<TransformComponent>();
+                var camComp = camEntity.GetComponent<Camera>();
+                var camTransform = camEntity.GetComponent<Transform>();
 
                 // Invert the camera's real view-projection so the drawing matches exactly what it
                 // renders (direction, aspect, FOV) regardless of projection type or forward convention.
@@ -1110,14 +1110,14 @@ public class EditorScene : Scene
             sceneData.Framebuffer.Unbind();
 
             // Render Camera Preview
-            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<CameraComponent>() && sceneData == _activeSceneData && sceneData.ViewportVisible)
+            if (_context.Selection.HasValue && _context.Selection.Value.HasComponent<Camera>() && sceneData == _activeSceneData && sceneData.ViewportVisible)
             {
                 sceneData.CameraPreviewFramebuffer.Bind();
                 var entity = _context.Selection.Value;
-                var cc = entity.GetComponent<CameraComponent>();
-                if (entity.HasComponent<TransformComponent>())
+                var cc = entity.GetComponent<Camera>();
+                if (entity.HasComponent<Transform>())
                 {
-                    var transform = entity.GetComponent<TransformComponent>();
+                    var transform = entity.GetComponent<Transform>();
                     var viewProj = cc.GetViewProjection(transform);
                     var is3DPrev = cc.ProjectionType == SceneCameraProjection.Perspective;
 
@@ -1164,8 +1164,8 @@ public class EditorScene : Scene
 
         if (sceneData.Scene.TryGetActivePrimaryCamera(out Entity cameraEntity))
         {
-            var cc = cameraEntity.GetComponent<CameraComponent>();
-            var transform = cameraEntity.GetComponent<TransformComponent>();
+            var cc = cameraEntity.GetComponent<Camera>();
+            var transform = cameraEntity.GetComponent<Transform>();
             bool is3D = cc.ProjectionType == SceneCameraProjection.Perspective;
 
             Vector4 clearColor = cc.BackgroundColor;
@@ -1306,7 +1306,7 @@ public class EditorScene : Scene
                 // That also keeps the camera preview and frustum gizmo true to what play will show.
                 if (imageSize.X > 0 && imageSize.Y > 0 && sceneData.Scene.TryGetActivePrimaryCamera(out Entity gameCamera))
                 {
-                    gameCamera.GetComponent<CameraComponent>().SetViewportSize(imageSize.X, imageSize.Y);
+                    gameCamera.GetComponent<Camera>().SetViewportSize(imageSize.X, imageSize.Y);
                 }
 
                 // Where the playing game's picture sits in the window, for its input (see OnUpdate). ImGui's screen
@@ -1589,8 +1589,8 @@ public class EditorScene : Scene
     {
         if (!sceneData.Scene.TryGetActivePrimaryCamera(out Entity cameraEntity)) return;
 
-        var cc = cameraEntity.GetComponent<CameraComponent>();
-        var transform = cameraEntity.GetComponent<TransformComponent>();
+        var cc = cameraEntity.GetComponent<Camera>();
+        var transform = cameraEntity.GetComponent<Transform>();
         EditorCamera camera = sceneData.EditorCamera;
         bool perspective = cc.ProjectionType == SceneCameraProjection.Perspective;
         if (perspective != camera.Is3D) return;
@@ -2046,9 +2046,9 @@ public class EditorScene : Scene
             // What the game built beside its entities — its UI, its render passes — goes with it, even when no
             // snapshot is restored below; otherwise the edit-mode viewport would keep drawing the game's HUD.
             scene.ClearRuntimeState();
-            foreach (var e in scene.View<AudioSourceComponent>())
+            foreach (var e in scene.View<AudioSource>())
             {
-                var src = e.GetComponent<AudioSourceComponent>();
+                var src = e.GetComponent<AudioSource>();
                 if (src.IsPlaying) src.Stop();
             }
             scene.TeardownPhysics();

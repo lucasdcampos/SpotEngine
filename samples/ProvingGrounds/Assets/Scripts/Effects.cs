@@ -20,7 +20,7 @@ public enum Surface
 /// Every transient effect in the game, from one entity. Two custom render passes draw what the engine has no
 /// component for, with the framework's <see cref="BillboardBatch"/>: bullet holes right after the opaque pass, and
 /// tracers, velocity-stretched sparks, muzzle flashes and shockwaves inside the HDR capture so they bloom. Fire,
-/// smoke and dust use the engine's own <see cref="ParticleSystemComponent"/> through small pools of emitters, and
+/// smoke and dust use the engine's own <see cref="ParticleSystemRenderer"/> through small pools of emitters, and
 /// short-lived point lights light the scene for muzzle flashes and explosions.
 /// </summary>
 public sealed class Effects : Component
@@ -57,19 +57,19 @@ public sealed class Effects : Component
         Scene.AddRenderPass(_decalPass);
         Scene.AddRenderPass(_glowPass);
 
-        _fire = new EmitterPool(Scene, "Fire", 4, () => new ParticleSystemComponent
+        _fire = new EmitterPool(Scene, "Fire", 4, () => new ParticleSystemRenderer
         {
             Shape = ParticleEmitterShape.Sphere, Radius = 0.5f, MaxParticles = 160, StartLifetime = 0.6f, StartSpeed = 7.5f,
             StartSize = 2.2f, EndSize = 0.5f, StartColor = new Vector4(3.2f, 1.5f, 0.4f, 1.0f), EndColor = new Vector4(0.8f, 0.12f, 0.02f, 0.0f),
             Damping = 4.5f, Gravity = -3.0f, Randomness = 0.6f, SpinSpeed = 90.0f, Blend = ParticleBlend.Additive,
         });
-        _smoke = new EmitterPool(Scene, "Smoke", 4, () => new ParticleSystemComponent
+        _smoke = new EmitterPool(Scene, "Smoke", 4, () => new ParticleSystemRenderer
         {
             Shape = ParticleEmitterShape.Sphere, Radius = 0.8f, MaxParticles = 120, StartLifetime = 3.0f, StartSpeed = 3.2f,
             StartSize = 1.6f, EndSize = 4.8f, StartColor = new Vector4(0.2f, 0.2f, 0.22f, 0.6f), EndColor = new Vector4(0.42f, 0.42f, 0.45f, 0.0f),
             Damping = 1.6f, Gravity = -1.1f, Randomness = 0.55f, SpinSpeed = 25.0f, Blend = ParticleBlend.Alpha,
         });
-        _dust = new EmitterPool(Scene, "Dust", 6, () => new ParticleSystemComponent
+        _dust = new EmitterPool(Scene, "Dust", 6, () => new ParticleSystemRenderer
         {
             Shape = ParticleEmitterShape.Cone, ConeAngle = 40.0f, Radius = 0.03f, MaxParticles = 60, StartLifetime = 0.7f,
             StartSpeed = 1.8f, StartSize = 0.14f, EndSize = 0.55f, StartColor = new Vector4(0.78f, 0.76f, 0.72f, 0.5f),
@@ -214,7 +214,7 @@ public sealed class Effects : Component
         AudioExplosion(at);
         if (Playground.Current is { } game && game.Player.IsValid)
         {
-            float distance = Vector3.Distance(game.Player.GetComponent<TransformComponent>().Position, at);
+            float distance = Vector3.Distance(game.Player.GetComponent<Transform>().Position, at);
             game.AddTrauma(Math.Clamp(1.0f - distance / (radius * 6.0f), 0.0f, 1.0f) * 0.75f);
         }
     }
@@ -240,8 +240,8 @@ public sealed class Effects : Component
         if (_decals.Count >= MaxDecals) _decals.RemoveAt(0);
 
         var decal = new Decal { Size = size, Rotation = Random.Shared.NextSingle() * MathF.Tau, Position = point, Normal = normal };
-        if (surface.IsValid && surface.TryGetComponent(out PhysicsBody3DComponent? body) && body.IsDynamic && !body.IsKinematic
-            && Matrix4x4.Invert(surface.GetComponent<TransformComponent>().Matrix, out Matrix4x4 inverse))
+        if (surface.IsValid && surface.TryGetComponent(out PhysicsBody3D? body) && body.IsDynamic && !body.IsKinematic
+            && Matrix4x4.Invert(surface.GetComponent<Transform>().Matrix, out Matrix4x4 inverse))
         {
             decal.Attached = true;
             decal.Surface = surface;
@@ -263,7 +263,7 @@ public sealed class Effects : Component
             Vector3 normal = decal.Normal;
             if (decal.Attached)
             {
-                Matrix4x4 world = decal.Surface.GetComponent<TransformComponent>().Matrix;
+                Matrix4x4 world = decal.Surface.GetComponent<Transform>().Matrix;
                 position = Vector3.Transform(position, world);
                 normal = Vector3.TransformNormal(normal, world);
             }
@@ -438,22 +438,22 @@ public sealed class Effects : Component
     }
 
     /// <summary>
-    /// A few entities carrying the same <see cref="ParticleSystemComponent"/> preset, used round-robin for bursts. A
+    /// A few entities carrying the same <see cref="ParticleSystemRenderer"/> preset, used round-robin for bursts. A
     /// world-space emitter launches particles from where its entity was when the particle system last ran, so a
     /// burst is placed now and emitted on the next frame, once the system has seen the new place.
     /// </summary>
     private sealed class EmitterPool
     {
-        private readonly List<(Entity Entity, ParticleSystemComponent Particles)> _emitters = new();
+        private readonly List<(Entity Entity, ParticleSystemRenderer Particles)> _emitters = new();
         private readonly List<(int Index, int Count, long Frame)> _pending = new();
         private int _next;
 
-        public EmitterPool(Scene scene, string name, int size, Func<ParticleSystemComponent> preset)
+        public EmitterPool(Scene scene, string name, int size, Func<ParticleSystemRenderer> preset)
         {
             for (int i = 0; i < size; i++)
             {
                 Entity entity = scene.Instantiate($"{name} Emitter");
-                ParticleSystemComponent particles = preset();
+                ParticleSystemRenderer particles = preset();
                 particles.PlayOnAwake = false;
                 particles.Looping = false;
                 particles.EmissionRate = 0.0f;
@@ -467,7 +467,7 @@ public sealed class Effects : Component
         {
             int index = _next;
             _next = (_next + 1) % _emitters.Count;
-            TransformComponent transform = _emitters[index].Entity.GetComponent<TransformComponent>();
+            Transform transform = _emitters[index].Entity.GetComponent<Transform>();
             transform.Position = at;
             transform.Rotation = EulerFromUp(direction);
             _pending.Add((index, count, Time.FrameCount));
@@ -495,7 +495,7 @@ public sealed class Effects : Component
             for (int i = 0; i < size; i++)
             {
                 Entity entity = scene.Instantiate("Flash Light");
-                var light = entity.AddComponent(new LightComponent { Type = LightType.Point, CastShadows = false, Enabled = false });
+                var light = entity.AddComponent(new Light { Type = LightType.Point, CastShadows = false, Enabled = false });
                 _slots.Add(new Slot { Entity = entity, Light = light });
             }
         }
@@ -509,7 +509,7 @@ public sealed class Effects : Component
                 if (candidate.Age / candidate.Duration > slot.Age / slot.Duration) slot = candidate;
             }
 
-            slot.Entity.GetComponent<TransformComponent>().Position = at;
+            slot.Entity.GetComponent<Transform>().Position = at;
             slot.Light.Color = color;
             slot.Light.Range = range;
             slot.Light.Enabled = true;
@@ -539,7 +539,7 @@ public sealed class Effects : Component
         private sealed class Slot
         {
             public Entity Entity;
-            public LightComponent Light = null!;
+            public Light Light = null!;
             public float Peak;
             public float Age;
             public float Duration = 1.0f;

@@ -5,7 +5,7 @@ using Spot.Engine.Scenes;
 namespace Spot.Net;
 
 /// <summary>
-/// Replicates an entity's <see cref="TransformComponent"/> across the network. The owner's transform is
+/// Replicates an entity's <see cref="Transform"/> across the network. The owner's transform is
 /// sampled and sent each tick; on other peers it is smoothed toward the latest received value so movement
 /// looks continuous despite the discrete snapshot rate. Attach it alongside a <see cref="NetworkObject"/>.
 /// </summary>

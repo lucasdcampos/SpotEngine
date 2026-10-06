@@ -5,7 +5,7 @@ using Spot.Engine;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// Advances every <see cref="AnimatorComponent"/> each frame in play mode, sampling its current clip and
+/// Advances every <see cref="Animator"/> each frame in play mode, sampling its current clip and
 /// posing the bone entities. Mirrors the other systems: a static <c>Update</c> called from
 /// <see cref="Scene.UpdateRuntime"/>, iterating a component view and quarantining any animator that throws so
 /// a bad clip never takes the engine down.
@@ -17,7 +17,7 @@ public static class AnimationSystem
     /// <param name="deltaTime">The elapsed time in seconds since the previous frame.</param>
     public static void Update(Scene scene, float deltaTime)
     {
-        foreach ((Entity entity, AnimatorComponent animator) in scene.ViewActive<AnimatorComponent>())
+        foreach ((Entity entity, Animator animator) in scene.ViewActive<Animator>())
         {
             try
             {

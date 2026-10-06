@@ -34,7 +34,7 @@ public sealed class GameHud : Component
     private Text? _performanceText;
     private Widget? _brand;
     private Widget? _tagline;
-    private PostProcessingComponent? _post;
+    private PostProcessing? _post;
     private float _menuOpacity;
     private bool _wasPaused;
     private float _performanceTimer;
@@ -50,7 +50,7 @@ public sealed class GameHud : Component
         _brand = UI.Find("Brand");
         _tagline = UI.Find("Tagline");
 
-        foreach ((Entity _, PostProcessingComponent post) in Scene.ViewActive<PostProcessingComponent>())
+        foreach ((Entity _, PostProcessing post) in Scene.ViewActive<PostProcessing>())
         {
             _post = post;
             break;
@@ -59,7 +59,7 @@ public sealed class GameHud : Component
         foreach (Zone zone in Scene.GetComponents<Zone>())
         {
             if (zone.Title == "The Hub") continue;
-            _landmarks.Add((zone.Title, zone.Entity.GetComponent<TransformComponent>().WorldPosition));
+            _landmarks.Add((zone.Title, zone.Entity.GetComponent<Transform>().WorldPosition));
         }
 
         UI.Add(new HudOverlay(this, _kit));

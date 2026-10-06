@@ -68,14 +68,14 @@ public sealed class CubeRain : Component
 
             float size = Range(0.35f, 0.8f);
             Entity cube = Instantiate("Cube");
-            TransformComponent transform = cube.GetComponent<TransformComponent>();
+            Transform transform = cube.GetComponent<Transform>();
             transform.Position = new Vector3(Range(-3.0f, 3.0f), DropHeight + Range(0.0f, 2.0f), Range(-3.0f, 3.0f));
             transform.Rotation = new Vector3(Range(0, 360), Range(0, 360), Range(0, 360));
             transform.Scale = new Vector3(size);
 
-            cube.AddComponent(new MeshComponent { ModelPath = "builtin:Mesh/Cube", Color = Palette[_random.Next(Palette.Length)] });
-            cube.AddComponent(new PhysicsBody3DComponent { Mass = 4.0f * size * size * size, Friction = 0.6f, Restitution = 0.2f });
-            cube.AddComponent(new BoxCollider3DComponent());
+            cube.AddComponent(new MeshRenderer { ModelPath = "builtin:Mesh/Cube", Color = Palette[_random.Next(Palette.Length)] });
+            cube.AddComponent(new PhysicsBody3D { Mass = 4.0f * size * size * size, Friction = 0.6f, Restitution = 0.2f });
+            cube.AddComponent(new BoxCollider3D());
             _cubes.Enqueue(cube);
         }
 

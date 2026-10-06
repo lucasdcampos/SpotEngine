@@ -43,7 +43,7 @@ public class SceneRuntimeStateTests
     public void ClearRuntimeState_LetsUICanvasesInstantiateTheirDocumentAgain()
     {
         var scene = new Scene();
-        var canvas = scene.Instantiate().AddComponent(new UICanvasComponent { DocumentRef = "UI/Hud.sptui" });
+        var canvas = scene.Instantiate().AddComponent(new UICanvas { DocumentRef = "UI/Hud.sptui" });
         canvas.Instantiated = true;
         canvas.Instances.Add(scene.UI.Panel());
 

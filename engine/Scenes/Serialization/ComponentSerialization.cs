@@ -177,7 +177,7 @@ internal static class ComponentSerialization
         }
 
         // Legacy alias: older scenes stored a directional light under "DirectionalLight" (a separate
-        // DTO) before lights were unified into LightComponent. Read it as a LightComponent — its Type
+        // DTO) before lights were unified into Light. Read it as a Light — its Type
         // defaults to Directional, so the remaining fields map straight across.
         if (keyToType.TryGetValue("Light", out Type? lightType))
         {

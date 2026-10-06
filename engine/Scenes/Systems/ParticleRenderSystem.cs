@@ -5,8 +5,8 @@ using Spot.Engine.Mathematics;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// Draws every entity's <see cref="ParticleSystemComponent"/> as a batch of textured quads, together with
-/// its <see cref="TransformComponent"/>. Called by <see cref="RenderSystem"/> after the opaque 3D pass so
+/// Draws every entity's <see cref="ParticleSystemRenderer"/> as a batch of textured quads, together with
+/// its <see cref="Transform"/>. Called by <see cref="RenderSystem"/> after the opaque 3D pass so
 /// particles blend over solid geometry. Billboard emitters are turned toward the camera (a shared,
 /// screen-aligned basis derived from the view); flat 2D emitters use the world XY plane.
 /// </summary>
@@ -17,7 +17,7 @@ public static class ParticleRenderSystem
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
     public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
-        IReadOnlyList<Entity> emitters = scene.View<TransformComponent, ParticleSystemComponent>();
+        IReadOnlyList<Entity> emitters = scene.View<Transform, ParticleSystemRenderer>();
         if (emitters.Count == 0)
         {
             return;
@@ -33,8 +33,8 @@ public static class ParticleRenderSystem
         foreach (Entity entity in emitters)
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var particles = entity.GetComponent<ParticleSystemComponent>();
-            var transform = entity.GetComponent<TransformComponent>();
+            var particles = entity.GetComponent<ParticleSystemRenderer>();
+            var transform = entity.GetComponent<Transform>();
             if (!particles.Enabled || !transform.Enabled) continue;
 
             int alive = particles.AliveCount;

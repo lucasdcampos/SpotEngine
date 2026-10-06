@@ -92,10 +92,10 @@ public class Scene
     /// </summary>
     public virtual void OnEnter()
     {
-        foreach (var entity in View<CameraComponent>())
+        foreach (var entity in View<Camera>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var cc = GetComponent<CameraComponent>(entity);
+            var cc = GetComponent<Camera>(entity);
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
@@ -185,16 +185,16 @@ public class Scene
         Vector4 clearColor = new(0.1f, 0.1f, 0.1f, 1.0f);
         bool is3D = false;
 
-        foreach (var entity in View<CameraComponent>())
+        foreach (var entity in View<Camera>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var cc = entity.GetComponent<CameraComponent>();
+            var cc = entity.GetComponent<Camera>();
             if (!cc.Enabled) continue;
             if (cc.Primary)
             {
-                if (HasComponent<TransformComponent>(entity))
+                if (HasComponent<Transform>(entity))
                 {
-                    var transform = GetComponent<TransformComponent>(entity);
+                    var transform = GetComponent<Transform>(entity);
                     if (!transform.Enabled) continue;
                     viewProjection = cc.GetViewProjection(transform);
                     cameraPosition = transform.WorldPosition;
@@ -237,17 +237,17 @@ public class Scene
 
     /// <summary>
     /// Finds the primary camera that would actually render this frame (see <see cref="HasActivePrimaryCamera"/>).
-    /// The returned entity always carries a <see cref="CameraComponent"/> and a <see cref="TransformComponent"/>.
+    /// The returned entity always carries a <see cref="Camera"/> and a <see cref="Transform"/>.
     /// </summary>
     public bool TryGetActivePrimaryCamera(out Entity camera)
     {
-        foreach (var entity in View<CameraComponent>())
+        foreach (var entity in View<Camera>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var cc = entity.GetComponent<CameraComponent>();
+            var cc = entity.GetComponent<Camera>();
             if (!cc.Enabled || !cc.Primary) continue;
-            if (!HasComponent<TransformComponent>(entity)) continue;
-            if (!GetComponent<TransformComponent>(entity).Enabled) continue;
+            if (!HasComponent<Transform>(entity)) continue;
+            if (!GetComponent<Transform>(entity).Enabled) continue;
             camera = entity;
             return true;
         }
@@ -278,10 +278,10 @@ public class Scene
 
     private bool OnWindowResize(WindowResizeEvent e)
     {
-        foreach (var entity in View<CameraComponent>())
+        foreach (var entity in View<Camera>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var cc = GetComponent<CameraComponent>(entity);
+            var cc = GetComponent<Camera>(entity);
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
@@ -299,7 +299,7 @@ public class Scene
     }
 
     /// <summary>
-    /// Creates a new entity with a <see cref="LabelComponent"/> and a <see cref="TransformComponent"/>. Safe to
+    /// Creates a new entity with a <see cref="Label"/> and a <see cref="Transform"/>. Safe to
     /// call at any time, including from a script.
     /// </summary>
     /// <param name="name">The entity name.</param>
@@ -309,9 +309,9 @@ public class Scene
         int id = _registry.CreateEntity();
 
         var entity = new Entity(id, this);
-        entity.AddComponent(new LabelComponent(name));
-        entity.AddComponent(new RelationshipComponent());
-        entity.AddComponent(new TransformComponent());
+        entity.AddComponent(new Label(name));
+        entity.AddComponent(new Relationship());
+        entity.AddComponent(new Transform());
         return entity;
     }
 
@@ -344,9 +344,9 @@ public class Scene
     {
         _ui = null;
         RenderPasses.Clear();
-        foreach (Entity entity in View<UICanvasComponent>())
+        foreach (Entity entity in View<UICanvas>())
         {
-            UICanvasComponent canvas = entity.GetComponent<UICanvasComponent>();
+            UICanvas canvas = entity.GetComponent<UICanvas>();
             canvas.Instantiated = false;
             canvas.Instances.Clear();
         }
@@ -384,9 +384,9 @@ public class Scene
 
         // A linear scan is deliberate: lookups happen at user pace (an undo, a selection restore), so a
         // cache would be another thing to keep coherent with every create, destroy and re-hydration.
-        foreach (Entity entity in View<LabelComponent>())
+        foreach (Entity entity in View<Label>())
         {
-            if (entity.GetComponent<LabelComponent>().EntityGuid == persistentId)
+            if (entity.GetComponent<Label>().EntityGuid == persistentId)
             {
                 return entity;
             }
@@ -417,7 +417,7 @@ public class Scene
     private void DestroyImmediate(int id)
     {
         var entity = new Entity(id, this);
-        if (entity.TryGetComponent(out RelationshipComponent? rel))
+        if (entity.TryGetComponent(out Relationship? rel))
         {
             entity.SetParent(null);
             foreach (var child in rel.Children.ToList())
@@ -482,7 +482,7 @@ public class Scene
         var roots = new List<int>();
         foreach (int id in _registry.EntityIds)
         {
-            if (GetComponent(new Entity(id, this), typeof(LabelComponent)) is LabelComponent label &&
+            if (GetComponent(new Entity(id, this), typeof(Label)) is Label label &&
                 label.Persistent &&
                 new Entity(id, this).Parent is null)
             {
@@ -528,12 +528,12 @@ public class Scene
                 component.Entity = entity;
             }
 
-            if (TryGetComponent(entity, out LabelComponent? label))
+            if (TryGetComponent(entity, out Label? label))
             {
                 label.OwnerScene = this;
             }
 
-            if (TryGetComponent(entity, out RelationshipComponent? rel))
+            if (TryGetComponent(entity, out Relationship? rel))
             {
                 rel.Parent = Remap(rel.Parent, remap);
                 for (int i = 0; i < rel.Children.Count; i++)
@@ -560,7 +560,7 @@ public class Scene
     private static void CollectSubtree(Scene source, int id, List<int> order)
     {
         order.Add(id);
-        if (source.GetComponent(new Entity(id, source), typeof(RelationshipComponent)) is RelationshipComponent rel)
+        if (source.GetComponent(new Entity(id, source), typeof(Relationship)) is Relationship rel)
         {
             foreach (Entity child in rel.Children.ToList())
             {
@@ -576,9 +576,9 @@ public class Scene
     /// <param name="name">The entity name to search for.</param>
     public Entity? Find(string name)
     {
-        foreach (Entity entity in View<LabelComponent>())
+        foreach (Entity entity in View<Label>())
         {
-            if (string.Equals(GetComponent<LabelComponent>(entity).Name, name, StringComparison.Ordinal))
+            if (string.Equals(GetComponent<Label>(entity).Name, name, StringComparison.Ordinal))
             {
                 return entity;
             }
@@ -593,9 +593,9 @@ public class Scene
     /// <param name="tag">The tag to search for.</param>
     public Entity? FindByTag(string tag)
     {
-        foreach (Entity entity in View<LabelComponent>())
+        foreach (Entity entity in View<Label>())
         {
-            if (string.Equals(GetComponent<LabelComponent>(entity).Tag, tag, StringComparison.Ordinal))
+            if (string.Equals(GetComponent<Label>(entity).Tag, tag, StringComparison.Ordinal))
             {
                 return entity;
             }
@@ -612,9 +612,9 @@ public class Scene
     public IReadOnlyList<Entity> FindAllByTag(string tag)
     {
         var result = new List<Entity>();
-        foreach (Entity entity in View<LabelComponent>())
+        foreach (Entity entity in View<Label>())
         {
-            if (string.Equals(GetComponent<LabelComponent>(entity).Tag, tag, StringComparison.Ordinal))
+            if (string.Equals(GetComponent<Label>(entity).Tag, tag, StringComparison.Ordinal))
             {
                 result.Add(entity);
             }
@@ -728,7 +728,7 @@ public class Scene
     {
         component.Entity = entity;
         component.Detached = false;
-        if (component is LabelComponent label)
+        if (component is Label label)
         {
             label.OwnerScene = this;
         }

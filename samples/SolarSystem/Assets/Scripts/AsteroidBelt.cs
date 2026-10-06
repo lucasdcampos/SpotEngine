@@ -46,11 +46,11 @@ public sealed class AsteroidBelt : Component
         new(0.23f, 0.21f, 0.18f),
     };
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         var random = new Random(Seed);
 
         for (int i = 0; i < Count; i++)
@@ -68,11 +68,11 @@ public sealed class AsteroidBelt : Component
 
             Entity rock = Instantiate("Asteroid");
             rock.SetParent(Entity);
-            TransformComponent transform = rock.GetComponent<TransformComponent>();
+            Transform transform = rock.GetComponent<Transform>();
             transform.Position = new Vector3(MathF.Cos(angle) * radius, height, -MathF.Sin(angle) * radius);
             transform.Rotation = new Vector3(Range(random, 0, 360), Range(random, 0, 360), Range(random, 0, 360));
             transform.Scale = squash * size;
-            rock.AddComponent(new MeshComponent { ModelPath = RockMesh, Color = new Vector4(tint, 1.0f) });
+            rock.AddComponent(new MeshRenderer { ModelPath = RockMesh, Color = new Vector4(tint, 1.0f) });
         }
     }
 

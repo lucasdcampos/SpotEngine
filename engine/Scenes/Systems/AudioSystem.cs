@@ -7,7 +7,7 @@ namespace Spot.Engine.Scenes;
 
 /// <summary>
 /// The play-mode system that connects scene data to the audio mixer: it points the listener at the active
-/// <see cref="AudioListenerComponent"/>, triggers <see cref="AudioSourceComponent.PlayOnAwake"/> once, and
+/// <see cref="AudioListener"/>, triggers <see cref="AudioSource.PlayOnAwake"/> once, and
 /// keeps each spatial voice positioned at its entity. It is called from <see cref="Scene.UpdateRuntime"/>,
 /// so audio only plays while a scene is running — never in the editor's edit mode. Each source is isolated
 /// in its own guard so one faulty entity can neither crash nor silence the rest.
@@ -20,10 +20,10 @@ internal static class AudioSystem
 
         UpdateListener(scene);
 
-        foreach (Entity entity in scene.View<TransformComponent, AudioSourceComponent>())
+        foreach (Entity entity in scene.View<Transform, AudioSource>())
         {
-            AudioSourceComponent source = entity.GetComponent<AudioSourceComponent>();
-            TransformComponent transform = entity.GetComponent<TransformComponent>();
+            AudioSource source = entity.GetComponent<AudioSource>();
+            Transform transform = entity.GetComponent<Transform>();
             bool active = entity.IsActiveInHierarchy() && transform.Enabled && source.Enabled;
 
             source.WorldPosition = transform.WorldPosition;
@@ -60,15 +60,15 @@ internal static class AudioSystem
 
     private static void UpdateListener(Scene scene)
     {
-        foreach (Entity entity in scene.View<TransformComponent, AudioListenerComponent>())
+        foreach (Entity entity in scene.View<Transform, AudioListener>())
         {
             if (!entity.IsActiveInHierarchy())
             {
                 continue;
             }
 
-            TransformComponent transform = entity.GetComponent<TransformComponent>();
-            AudioListenerComponent listener = entity.GetComponent<AudioListenerComponent>();
+            Transform transform = entity.GetComponent<Transform>();
+            AudioListener listener = entity.GetComponent<AudioListener>();
             if (!transform.Enabled || !listener.Enabled)
             {
                 continue;

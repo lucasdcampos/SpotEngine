@@ -19,7 +19,7 @@ public sealed class Elevator : Component
     /// <summary>Gets or sets the seconds it waits at each end.</summary>
     public float Wait { get; set; } = 2.5f;
 
-    private TransformComponent _transform = null!;
+    private Transform _transform = null!;
     private Vector3 _bottom;
     private float _t;
     private float _direction = 1.0f;
@@ -27,7 +27,7 @@ public sealed class Elevator : Component
 
     public override void OnStart()
     {
-        _transform = GetComponent<TransformComponent>();
+        _transform = GetComponent<Transform>();
         _bottom = _transform.Position;
         _waiting = Wait;
     }

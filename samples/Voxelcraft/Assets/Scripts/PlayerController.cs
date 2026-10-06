@@ -85,8 +85,8 @@ public sealed class PlayerController : Component
     /// <summary>Gets how far the hand has swung, 0..1, for the HUD.</summary>
     public float Swing { get; private set; }
 
-    private TransformComponent? _camera;
-    private CameraComponent? _cameraComponent;
+    private Transform? _camera;
+    private Camera? _cameraComponent;
     private bool _spawned;
     private Vector2 _lastMouse;
     private bool _hadControl;
@@ -107,9 +107,9 @@ public sealed class PlayerController : Component
         Current = this;
         foreach (Entity child in Entity.Children)
         {
-            if (child.TryGetComponent(out CameraComponent? camera))
+            if (child.TryGetComponent(out Camera? camera))
             {
-                _camera = child.GetComponent<TransformComponent>();
+                _camera = child.GetComponent<Transform>();
                 _cameraComponent = camera;
                 break;
             }
@@ -554,7 +554,7 @@ public sealed class PlayerController : Component
 
     private void SyncTransforms()
     {
-        TransformComponent transform = GetComponent<TransformComponent>();
+        Transform transform = GetComponent<Transform>();
         transform.Position = Position;
         transform.Rotation = new Vector3(0.0f, Yaw, 0.0f);
         if (_camera is null) return;

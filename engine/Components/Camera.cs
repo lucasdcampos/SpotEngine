@@ -17,7 +17,7 @@ public enum SceneCameraProjection
 /// </summary>
 [ComponentMenu("Camera", Order = 30, Category = "Rendering")]
 [SceneComponent("Camera")]
-public sealed class CameraComponent : Component
+public sealed class Camera : Component
 {
     public bool Primary { get; set; } = true;
     public bool FixedAspectRatio { get; set; } = false;
@@ -95,7 +95,7 @@ public sealed class CameraComponent : Component
     [HideInInspector]
     public Matrix4x4 Projection { get; private set; }
 
-    public CameraComponent()
+    public Camera()
     {
         RecalculateProjection();
     }
@@ -130,7 +130,7 @@ public sealed class CameraComponent : Component
         }
     }
 
-    public Matrix4x4 GetViewProjection(TransformComponent transform)
+    public Matrix4x4 GetViewProjection(Transform transform)
     {
         Matrix4x4 view;
         if (ProjectionType == SceneCameraProjection.Perspective)

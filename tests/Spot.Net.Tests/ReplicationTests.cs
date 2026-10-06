@@ -74,12 +74,12 @@ public class ReplicationTests
             Assert.True(NetTest.PumpUntil(() => client.Replication.Objects.ContainsKey(id), Timeout, server, client), "spawn did not replicate");
 
             var target = new Vector3(5f, 1f, -2f);
-            spawned.GetComponent<TransformComponent>().Position = target;
+            spawned.GetComponent<Transform>().Position = target;
 
             Entity clientCopy = client.Replication.Objects[id];
             Assert.True(
                 NetTest.PumpUntil(
-                    () => Vector3.Distance(clientCopy.GetComponent<TransformComponent>().Position, target) < 0.1f,
+                    () => Vector3.Distance(clientCopy.GetComponent<Transform>().Position, target) < 0.1f,
                     Timeout, server, client),
                 "client transform did not converge on the server value");
         }

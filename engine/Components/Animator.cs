@@ -24,7 +24,7 @@ namespace Spot.Engine;
 /// </remarks>
 [ComponentMenu("Animator", Order = 22, Category = "Animation")]
 [SceneComponent("Animator")]
-public sealed class AnimatorComponent : Component
+public sealed class Animator : Component
 {
     /// <summary>
     /// Gets or sets an optional controller that drives which clip plays from parameters and transitions. When
@@ -200,7 +200,7 @@ public sealed class AnimatorComponent : Component
         foreach (AnimationChannel channel in clip.Channels)
         {
             if (!_nodesByName.TryGetValue(channel.NormalizedNodeName, out Entity node) ||
-                !node.TryGetComponent(out TransformComponent? transform))
+                !node.TryGetComponent(out Transform? transform))
             {
                 continue;
             }

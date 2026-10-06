@@ -13,27 +13,27 @@ namespace Spot.Engine.Tests;
 public class UndoSceneActionTests
 {
     private static MemberAccessor IntensityAccessor() => MemberAccessor.FromProperty(
-        typeof(LightComponent).GetProperty(nameof(LightComponent.Intensity))!);
+        typeof(Light).GetProperty(nameof(Light.Intensity))!);
 
     private static ComponentValueAction IntensityAction(
         Scene scene, string entityId, float before, float after) =>
-        new("Set Intensity", scene, entityId, typeof(LightComponent), IntensityAccessor(), before, after);
+        new("Set Intensity", scene, entityId, typeof(Light), IntensityAccessor(), before, after);
 
     [Fact]
     public void AComponentValueActionRoundTripsOnTheLiveScene()
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("Sun");
-        entity.AddComponent(new LightComponent { Intensity = 1.0f });
+        entity.AddComponent(new Light { Intensity = 1.0f });
         string id = entity.EnsurePersistentId();
 
         var action = IntensityAction(scene, id, 1.0f, 5.0f);
 
         action.Redo();
-        Assert.Equal(5.0f, entity.GetComponent<LightComponent>().Intensity);
+        Assert.Equal(5.0f, entity.GetComponent<Light>().Intensity);
 
         action.Undo();
-        Assert.Equal(1.0f, entity.GetComponent<LightComponent>().Intensity);
+        Assert.Equal(1.0f, entity.GetComponent<Light>().Intensity);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class UndoSceneActionTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("Sun");
-        entity.AddComponent(new LightComponent { Intensity = 1.0f });
+        entity.AddComponent(new Light { Intensity = 1.0f });
 
         // Serializing assigns the stable ids and is what the editor's snapshot does.
         string json = new SceneSerializer(scene).SerializeToString();
@@ -52,7 +52,7 @@ public class UndoSceneActionTests
         action.Redo();
 
         // Hold the actual component object, which is what a closure-capturing action would have kept.
-        LightComponent captured = entity.GetComponent<LightComponent>();
+        Light captured = entity.GetComponent<Light>();
 
         // Simulate leaving play mode: the scene is cleared and deserialized into the same instance, so
         // every component object is replaced and every runtime int id is re-minted.
@@ -64,14 +64,14 @@ public class UndoSceneActionTests
 
         // The object the closure would have held is now detached from the scene — writing to it would
         // change nothing a user can see. This is the failure the late-resolving action avoids.
-        Assert.NotSame(captured, restored!.Value.GetComponent<LightComponent>());
+        Assert.NotSame(captured, restored!.Value.GetComponent<Light>());
 
         // The action targets the stable id, so it still finds its mark on the new instance.
         action.Redo();
-        Assert.Equal(5.0f, restored.Value.GetComponent<LightComponent>().Intensity);
+        Assert.Equal(5.0f, restored.Value.GetComponent<Light>().Intensity);
 
         action.Undo();
-        Assert.Equal(1.0f, restored.Value.GetComponent<LightComponent>().Intensity);
+        Assert.Equal(1.0f, restored.Value.GetComponent<Light>().Intensity);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class UndoSceneActionTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("Sun");
-        entity.AddComponent(new LightComponent());
+        entity.AddComponent(new Light());
         string id = entity.EnsurePersistentId();
 
         var action = IntensityAction(scene, id, 1.0f, 5.0f);
@@ -97,11 +97,11 @@ public class UndoSceneActionTests
     {
         var scene = new Scene();
         Entity entity = scene.Instantiate("Sun");
-        entity.AddComponent(new LightComponent());
+        entity.AddComponent(new Light());
         string id = entity.EnsurePersistentId();
 
         var action = IntensityAction(scene, id, 1.0f, 5.0f);
-        entity.RemoveComponent(typeof(LightComponent));
+        entity.RemoveComponent(typeof(Light));
 
         action.Undo();
         action.Redo();
@@ -132,7 +132,7 @@ public class UndoSceneActionTests
     {
         var source = new Scene();
         Entity entity = source.Instantiate("Thing");
-        entity.AddComponent(new LightComponent { Intensity = 3.0f });
+        entity.AddComponent(new Light { Intensity = 3.0f });
         string id = entity.EnsurePersistentId();
 
         var json = SceneSerializer.WriteEntity(entity);
@@ -147,7 +147,7 @@ public class UndoSceneActionTests
         var restoredScene = new Scene();
         Entity restored = SceneSerializer.ReadEntity(restoredScene, json, null, preserveIds: true);
         Assert.Equal(id, restored.PersistentId);
-        Assert.Equal(3.0f, restored.GetComponent<LightComponent>().Intensity);
+        Assert.Equal(3.0f, restored.GetComponent<Light>().Intensity);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class UndoSceneActionTests
     {
         var scene = new Scene();
         Entity a = scene.Instantiate("Parent");
-        a.AddComponent(new LightComponent { Intensity = 1.0f });
+        a.AddComponent(new Light { Intensity = 1.0f });
         Entity b = scene.Instantiate("Child");
         b.SetParent(a);
 
@@ -163,7 +163,7 @@ public class UndoSceneActionTests
         string before = serializer.SerializeToString();
 
         // An un-migrated mutation site: a change nothing recorded a precise action for.
-        a.GetComponent<LightComponent>().Intensity = 9.0f;
+        a.GetComponent<Light>().Intensity = 9.0f;
         scene.Instantiate("Added Behind The History");
         string after = serializer.SerializeToString();
         Assert.NotEqual(before, after);
@@ -192,7 +192,7 @@ public class UndoSceneActionTests
     [Fact]
     public void MemberAccessorReadsAndWritesPropertiesAndFields()
     {
-        var light = new LightComponent { Intensity = 2.0f };
+        var light = new Light { Intensity = 2.0f };
         MemberAccessor property = IntensityAccessor();
 
         Assert.Equal("Intensity", property.Name);

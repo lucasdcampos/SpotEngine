@@ -7,7 +7,7 @@ using Spot.Engine.Mathematics;
 namespace Spot.Engine.Scenes;
 
 /// <summary>
-/// Draws every entity's <see cref="TextComponent"/> as world-space quads through the shared glyph atlas,
+/// Draws every entity's <see cref="TextRenderer"/> as world-space quads through the shared glyph atlas,
 /// billboarded to the camera by default. Reuses the particle renderer's blended, depth-tested,
 /// depth-write-off path so text blends correctly and is occluded by solid geometry.
 /// </summary>
@@ -16,16 +16,16 @@ public static class TextRenderSystem
     // Reused across frames so the per-frame world-text path allocates nothing.
     private static readonly List<PositionedGlyph> s_glyphs = new();
 
-    /// <summary>Draws all world-space <see cref="TextComponent"/> entities in the scene.</summary>
+    /// <summary>Draws all world-space <see cref="TextRenderer"/> entities in the scene.</summary>
     /// <param name="scene">The scene whose text components are drawn.</param>
     /// <param name="viewProjection">The view-projection matrix to render with.</param>
     public static void Render(Scene scene, Matrix4x4 viewProjection)
     {
         bool hasText = false;
-        foreach (Entity entity in scene.View<TransformComponent, TextComponent>())
+        foreach (Entity entity in scene.View<Transform, TextRenderer>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var text = entity.GetComponent<TextComponent>();
+            var text = entity.GetComponent<TextRenderer>();
             if (text.Enabled && !string.IsNullOrEmpty(text.Text)) { hasText = true; break; }
         }
 
@@ -43,11 +43,11 @@ public static class TextRenderSystem
 
         ParticleRenderer.BeginScene(viewProjection);
 
-        foreach (Entity entity in scene.View<TransformComponent, TextComponent>())
+        foreach (Entity entity in scene.View<Transform, TextRenderer>())
         {
             if (!entity.IsActiveInHierarchy()) continue;
-            var transform = entity.GetComponent<TransformComponent>();
-            var text = entity.GetComponent<TextComponent>();
+            var transform = entity.GetComponent<Transform>();
+            var text = entity.GetComponent<TextRenderer>();
             if (!transform.Enabled || !text.Enabled || string.IsNullOrEmpty(text.Text)) continue;
 
             Font font = ResolveFont(text);
@@ -89,7 +89,7 @@ public static class TextRenderSystem
 
     // Resolves a text component's font, lazily loading from its stored reference and caching it back
     // onto the component. Never throws — bad references log once and fall back to the built-in default.
-    private static Font ResolveFont(TextComponent text)
+    private static Font ResolveFont(TextRenderer text)
     {
         if (text.Font is not null) return text.Font;
 

@@ -25,9 +25,9 @@ internal sealed class LegacyPhysics3D : IPhysics3D
     // The AABB solver has no rotation, so an impulse is just a change in linear velocity, wherever it lands.
     private static void ApplyImpulses(Scene scene)
     {
-        foreach (Entity entity in scene.View<PhysicsBody3DComponent>())
+        foreach (Entity entity in scene.View<PhysicsBody3D>())
         {
-            PhysicsBody3DComponent body = entity.GetComponent<PhysicsBody3DComponent>();
+            PhysicsBody3D body = entity.GetComponent<PhysicsBody3D>();
             if (!body.HasPendingImpulses) continue;
 
             if (body.IsDynamic && !body.IsKinematic)
