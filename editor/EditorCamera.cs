@@ -38,8 +38,25 @@ public class EditorCamera
     public EditorCamera()
     {
         Is3D = Spot.Editor.Utils.EditorSettings.GlobalIs3DMode;
-        if (Is3D) Position = new Vector3(0, 0, 10);
+        if (Is3D)
+        {
+            Position = new Vector3(6, 4, 10);
+            Vector3 forward = Vector3.Normalize(-Position);
+            Pitch = MathF.Asin(forward.Y);
+            Yaw = MathF.Atan2(forward.X, -forward.Z);
+        }
         UpdateProjection();
+        UpdateView();
+    }
+
+    /// <summary>Restores a session camera and its matrices before the viewport's first render.</summary>
+    public void RestoreState(Spot.Editor.Utils.SceneCameraState state)
+    {
+        Is3D = state.Is3D;
+        Position = new Vector3(state.PosX, state.PosY, state.PosZ);
+        Pitch = state.Pitch;
+        Yaw = state.Yaw;
+        SetZoom(state.Zoom);
         UpdateView();
     }
     

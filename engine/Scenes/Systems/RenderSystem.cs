@@ -16,8 +16,8 @@ namespace Spot.Engine.Scenes;
 /// This is the convenient, automatic path — the engine renders your meshes and sprites for you. It is
 /// entirely optional: you can skip it and drive <see cref="Renderer3D"/> (meshes), <see cref="Renderer2D"/>
 /// (batched quads), <see cref="Renderer"/> (draw calls), or the raw API via <see cref="Renderer.Api"/>
-/// yourself for full control over what and how you render. <see cref="Render"/> opens and closes its own
-/// scenes, so mix custom rendering in separate Begin/End passes.
+/// yourself for full control over what and how you render. <see cref="Render(Scene, Matrix4x4, Vector3?)"/>
+/// opens and closes its own scenes, so mix custom rendering in separate Begin/End passes.
 /// </remarks>
 public static class RenderSystem
 {
@@ -70,14 +70,22 @@ public static class RenderSystem
     /// fresnel). When <see langword="null"/> it is approximated from the inverse view-projection, which
     /// is good enough for editor overlays but wrong for perspective specular — pass the real position.
     /// </param>
-    public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
+    public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null) =>
+        Render(scene, viewProjection, cameraPosition, renderUI: true);
+
+    /// <summary>Draws the scene through the given camera, optionally skipping its screen-space UI.</summary>
+    /// <param name="scene">The scene to draw.</param>
+    /// <param name="viewProjection">The camera's view-projection matrix.</param>
+    /// <param name="cameraPosition">The camera's world position, or null to approximate it from the matrix.</param>
+    /// <param name="renderUI">Whether to draw the scene's screen-space UI; false for an editor scene view.</param>
+    public static void Render(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition, bool renderUI)
     {
         Spot.Engine.Profiler.BeginSample("Render");
-        RenderInternal(scene, viewProjection, cameraPosition);
+        RenderInternal(scene, viewProjection, cameraPosition, renderUI);
         Spot.Engine.Profiler.EndSample("Render");
     }
 
-    private static void RenderInternal(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition = null)
+    private static void RenderInternal(Scene scene, Matrix4x4 viewProjection, Vector3? cameraPosition, bool renderUI)
     {
         Vector3 cameraPos;
         if (cameraPosition.HasValue)
@@ -507,7 +515,7 @@ public static class RenderSystem
         // Screen-space UI is the final pass: it draws to whatever framebuffer is now bound (the default one
         // in a running game), after post-processing, so the interface is crisp and never tone-mapped or
         // bloomed. Scenes without UI skip it entirely.
-        RenderUI(scene);
+        if (renderUI) RenderUI(scene);
 
         RunPasses(scene, RenderStage.Overlay, viewProjection, cameraPos, false);
     }

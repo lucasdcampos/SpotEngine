@@ -101,6 +101,10 @@ clipping, which is why small text and soft widget edges look clean where the alp
 would not. It also turns face culling off, which a 3D scene leaves on: the y-down projection winds its quads the
 other way round. Scenes with no widgets skip the pass entirely. See [Runtime UI](ui.md).
 
+Hosts can call `RenderSystem.Render(scene, viewProjection, cameraPosition, renderUI: false)` to draw
+the world without its screen-space UI. The editor uses this for its scene camera, including after
+ejecting from play with `F8`; game views and camera previews keep the default UI pass enabled.
+
 ## Post-processing and quality
 
 Two surfaces control the final image, and they have different jobs:

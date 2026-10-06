@@ -235,11 +235,12 @@ public class ViewportPanel
 
                 // --- EDITOR ICONS (billboards for invisible entities: cameras, lights, sky) ---
                 // Drawn before the gizmo so gizmo handles render on top; the hovered icon (if any) is
-                // preferred over mesh picking when the user clicks.
+                // preferred over mesh picking when the user clicks. The hidden cursor belongs to
+                // camera navigation while flying, so it must not highlight icons or show tooltips.
                 Entity? hoveredIcon = null;
                 if (_context.ActiveScene != null)
                 {
-                    hoveredIcon = _sceneIcons.Draw(_context.ActiveScene, _camera, cursorPos, viewportSize, isHovered);
+                    hoveredIcon = _sceneIcons.Draw(_context.ActiveScene, _camera, cursorPos, viewportSize, isHovered && !isFlyingCamera);
                 }
 
                 // --- TRANSFORM GIZMO (2D & 3D: translate / rotate / scale) ---

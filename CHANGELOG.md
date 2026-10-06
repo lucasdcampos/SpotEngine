@@ -69,6 +69,7 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - A user component whose script is missing or not yet compiled keeps its data (`MissingComponents`), shows as a pending/missing card in the Inspector, is saved unchanged and resolves once its type loads
 
 ### Changed
+- Hierarchy entities without a specific visual kind now use a neutral cube icon instead of a circle.
 - Consolidated all Engine components into engine/Components, normalized namespaces to Spot.Engine, and removed the Component suffix.
 - **Scripts are components** (breaking): a script is now a class deriving from `Component` attached with `AddComponent`, shown as its own Inspector card and saved in the scene's ordered `"Components"` array; `EntityBehaviour`, `ScriptComponent` and `AddScript` are gone, and `OnCreate` is now `OnStart`. `NetworkBehaviour` derives from `Component`
 - The engine's components are `sealed`; one component per type per entity, and adding a second replaces (and tears down) the first
@@ -128,6 +129,9 @@ Work in progress toward **v0.3**. The list below is provisional and will be fina
 - The editor's **Game** panel (replaced by playing in the scene viewport)
 
 ### Fixed
+- Game UI no longer renders over the editor camera when switching from the game view with F8 during play.
+- Scene viewport cameras restore their saved view before any interaction; new 3D views start above and away from the axes, looking at the origin.
+- Scene viewport entity icons, tooltips and transform gizmo hover highlights no longer react to the hidden cursor while flying the editor camera.
 - A game started outside its build folder ignored the `game.manifest` beside its executable, though the docs promised the fallback (`ApplicationSpec.LoadDefault`); and with no manifest at all it opened an empty window without a word: the log now says there is no start scene and how to run the project
 - `spot run` failed for every project when given a relative `--project` path (the game could not find its `.csproj`, then its cooked content): the CLI now resolves the project to an absolute path, and a game resolves its content against the folder of the `game.manifest` it loaded
 - The editor could close without any message (a native heap corruption) about a minute after the Inspector showed two asset slots in one card, such as a Mesh Renderer's Mesh and Material or a material's Texture and Normal Map: each asset slot popped one ImGui ID too many

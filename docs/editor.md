@@ -70,7 +70,8 @@ The editor is organized into dockable panels you can rearrange and save into a l
   **UI Canvas** switches it to the open document's widgets, and clicking a scene viewport switches it back
   to the scene's entities — automatically, following whichever view you're working in. Rows are uniform
   full-width bands, thin guide lines connect each parent to its children, and each entity's icon is tinted
-  by kind (mesh, light, camera, particles, ...); disabled entities are dimmed and prefab instances tinted.
+  by kind (mesh, light, camera, particles, ...); entities without a specific visual kind use a neutral cube
+  icon. Disabled entities are dimmed and prefab instances tinted.
 - **Inspector** — shows the components of the selected entity (or asset) and lets you edit their
   values. The inspector is generated from the components themselves, so custom components appear
   automatically. Each component is a card with a title strip (click it to fold the card; **⋮** removes the
@@ -157,6 +158,10 @@ skipped. The session is saved on exit to `Library/editor_session.json` inside th
 cache, safe to delete or leave out of version control); a brand-new project with no saved session opens on
 its start scene as before.
 
+Saved camera positions, orientations, projection modes and zoom levels apply before the first viewport
+render, without clicking or moving the camera. Without a saved pose, the 3D camera starts at `(6, 4, 10)`
+looking toward the origin, above and away from the grid axes; the 2D view starts centered on the origin.
+
 ## Navigating the Scene view
 
 In 3D mode, hold the **right mouse button** to fly: move the mouse to look around, `W`/`A`/`S`/`D` to move
@@ -169,6 +174,9 @@ it approaches a border, so it can never escape into another panel. Between those
 by the cursor's plain frame-to-frame movement, which is what keeps it smooth — recentring on *every* frame
 instead would discard the motion the mouse made during that frame's update and render, making the camera
 feel both sluggish and jittery.
+
+While the cursor is hidden for flying, entity icons and transform gizmo handles do not react to mouse
+hover or show entity tooltips. Hover feedback resumes when you release the right mouse button.
 
 The gear button at the end of the viewport toolbar opens sliders for **Look sensitivity** (a multiplier on
 the base look rate) and **Fly speed** (world units per second), plus a **Reset to defaults** button. Both
@@ -334,8 +342,10 @@ viewport between the two cameras:
 
 `Esc` gives the cursor and input back to the editor without leaving the game camera; the viewport then
 shows *Click to control*, and clicking it hands the controls back to the game. The game's simulation
-continues regardless of who has the controls. Stopping play returns the viewport to the editor camera and
-discards everything the game built while it ran — its entities, and beside them its UI and its custom render
+continues regardless of who has the controls. The game's screen-space UI is hidden while the viewport
+uses the editor camera and reappears when you press `F8` to return to the game camera. Releasing input
+with `Escape` keeps the UI visible, as does the game camera preview. Stopping play returns the viewport
+to the editor camera and discards everything the game built while it ran — its entities, and beside them its UI and its custom render
 passes — so nothing of it is left drawing over the scene you edit.
 
 In edit mode `F8` previews the active scene through its game camera, without running anything; press it

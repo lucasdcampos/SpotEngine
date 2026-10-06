@@ -701,12 +701,7 @@ public class EditorScene : Scene
                 s => s.FilePath != null && System.IO.Path.GetFullPath(s.FilePath).ToLowerInvariant() == normPath);
             if (data == null) continue;
 
-            var c = data.EditorCamera;
-            c.Is3D = cam.Is3D;
-            c.Position = new System.Numerics.Vector3(cam.PosX, cam.PosY, cam.PosZ);
-            c.Pitch = cam.Pitch;
-            c.Yaw = cam.Yaw;
-            c.SetZoom(cam.Zoom);
+            data.EditorCamera.RestoreState(cam);
         }
 
         // Refocus the tab that was active last session (OpenSceneAsset already left the last-opened one active).
@@ -932,7 +927,7 @@ public class EditorScene : Scene
                 Renderer.SetFaceCulling(true);
             }
 
-            RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position);
+            RenderSystem.Render(sceneData.Scene, sceneData.EditorCamera.ViewProjection, sceneData.EditorCamera.Position, renderUI: false);
 
             // The grid draws the world axes itself, in the theme's axis colors. In 3D it is depth-tested
             // against the scene just rendered, so geometry in front hides it, while a surface lying on the

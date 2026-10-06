@@ -316,7 +316,7 @@ public static class EditorGui
         EntityIcon.Sprite => EditorIcons.Image,
         EntityIcon.Skybox => EditorIcons.Cloud,
         EntityIcon.Particles => EditorIcons.Fire,
-        _ => EditorIcons.Circle,
+        _ => EditorIcons.Cube,
     };
 
     /// <summary>

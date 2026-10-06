@@ -22,6 +22,8 @@
          project. The undo tests make no ImGui call (the one interaction probe sits behind an injectable
          delegate); EditorGuiIdStackTests drives the row helpers in a headless ImGui context. -->
     <ProjectReference Include="..\..\debugui\Spot.DebugUI.csproj" />
+    <!-- EditorCameraTests exercise session restoration without opening a window or initializing graphics. -->
+    <ProjectReference Include="..\..\editor\Spot.Editor.csproj" />
   </ItemGroup>
 
   <!-- Test doubles shared with the framework tests (recording graphics device, log sink, media fixtures). -->

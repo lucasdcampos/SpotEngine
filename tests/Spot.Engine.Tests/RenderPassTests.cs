@@ -145,6 +145,46 @@ public class RenderPassTests
         Assert.Empty(scene.RenderPasses.Ordered);
     }
 
+    [Fact]
+    public void SwitchingBetweenGameAndEditorViews_HidesUIWithoutChangingTheWorldOrWidgets()
+    {
+        RecordingGraphicsDevice device = Install();
+        var scene = new Scene();
+        scene.Instantiate("World sprite").AddComponent<Sprite2D>();
+        var hud = scene.UI.Panel();
+        int beforeUI = 0;
+        int afterUI = 0;
+        int overlayRuns = 0;
+        scene.AddRenderPass(new DelegateRenderPass(RenderStage.AfterPostProcess, _ => beforeUI = device.Draws.Count));
+        scene.AddRenderPass(new DelegateRenderPass(RenderStage.Overlay, _ =>
+        {
+            afterUI = device.Draws.Count;
+            overlayRuns++;
+        }));
+
+        // The game view draws both the world and the HUD by default.
+        Render(scene);
+        int worldDraws = beforeUI;
+        Assert.True(worldDraws > 0);
+        int uiDraws = afterUI - beforeUI;
+        Assert.True(uiDraws > 0);
+
+        // Ejecting only omits screen-space UI; world geometry and custom passes still render.
+        device.Draws.Clear();
+        RenderSystem.Render(scene, ViewProjection, Camera, renderUI: false);
+        Assert.Equal(worldDraws, beforeUI);
+        Assert.Equal(beforeUI, afterUI);
+        Assert.Same(hud, Assert.Single(scene.UI.Children));
+        Assert.True(hud.Visible);
+
+        // Returning to the game camera restores the same HUD on the next render.
+        device.Draws.Clear();
+        Render(scene);
+        Assert.Equal(worldDraws, beforeUI);
+        Assert.Equal(uiDraws, afterUI - beforeUI);
+        Assert.Equal(3, overlayRuns);
+    }
+
     private sealed class CustomPass : IRenderPass
     {
         public RenderStage Stage => RenderStage.BeforeOpaque;

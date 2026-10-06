@@ -156,9 +156,9 @@ public sealed class TransformGizmo
     {
         Vector2 mouse = _io.MousePos;
 
-        // Determine the hovered handle (unless a drag is already in progress).
+        // Only hit-test when the viewport accepts pointer interaction; keep an active drag highlighted.
         Handle hot = _active;
-        if (!IsUsing)
+        if (!IsUsing && viewportHovered)
         {
             float best = HitThicknessPx;
             hot = Handle.None;
@@ -228,7 +228,7 @@ public sealed class TransformGizmo
 
         // Hover detection over the rings.
         Handle hot = _active;
-        if (!IsUsing)
+        if (!IsUsing && viewportHovered)
         {
             float best = HitThicknessPx;
             hot = Handle.None;
@@ -283,7 +283,7 @@ public sealed class TransformGizmo
         Vector2 mouse = _io.MousePos;
 
         Handle hot = _active;
-        if (!IsUsing)
+        if (!IsUsing && viewportHovered)
         {
             float best = HitThicknessPx;
             hot = Handle.None;
