@@ -9,9 +9,9 @@ using Spot.Engine.Animation;
 using Spot.Engine.Assets;
 using Spot.Engine.Physics;
 using Spot.Engine.Scenes;
-using Spot.Framework;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 using Spot.DebugUI.Undo;
 
 namespace Spot.DebugUI.UI;

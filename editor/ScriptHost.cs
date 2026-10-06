@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework;
 
 namespace Spot.Editor;
 

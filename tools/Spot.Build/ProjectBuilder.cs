@@ -54,7 +54,7 @@ public static class ProjectBuilder
     /// <param name="fastDebug">Whether this is the editor's fast Play build.</param>
     /// <returns>The absolute output folder.</returns>
     public static string OutputDirectory(string projectDirectory, BuildPlatform platform, bool fastDebug = false) =>
-        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.BuildFolder,
+        Path.GetFullPath(Path.Combine(projectDirectory, Spot.Build.ProjectStructure.BuildFolder,
             fastDebug ? "play" : FolderName(platform)));
 
     /// <summary>
@@ -154,7 +154,7 @@ public static class ProjectBuilder
     internal static bool StageRuntimePayload(Project project, string outputDir,
                                              Action<string>? onOutput, Action<string>? onError)
     {
-        string contentRoot = Path.Combine(outputDir, Spot.Engine.ProjectStructure.ContentFolder);
+        string contentRoot = Path.Combine(outputDir, Spot.Build.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
@@ -184,7 +184,7 @@ public static class ProjectBuilder
     {
         // Cook into a Build/ staging folder (not the project root) and copy it into wwwroot below.
         string contentRoot = Path.Combine(project.ProjectDirectory,
-            Spot.Engine.ProjectStructure.BuildFolder, Spot.Engine.ProjectStructure.ContentFolder);
+            Spot.Build.ProjectStructure.BuildFolder, Spot.Build.ProjectStructure.ContentFolder);
         try
         {
             onOutput?.Invoke("Cooking assets...");
@@ -230,7 +230,7 @@ public static class ProjectBuilder
         // Absolute so `-o` is unambiguous: the publish runs with the WebAssembly project (webDir) as its
         // working directory, which is deeper than the project root, so a relative output path would nest.
         string outputDir = Path.GetFullPath(
-            Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "browser"));
+            Path.Combine(project.ProjectDirectory, Spot.Build.ProjectStructure.BuildFolder, "browser"));
         string csprojFile = project.Config.Name + ".Browser.csproj";
         string publishArgs = $"publish \"{csprojFile}\" -c Release -o \"{outputDir}\"";
 

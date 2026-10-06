@@ -1,8 +1,8 @@
 using System.Numerics;
 using Spot.Tests.Fakes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the low-level GPU wrappers (buffers, vertex arrays, shaders, textures) against a recording device,

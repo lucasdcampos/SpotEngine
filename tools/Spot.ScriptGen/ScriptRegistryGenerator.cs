@@ -12,7 +12,7 @@ namespace Spot.ScriptGen;
 
 /// <summary>
 /// Emits a reflection-free <c>Spot.Engine.Scenes.IScriptProvider</c> for the game assembly it compiles into: it
-/// discovers every concrete <c>Spot.Engine.Scenes.Component</c> subclass and generates a provider that hands
+/// discovers every concrete <c>Spot.Engine.Component</c> subclass and generates a provider that hands
 /// the runtime a stable guid, class name, type and construction factory for each. A module initializer
 /// registers the provider with <c>Spot.Engine.Scenes.ScriptRegistry</c> the moment the assembly loads, so script
 /// resolution never needs <c>Activator</c> or an assembly scan — the AOT/trimming-safe path the browser
@@ -23,7 +23,7 @@ namespace Spot.ScriptGen;
 [Generator]
 public sealed class ScriptRegistryGenerator : IIncrementalGenerator
 {
-    private const string ComponentTypeFullName = "Spot.Engine.Scenes.Component";
+    private const string ComponentTypeFullName = "Spot.Engine.Component";
 
     private readonly record struct ScriptInfo(string FullName, string SimpleName, string FilePath);
 

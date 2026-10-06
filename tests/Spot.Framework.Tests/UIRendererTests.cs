@@ -1,8 +1,8 @@
 using System.Numerics;
 using Spot.Tests.Fakes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the screen-space UI batcher against a recording device: lazy setup, pass state, the top-left
@@ -46,6 +46,27 @@ public class UIRendererTests
         Assert.True(device.Capabilities[GraphicsCapability.DepthTest]);
         Assert.False(device.Capabilities[GraphicsCapability.Blend]);
         Assert.False(device.Capabilities[GraphicsCapability.ScissorTest]);
+    }
+
+    [Fact]
+    public void Blend_AdditiveFlushesAndAddsLightUntilTheNextPass()
+    {
+        RecordingGraphicsDevice device = Install();
+
+        UIRenderer.Begin(100, 100);
+        UIRenderer.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        UIRenderer.Blend = BlendMode.Additive;
+        Assert.Single(device.Draws); // the alpha-blended quad was drawn before the switch
+        Assert.Equal((BlendFactor.SrcAlpha, BlendFactor.One), device.BlendFunc);
+        UIRenderer.DrawQuad(Vector2.Zero, Vector2.One, Vector4.One);
+        UIRenderer.End();
+        Assert.Equal(2, device.Draws.Count);
+
+        // Every pass starts back on alpha blending.
+        UIRenderer.Begin(100, 100);
+        Assert.Equal(BlendMode.Alpha, UIRenderer.Blend);
+        Assert.Equal((BlendFactor.SrcAlpha, BlendFactor.OneMinusSrcAlpha), device.BlendFunc);
+        UIRenderer.End();
     }
 
     [Fact]
@@ -129,5 +150,31 @@ public class UIRendererTests
         Vector2 measured = UIRenderer.MeasureText(font, "Hi!", 24f, TextLayoutOptions.Default);
         Assert.Equal(measured, drawn);
         Assert.Equal(3u * 6u, device.Draws.Sum(d => d.Count));
+    }
+
+    [Fact]
+    public void Font_BakedLargerLaysOutTextAtTheSameSize()
+    {
+        Install();
+        using Font large = Font.CreateDefault(120f);
+        Assert.Equal(120f, large.PixelSize);
+        Assert.Equal(Font.BasePixelSize, Font.Default.PixelSize);
+
+        // A bigger bake only sharpens the glyphs: text measured at a given size lands within a pixel of the
+        // default bake, so swapping fonts by size never shifts a layout.
+        Vector2 standard = UIRenderer.MeasureText(Font.Default, "SpotOS Olá", 72f, TextLayoutOptions.Default);
+        Vector2 sharp = UIRenderer.MeasureText(large, "SpotOS Olá", 72f, TextLayoutOptions.Default);
+        Assert.InRange(MathF.Abs(standard.X - sharp.X), 0f, 1.5f);
+        Assert.InRange(MathF.Abs(standard.Y - sharp.Y), 0f, 1.5f);
+    }
+
+    [Fact]
+    public void Font_ClampsTheBakeSize()
+    {
+        Install();
+        using Font tiny = Font.CreateDefault(1f);
+        using Font invalid = Font.CreateDefault(float.NaN);
+        Assert.Equal(8f, tiny.PixelSize);
+        Assert.Equal(Font.BasePixelSize, invalid.PixelSize);
     }
 }

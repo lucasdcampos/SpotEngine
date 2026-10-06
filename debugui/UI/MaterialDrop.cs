@@ -4,6 +4,7 @@ using System.Linq;
 using ImGuiNET;
 using Spot.DebugUI.Undo;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.DebugUI.UI;

@@ -1,4 +1,4 @@
-using Spot.Framework.Assimp;
+using Spot.Engine.Assimp;
 
 namespace Spot.Engine.Assets;
 
@@ -50,7 +50,7 @@ public static class ModelMaterials
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.CoreError("Failed to write material slot {0} of '{1}': {2}", slot.Slot, modelPath, ex.Message);
+                Spot.Engine.Log.CoreError("Failed to write material slot {0} of '{1}': {2}", slot.Slot, modelPath, ex.Message);
             }
         }
 
@@ -79,7 +79,7 @@ public static class ModelMaterials
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.CoreError("Failed to create a material for '{0}': {1}", imagePath, ex.Message);
+                Spot.Engine.Log.CoreError("Failed to create a material for '{0}': {1}", imagePath, ex.Message);
             }
         }
     }

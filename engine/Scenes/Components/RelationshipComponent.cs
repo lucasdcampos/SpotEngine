@@ -1,6 +1,7 @@
+using Spot.Engine.Scenes;
 using System.Collections.Generic;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 public sealed class RelationshipComponent : Component
 {

@@ -1,7 +1,7 @@
 using System.Numerics;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 
 namespace SolarSystem;
 

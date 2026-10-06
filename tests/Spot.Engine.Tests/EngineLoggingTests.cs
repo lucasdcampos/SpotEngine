@@ -1,6 +1,5 @@
 using System.IO;
 using Spot.Engine;
-using Spot.Framework;
 using Spot.Tests;
 
 namespace Spot.Engine.Tests;

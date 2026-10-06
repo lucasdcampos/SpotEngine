@@ -1,5 +1,6 @@
 using System.Numerics;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace ProvingGrounds;

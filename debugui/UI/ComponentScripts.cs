@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Spot.Engine.Assets;
-using Spot.Framework;
+using Spot.Engine;
 
 namespace Spot.DebugUI.UI;
 
@@ -83,11 +83,27 @@ public static class ComponentScripts
         """;
 
     /// <summary>
+    /// Supplies the open project's name, used as the namespace of new scripts. Set by the host (the editor);
+    /// DebugUI knows nothing about projects. Null or an empty name falls back to <c>Game</c>.
+    /// </summary>
+    public static Func<string?>? ProjectNameSource { get; set; }
+
+    /// <summary>
     /// The namespace new scripts are written in: the active project's name as an identifier, or <c>Game</c>.
     /// </summary>
     public static string ProjectNamespace()
     {
-        string name = ToClassName(Spot.Engine.Project.Active?.Config.Name ?? string.Empty);
+        string? projectName = null;
+        try
+        {
+            projectName = ProjectNameSource?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to read the project name: {0}", ex.Message);
+        }
+
+        string name = ToClassName(projectName ?? string.Empty);
         return name.Length > 0 ? name : "Game";
     }
 
@@ -114,8 +130,8 @@ public static class ComponentScripts
 
         if (directory is null)
         {
-            string? assets = Spot.Engine.Project.Active?.GetAssetDirectory();
-            if (assets is null)
+            string assets = AssetPath.Root;
+            if (string.IsNullOrEmpty(assets))
             {
                 Log.Error("Open a project before creating a component.");
                 return false;

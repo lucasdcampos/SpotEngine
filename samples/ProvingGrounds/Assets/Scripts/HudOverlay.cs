@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Numerics;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 
 namespace ProvingGrounds;
 
@@ -193,7 +193,7 @@ internal sealed class HudOverlay : Widget
         // Landmarks: a diamond at their bearing, pinned to the edge when they are behind you.
         if (f.Game.Player.IsValid)
         {
-            Vector3 player = f.Game.Player.GetComponent<Spot.Engine.Scenes.TransformComponent>().Position;
+            Vector3 player = f.Game.Player.GetComponent<Spot.Engine.TransformComponent>().Position;
             foreach ((string label, Vector3 position) in _hud.Landmarks)
             {
                 Vector3 to = position - player;

@@ -1,8 +1,8 @@
 using System.Numerics;
 using System.Text.Json;
-using Spot.Framework;
-using Spot.Framework.Graphics;
-using Spot.Framework.IO;
+using Spot.Engine;
+using Spot.Engine.Graphics;
+using Spot.Engine.IO;
 
 namespace Spot.Engine.Assets;
 

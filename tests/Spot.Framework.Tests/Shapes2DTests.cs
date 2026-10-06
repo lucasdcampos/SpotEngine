@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.Tests.Fakes;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers Renderer2D's quad-from-corners primitive and the framework's shapes and sprites built on it, by reading

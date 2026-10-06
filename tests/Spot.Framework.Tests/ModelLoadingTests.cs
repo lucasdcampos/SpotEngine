@@ -1,12 +1,12 @@
 using System.IO;
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 using Spot.Tests.Fakes;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the framework's model registry (importers by extension, reference resolution, caching, async

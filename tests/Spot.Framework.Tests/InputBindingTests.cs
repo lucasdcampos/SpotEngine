@@ -1,6 +1,6 @@
-using Spot.Framework;
+using Spot.Engine;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class InputBindingTests
 {

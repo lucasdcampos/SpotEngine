@@ -134,7 +134,7 @@ internal static class Program
         {
             throw new DirectoryNotFoundException($"No assets directory to cook: '{assetDir}'. Create it (or check the project's AssetDirectory) and try again.");
         }
-        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.ContentFolder);
+        string outDir = options.GetValueOrDefault("out") ?? Path.Combine(project.ProjectDirectory, Spot.Build.ProjectStructure.ContentFolder);
 
         Console.WriteLine($"Cooking assets for '{project.Config.Name}' -> {outDir}");
         var result = Spot.Engine.Assets.AssetDatabase.CookAll(assetDir, outDir);
@@ -300,7 +300,7 @@ Usage:
   spot migrate [--project <path>] [--dry-run]
       Rewrite scene/material asset references to stable guid: references, generate
       missing .meta sidecars, and move scripts written against the pre-0.4 namespaces
-      (Spot.Core, Spot.Scenes, ...) to Spot.Framework.* / Spot.Engine.*.
+      (Spot.Core, Spot.Scenes, ...) to Spot.Engine.* / Spot.Engine.*.
       --dry-run reports changes without writing.
 
   spot help

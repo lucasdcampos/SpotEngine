@@ -6,9 +6,9 @@ using System.Numerics;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Spot.Engine.Assets;
-using Spot.Framework;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Scenes;
 

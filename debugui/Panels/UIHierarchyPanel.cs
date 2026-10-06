@@ -226,7 +226,7 @@ public class UIHierarchyPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to duplicate widget: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to duplicate widget: {0}", ex.Message);
         }
     }
 

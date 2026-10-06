@@ -1,8 +1,8 @@
 using System.Numerics;
 using Spot.Engine.Scenes;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Events;
+using Spot.Engine;
+using Spot.Engine.Events;
 
 namespace Spot.Engine.Tests;
 

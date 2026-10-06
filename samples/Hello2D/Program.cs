@@ -1,9 +1,9 @@
 // Level 2 — Spot.Framework: sprites, shapes, text, sound and named input actions, all built from code (no asset
 // files, no engine). Move with WASD/arrows, Space plays a sound, Escape quits. `--frames N` exits after N frames.
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 
 int maxFrames = args.Length == 2 && args[0] == "--frames" && int.TryParse(args[1], out int n) ? n : -1;
 

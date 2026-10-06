@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.IO;
-using Spot.Framework;
+using Spot.Engine;
 using Spot.Tests.Fakes;
 using Xunit;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class LogTests
 {

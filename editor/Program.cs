@@ -1,7 +1,6 @@
 using Spot.Engine;
-using Spot.Framework;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 using Spot.DebugUI;
 using Spot.DebugUI.UI;
 using Spot.Editor.Launcher;

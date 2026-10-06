@@ -7,9 +7,14 @@ damage numbers) — independently of the editor's ImGui fonts, so text works the
 
 A **font** is a TrueType/OpenType file rasterized into a single **glyph atlas** texture. A fixed set of
 code points — ASCII plus the Latin-1 supplement, which covers Western European text including Portuguese
-accents — is baked once when the font loads, at one base pixel size; drawing at other sizes scales the
-baked glyphs rather than re-rasterizing. Glyph coverage lives in the atlas's alpha channel with white RGB,
-so text keeps clean, soft edges without a dark fringe.
+accents — is baked once when the font loads, at one pixel size (48 by default); drawing at other sizes
+scales the baked glyphs rather than re-rasterizing. Glyph coverage lives in the atlas's alpha channel with
+white RGB, so text keeps clean, soft edges without a dark fringe.
+
+Scaling a bake up softens it, so large display text — titles, a big clock — reads best from a font baked at
+its own size: `Font.FromFile(path, pixelSize)` or `Font.CreateDefault(pixelSize)` (the built-in font) bake
+anywhere from 8 to 256 pixels. Layout is in the font's own units, so a string measures the same at a given
+size whichever bake draws it, and a game can pick the bake by size without moving anything.
 
 Turning a string into quads is a pure **layout** step — measuring, word-wrapping to a width, and aligning
 (left/center/right) — separate from any GPU work, so it is shared by both screen and world text and is

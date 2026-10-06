@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using Spot.Engine.Physics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.DebugUI.UI;

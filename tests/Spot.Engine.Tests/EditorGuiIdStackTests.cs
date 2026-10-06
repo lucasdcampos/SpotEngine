@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using ImGuiNET;
 using Spot.DebugUI.UI;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;

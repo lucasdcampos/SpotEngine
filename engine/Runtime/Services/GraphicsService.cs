@@ -1,0 +1,41 @@
+using Spot.Engine;
+using Spot.Engine.Graphics;
+using Spot.Engine.Scenes;
+
+namespace Spot.Engine.Services;
+
+/// <summary>
+/// Initializes rendering systems.
+/// </summary>
+/// <remarks>
+/// This runs in both the editor and a shipped game, so it deliberately does not register the Assimp source
+/// importer: a shipped game loads cooked <c>.sptmesh</c> meshes and must never pull in Assimp. Authoring hosts
+/// (the editor) register the source importer themselves.
+/// </remarks>
+public class GraphicsService : IEngineService
+{
+    public void Init(Application app)
+    {
+        // The window already installed its context as the renderer's device; set up the engine's renderers on it.
+        Renderer3D.Init();
+        PostProcessingRenderer.Init();
+        BloomRenderer.Init();
+        ParticleRenderer.Init();
+        Renderer.SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+
+        // The desktop scene renderer applies the full HDR/bloom/tone-mapping post pipeline; the browser leaves
+        // this null and renders straight to the screen.
+        RenderSystem.PostProcessor = new DesktopScenePostProcessor();
+
+        // Route Scene.OnRender through the full 3D-first pipeline (the same RenderSystem the browser now runs).
+        SceneRenderer.Callback = static (scene, viewProjection, cameraPosition) =>
+            RenderSystem.Render(scene, viewProjection, cameraPosition);
+    }
+
+    public void Shutdown()
+    {
+        UIRenderer.Shutdown();
+        ParticleRenderer.Shutdown();
+        Renderer2D.Shutdown();
+    }
+}

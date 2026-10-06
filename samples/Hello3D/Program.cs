@@ -6,10 +6,10 @@
 //   dotnet run --project samples/Hello3D -- path/to/model.fbx  plus a model (its first clip plays if it has one)
 //   ... --frames N                                            exits after N frames (smoke tests)
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Animation;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Animation;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 
 int maxFrames = -1;
 string? modelPath = null;

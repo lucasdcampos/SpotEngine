@@ -33,6 +33,11 @@ untouched. This is why a model dragged into a scene (which leaves behind raw sou
 and its extracted `.sptmat` materials) renders in a build as well as in the editor: the cook resolves
 those paths to the GUIDs of the cooked mesh and materials.
 
+**Data files** — `.json`, `.txt` and `.csv` — are copied into the content folder verbatim at the same
+relative path, with no `.meta` sidecar or manifest entry. They are for data a game reads itself (themes,
+localized strings, level tables): resolve the relative path with `AssetPath.Resolve("Themes/dark.json")`
+and read it, and it is found under `Assets/` in the editor and under the content folder in a build.
+
 The content folder is **rebuilt from scratch** on every cook, so a source you delete or rename never
 leaves a stale cooked artifact behind in a shipped build. If a source fails to cook (say a corrupt
 image), the cook logs it, keeps going for the rest, and **reports how many failed** — `spot cook`

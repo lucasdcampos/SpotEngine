@@ -1,6 +1,7 @@
 using System.Numerics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace HelloEngine;
 

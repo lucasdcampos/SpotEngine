@@ -1,8 +1,8 @@
 using System.Numerics;
 using Spot.Tests.Fakes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the low-level <see cref="Renderer"/> facade and the immediate-mode <see cref="Renderer2D"/> batcher

@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.DebugUI.UI;
 using Spot.DebugUI.Undo;
 using Spot.Editor.UI;
@@ -187,7 +188,7 @@ public class ViewportPanel
                     ImGui.EndPopup();
                 }
 
-                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.Scenes.CameraComponent>())
+                if (_cameraPreviewFramebuffer != null && _context.Selection.HasValue && _context.Selection.Value.HasComponent<Spot.Engine.CameraComponent>())
                 {
                     // Camera preview in the bottom-right corner: a floating card with a caption strip above
                     // the picture, in the same chrome as the toolbar.
@@ -541,8 +542,8 @@ public class ViewportPanel
         float rightEdge = cursorPos.X + viewportSize.X - 12.0f;
         float y = center.Y + axisLen + 12.0f;
 
-        float fps = Spot.Framework.FrameStats.Fps;
-        float ms = Spot.Framework.FrameStats.FrameTimeMs;
+        float fps = Spot.Engine.FrameStats.Fps;
+        float ms = Spot.Engine.FrameStats.FrameTimeMs;
         DrawRightText(drawList, rightEdge, ref y, $"{fps:0} FPS  ({ms:0.0} ms)", palette.Text);
 
         DrawRightText(drawList, rightEdge, ref y, _camera.Is3D ? "Perspective" : "Orthographic", palette.TextDisabled);
@@ -617,16 +618,16 @@ public class ViewportPanel
             Spot.Engine.Physics.PhysicsDebug.ShowColliders = !showColliders;
         }
         ImGui.SameLine();
-        bool fullbright = Spot.Engine.Rendering.RendererDebug.Fullbright;
+        bool fullbright = Spot.Engine.Graphics.RendererDebug.Fullbright;
         if (EditorGui.ToolbarButton(EditorIcons.Lightbulb + "##fullbright", fullbright, "Fullbright (ignore lighting)", square))
         {
-            Spot.Engine.Rendering.RendererDebug.Fullbright = !fullbright;
+            Spot.Engine.Graphics.RendererDebug.Fullbright = !fullbright;
         }
         ImGui.SameLine();
-        bool wireframe = Spot.Engine.Rendering.RendererDebug.Wireframe;
+        bool wireframe = Spot.Engine.Graphics.RendererDebug.Wireframe;
         if (EditorGui.ToolbarButton(EditorIcons.DrawPolygon + "##wireframe", wireframe, "Wireframe", square))
         {
-            Spot.Engine.Rendering.RendererDebug.Wireframe = !wireframe;
+            Spot.Engine.Graphics.RendererDebug.Wireframe = !wireframe;
         }
         EditorGui.ToolbarDivider();
 

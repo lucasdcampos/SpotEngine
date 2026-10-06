@@ -1,9 +1,8 @@
 using System;
 using System.Numerics;
 using Spot.Engine.Assets;
-using Spot.Engine.Rendering;
-using Spot.Framework.Graphics;
-using Spot.Framework.Mathematics;
+using Spot.Engine.Graphics;
+using Spot.Engine.Mathematics;
 
 namespace Spot.DebugUI.UI;
 
@@ -22,7 +21,7 @@ public static class ModelPreviewHelper
     /// <paramref name="transparentBackground"/> the backdrop is cleared to transparent so the model sits directly on
     /// whatever the preview is drawn over (e.g. an asset-browser tile); otherwise it gets a dark gray backdrop.
     /// </summary>
-    public static void RenderToFramebuffer(Model model, Spot.Framework.Graphics.Framebuffer framebuffer,
+    public static void RenderToFramebuffer(Model model, Spot.Engine.Graphics.Framebuffer framebuffer,
         bool transparentBackground = false)
     {
         // Save and restore the target through the renderer's tracked state, never raw GL: creating the next

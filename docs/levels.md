@@ -1,14 +1,13 @@
-# Spot's Levels: Core, Framework, Engine
+# Spot's Levels: Framework and Engine
 
-Spot is not one library but three, stacked. Each level is its own assembly, compiles on its own, and
-depends only on the levels beneath it. Pick the highest level that suits your game and drop down whenever
+Spot is split into two main levels, stacked. Each level is its own assembly, compiles on its own, and
+depends only on the levels beneath it. Pick the level that suits your game and drop down whenever
 you need to — **you are never locked in to what the level above supports**.
 
 | Level | Assembly | Feels like | You get | You write |
 |---|---|---|---|---|
-| **1 — Core** | `Spot.Framework.Core` | SDL, GLFW | a window, events, raw input, the GPU, a minimal 2D batch, a PCM audio device | the loop, everything else |
-| **2 — Framework** | `Spot.Framework` (+ `Spot.Framework.Assimp`) | raylib, MonoGame | file loading, sprites, shapes, text, a basic 3D renderer, models, skeletons, a mixer, input actions | the loop, the game's structure, your choice of physics/UI libraries |
-| **3 — Engine** | `Spot.Engine` | Unity, Godot | the loop, scenes and entities, the lit renderer, post-processing, particles, physics, animator, UI, assets, editor, `spot` CLI | scripts and content |
+| **1 — Framework** | `Spot.Framework` (+ `Spot.Framework.Assimp`) | raylib, MonoGame | window, input, GPU, file loading, sprites, shapes, text, a basic 3D renderer, models, skeletons, a mixer | the loop, the game's structure, your choice of physics/UI libraries |
+| **2 — Engine** | `Spot.Engine` | Unity, Godot | the loop, scenes and entities, the lit renderer, post-processing, particles, physics, animator, UI, assets, editor, `spot` CLI | scripts and content |
 
 ## How a feature finds its level
 
@@ -59,10 +58,13 @@ while (window.IsOpen)
 
 What it holds:
 
-- **Platform** — `Window` (creating one installs its graphics device), `Display`, `Time`, and a
-  dependency-free `Log` that writes to the terminal until you plug in your own sinks, and never throws.
-- **Input** — raw keyboard, mouse, gamepad and cursor-lock state, plus the generic *captured* and
-  *suppressed* switches an overlay uses to withhold input from the game.
+- **Platform** — `Window` (creating one installs its graphics device; `WindowSpec.Mode` and `Window.Mode`
+  switch between windowed, borderless fullscreen and exclusive fullscreen, restoring the windowed rectangle
+  on the way back), `Display`, `Time`, and a dependency-free `Log` that writes to the terminal until you plug
+  in your own sinks, and never throws.
+- **Input** — raw keyboard, mouse, gamepad and cursor-lock state, the frame's typed text
+  (`Input.TypedText`), plus the generic *captured* and *suppressed* switches an overlay uses to withhold
+  input from the game.
 - **Events** — the window and input events `PollEvents` dispatches.
 - **Graphics** — the backend-neutral `IGraphicsDevice` (OpenGL on desktop, WebGL2 in the browser), GPU
   resources (buffers, vertex arrays, shaders, textures from pixels, framebuffers), render state, and a
@@ -149,7 +151,7 @@ level 1 and level 2 alike.
 | `Spot.Framework.Mathematics` | bounding boxes, frustums, math helpers |
 | `Spot.Framework.Assimp` | the Assimp model importer |
 | `Spot.Framework.Browser` | `BrowserPlatform`: the page's entry points and animation-frame event |
-| `Spot.Engine` | `Application`, projects, services, engine logging |
+| `Spot.Engine` | `Application`, `ApplicationSpec` (`game.manifest`), services, engine logging |
 | `Spot.Engine.Scenes` | scenes, entities, components, systems, scripting, render passes |
 | `Spot.Engine.Rendering` | the lit 3D renderer, post-processing, particles, `RenderSettings` |
 | `Spot.Engine.Assets` | the asset pipeline, cooked formats, materials, guid loading |

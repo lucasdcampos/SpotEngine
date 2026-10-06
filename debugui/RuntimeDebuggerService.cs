@@ -1,7 +1,8 @@
-using ImGuiNET;
 using Spot.Engine;
+using ImGuiNET;
+
 using Spot.Engine.Scenes;
-using Spot.Framework;
+
 using Spot.DebugUI.Panels;
 
 namespace Spot.DebugUI;
@@ -115,3 +116,4 @@ public class RuntimeDebuggerService : IEngineService, ISelectionContext, IDebugO
         _audioMixerPanel.OnImGuiRender(ref _showAudioMixer);
     }
 }
+

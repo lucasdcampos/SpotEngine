@@ -4,8 +4,9 @@ using System.Linq;
 using System.Numerics;
 using Spot.DebugUI.UI;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.Tests;
 using Spot.Tests.Fakes;
 

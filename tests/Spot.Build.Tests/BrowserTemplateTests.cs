@@ -14,7 +14,7 @@ public class BrowserTemplateTests
     public void MainJs_BindsTheEngineHostAndThePlatformExports()
     {
         Assert.Contains("const host = engineExports.Spot.Engine.Browser.BrowserHost;", Js);
-        Assert.Contains("const platform = coreExports.Spot.Framework.Browser.BrowserPlatform;", Js);
+        Assert.Contains("const platform = coreExports.Spot.Engine.Browser.BrowserPlatform;", Js);
     }
 
     [Fact]

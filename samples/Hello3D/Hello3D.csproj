@@ -8,9 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\framework\Spot.Framework.Core\Spot.Framework.Core.csproj" />
-    <ProjectReference Include="..\..\framework\Spot.Framework\Spot.Framework.csproj" />
-    <ProjectReference Include="..\..\framework\Spot.Framework.Assimp\Spot.Framework.Assimp.csproj" />
+    <ProjectReference Include="..\..\engine\Spot.Engine.csproj" />
+
   </ItemGroup>
 
 </Project>

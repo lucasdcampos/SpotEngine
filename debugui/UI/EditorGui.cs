@@ -6,7 +6,7 @@ using ImGuiNET;
 using Spot.Engine;
 using Spot.Engine.Assets;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -974,7 +974,7 @@ public static class EditorGui
         if (assets.Count > 0)
             ImGui.Separator();
 
-        string? assetRoot = Project.Active?.GetAssetDirectory();
+        string? assetRoot = Spot.Engine.Assets.AssetPath.Root;
         bool foundAny = false;
         foreach (string path in assets)
         {
@@ -1108,7 +1108,7 @@ public static class EditorGui
             catch { continue; }
             foreach (Type type in types)
             {
-                if (!type.IsAbstract && type.Name == name && type.IsSubclassOf(typeof(Spot.Engine.Scenes.Component)) && Spot.Engine.Scenes.Component.IsUserType(type))
+                if (!type.IsAbstract && type.Name == name && type.IsSubclassOf(typeof(Spot.Engine.Component)) && Spot.Engine.Component.IsUserType(type))
                     return true;
             }
         }
@@ -1249,7 +1249,7 @@ public static class EditorGui
     private static System.Collections.Generic.List<string> EnumerateProjectAssets(string[] patterns)
     {
         var result = new System.Collections.Generic.List<string>();
-        string? dir = Project.Active?.GetAssetDirectory();
+        string? dir = Spot.Engine.Assets.AssetPath.Root;
         if (!string.IsNullOrEmpty(dir) && System.IO.Directory.Exists(dir))
         {
             try

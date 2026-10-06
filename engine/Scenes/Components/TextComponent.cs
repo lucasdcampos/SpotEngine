@@ -1,7 +1,8 @@
+using Spot.Engine.Scenes;
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// A component that draws a string of text in the world, at the entity's transform. It is the world-space

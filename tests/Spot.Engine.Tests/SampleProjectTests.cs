@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Spot.Engine.Scenes;
 using Spot.Engine.UI;
-using Spot.Framework;
+using Spot.Engine;
 using Spot.Tests.Fakes;
 
 namespace Spot.Engine.Tests;

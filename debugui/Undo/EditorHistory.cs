@@ -55,7 +55,7 @@ public static class EditorHistory
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.CoreWarn("Could not record '{0}' in the undo history: {1}", label, ex.Message);
+            Spot.Engine.Log.CoreWarn("Could not record '{0}' in the undo history: {1}", label, ex.Message);
         }
     }
 }

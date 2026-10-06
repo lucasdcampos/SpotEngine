@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using Spot.Engine.Assets;
-using Spot.Framework;
-using Spot.Framework.Animation;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Animation;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Scenes;
 

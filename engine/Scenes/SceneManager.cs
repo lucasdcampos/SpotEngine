@@ -1,7 +1,7 @@
 using System.IO;
 using Spot.Engine.Assets;
-using Spot.Framework;
-using Spot.Framework.IO;
+using Spot.Engine;
+using Spot.Engine.IO;
 
 namespace Spot.Engine.Scenes;
 
@@ -94,7 +94,7 @@ public static class SceneManager
         s_current.OnEnter();
     }
 
-    internal static void DispatchEvent(Spot.Framework.Events.Event e) => s_current?.OnEvent(e);
+    internal static void DispatchEvent(Spot.Engine.Events.Event e) => s_current?.OnEvent(e);
 
     internal static void Update(float deltaTime)
     {

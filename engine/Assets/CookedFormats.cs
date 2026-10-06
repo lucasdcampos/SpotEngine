@@ -2,9 +2,9 @@ using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Spot.Framework.Animation;
-using Spot.Framework.Graphics;
-using Spot.Framework.IO;
+using Spot.Engine.Animation;
+using Spot.Engine.Graphics;
+using Spot.Engine.IO;
 
 namespace Spot.Engine.Assets;
 

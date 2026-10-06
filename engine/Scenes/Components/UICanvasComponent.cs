@@ -1,7 +1,8 @@
+using Spot.Engine.Scenes;
 using System.Collections.Generic;
 using Spot.Engine.UI;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// References a <c>.sptui</c> UI document authored in the editor and instantiates it into the scene's

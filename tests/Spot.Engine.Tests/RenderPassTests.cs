@@ -1,8 +1,7 @@
 using System.Numerics;
-using Spot.Engine.Rendering;
+using Spot.Engine.Graphics;
 using Spot.Engine.Scenes;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
 using Spot.Tests.Fakes;
 
 namespace Spot.Engine.Tests;

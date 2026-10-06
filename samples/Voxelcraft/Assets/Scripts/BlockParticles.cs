@@ -1,5 +1,5 @@
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Voxelcraft;
 

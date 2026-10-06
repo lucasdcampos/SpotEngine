@@ -1,5 +1,5 @@
-using Spot.Framework.Graphics;
-using Spot.Framework.IO;
+using Spot.Engine.Graphics;
+using Spot.Engine.IO;
 
 namespace Spot.Engine.Assets;
 

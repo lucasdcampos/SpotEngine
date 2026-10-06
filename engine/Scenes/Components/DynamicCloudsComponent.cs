@@ -1,6 +1,7 @@
+using Spot.Engine.Scenes;
 using System.Numerics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 [ComponentMenu("Dynamic Clouds", Order = 90, Category = "Environment")]
 [SceneComponent("DynamicClouds")]

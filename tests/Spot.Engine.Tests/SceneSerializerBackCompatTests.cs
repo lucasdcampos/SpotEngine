@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 using Xunit;
 

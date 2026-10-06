@@ -1,6 +1,7 @@
+using Spot.Engine.Scenes;
 using System.Numerics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// A position, rotation, and scale in 3D space that produces a model matrix.

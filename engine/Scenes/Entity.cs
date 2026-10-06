@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using Spot.Engine;
+using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// A lightweight handle to an entity within a <see cref="Scene"/>. Entities are just an identity;

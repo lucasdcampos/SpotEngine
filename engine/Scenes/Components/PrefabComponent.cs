@@ -1,4 +1,5 @@
-namespace Spot.Engine.Scenes;
+using Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// Marks an entity as an instance of a prefab asset. This is purely a link/marker: it records the source

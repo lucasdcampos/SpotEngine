@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework;
 
 namespace Spot.Engine.Assets;
 
@@ -40,8 +39,9 @@ public static class AssetDatabase
 
     private static readonly GuidResolver s_resolver = new();
 
-    // Extensions copied verbatim into Content, preserving their relative path (loaded by name, not by guid).
-    private static readonly string[] s_copyThroughExtensions = { ".sptscene" };
+    // Extensions copied verbatim into Content, preserving their relative path (loaded by name, not by guid): scenes,
+    // and plain data files a game reads itself (themes, localized strings, level tables).
+    private static readonly string[] s_copyThroughExtensions = { ".sptscene", ".json", ".txt", ".csv" };
 
     static AssetDatabase()
     {
@@ -348,14 +348,14 @@ public static class AssetDatabase
         }
 
         bool looksLikeCookOutput =
-            string.Equals(Path.GetFileName(full), ProjectStructure.ContentFolder, StringComparison.OrdinalIgnoreCase)
+            string.Equals(Path.GetFileName(full), ApplicationSpec.DefaultContentFolder, StringComparison.OrdinalIgnoreCase)
             || File.Exists(Path.Combine(full, "manifest.json"))
             || !Directory.EnumerateFileSystemEntries(full).Any();
 
         if (!looksLikeCookOutput)
         {
             throw new ArgumentException(
-                $"Refusing to rebuild content in '{contentRoot}': it isn't a cook-output folder (no manifest.json and not named '{ProjectStructure.ContentFolder}'). Point the output at a dedicated content directory.",
+                $"Refusing to rebuild content in '{contentRoot}': it isn't a cook-output folder (no manifest.json and not named '{ApplicationSpec.DefaultContentFolder}'). Point the output at a dedicated content directory.",
                 nameof(contentRoot));
         }
 
@@ -454,7 +454,7 @@ public static class AssetDatabase
         return changed;
     }
 
-    // Mirrors copy-through assets (scenes, fonts) into Content/ by path. Returns how many failed to copy so
+    // Mirrors copy-through assets (scenes, data files) into Content/ by path. Returns how many failed to copy so
     // the cook can report them alongside importer failures rather than losing them to the log.
     private static int CopyThrough(string assetsRoot, string contentRoot)
     {

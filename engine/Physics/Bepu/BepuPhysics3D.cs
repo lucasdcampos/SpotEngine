@@ -7,7 +7,7 @@ using BepuUtilities;
 using BepuUtilities.Memory;
 using Spot.Engine.Physics;
 using Spot.Engine.Scenes;
-using Spot.Framework;
+using Spot.Engine;
 
 namespace Spot.Engine.Physics.Bepu;
 

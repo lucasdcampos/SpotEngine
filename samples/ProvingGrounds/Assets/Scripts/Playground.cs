@@ -1,8 +1,8 @@
 using System.Numerics;
 using Spot.Engine.Physics;
 using Spot.Engine.Scenes;
-using Spot.Framework;
-using Spot.Framework.Audio;
+using Spot.Engine;
+using Spot.Engine.Audio;
 
 namespace ProvingGrounds;
 

@@ -1,6 +1,7 @@
+using Spot.Engine.Scenes;
 using System.Text.Json.Nodes;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// Keeps the user components of an entity whose type could not be resolved when the scene was loaded — a

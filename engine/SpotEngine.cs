@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Spot.Editor")]
 [assembly: InternalsVisibleTo("Spot.DebugUI")]
 [assembly: InternalsVisibleTo("Spot.Engine.Tests")]
+[assembly: InternalsVisibleTo("Spot.Framework.Tests")]
 
 namespace Spot.Engine;
 
@@ -15,7 +16,7 @@ public static class SpotEngine
     /// Gets the current engine version.
     /// </summary>
     /// <returns>The engine version string.</returns>
-    public static string GetVersion() => "0.5.0";
+    public static string GetVersion() => "0.6.0";
 
 #if !BROWSER
     /// <summary>

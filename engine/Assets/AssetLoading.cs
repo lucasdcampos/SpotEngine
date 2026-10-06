@@ -1,5 +1,5 @@
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Assets;
 

@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Framework.Audio;
+using Spot.Engine.Audio;
 using Spot.Tests.Fakes;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the framework's voice manager on top of an in-memory audio backend: the source pool, buffer uploads,

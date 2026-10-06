@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Numerics;
-using Spot.Framework;
+using Spot.Engine;
+using Spot.Engine.Scenes;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// Base class for everything attached to an <see cref="Entity"/>. The engine's built-in components

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;

@@ -11,26 +11,20 @@ Spot is **3D-first** and **layered**: you can work at a high level (drop entitie
 let the engine draw, simulate, and play them) or drop down to lower-level rendering when you need
 full control — and you never have to leave the engine to do so.
 
-## Three levels
+## Two levels
 
-Spot is three libraries stacked on top of each other, each usable on its own:
+Spot is two libraries stacked on top of each other, each usable on its own:
 
-1. **Core** (`Spot.Framework.Core`) — a window, events, raw input, the GPU, a minimal 2D batch and an
-   audio device. No loop: you write it.
-2. **Framework** (`Spot.Framework`, plus the optional `Spot.Framework.Assimp`) — a friendly, code-only
-   layer in the spirit of raylib or MonoGame: loading files, sprites, text, basic 3D, models, skeletons,
-   a mixer, input actions. Still your loop, and your choice of libraries for physics or UI.
-3. **Engine** (`Spot.Engine`) — the opinionated engine: the loop, scenes, the lit renderer,
-   post-processing, particles, physics, the animator, UI, assets, the editor and the CLI.
+1. **Framework** (`Spot.Framework`, plus the optional `Spot.Framework.Assimp`) - a friendly, code-only layer in the spirit of raylib or MonoGame: window, events, raw input, GPU, loading files, sprites, text, basic 3D, models, skeletons, a mixer, input actions. No loop: you write it.
+2. **Engine** (`Spot.Engine`) - the opinionated engine: the loop, scenes, the lit renderer, post-processing, particles, physics, the animator, UI, assets, the editor and the CLI.
 
-See [Levels](levels.md) for what each holds, how a feature finds its level, and the escape hatches that
-let engine code reach down to the framework and the raw GPU.
+See [Levels](levels.md) for what each holds, how a feature finds its level, and the escape hatches that let engine code reach down to the framework and the raw GPU.
 
 ## The pieces
 
 Spot is made up of a few cooperating parts:
 
-- **The framework** (`Spot.Framework.Core` and `Spot.Framework`, namespaces `Spot.Framework.*`) is the
+- **The framework** (`Spot.Framework`, namespaces `Spot.Framework.*`) is the
   foundation: the window, input, graphics device, renderers, resources and audio, all driven by code.
 - **The engine** (`Spot.Engine`, namespaces `Spot.Engine.*`) builds on the framework. It owns the main
   loop, scenes, entities, the full renderer, physics, audio playback, assets, and scripting. Games made

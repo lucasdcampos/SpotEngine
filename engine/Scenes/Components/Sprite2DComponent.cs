@@ -1,7 +1,8 @@
+using Spot.Engine.Scenes;
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// A component that marks an entity as a drawable 2D sprite. It carries what to draw (an optional

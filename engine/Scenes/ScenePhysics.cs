@@ -1,6 +1,6 @@
 using System.Numerics;
 using Spot.Engine.Physics;
-using Spot.Framework;
+using Spot.Engine;
 
 namespace Spot.Engine.Scenes;
 

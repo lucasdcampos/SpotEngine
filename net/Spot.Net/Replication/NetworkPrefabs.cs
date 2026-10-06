@@ -1,3 +1,4 @@
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Net;

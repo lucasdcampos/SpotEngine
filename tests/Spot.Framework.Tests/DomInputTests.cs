@@ -1,6 +1,6 @@
-using Spot.Framework;
+using Spot.Engine;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// The browser's DOM-code mapping, which only ever runs in WebAssembly, is plain logic compiled for every target

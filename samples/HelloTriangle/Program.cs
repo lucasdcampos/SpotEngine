@@ -1,8 +1,8 @@
 // Level 1 — the lowest layer: a triangle drawn straight through the graphics device (IGraphicsDevice), the same
 // backend-neutral API every Spot renderer is built on. No wrappers, no batching — just buffers, a vertex array
 // and a shader program. Escape quits; `--frames N` exits after N frames (smoke tests).
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 
 const string VertexSource = """
     #version 330 core

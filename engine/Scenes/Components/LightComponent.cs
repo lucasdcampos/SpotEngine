@@ -1,6 +1,7 @@
+using Spot.Engine.Scenes;
 using System.Numerics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 public enum LightType
 {

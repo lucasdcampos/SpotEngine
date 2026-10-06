@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Events;
+using Spot.Engine;
+using Spot.Engine.Events;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers presenting the app in a rectangle of the window (an editor viewport): the view's size replaces the

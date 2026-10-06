@@ -1,3 +1,4 @@
+using Spot.Engine;
 using Spot.Engine.Scenes;
 using Spot.Engine.UI;
 

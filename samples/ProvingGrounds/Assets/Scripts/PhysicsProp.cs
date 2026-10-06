@@ -1,5 +1,6 @@
 using System.Numerics;
 using Spot.Engine.Physics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace ProvingGrounds;
@@ -47,7 +48,7 @@ public sealed class PhysicsProp : Component, IResettable
         if (_body is null) return;
 
         float speed = _body.Velocity.Length();
-        float now = Spot.Framework.Time.UnscaledTime;
+        float now = Spot.Engine.Time.UnscaledTime;
         if (speed < 2.5f || now - _lastSound < 0.15f) return;
 
         // A collapsing stack starts dozens of contacts at once: let only a handful be heard.

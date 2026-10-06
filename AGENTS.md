@@ -2,7 +2,7 @@
 
 Spot is a 2D/3D game engine written in C# (.NET 10) on Silk.NET (windowing, OpenGL, input, Assimp) with a Dear ImGui editor.
 
-It is split into three levels (see `docs/levels.md`), each its own assembly with dependencies only pointing down: **L1 Core** `Spot.Framework.Core` (window, events, raw input, graphics device, minimal 2D batch, PCM audio device; no loop) ← **L2 Framework** `Spot.Framework` (+ `Spot.Framework.Assimp`; code-only: loaders/decoders, text, basic 3D, models, skeletons, mixer, input actions) ← **L3 Engine** `Spot.Engine` (Application loop, scenes, full renderer, physics, animator, particles, post, UI, assets). The framework provides *mechanisms* (data + functions you call), the engine *policies* (systems that run on their own, file formats, library choices). Low-level access must stay public at every level.
+It is split into two main levels (see `docs/levels.md`), each its own assembly with dependencies only pointing down: **L1 Framework** `Spot.Framework` (+ `Spot.Framework.Assimp`; window, events, raw input, graphics device, minimal 2D batch, audio device, loaders/decoders, text, basic 3D, models, skeletons, mixer, input actions; no loop) ← **L2 Engine** `Spot.Engine` (Application loop, scenes, full renderer, physics, animator, particles, post, UI, assets). The framework provides *mechanisms* (data + functions you call), the engine *policies* (systems that run on their own, file formats, library choices). Low-level access must stay public at every level.
 
 ## Commands
 
@@ -13,27 +13,26 @@ dotnet build SpotEngine.slnx                 # build the whole solution
 dotnet test SpotEngine.slnx                  # run the xUnit test suite
 dotnet run --project editor                  # launch the ImGui editor
 dotnet run --project tools/Spot.Cli -- help  # the `spot` CLI (new/generate/build/cook/migrate)
-dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, HelloTriangle (L1), Hello2D, Hello3D (L2); `-- --frames N` exits after N frames
-dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L3 sample project: generate + cook + run
-dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # L3 showcase project (custom shaders, UI)
-dotnet run --project tools/Spot.Cli -- run --project samples/ProvingGrounds  # L3 FPS playground (physics, weapons, HUD)
-dotnet run --project tools/Spot.Cli -- run --project samples/Voxelcraft  # L3 infinite block world (chunk streaming, custom renderer)
+dotnet run --project samples/HelloQuad       # framework samples: HelloQuad, HelloTriangle, Hello2D, Hello3D; `-- --frames N` exits after N frames
+dotnet run --project tools/Spot.Cli -- run --project samples/HelloEngine  # L2 sample project: generate + cook + run
+dotnet run --project tools/Spot.Cli -- run --project samples/SolarSystem  # L2 showcase project (custom shaders, UI)
+dotnet run --project tools/Spot.Cli -- run --project samples/ProvingGrounds  # L2 FPS playground (physics, weapons, HUD)
+dotnet run --project tools/Spot.Cli -- run --project samples/Voxelcraft  # L2 infinite block world (chunk streaming, custom renderer)
 ```
 
 ## Projects
 
 | Project | Output | Notes |
 |---|---|---|
-| `framework/Spot.Framework.Core` | library (namespaces `Spot.Framework[.*]`) | L1: window, events, raw input, `IGraphicsDevice` (OpenGL/WebGL2), GPU resources, minimal `Renderer2D`, audio device. No file loading, no loop |
-| `framework/Spot.Framework` | library (namespaces `Spot.Framework[.*]`) | L2: `FileSystem`, `Image`, fonts/text, shapes/sprites, `BasicRenderer3D`, `BillboardBatch`, `FullscreenPass`, models, `Skeleton`, audio clips/mixer, input actions |
-| `framework/Spot.Framework.Assimp` | library (desktop only) | L2 module: runtime FBX/glTF/OBJ import via Assimp |
-| `engine/Spot.Engine` | library (namespaces `Spot.Engine[.*]`) | L3: the opinionated engine (Application, scenes, rendering, physics, assets, UI, console) |
+| `framework/Spot.Framework` | library (namespaces `Spot.Framework[.*]`) | L1: window, events, raw input, `IGraphicsDevice` (OpenGL/WebGL2), GPU resources, `Renderer2D`, audio device, `FileSystem`, `Image`, fonts/text, shapes/sprites, `BasicRenderer3D`, models, `Skeleton`, audio clips/mixer, input actions. No loop |
+| `framework/Spot.Framework.Assimp` | library (desktop only) | L1 module: runtime FBX/glTF/OBJ import via Assimp |
+| `engine/Spot.Engine` | library (namespaces `Spot.Engine[.*]`) | L2: the opinionated engine (Application, scenes, rendering, physics, assets, UI, console) |
 | `debugui/Spot.DebugUI` | library (namespace `Spot.DebugUI`) | ImGui debug/authoring panels (hierarchy, inspector, theming); referenced by the editor and hostable as the runtime debug overlay. Kept out of the engine so the runtime carries no authoring UI |
 | `editor/Spot.Editor` | exe | ImGui docking editor |
 | `tools/Spot.Build` | library | `.sptproj` → buildable app (used by editor + CLI) |
 | `tools/Spot.Cli` | exe (`spot`) | thin CLI front-end over Spot.Build |
 | `net/Spot.Net` | library | WebSocket networking (server-authoritative) |
-| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and the L3 `.sptproj` projects `samples/HelloEngine`, `samples/SolarSystem` (a showcase), `samples/ProvingGrounds` (an FPS playground) and `samples/Voxelcraft` (a block world): only their source is committed (their `.csproj`/`.sln` are regenerated and gitignored, so they are not in the solution); keep them free of binary assets. `SampleProjectTests` check their scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
+| `samples/*` | exe | framework programs in the solution (HelloQuad, HelloTriangle, Hello2D, Hello3D) and the L2 `.sptproj` projects `samples/HelloEngine`, `samples/SolarSystem` (a showcase), `samples/ProvingGrounds` (an FPS playground) and `samples/Voxelcraft` (a block world): only their source is committed (their `.csproj`/`.sln` are regenerated and gitignored, so they are not in the solution); keep them free of binary assets. `SampleProjectTests` check their scenes, UI and scripts still load. Smoke-test engine changes with `spot build windows --project samples/HelloEngine` and run the exe from its build folder |
 | `tests/*` | xUnit | `Spot.Framework.Tests` (framework only, no engine reference), `Spot.Engine.Tests` (includes the architecture tests that pin the layering), `Spot.Build.Tests`, `Spot.Net.Tests`; shared fakes (e.g. `RecordingGraphicsDevice`) in `tests/Shared`, binary fixtures in `tests/Fixtures` |
 
 ## Rules

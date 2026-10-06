@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Framework.Mathematics;
+using Spot.Engine.Mathematics;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class FrustumTests
 {

@@ -125,7 +125,7 @@ public static class FileDialogs
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.CoreError("Open file dialog failed: {0}", ex);
+                Spot.Engine.Log.CoreError("Open file dialog failed: {0}", ex);
             }
             finally
             {
@@ -181,7 +181,7 @@ public static class FileDialogs
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.CoreError("Save file dialog failed: {0}", ex);
+                Spot.Engine.Log.CoreError("Save file dialog failed: {0}", ex);
             }
             finally
             {
@@ -230,7 +230,7 @@ public static class FileDialogs
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.CoreError("Select folder dialog failed: {0}", ex);
+                Spot.Engine.Log.CoreError("Select folder dialog failed: {0}", ex);
             }
         });
 
@@ -264,7 +264,7 @@ public static class FileDialogs
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.CoreError("Native dialog command failed ({0}): {1}", fileName, ex);
+            Spot.Engine.Log.CoreError("Native dialog command failed ({0}): {1}", fileName, ex);
             return null;
         }
     }

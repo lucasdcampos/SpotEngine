@@ -1,10 +1,9 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 using Spot.Engine.Assets;
-using Spot.Engine.Rendering;
+using Spot.Engine.Graphics;
 using Spot.Engine.Scenes;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
 using Spot.Tests;
 using Spot.Tests.Fakes;
 

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.DebugUI.UI;
 

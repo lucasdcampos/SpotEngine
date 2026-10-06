@@ -6,7 +6,7 @@ using ImGuiNET;
 using Spot.DebugUI.UI;
 using Spot.Editor.Utils;
 using Spot.Engine;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using static Spot.Editor.Launcher.LauncherColors;
 using static Spot.Editor.Launcher.LauncherWidgets;
 

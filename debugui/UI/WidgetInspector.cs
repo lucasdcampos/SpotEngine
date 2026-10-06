@@ -3,8 +3,8 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Assets;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 using Image = Spot.Engine.UI.Image;
 
 namespace Spot.DebugUI.UI;

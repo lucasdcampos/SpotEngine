@@ -6,8 +6,8 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using ImGuiNET;
 using Spot.Engine.Animation;
-using Spot.Framework.Animation;
 using Spot.DebugUI.UI;
+using Spot.Build;
 
 namespace Spot.Editor.Panels;
 
@@ -87,7 +87,7 @@ public sealed class AnimatorControllerPanel
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.Error("Failed to save animator controller '{0}': {1}", _path, ex.Message);
+                Spot.Engine.Log.Error("Failed to save animator controller '{0}': {1}", _path, ex.Message);
             }
 
             _dirty = false;
@@ -758,11 +758,11 @@ public sealed class AnimatorControllerPanel
     {
         try
         {
-            Spot.Framework.Graphics.Model model = Spot.Framework.Graphics.Model.Load(file);
+            Spot.Engine.Graphics.Model model = Spot.Engine.Graphics.Model.Load(file);
             string? first = model.Animations.Select(a => a.Name).FirstOrDefault(n => !string.IsNullOrEmpty(n));
             if (first is null)
             {
-                Spot.Framework.Log.CoreWarn("'{0}' has no animation clips.", System.IO.Path.GetFileName(file));
+                Spot.Engine.Log.CoreWarn("'{0}' has no animation clips.", System.IO.Path.GetFileName(file));
                 return;
             }
 
@@ -772,7 +772,7 @@ public sealed class AnimatorControllerPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Animator editor could not read clips from '{0}': {1}", file, ex.Message);
+            Spot.Engine.Log.Error("Animator editor could not read clips from '{0}': {1}", file, ex.Message);
         }
     }
 
@@ -786,7 +786,7 @@ public sealed class AnimatorControllerPanel
     private void RefreshProjectClips()
     {
         _projectClips.Clear();
-        string? root = Spot.Engine.Project.Active?.GetAssetDirectory();
+        string? root = Spot.Build.Project.Active?.GetAssetDirectory();
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
         {
             return;
@@ -803,7 +803,7 @@ public sealed class AnimatorControllerPanel
 
             try
             {
-                Spot.Framework.Graphics.Model model = Spot.Framework.Graphics.Model.Load(file);
+                Spot.Engine.Graphics.Model model = Spot.Engine.Graphics.Model.Load(file);
                 foreach (AnimationClip clip in model.Animations)
                 {
                     if (!string.IsNullOrEmpty(clip.Name) && seen.Add(clip.Name))

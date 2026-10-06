@@ -16,6 +16,11 @@ freely. `samples/HelloEngine` is a minimal example project, and `samples/SolarSy
 `samples/ProvingGrounds` (a first-person shooter playground) and `samples/Voxelcraft` (an infinite block world)
 larger showcases.
 
+A project is an **authoring** concept: the `.sptproj` and its types (`Project`, `ProjectConfig`,
+`ProjectStructure`) live in `Spot.Build`, used by the editor and the CLI. The runtime (`Spot.Engine`, and
+`Spot.DebugUI` as its overlay) never reads a project: a game boots from the `game.manifest` a build derives
+from it (see [below](#where-build-artifacts-go)) and only knows scenes and assets. An architecture test pins this.
+
 ## The build tooling
 
 Two pieces of tooling operate on a project, and both share the same underlying library
@@ -60,7 +65,10 @@ effect on the next Play with no manual cleanup.
 
 The game reads `game.manifest` from its working directory, and resolves the relative content paths in it
 against the manifest's own folder — so the content is found wherever the executable lives. A game started
-with no `game.manifest` in its working directory falls back to its executable's folder.
+with no `game.manifest` in its working directory falls back to the one beside its executable
+(`ApplicationSpec.LoadDefault`). Starting the project's executable straight from an IDE or `dotnet run` finds
+neither — no manifest is written until a run or build cooks the content — so there is no start scene: the
+window stays empty and the log says why. Use `spot run` (or the editor's Play) instead.
 
 ## Using the `spot` CLI
 
@@ -101,7 +109,7 @@ The exact options are printed by `help`; run it to see the current set.
 ## Upgrading a project
 
 A game project compiles against copies of Spot's assemblies in its `EngineBin/` folder: `Spot.Engine.dll`
-and the framework it is built on — `Spot.Framework.Core.dll`, `Spot.Framework.dll`, and on desktop
+and the framework it is built on — `Spot.Framework.dll`, and on desktop
 `Spot.Framework.Assimp.dll` (plus `Spot.DebugUI.dll` for the runtime debug overlay). After updating Spot:
 
 1. **`spot migrate`** brings the project's content and code forward: asset references become guid
@@ -118,7 +126,7 @@ names.
 ## Framework-only programs
 
 A game that uses only the framework levels is an ordinary .NET program that references
-`Spot.Framework.Core` (and `Spot.Framework`, and optionally `Spot.Framework.Assimp`): it has no `.sptproj`,
+`Spot.Framework` (, and optionally `Spot.Framework.Assimp`): it has no `.sptproj`,
 no cooking and no manifest, and is built and published with the regular `dotnet` commands. The `samples/`
 folder shows the shape; see [Levels](levels.md).
 

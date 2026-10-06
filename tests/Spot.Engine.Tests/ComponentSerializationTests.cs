@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Text.Json.Nodes;
 using Spot.Engine.Physics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 using Xunit;
 

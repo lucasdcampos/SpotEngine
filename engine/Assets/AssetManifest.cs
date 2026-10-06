@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spot.Framework;
-using Spot.Framework.IO;
+using Spot.Engine;
+using Spot.Engine.IO;
 
 namespace Spot.Engine.Assets;
 

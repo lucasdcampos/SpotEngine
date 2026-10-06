@@ -10,7 +10,7 @@ namespace Spot.Build;
 
 /// <summary>
 /// Rewrites game scripts written against the pre-0.4 namespaces (<c>Spot.Core</c>, <c>Spot.Scenes</c>,
-/// <c>Spot.Rendering</c>, ...) to the level namespaces (<c>Spot.Framework.*</c>, <c>Spot.Engine.*</c>). Each old
+/// <c>Spot.Rendering</c>, ...) to the level namespaces (<c>Spot.Engine.*</c>, <c>Spot.Engine.*</c>). Each old
 /// <c>using</c> is replaced by just the new namespaces the script actually uses, and fully qualified names are
 /// re-pointed at the namespace their type lives in now. Scripts already on the new namespaces are left untouched,
 /// so running it twice is harmless.
@@ -23,22 +23,22 @@ public static class ScriptNamespaceMigrator
     public static readonly IReadOnlyDictionary<string, string[]> MovedNamespaces = new Dictionary<string, string[]>
     {
         ["Spot"] = new[] { "Spot.Engine" },
-        ["Spot.Core"] = new[] { "Spot.Framework", "Spot.Framework.Mathematics", "Spot.Engine" },
+        ["Spot.Core"] = new[] { "Spot.Engine.Mathematics", "Spot.Engine" },
         ["Spot.Core.Services"] = new[] { "Spot.Engine.Services" },
-        ["Spot.Events"] = new[] { "Spot.Framework.Events" },
-        ["Spot.Rendering"] = new[] { "Spot.Framework.Graphics", "Spot.Framework.Mathematics", "Spot.Engine.Rendering" },
-        ["Spot.Audio"] = new[] { "Spot.Framework.Audio" },
-        ["Spot.Assets"] = new[] { "Spot.Framework.Graphics", "Spot.Framework.Audio", "Spot.Framework.Assimp", "Spot.Engine.Assets" },
-        ["Spot.Animation"] = new[] { "Spot.Framework.Animation", "Spot.Engine.Animation" },
-        ["Spot.Physics"] = new[] { "Spot.Framework.Mathematics", "Spot.Engine.Physics" },
+        ["Spot.Events"] = new[] { "Spot.Engine.Events" },
+        ["Spot.Rendering"] = new[] { "Spot.Engine.Graphics", "Spot.Engine.Mathematics", "Spot.Engine.Rendering" },
+        ["Spot.Audio"] = new[] { "Spot.Engine.Audio" },
+        ["Spot.Assets"] = new[] { "Spot.Engine.Graphics", "Spot.Engine.Audio", "Spot.Engine.Assimp", "Spot.Engine.Assets" },
+        ["Spot.Animation"] = new[] { "Spot.Engine.Animation", "Spot.Engine.Animation" },
+        ["Spot.Physics"] = new[] { "Spot.Engine.Mathematics", "Spot.Engine.Physics" },
         ["Spot.Physics.Bepu"] = new[] { "Spot.Engine.Physics.Bepu" },
         ["Spot.Physics.Aether"] = new[] { "Spot.Engine.Physics.Aether" },
-        ["Spot.Scenes"] = new[] { "Spot.Engine.Scenes" },
+        ["Spot.Scenes"] = new[] { "Spot.Engine.Scenes", "Spot.Engine" },
         ["Spot.UI"] = new[] { "Spot.Engine.UI" },
         ["Spot.UI.Serialization"] = new[] { "Spot.Engine.UI" },
         ["Spot.Console"] = new[] { "Spot.Engine.Console" },
-        ["Spot.Browser"] = new[] { "Spot.Framework.Browser", "Spot.Framework.IO", "Spot.Engine.Browser" },
-        ["Spot.IO"] = new[] { "Spot.Framework.IO" },
+        ["Spot.Browser"] = new[] { "Spot.Engine.Browser", "Spot.Engine.IO", "Spot.Engine.Browser" },
+        ["Spot.IO"] = new[] { "Spot.Engine.IO" },
     };
 
     // Extension members that add to a type from another namespace: a script calling them needs the using even
@@ -66,14 +66,14 @@ public static class ScriptNamespaceMigrator
         // Touch one type per level so the assemblies are loaded even if nothing else used them yet.
         Assembly[] assemblies =
         {
-            typeof(Spot.Framework.Window).Assembly,
-            typeof(Spot.Framework.IO.FileSystem).Assembly,
+            typeof(Spot.Engine.Window).Assembly,
+            typeof(Spot.Engine.IO.FileSystem).Assembly,
             typeof(Spot.Engine.Scenes.Scene).Assembly,
         };
 
         var byNamespace = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         IEnumerable<Assembly> all = assemblies.Concat(AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => a.GetName().Name is "Spot.Framework.Assimp"));
+            .Where(a => a.GetName().Name is "Spot.Engine.Assimp"));
         foreach (Assembly assembly in all.Distinct())
         {
             foreach (Type type in assembly.GetExportedTypes())
@@ -101,7 +101,7 @@ public static class ScriptNamespaceMigrator
         }
 
         // The Assimp module is only referenced on desktop; keep its namespace known even if it isn't loaded.
-        byNamespace.TryAdd("Spot.Framework.Assimp", new HashSet<string> { "AssimpModelImporter", "ImportedMaterial" });
+        byNamespace.TryAdd("Spot.Engine.Assimp", new HashSet<string> { "AssimpModelImporter", "ImportedMaterial" });
 
         return byNamespace.ToDictionary(kv => kv.Key, kv => (IReadOnlySet<string>)kv.Value);
     }
@@ -258,3 +258,4 @@ public static class ScriptNamespaceMigrator
         return Regex.Replace(code, @"^\s*using (?:static )?[\w.]+(?:\s*=\s*[\w.<>]+)?;[^\n]*\n", string.Empty, RegexOptions.Multiline);
     }
 }
+

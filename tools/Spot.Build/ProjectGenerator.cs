@@ -12,10 +12,10 @@ namespace Spot.Build;
 public static class ProjectGenerator
 {
     // The framework levels every Spot game references, desktop and browser alike (core, then framework).
-    internal static readonly string[] FrameworkAssemblies = { "Spot.Framework.Core", "Spot.Framework" };
+    
 
     // The optional source-model import module (desktop only; Assimp is a native dependency).
-    internal const string AssimpAssembly = "Spot.Framework.Assimp";
+
 
     /// <summary>
     /// (Re)generates the build files for <paramref name="project"/>. <c>Program.cs</c> is only
@@ -27,7 +27,7 @@ public static class ProjectGenerator
         if (string.IsNullOrEmpty(project.ProjectDirectory)) return;
 
         CopyEngineDll(project.ProjectDirectory);
-        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder));
+        CopyScriptGenDll(Path.Combine(project.ProjectDirectory, Spot.Build.ProjectStructure.EngineBinFolder));
         WriteCsproj(project);
         WriteSolution(project);
         WriteProgram(project, overwriteProgram);
@@ -43,7 +43,7 @@ public static class ProjectGenerator
     /// </summary>
     public static string GenerateBrowser(Project project)
     {
-        string webDir = Path.Combine(project.ProjectDirectory, Spot.Engine.ProjectStructure.BuildFolder, "web");
+        string webDir = Path.Combine(project.ProjectDirectory, Spot.Build.ProjectStructure.BuildFolder, "web");
         string wwwroot = Path.Combine(webDir, "wwwroot");
         string engineBin = Path.Combine(webDir, "EngineBin");
         Directory.CreateDirectory(wwwroot);
@@ -101,12 +101,7 @@ public static class ProjectGenerator
 
   <!-- The engine and the framework levels it is built on, all in their net10.0-browser builds. -->
   <ItemGroup>
-    <Reference Include=""Spot.Framework.Core"">
-      <HintPath>EngineBin\Spot.Framework.Core.dll</HintPath>
-    </Reference>
-    <Reference Include=""Spot.Framework"">
-      <HintPath>EngineBin\Spot.Framework.dll</HintPath>
-    </Reference>
+    
     <Reference Include=""Spot.Engine"">
       <HintPath>EngineBin\Spot.Engine.dll</HintPath>
     </Reference>
@@ -156,7 +151,7 @@ System.Console.WriteLine(""Spot browser runtime started."");
     // layouts (see FindBrowserEngineDll). Returns the copied path, or null when no browser build was found.
     private static string? CopyBrowserEngineDll(string engineBinDir)
     {
-        string? browserDll = FindBrowserEngineDll(typeof(Project).Assembly.Location);
+        string? browserDll = FindBrowserEngineDll(typeof(Spot.Engine.Application).Assembly.Location);
         if (browserDll is null)
         {
             return null;
@@ -171,14 +166,8 @@ System.Console.WriteLine(""Spot browser runtime started."");
     // Required alongside the engine: the page binds its input/frame entry points to the core assembly.
     private static void CopyBrowserFrameworkDlls(string engineBinDir)
     {
-        foreach (string framework in FrameworkAssemblies)
-        {
-            string? dll = FindBrowserSibling(typeof(Project).Assembly.Location, framework, framework + ".dll");
-            if (dll is not null)
-            {
-                CopyIfPresent(dll, Path.Combine(engineBinDir, framework + ".dll"));
-            }
-        }
+        string? dll = FindBrowserSibling(typeof(Spot.Engine.Application).Assembly.Location, "Spot.Engine", "Spot.Engine.dll");
+        if (dll is not null) CopyIfPresent(dll, Path.Combine(engineBinDir, "Spot.Engine.dll"));
     }
 
     // Copies the browser (net10.0-browser) build of Spot.Net next to the generated browser project, so the
@@ -186,7 +175,7 @@ System.Console.WriteLine(""Spot browser runtime started."");
     // browser build is found the reference simply drops out (the game ships without networking).
     private static void CopyBrowserNetDll(string engineBinDir)
     {
-        string? netDll = FindBrowserSibling(typeof(Project).Assembly.Location, "Spot.Net", "Spot.Net.dll");
+        string? netDll = FindBrowserSibling(typeof(Spot.Engine.Application).Assembly.Location, "Spot.Net", "Spot.Net.dll");
         if (netDll is not null)
         {
             CopyIfPresent(netDll, Path.Combine(engineBinDir, "Spot.Net.dll"));
@@ -296,7 +285,7 @@ System.Console.WriteLine(""Spot browser runtime started."");
     // assembly; also probes beside the loaded assembly for hosts that copied it there.
     private static string? FindScriptGenDll()
     {
-        string buildDll = typeof(Project).Assembly.Location;
+        string buildDll = typeof(ProjectGenerator).Assembly.Location;
 
         string? dir = Path.GetDirectoryName(buildDll);
         if (dir is not null)
@@ -334,10 +323,10 @@ System.Console.WriteLine(""Spot browser runtime started."");
 
     private static void CopyEngineDll(string projectDirectory)
     {
-        string engineBinDir = Path.Combine(projectDirectory, Spot.Engine.ProjectStructure.EngineBinFolder);
+        string engineBinDir = Path.Combine(projectDirectory, Spot.Build.ProjectStructure.EngineBinFolder);
         Directory.CreateDirectory(engineBinDir);
 
-        string sourceDllPath = typeof(Project).Assembly.Location;
+        string sourceDllPath = typeof(Spot.Engine.Application).Assembly.Location;
         string engineDir = Path.GetDirectoryName(sourceDllPath) ?? string.Empty;
 
         // Always bundle the engine and the framework levels it is built on (core, framework, and the Assimp
@@ -345,12 +334,9 @@ System.Console.WriteLine(""Spot browser runtime started."");
         // that references it), so the built game can host the in-runtime debug overlay; it is optional, so a
         // host without it simply produces a game without the overlay.
         CopyIfPresent(sourceDllPath, Path.Combine(engineBinDir, "Spot.Engine.dll"));
-        foreach (string framework in FrameworkAssemblies)
-        {
-            CopyIfPresent(Path.Combine(engineDir, framework + ".dll"), Path.Combine(engineBinDir, framework + ".dll"));
-        }
+        
 
-        CopyIfPresent(Path.Combine(engineDir, AssimpAssembly + ".dll"), Path.Combine(engineBinDir, AssimpAssembly + ".dll"));
+        
         CopyIfPresent(Path.Combine(engineDir, "Spot.DebugUI.dll"), Path.Combine(engineBinDir, "Spot.DebugUI.dll"));
 
         // Also bundle Spot.Net when it ships beside the engine, so the built game can use networking; like the
@@ -388,25 +374,14 @@ System.Console.WriteLine(""Spot browser runtime started."");
 
   <!-- The engine and the framework levels it is built on (core, framework). -->
   <ItemGroup>
-    <Reference Include=""Spot.Framework.Core"">
-      <HintPath>EngineBin\Spot.Framework.Core.dll</HintPath>
-    </Reference>
-    <Reference Include=""Spot.Framework"">
-      <HintPath>EngineBin\Spot.Framework.dll</HintPath>
-    </Reference>
+    
     <Reference Include=""Spot.Engine"">
       <HintPath>EngineBin\Spot.Engine.dll</HintPath>
     </Reference>
   </ItemGroup>
 
   <!-- Source-model import (Assimp), used by the engine when it loads .fbx/.gltf/... directly. -->
-  <ItemGroup Condition=""Exists('EngineBin\Spot.Framework.Assimp.dll')"">
-    <Reference Include=""Spot.Framework.Assimp"">
-      <HintPath>EngineBin\Spot.Framework.Assimp.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <!-- Optional in-game debug overlay (hierarchy/inspector/time). Present when the editor/CLI bundled it into
+<!-- Optional in-game debug overlay (hierarchy/inspector/time). Present when the editor/CLI bundled it into
        EngineBin; the engine hosts it automatically at runtime. Skipped cleanly when it was not bundled. -->
   <ItemGroup Condition=""Exists('EngineBin\Spot.DebugUI.dll')"">
     <Reference Include=""Spot.DebugUI"">
@@ -511,7 +486,7 @@ EndGlobal
         var spec = new ApplicationSpec
         {
             Name = project.Config.Name,
-            ContentDirectory = Spot.Engine.ProjectStructure.ContentFolder,
+            ContentDirectory = Spot.Build.ProjectStructure.ContentFolder,
             ManifestPath = "manifest.json",
             StartScene = project.Config.StartScene.Replace("\\", "/"),
 
@@ -551,3 +526,8 @@ class Program
         File.WriteAllText(programPath, programContent);
     }
 }
+
+
+
+
+

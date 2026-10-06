@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class TextLayoutTests
 {

@@ -1,5 +1,6 @@
 using System.Reflection;
 using Spot.DebugUI.Undo;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;

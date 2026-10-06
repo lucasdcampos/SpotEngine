@@ -42,7 +42,7 @@ internal sealed class HudControls
 
         Settings.Add(Label("Time speed", new Vector2(20.0f, 60.0f), 140.0f, 14.5f, HudKit.Ink * new Vector4(1.0f, 1.0f, 1.0f, 0.86f)));
         SpeedValue = Settings.Add(Label("", new Vector2(160.0f, 61.0f), 120.0f, 13.0f, HudKit.Muted));
-        SpeedValue.Align = Spot.Framework.Graphics.TextAlign.Right;
+        SpeedValue.Align = Spot.Engine.Graphics.TextAlign.Right;
         Speed = Settings.Add(new PillSlider(kit) { Name = "SpeedSlider" });
         Speed.Rect = Place(new Vector2(20.0f, 84.0f), new Vector2(PopupWidth - 40.0f, 24.0f));
 
@@ -111,7 +111,7 @@ internal sealed class HudControls
     public bool Contains(Vector2 point) =>
         (Toolbar.Visible && Inside(Toolbar.ScreenRect, point)) || (Settings.Visible && Inside(Settings.ScreenRect, point));
 
-    private IconButton AddIcon(HudKit kit, Spot.Framework.Graphics.Texture2D icon, int slot, string tooltip, string shortcut)
+    private IconButton AddIcon(HudKit kit, Spot.Engine.Graphics.Texture2D icon, int slot, string tooltip, string shortcut)
     {
         IconButton button = Toolbar.Add(new IconButton(kit, icon) { Name = tooltip.Replace(" ", "") + "Button", Tooltip = tooltip, Shortcut = shortcut });
         button.Rect = Place(new Vector2(Inset + slot * (ButtonSize + Gap), Inset), new Vector2(ButtonSize));

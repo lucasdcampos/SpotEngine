@@ -3,8 +3,8 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Engine.Assets;
-using Spot.Framework.Animation;
-using Spot.Framework.Graphics;
+using Spot.Engine.Animation;
+using Spot.Engine.Graphics;
 using Xunit;
 using Spot.Tests;
 
@@ -509,6 +509,37 @@ public class AssetPipelineTests
             // The healthy texture alongside it still cooks.
             Assert.True(AssetDatabase.TryGetGuid("Textures/pixel.bmp", out string goodGuid));
             Assert.True(doc.Entries.ContainsKey(goodGuid));
+        }
+        finally
+        {
+            if (Directory.Exists(contentRoot))
+            {
+                Directory.Delete(contentRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void AssetDatabase_CookAll_CopiesDataFilesByPathWithoutMeta()
+    {
+        using var temp = new TempDir();
+        SeedProject(temp.Path);
+        Directory.CreateDirectory(Path.Combine(temp.Path, "Data"));
+        string json = Path.Combine(temp.Path, "Data", "theme.json");
+        string text = Path.Combine(temp.Path, "Data", "strings.txt");
+        File.WriteAllText(json, "{ \"accent\": \"#5B8CFF\" }");
+        File.WriteAllText(text, "hello");
+
+        string contentRoot = Path.Combine(temp.Path, "..", "content-" + System.Guid.NewGuid().ToString("N"));
+        try
+        {
+            AssetDatabase.CookAll(temp.Path, contentRoot);
+
+            // Data files ship verbatim at their relative path, so a game reads them by name; they are not
+            // importable assets, so they get no .meta sidecar or manifest entry.
+            Assert.Equal("{ \"accent\": \"#5B8CFF\" }", File.ReadAllText(Path.Combine(contentRoot, "Data", "theme.json")));
+            Assert.Equal("hello", File.ReadAllText(Path.Combine(contentRoot, "Data", "strings.txt")));
+            Assert.False(File.Exists(AssetMeta.MetaPathFor(json)));
         }
         finally
         {

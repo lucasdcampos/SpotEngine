@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;
@@ -85,7 +86,7 @@ public class ScriptReloadTests
     {
         var context = new CollectibleContext();
         Assembly assembly = context.LoadFromStream(new MemoryStream(Compile("""
-            public class HotComponent : Spot.Engine.Scenes.Component
+            public class HotComponent : Spot.Engine.Component
             {
                 public int Value = 7;
                 public override void OnUpdate(float deltaTime) => Value++;

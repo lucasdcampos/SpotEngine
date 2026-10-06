@@ -87,9 +87,10 @@ by name, so designers lay out the screen and scripts give it life.
 ## Custom widgets
 
 The built-in widgets are ordinary classes, and so can yours be: derive from `Widget`, override its draw hook
-and draw with the framework's `UIRenderer` (quads, nine-slices, text, clipping), and add it to the tree like
-any other. `samples/SolarSystem` draws its planet labels, hover reticle and info card from one such widget,
-projecting the 3D bodies with the camera as it is when the frame is drawn.
+and draw with the framework's `UIRenderer` (quads, nine-slices, text, clipping, and an additive
+`UIRenderer.Blend` for glows), and add it to the tree like any other. `samples/SolarSystem` draws its planet
+labels, hover reticle and info card from one such widget, projecting the 3D bodies with the camera as it is
+when the frame is drawn.
 
 To restyle a built-in widget, derive from it and override only its drawing: it keeps its behaviour — a
 button's click, a toggle's flip, a slider's drag and its capture — while you choose the look. The same sample

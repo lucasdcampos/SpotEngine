@@ -3,9 +3,9 @@ using System.Buffers;
 using System.IO;
 using Silk.NET.OpenGL;
 using Spot.Engine;
-using Spot.Framework;
-using Spot.Framework.Graphics;
-using Framebuffer = Spot.Framework.Graphics.Framebuffer;
+using Spot.Build;
+using Spot.Engine.Graphics;
+using Framebuffer = Spot.Engine.Graphics.Framebuffer;
 
 namespace Spot.Editor.Utils;
 

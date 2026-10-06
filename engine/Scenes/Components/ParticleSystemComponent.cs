@@ -1,9 +1,9 @@
+using Spot.Engine.Scenes;
 using System;
 using System.Numerics;
-using Spot.Engine.Rendering;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>The volume an emitter samples new particles' spawn positions and directions from.</summary>
 public enum ParticleEmitterShape

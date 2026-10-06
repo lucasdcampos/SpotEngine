@@ -1,7 +1,7 @@
 using System.Numerics;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 
 namespace ProvingGrounds;
 
@@ -216,7 +216,7 @@ internal sealed class MenuButton : Button
         float opacity = HudKit.Opacity(this);
         if (opacity <= 0.001f) return;
 
-        if (Hovered && !_wasHovered) Sfx.Play(Sfx.UiHover, 0.35f, 0.0f, 1.0f, Spot.Framework.Audio.AudioMixer.UiBus);
+        if (Hovered && !_wasHovered) Sfx.Play(Sfx.UiHover, 0.35f, 0.0f, 1.0f, Spot.Engine.Audio.AudioMixer.UiBus);
         _wasHovered = Hovered;
         _hover = HudKit.Approach(_hover, Hovered ? 1.0f : 0.0f, Time.UnscaledDeltaTime * 9.0f);
 
@@ -297,7 +297,7 @@ internal sealed class SettingSlider : Slider
         float width = ScreenRect.Z;
         HudKit.Text(Label, at, 17.0f, HudKit.Fade(HudColors.Ink * new Vector4(1.0f, 1.0f, 1.0f, Hovered || Held ? 1.0f : 0.82f), opacity), shadow: false);
         HudKit.Text(Format(Value), new Vector2(at.X + width, at.Y + 1.0f), 15.0f, HudKit.Fade(Held ? HudColors.Accent : HudColors.Muted, opacity),
-            Spot.Framework.Graphics.TextAlign.Right, shadow: false);
+            Spot.Engine.Graphics.TextAlign.Right, shadow: false);
 
         float t = Max > Min ? Math.Clamp((Value - Min) / (Max - Min), 0.0f, 1.0f) : 0.0f;
         float y = at.Y + ScreenRect.W - 11.0f;

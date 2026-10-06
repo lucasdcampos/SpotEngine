@@ -1,9 +1,9 @@
 using System.Numerics;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers generated images (solid, flat normal, checkerboard, grid, soft dot), PNG encoding round trips, and

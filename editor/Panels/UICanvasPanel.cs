@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.UI;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.Editor.Panels;
 

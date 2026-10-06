@@ -1,4 +1,5 @@
-namespace Spot.Engine.Scenes;
+using Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// Marks the entity whose transform is the "ears" of the scene: spatial sounds are panned and attenuated

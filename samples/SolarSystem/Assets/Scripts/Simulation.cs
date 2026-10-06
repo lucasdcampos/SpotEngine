@@ -1,4 +1,5 @@
 using System.Globalization;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace SolarSystem;

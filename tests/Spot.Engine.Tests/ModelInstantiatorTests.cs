@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 using Xunit;
 using Spot.Tests;
 

@@ -1,7 +1,7 @@
-using Spot.Framework;
-using Spot.Framework.Events;
+using Spot.Engine;
+using Spot.Engine.Events;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class InputActionTests
 {

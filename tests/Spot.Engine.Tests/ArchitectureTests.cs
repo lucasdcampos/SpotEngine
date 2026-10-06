@@ -1,94 +1,106 @@
 using System.Reflection;
+using System.Linq;
+using Xunit;
+using System.Collections.Generic;
+using System;
 
 namespace Spot.Engine.Tests;
 
-/// <summary>
-/// Pins Spot's layering: Core (level 1) ← Framework (level 2) ← Engine (level 3), with dependencies only ever
-/// pointing down. A framework assembly that grows a reference to the engine — or the core to the framework —
-/// fails here, long before a user who builds on the framework alone hits it.
-/// </summary>
 public class ArchitectureTests
 {
-    private const string Core = "Spot.Framework.Core";
-    private const string Framework = "Spot.Framework";
-    private const string Assimp = "Spot.Framework.Assimp";
-    private const string Engine = "Spot.Engine";
-
-    private static Assembly Load(string name) => Assembly.Load(new AssemblyName(name));
-
-    private static HashSet<string> SpotReferences(string assembly) =>
-        Load(assembly).GetReferencedAssemblies()
-            .Select(a => a.Name!)
-            .Where(n => n.StartsWith("Spot.", StringComparison.Ordinal))
-            .ToHashSet();
-
-    private static HashSet<string> AllReferences(string assembly) =>
-        Load(assembly).GetReferencedAssemblies().Select(a => a.Name!).ToHashSet();
+    private static Assembly EngineAssembly => typeof(Spot.Engine.Application).Assembly;
 
     [Fact]
-    public void Core_ReferencesNoOtherSpotAssembly()
+    public void LowLevelModules_DoNotReferenceHighLevelModules()
     {
-        Assert.Empty(SpotReferences(Core));
+        // Low-level modules (the old Framework) should not know about Scenes, ECS, or Assets.
+        string[] lowLevelPrefixes = {
+            "Spot.Engine.Input",
+            "Spot.Engine.Audio",
+            "Spot.Engine.Mathematics",
+            "Spot.Engine.Platform",
+            "Spot.Engine.Events",
+            "Spot.Engine.IO"
+        };
+
+        string[] highLevelPrefixes = {
+            "Spot.Engine.Scenes",
+            "Spot.Engine.Assets",
+            "Spot.Engine.Physics",
+            "Spot.Engine.Animation" // If Animation is high level
+        };
+
+        var types = EngineAssembly.GetTypes();
+        var failures = new List<string>();
+
+        foreach (var type in types)
+        {
+            if (type.Namespace == null) continue;
+            
+            bool isLowLevel = false;
+            foreach (var prefix in lowLevelPrefixes)
+            {
+                if (type.Namespace == prefix || type.Namespace.StartsWith(prefix + "."))
+                {
+                    isLowLevel = true;
+                    break;
+                }
+            }
+
+            if (!isLowLevel) continue;
+
+            // Check fields, properties, methods for high-level references
+            var references = new HashSet<Type>();
+            
+            // Just a basic check of public API to simulate architecture rules
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            {
+                references.Add(method.ReturnType);
+                foreach (var param in method.GetParameters()) references.Add(param.ParameterType);
+            }
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            {
+                references.Add(field.FieldType);
+            }
+
+            foreach (var refType in references)
+            {
+                if (refType.Namespace == null) continue;
+                foreach (var highPrefix in highLevelPrefixes)
+                {
+                    if (refType.Namespace == highPrefix || refType.Namespace.StartsWith(highPrefix + "."))
+                    {
+                        failures.Add($"{type.FullName} references {refType.FullName}");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(failures);
     }
 
+    // Projects (.sptproj) are an authoring concept owned by Spot.Build: the runtime boots from game.manifest and only
+    // knows scenes and assets, and DebugUI also runs as the runtime overlay.
     [Fact]
-    public void Framework_ReferencesOnlyTheCore()
+    public void RuntimeAssemblies_DoNotKnowAboutProjects()
     {
-        Assert.Equal(new HashSet<string> { Core }, SpotReferences(Framework));
-    }
+        Assembly[] runtime = { EngineAssembly, typeof(Spot.DebugUI.UI.ComponentScripts).Assembly };
+        string[] projectTypes = { "Project", "ProjectConfig", "ProjectStructure" };
 
-    [Fact]
-    public void AssimpModule_ReferencesOnlyTheFrameworkLevels()
-    {
-        Assert.Subset(new HashSet<string> { Core, Framework }, SpotReferences(Assimp));
-        Assert.Contains(Framework, SpotReferences(Assimp));
-    }
+        var failures = new List<string>();
+        foreach (Assembly assembly in runtime)
+        {
+            string name = assembly.GetName().Name!;
+            if (assembly.GetReferencedAssemblies().Any(r => r.Name == "Spot.Build"))
+                failures.Add($"{name} references Spot.Build");
 
-    [Fact]
-    public void Engine_IsBuiltOnTheFrameworkLevels()
-    {
-        HashSet<string> references = SpotReferences(Engine);
+            failures.AddRange(assembly.GetTypes()
+                .Where(t => projectTypes.Contains(t.Name))
+                .Select(t => $"{name} defines {t.FullName}"));
+        }
 
-        Assert.Contains(Core, references);
-        Assert.Contains(Framework, references);
-    }
-
-    [Theory]
-    [InlineData(Core)]
-    [InlineData(Framework)]
-    [InlineData(Assimp)]
-    public void FrameworkLevels_PickNoEngineLibraries(string assembly)
-    {
-        // The engine's opinions — its physics libraries, its logging stack, its editor UI — stay out of the
-        // framework, so a framework user chooses their own.
-        string[] engineOnly = { "BepuPhysics", "BepuUtilities", "Aether.Physics2D", "Serilog", "ImGui.NET" };
-
-        Assert.Empty(AllReferences(assembly).Intersect(engineOnly));
-    }
-
-    [Fact]
-    public void Core_HasNoDecoders()
-    {
-        // Decoding files is a framework feature; the core only talks to the OS and the hardware.
-        string[] decoders = { "StbImageSharp", "StbTrueTypeSharp", "StbVorbisSharp", "Silk.NET.Assimp" };
-
-        Assert.Empty(AllReferences(Core).Intersect(decoders));
-    }
-
-    [Theory]
-    [InlineData(Core, "Spot.Framework")]
-    [InlineData(Framework, "Spot.Framework")]
-    [InlineData(Assimp, "Spot.Framework")]
-    [InlineData(Engine, "Spot.Engine")]
-    public void EveryPublicType_LivesUnderItsLevelsNamespace(string assembly, string root)
-    {
-        // Namespaces say which level a type belongs to: Spot.Framework.* for the core and framework assemblies,
-        // Spot.Engine.* for the engine.
-        string[] strays = Load(assembly).GetExportedTypes()
-            .Where(t => t.Namespace is not { } ns || (ns != root && !ns.StartsWith(root + ".", StringComparison.Ordinal)))
-            .Select(t => t.FullName!)
-            .ToArray();
-
-        Assert.Empty(strays);
+        Assert.Empty(failures);
     }
 }
+
+

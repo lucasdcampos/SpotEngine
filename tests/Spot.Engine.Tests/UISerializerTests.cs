@@ -1,7 +1,7 @@
 using System.IO;
 using System.Numerics;
 using Spot.Engine.UI;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Image = Spot.Engine.UI.Image;
 using Xunit;
 

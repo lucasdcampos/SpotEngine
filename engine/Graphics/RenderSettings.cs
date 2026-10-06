@@ -1,0 +1,112 @@
+
+namespace Spot.Engine.Graphics;
+
+/// <summary>
+/// Global, engine-wide rendering pipeline settings. These are quality/pipeline knobs that apply to
+/// every scene, as opposed to the per-scene artistic controls on a <c>PostProcessingComponent</c>.
+/// </summary>
+public static class RenderSettings
+{
+    private static bool s_vsync = true;
+
+    /// <summary>
+    /// Whether frame presentation waits for the monitor's vertical blank. When on, the buffer swap blocks
+    /// until the next refresh, capping the frame rate at the refresh rate and avoiding tearing. Turn it off
+    /// to uncap the frame rate when profiling — otherwise the blocking swap hides the engine's true frame
+    /// time (the rate you read is just the refresh cap). Changing it takes effect on the next presented
+    /// frame via <see cref="VSyncChanged"/>, which the platform window listens to.
+    /// </summary>
+    public static bool VSync
+    {
+        get => s_vsync;
+        set
+        {
+            if (s_vsync == value)
+            {
+                return;
+            }
+
+            s_vsync = value;
+            VSyncChanged?.Invoke(value);
+        }
+    }
+
+    /// <summary>
+    /// Raised when <see cref="VSync"/> changes so the platform window can update its swap interval at
+    /// runtime. Wired internally by the engine; games and the editor simply set <see cref="VSync"/> and
+    /// need not subscribe.
+    /// </summary>
+    public static event Action<bool>? VSyncChanged;
+
+    /// <summary>
+    /// Whether the scene is rendered into a high-dynamic-range buffer and tone-mapped, even when the
+    /// scene has no <c>PostProcessingComponent</c>. When on, a scene without one is composited with the
+    /// full default look — the same defaults a freshly added component carries: ACES tone mapping,
+    /// FXAA, threshold-gated bloom, and only a very faint vignette. The baseline exalts the engine's
+    /// lighting rather than dressing it up with heavy stylistic filters; adding the component is for
+    /// customizing that look, not switching quality on. When off, a scene with no post-processing
+    /// renders directly to the target in 8-bit, as it did before HDR existed.
+    /// </summary>
+    public static bool Hdr { get; set; } = true;
+
+    /// <summary>
+    /// Whether directional lights cast real-time shadows at all. A global kill switch on top of each
+    /// light's own <c>CastShadows</c>; turning it off skips the shadow pass entirely.
+    /// </summary>
+    public static bool Shadows { get; set; } = true;
+
+    /// <summary>
+    /// Whether point and spot lights cast real-time cubemap shadows. A global kill switch; individual
+    /// lights also need their own <c>CastShadows</c> flag set. Only the first shadow-casting point/spot
+    /// light in the scene produces a shadow map; additional casters are rendered unshadowed.
+    /// </summary>
+    public static bool PointShadows { get; set; } = true;
+
+    /// <summary>
+    /// The resolution (per face) of the point light cubemap shadow map. Higher is sharper at a memory
+    /// and fill-rate cost. Changing it rebuilds the shadow map on the next frame.
+    /// </summary>
+    public static int PointShadowResolution { get; set; } = 512;
+
+    /// <summary>
+    /// Whether geometry hidden behind an <c>Occluder</c> mesh is dropped before it is drawn. Frustum
+    /// culling only removes what is off screen; this removes what is on screen but blocked by a wall,
+    /// floor or building. It costs one small software depth buffer per frame on the CPU and does nothing
+    /// at all in a scene whose meshes are not marked as occluders, so it is on by default: flag a wall
+    /// and it starts paying off. Turn it off to rule it out when diagnosing missing geometry — though
+    /// the test is conservative and never drops something actually visible.
+    /// </summary>
+    public static bool OcclusionCulling { get; set; } = true;
+
+    /// <summary>
+    /// The width, in pixels, of the software occlusion depth buffer (its height follows at 9/16 of it).
+    /// Coarse is the point: a small buffer is cheap to fill and still resolves a wall, and its coarseness
+    /// only ever means culling slightly less, never culling something visible. Raise it for scenes whose
+    /// occluders are thin or distant; lower it to cut the CPU cost.
+    /// </summary>
+    public static int OcclusionBufferWidth { get; set; } = 256;
+
+    /// <summary>
+    /// Whether point lights are assigned to a view-frustum cluster grid (froxels) each frame so a fragment
+    /// only shades the lights whose volume reaches its cluster, instead of testing every light. This scales
+    /// the point-light cost with lights-per-cluster rather than total lights. When off, every lit fragment
+    /// loops over all submitted lights (the brute-force path). Defaults off; enable it for scenes with many
+    /// point lights. Falls back to brute force automatically for orthographic/degenerate cameras and on
+    /// backends without the required GPU features.
+    /// </summary>
+    public static bool ClusteredLighting { get; set; } = false;
+
+    /// <summary>
+    /// The side length, in world units, of the square region around the camera that receives directional
+    /// shadows. The shadow frustum follows the camera, so shadows work everywhere in the world (unlike the
+    /// old origin-anchored box) — this only bounds how far from the viewer they reach. Larger covers more
+    /// ground but spreads the shadow map thinner, so shadows soften/blockier; smaller keeps them crisp.
+    /// </summary>
+    public static float ShadowDistance { get; set; } = 100.0f;
+
+    /// <summary>
+    /// The resolution (per side) of the directional shadow map. Higher is sharper at a memory/fill cost.
+    /// Changing it rebuilds the shadow map on the next frame. Clamped to a sane power-of-two-ish range.
+    /// </summary>
+    public static int ShadowMapResolution { get; set; } = 2048;
+}

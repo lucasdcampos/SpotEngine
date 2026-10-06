@@ -1,7 +1,8 @@
+using Spot.Engine.Scenes;
 using System;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
-namespace Spot.Engine.Scenes;
+namespace Spot.Engine;
 
 /// <summary>
 /// The tone-mapping operator that compresses the scene's high-dynamic-range colors into the

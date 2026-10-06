@@ -1,11 +1,11 @@
 using System.IO;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
-using Spot.Framework.IO;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
+using Spot.Engine.IO;
 using Spot.Tests.Fakes;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers loading resources from files: the framework's decoders and file-system indirection (Image, Texture2D,

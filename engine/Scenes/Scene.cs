@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Spot.Engine.Physics;
 using Spot.Engine.UI;
-using Spot.Framework;
-using Spot.Framework.Events;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Events;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Scenes;
 
@@ -99,7 +99,7 @@ public class Scene
             if (!cc.Enabled) continue;
             if (!cc.FixedAspectRatio)
             {
-                cc.SetViewportSize(Spot.Framework.Display.Width, Spot.Framework.Display.Height);
+                cc.SetViewportSize(Spot.Engine.Display.Width, Spot.Engine.Display.Height);
             }
         }
     }
@@ -130,8 +130,8 @@ public class Scene
         if (_ui is null || _ui.Children.Count == 0) return;
 
         _ui.Update(
-            Spot.Framework.Display.Width,
-            Spot.Framework.Display.Height,
+            Spot.Engine.Display.Width,
+            Spot.Engine.Display.Height,
             Input.MousePosition,
             Input.GetMouseButton(MouseButton.Left),
             Input.GetMouseButtonDown(MouseButton.Left),

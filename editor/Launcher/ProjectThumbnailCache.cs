@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using ImGuiNET;
 using Spot.Editor.Utils;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.Editor.Launcher;
 

@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Spot.Framework;
+using Spot.Engine;
 
 namespace Spot.Engine.Assets;
 

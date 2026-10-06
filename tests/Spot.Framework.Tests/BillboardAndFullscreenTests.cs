@@ -1,8 +1,8 @@
 using System.Numerics;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.Tests.Fakes;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the blended billboard batch and the fullscreen pass against a recording device.

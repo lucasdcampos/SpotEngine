@@ -1,4 +1,4 @@
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Assets;
 

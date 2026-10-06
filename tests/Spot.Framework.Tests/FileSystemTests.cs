@@ -1,9 +1,9 @@
 using System.IO;
 using System.Text;
-using Spot.Framework.IO;
+using Spot.Engine.IO;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class FileSystemTests
 {

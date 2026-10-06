@@ -5,11 +5,13 @@ using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
+using Spot.Build;
 
 namespace Spot.Editor.Panels;
 
@@ -94,8 +96,8 @@ public class AssetBrowserPanel
     // Thumbnail cache for the current directory (disposed when the directory changes).
     private readonly Dictionary<string, Texture2D> _thumbnails = new();
     private readonly HashSet<string> _thumbFailed = new();
-    private readonly Dictionary<string, Spot.Framework.Graphics.Framebuffer> _materialPreviews = new();
-    private readonly Dictionary<string, Spot.Framework.Graphics.Framebuffer> _modelPreviews = new();
+    private readonly Dictionary<string, Spot.Engine.Graphics.Framebuffer> _materialPreviews = new();
+    private readonly Dictionary<string, Spot.Engine.Graphics.Framebuffer> _modelPreviews = new();
     private readonly HashSet<string> _modelFailed = new();
 
     // Rendering a model preview costs a load + offscreen draw; cap how many first-time renders happen per
@@ -119,7 +121,7 @@ public class AssetBrowserPanel
     public AssetBrowserPanel(EditorContext context)
     {
         _context = context;
-        _baseDirectory = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        _baseDirectory = Spot.Build.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         EnsureDirectory(_baseDirectory);
         _currentDirectory = _baseDirectory;
         _lastProjectDirectory = _baseDirectory;
@@ -135,7 +137,7 @@ public class AssetBrowserPanel
     public void OnImGuiRender(bool asWindow = false)
     {
         // Track project changes and reset to its asset directory.
-        var currentProjectAssetDir = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+        var currentProjectAssetDir = Spot.Build.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
         if (_baseDirectory != currentProjectAssetDir)
         {
             _baseDirectory = currentProjectAssetDir;
@@ -604,7 +606,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to preview audio '{0}': {1}", sourcePath, ex.Message);
+            Spot.Engine.Log.Error("Failed to preview audio '{0}': {1}", sourcePath, ex.Message);
         }
     }
 
@@ -1236,11 +1238,11 @@ public class AssetBrowserPanel
             try
             {
                 string path = BuiltinAssets.Export(reference, destDir);
-                Spot.Framework.Log.Info("Copied built-in '{0}' to {1}.", BuiltinAssets.TryGet(reference, out BuiltinAsset a) ? a.Name : reference, path);
+                Spot.Engine.Log.Info("Copied built-in '{0}' to {1}.", BuiltinAssets.TryGet(reference, out BuiltinAsset a) ? a.Name : reference, path);
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.Error("Failed to copy '{0}' into the project: {1}", reference, ex.Message);
+                Spot.Engine.Log.Error("Failed to copy '{0}' into the project: {1}", reference, ex.Message);
             }
         }
 
@@ -1294,7 +1296,7 @@ public class AssetBrowserPanel
         }
     }
 
-    private bool TryGetMaterialPreview(string path, out Spot.Framework.Graphics.Framebuffer fb)
+    private bool TryGetMaterialPreview(string path, out Spot.Engine.Graphics.Framebuffer fb)
     {
         if (_materialPreviews.TryGetValue(path, out fb!))
         {
@@ -1307,7 +1309,7 @@ public class AssetBrowserPanel
 
         try
         {
-            fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
+            fb = new Spot.Engine.Graphics.Framebuffer(128, 128);
             var material = Spot.Engine.Assets.Material.Load(path);
             Spot.DebugUI.UI.MaterialPreviewHelper.RenderToFramebuffer(material, fb, transparentBackground: true);
             _materialPreviews[path] = fb;
@@ -1319,7 +1321,7 @@ public class AssetBrowserPanel
         }
     }
 
-    private bool TryGetModelPreview(string path, out Spot.Framework.Graphics.Framebuffer fb)
+    private bool TryGetModelPreview(string path, out Spot.Engine.Graphics.Framebuffer fb)
     {
         if (_modelPreviews.TryGetValue(path, out fb!))
         {
@@ -1335,14 +1337,14 @@ public class AssetBrowserPanel
         {
             // Non-blocking: returns null until the geometry is parsed and uploaded (pumped elsewhere each
             // frame). Show the glyph until then, and retry next frame.
-            var model = Spot.Framework.Graphics.ModelImporter.RequestAsync(path);
+            var model = Spot.Engine.Graphics.ModelImporter.RequestAsync(path);
             if (model is null)
             {
                 return false;
             }
 
             _modelPreviewsThisFrame++;
-            fb = new Spot.Framework.Graphics.Framebuffer(128, 128);
+            fb = new Spot.Engine.Graphics.Framebuffer(128, 128);
             Spot.DebugUI.UI.ModelPreviewHelper.RenderToFramebuffer(model, fb, transparentBackground: true);
             _modelPreviews[path] = fb;
             return true;
@@ -1350,7 +1352,7 @@ public class AssetBrowserPanel
         catch (Exception e)
         {
             _modelFailed.Add(path);
-            Spot.Framework.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
+            Spot.Engine.Log.Warn("Failed to render model thumbnail for '{0}': {1}", path, e.Message);
             return false;
         }
     }
@@ -1473,7 +1475,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to create prefab: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to create prefab: {0}", ex.Message);
         }
     }
 
@@ -1528,7 +1530,7 @@ public class AssetBrowserPanel
                         }
                         catch (Exception ex)
                         {
-                            Spot.Framework.Log.Error("Failed to update script class name: {0}", ex.Message);
+                            Spot.Engine.Log.Error("Failed to update script class name: {0}", ex.Message);
                         }
                     }
                 }
@@ -1559,7 +1561,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to rename asset: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to rename asset: {0}", ex.Message);
         }
         ClearThumbnails();
     }
@@ -1639,7 +1641,7 @@ public class AssetBrowserPanel
             string dest = Path.Combine(destDir, name);
             if (File.Exists(dest) || Directory.Exists(dest))
             {
-                Spot.Framework.Log.Error("Cannot move '{0}': an item with that name already exists in the target folder.", name);
+                Spot.Engine.Log.Error("Cannot move '{0}': an item with that name already exists in the target folder.", name);
                 return;
             }
 
@@ -1654,7 +1656,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to move asset: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to move asset: {0}", ex.Message);
         }
         finally
         {
@@ -1686,7 +1688,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to duplicate asset: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to duplicate asset: {0}", ex.Message);
         }
     }
 
@@ -1747,7 +1749,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to paste asset: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to paste asset: {0}", ex.Message);
         }
     }
 
@@ -1812,7 +1814,7 @@ public class AssetBrowserPanel
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to delete asset: {0}", ex.Message);
+            Spot.Engine.Log.Error("Failed to delete asset: {0}", ex.Message);
         }
         ClearThumbnails();
     }

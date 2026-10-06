@@ -1,11 +1,7 @@
 <Solution>
-  <Folder Name="/framework/">
-    <Project Path="framework/Spot.Framework.Core/Spot.Framework.Core.csproj" />
-    <Project Path="framework/Spot.Framework/Spot.Framework.csproj" />
-    <Project Path="framework/Spot.Framework.Assimp/Spot.Framework.Assimp.csproj" />
-  </Folder>
   <Folder Name="/engine/">
     <Project Path="engine/Spot.Engine.csproj" />
+
     <Project Path="debugui/Spot.DebugUI.csproj" />
   </Folder>
   <Folder Name="/net/">

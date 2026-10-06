@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Spot.Framework.Animation;
-using Spot.Framework.Assimp;
-using Spot.Framework.Graphics;
+using Spot.Engine.Animation;
+using Spot.Engine.Assimp;
+using Spot.Engine.Graphics;
 using Xunit;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class AnimationTests
 {
@@ -71,7 +71,7 @@ public class AnimationTests
     public void NormalizeBoneName_CanonicalizesMixamoNamespace(string input, string expected)
     {
         // A clip exported as "mixamorig5:*" must retarget onto a model skinned as "mixamorig:*".
-        Assert.Equal(expected, Spot.Framework.Animation.BoneName.Normalize(input));
+        Assert.Equal(expected, Spot.Engine.Animation.BoneName.Normalize(input));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class AnimationTests
 
         // Skinned submeshes use the 16-float layout, and a Mixamo rig exposes mixamorig:* bone names.
         MeshData skinned = model.Submeshes.First(s => s.Skinned);
-        Assert.Equal(0, skinned.Vertices.Length % Spot.Framework.Graphics.Mesh.SkinnedFloatsPerVertex);
+        Assert.Equal(0, skinned.Vertices.Length % Spot.Engine.Graphics.Mesh.SkinnedFloatsPerVertex);
         Assert.Contains(skinned.Bones!, b => b.Name.Contains("mixamorig", StringComparison.OrdinalIgnoreCase));
     }
 

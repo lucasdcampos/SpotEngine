@@ -1,7 +1,7 @@
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Audio;
-using Spot.Framework.Mathematics;
+using Spot.Engine;
+using Spot.Engine.Audio;
+using Spot.Engine.Mathematics;
 
 namespace Spot.Engine.Scenes;
 

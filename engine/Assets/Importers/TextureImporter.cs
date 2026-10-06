@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.Engine.Assets;
 

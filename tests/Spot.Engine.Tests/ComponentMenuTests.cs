@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Reflection;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;

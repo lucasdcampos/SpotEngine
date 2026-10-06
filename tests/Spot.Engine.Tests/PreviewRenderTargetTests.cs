@@ -1,7 +1,6 @@
 using Spot.DebugUI.UI;
 using Spot.Engine.Assets;
-using Spot.Engine.Rendering;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.Tests.Fakes;
 
 namespace Spot.Engine.Tests;

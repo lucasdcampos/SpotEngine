@@ -1,8 +1,7 @@
 using System;
 using System.Numerics;
 using Spot.Engine.Assets;
-using Spot.Engine.Rendering;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 
 namespace Spot.DebugUI.UI;
 
@@ -39,7 +38,7 @@ public static class MaterialPreviewHelper
     /// <paramref name="transparentBackground"/> the backdrop is cleared to transparent so the sphere sits directly
     /// on whatever the preview is drawn over (e.g. an asset-browser tile); otherwise it gets a dark gray backdrop.
     /// </summary>
-    public static void RenderToFramebuffer(Material material, Spot.Framework.Graphics.Framebuffer framebuffer,
+    public static void RenderToFramebuffer(Material material, Spot.Engine.Graphics.Framebuffer framebuffer,
         bool transparentBackground = false)
     {
         if (s_sphereModel == null)

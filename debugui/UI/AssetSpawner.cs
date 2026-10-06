@@ -6,9 +6,9 @@ using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Assets;
 using Spot.Engine.Scenes;
-using Spot.Framework;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
 
 namespace Spot.DebugUI.UI;
 

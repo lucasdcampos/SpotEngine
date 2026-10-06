@@ -1,10 +1,10 @@
 using System.IO;
-using Spot.Framework.Audio;
+using Spot.Engine.Audio;
 using Spot.Tests.Fakes;
 using Xunit;
 using Spot.Tests;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 public class AudioDecoderTests
 {

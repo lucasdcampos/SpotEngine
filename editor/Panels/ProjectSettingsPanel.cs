@@ -1,5 +1,6 @@
 using ImGuiNET;
 using Spot.Engine;
+using Spot.Build;
 using Spot.DebugUI.UI;
 using Spot.Editor.UI;
 

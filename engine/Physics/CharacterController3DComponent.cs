@@ -1,4 +1,5 @@
 using System.Numerics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Physics;
@@ -8,7 +9,7 @@ namespace Spot.Engine.Physics;
 /// friction, air-strafing (accelerate toward the look+strafe direction under a small air-speed cap,
 /// so turning the mouse while holding A/D builds speed), jumping, and smooth crouching. Pair it with a
 /// dynamic <see cref="PhysicsBody3DComponent"/>, a <see cref="BoxCollider3DComponent"/>, and a child
-/// entity carrying a <see cref="Spot.Engine.Scenes.CameraComponent"/> for the eyes.
+/// entity carrying a <see cref="Spot.Engine.CameraComponent"/> for the eyes.
 /// </summary>
 [ComponentMenu("Character Controller 3D", Order = 65, Category = "Physics")]
 [SceneComponent("CharacterController3D")]

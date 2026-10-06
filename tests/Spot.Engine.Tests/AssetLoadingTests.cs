@@ -1,8 +1,8 @@
 using System.IO;
 using Spot.Engine.Assets;
-using Spot.Framework.Audio;
-using Spot.Framework.Graphics;
-using Spot.Framework.IO;
+using Spot.Engine.Audio;
+using Spot.Engine.Graphics;
+using Spot.Engine.IO;
 using Spot.Tests;
 using Spot.Tests.Fakes;
 

@@ -1,4 +1,5 @@
 using Spot.Engine.Physics;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 
 namespace Spot.Engine.Tests;

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Spot.Engine;
+using Spot.Build;
 
 namespace Spot.Editor.Utils;
 

@@ -4,8 +4,9 @@ using System.Linq;
 using System.Numerics;
 using ImGuiNET;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Spot.DebugUI.UI;
 
 namespace Spot.DebugUI.Panels;
@@ -13,7 +14,7 @@ namespace Spot.DebugUI.Panels;
 public class InspectorPanel : IDisposable
 {
     private readonly ISelectionContext _context;
-    private Spot.Framework.Graphics.Framebuffer? _materialPreviewFb;
+    private Spot.Engine.Graphics.Framebuffer? _materialPreviewFb;
     // The material path and property fingerprint the preview framebuffer was last rendered for, so the
     // offscreen render only re-runs when something the preview shows actually changed.
     private string? _materialPreviewPath;
@@ -23,7 +24,7 @@ public class InspectorPanel : IDisposable
     private string? _materialPreviewErrorPath;
 
     // The preview of the selected built-in mesh (rendered once per selection).
-    private Spot.Framework.Graphics.Framebuffer? _builtinPreviewFb;
+    private Spot.Engine.Graphics.Framebuffer? _builtinPreviewFb;
     private string? _builtinPreviewReference;
 
     // Prefab editing state: the inspected prefab is loaded into an isolated scene so its components can be
@@ -421,7 +422,7 @@ public class InspectorPanel : IDisposable
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", displayName, ex.Message);
+            Spot.Engine.Log.Error("Failed to add component '{0}': {1}", displayName, ex.Message);
         }
     }
 
@@ -433,7 +434,7 @@ public class InspectorPanel : IDisposable
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to add component '{0}': {1}", type.Name, ex.Message);
+            Spot.Engine.Log.Error("Failed to add component '{0}': {1}", type.Name, ex.Message);
         }
     }
 
@@ -472,7 +473,7 @@ public class InspectorPanel : IDisposable
             return;
 
         AttachPending(entity, name, guid);
-        Spot.Framework.Log.Info("Created {0}. {1} attaches once the scripts compile.", path, name);
+        Spot.Engine.Log.Info("Created {0}. {1} attaches once the scripts compile.", path, name);
         OpenScript(path);
     }
 
@@ -486,7 +487,7 @@ public class InspectorPanel : IDisposable
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Warn("Could not open '{0}': {1}", path, ex.Message);
+            Spot.Engine.Log.Warn("Could not open '{0}': {1}", path, ex.Message);
         }
     }
 
@@ -537,7 +538,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.Error("Failed to save prefab '{0}': {1}", path, ex.Message);
+                Spot.Engine.Log.Error("Failed to save prefab '{0}': {1}", path, ex.Message);
             }
         }
     }
@@ -599,7 +600,7 @@ public class InspectorPanel : IDisposable
                     return (nint)BuiltinAssets.LoadTexture(asset.Reference).Handle.Id;
 
                 case BuiltinAssetKind.Material:
-                    _materialPreviewFb ??= new Spot.Framework.Graphics.Framebuffer(200, 200);
+                    _materialPreviewFb ??= new Spot.Engine.Graphics.Framebuffer(200, 200);
                     Material material = BuiltinAssets.LoadMaterial(asset.Reference);
                     int signature = MaterialPreviewHelper.Signature(material);
                     if (_materialPreviewPath != asset.Reference || _materialPreviewSig != signature)
@@ -612,7 +613,7 @@ public class InspectorPanel : IDisposable
                     return (nint)_materialPreviewFb.ColorAttachment;
 
                 default:
-                    _builtinPreviewFb ??= new Spot.Framework.Graphics.Framebuffer(200, 200);
+                    _builtinPreviewFb ??= new Spot.Engine.Graphics.Framebuffer(200, 200);
                     if (_builtinPreviewReference != asset.Reference)
                     {
                         ModelPreviewHelper.RenderToFramebuffer(BuiltinAssets.LoadModel(asset.Reference), _builtinPreviewFb);
@@ -627,7 +628,7 @@ public class InspectorPanel : IDisposable
             if (_materialPreviewErrorPath != asset.Reference)
             {
                 _materialPreviewErrorPath = asset.Reference;
-                Spot.Framework.Log.Error("Failed to preview '{0}': {1}", asset.Reference, ex.Message);
+                Spot.Engine.Log.Error("Failed to preview '{0}': {1}", asset.Reference, ex.Message);
             }
 
             return 0;
@@ -640,14 +641,14 @@ public class InspectorPanel : IDisposable
     {
         try
         {
-            string folder = Spot.Engine.Project.Active?.GetAssetDirectory() ?? Environment.CurrentDirectory;
+            string folder = string.IsNullOrEmpty(AssetPath.Root) ? Environment.CurrentDirectory : AssetPath.Root;
             string path = BuiltinAssets.Export(asset.Reference, folder);
-            Spot.Framework.Log.Info("Copied built-in '{0}' to {1}.", asset.Name, path);
+            Spot.Engine.Log.Info("Copied built-in '{0}' to {1}.", asset.Name, path);
             _context.SelectedAssetPath = path;
         }
         catch (Exception ex)
         {
-            Spot.Framework.Log.Error("Failed to copy '{0}' into the project: {1}", asset.Name, ex.Message);
+            Spot.Engine.Log.Error("Failed to copy '{0}' into the project: {1}", asset.Name, ex.Message);
         }
     }
 
@@ -666,7 +667,7 @@ public class InspectorPanel : IDisposable
         uint previewSize = 200;
         if (_materialPreviewFb == null)
         {
-            _materialPreviewFb = new Spot.Framework.Graphics.Framebuffer(previewSize, previewSize);
+            _materialPreviewFb = new Spot.Engine.Graphics.Framebuffer(previewSize, previewSize);
         }
         
         // Rendering the preview is a full offscreen draw, so only do it when the selected material or one of
@@ -689,7 +690,7 @@ public class InspectorPanel : IDisposable
                 if (_materialPreviewErrorPath != path)
                 {
                     _materialPreviewErrorPath = path;
-                    Spot.Framework.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
+                    Spot.Engine.Log.Error("Failed to render material preview for '{0}': {1}", path, ex.Message);
                 }
             }
         }
@@ -775,7 +776,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.Error("Failed to set material texture: {0}", ex.Message);
+                Spot.Engine.Log.Error("Failed to set material texture: {0}", ex.Message);
             }
         }
 
@@ -788,7 +789,7 @@ public class InspectorPanel : IDisposable
             }
             catch (Exception ex)
             {
-                Spot.Framework.Log.Error("Failed to set material normal map: {0}", ex.Message);
+                Spot.Engine.Log.Error("Failed to set material normal map: {0}", ex.Message);
             }
         }
     }

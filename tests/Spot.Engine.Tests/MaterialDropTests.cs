@@ -3,6 +3,7 @@ using System.Linq;
 using Spot.DebugUI.UI;
 using Spot.DebugUI.Undo;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
 using Spot.Tests;
 

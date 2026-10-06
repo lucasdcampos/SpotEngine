@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using Spot.Framework.Audio;
+using Spot.Engine.Audio;
 using Xunit;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the mixer's routing maths — the gain a sound ends up with after its bus chain, mutes, and solos — plus

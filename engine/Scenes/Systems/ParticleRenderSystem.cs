@@ -1,7 +1,6 @@
 using System.Numerics;
-using Spot.Engine.Rendering;
-using Spot.Framework.Graphics;
-using Spot.Framework.Mathematics;
+using Spot.Engine.Graphics;
+using Spot.Engine.Mathematics;
 
 namespace Spot.Engine.Scenes;
 

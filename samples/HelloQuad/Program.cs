@@ -1,8 +1,8 @@
-// Level 1 — Spot.Framework.Core only. You own the loop: open a window, poll it, draw, present.
+// Level 1 — the low level APIs only. You own the loop: open a window, poll it, draw, present.
 // Arrow keys / WASD move the square, Escape quits. `--frames N` exits after N frames (smoke tests).
 using System.Numerics;
-using Spot.Framework;
-using Spot.Framework.Graphics;
+using Spot.Engine;
+using Spot.Engine.Graphics;
 
 int maxFrames = args.Length == 2 && args[0] == "--frames" && int.TryParse(args[1], out int n) ? n : -1;
 

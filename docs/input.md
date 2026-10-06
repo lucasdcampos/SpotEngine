@@ -32,6 +32,11 @@ worked:
 Gamepads are read the same way: buttons (held / pressed / released) and analog axes — sticks and
 triggers — either from a specific pad or from whichever connected pad pushes hardest.
 
+For **text entry** — a name, a chat line, a search box — read `Input.TypedText`: the characters typed this
+frame, in order, as the platform produced them from the keyboard layout, shift and key repeat (accents
+included). Append it to your field each frame; control characters are left out, so handle Backspace and
+Enter as keys. Like every other read it is empty while input is captured.
+
 This is the most direct option and is perfect for prototypes and editor tooling. For shipping game
 code, prefer **actions**, so the keys aren't hard-coded.
 

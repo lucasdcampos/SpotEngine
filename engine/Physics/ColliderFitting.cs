@@ -1,8 +1,9 @@
 using System.Numerics;
 using Spot.Engine.Assets;
+using Spot.Engine;
 using Spot.Engine.Scenes;
-using Spot.Framework.Graphics;
-using Spot.Framework.Mathematics;
+using Spot.Engine.Graphics;
+using Spot.Engine.Mathematics;
 
 namespace Spot.Engine.Physics;
 

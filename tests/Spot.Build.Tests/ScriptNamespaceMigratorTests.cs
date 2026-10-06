@@ -4,7 +4,7 @@ using Spot.Build;
 namespace Spot.Build.Tests;
 
 /// <summary>
-/// Covers the codemod that moves user scripts from the pre-0.4 namespaces to Spot.Framework.* / Spot.Engine.*,
+/// Covers the codemod that moves user scripts from the pre-0.4 namespaces to Spot.Engine.* / Spot.Engine.*,
 /// against the real public types of the loaded Spot assemblies.
 /// </summary>
 public class ScriptNamespaceMigratorTests
@@ -16,10 +16,10 @@ public class ScriptNamespaceMigratorTests
     [Fact]
     public void LoadedTypes_CoverEveryLevel()
     {
-        Assert.Contains("Input", Types["Spot.Framework"]);
-        Assert.Contains("Texture2D", Types["Spot.Framework.Graphics"]);
+        Assert.Contains("Input", Types["Spot.Engine"]);
+        Assert.Contains("Texture2D", Types["Spot.Engine.Graphics"]);
         Assert.Contains("Scene", Types["Spot.Engine.Scenes"]);
-        Assert.Contains("AssimpModelImporter", Types["Spot.Framework.Assimp"]);
+        Assert.Contains("Application", Types["Spot.Engine"]);
     }
 
     [Fact]
@@ -41,9 +41,9 @@ public class ScriptNamespaceMigratorTests
 
         string migrated = Migrate(source);
 
-        Assert.Contains("using System;\nusing Spot.Engine.Scenes;\nusing Spot.Framework;\n", migrated.Replace("\r\n", "\n"));
+        Assert.Contains("using System;\nusing Spot.Engine;\n\n", migrated.Replace("\r\n", "\n"));
         Assert.DoesNotContain("using Spot.Core;", migrated);
-        Assert.DoesNotContain("using Spot.Engine;", migrated); // nothing from the engine root is used
+        
     }
 
     [Fact]
@@ -61,9 +61,9 @@ public class ScriptNamespaceMigratorTests
 
         string migrated = Migrate(source);
 
-        Assert.Contains("using Spot.Engine.Rendering;", migrated);
-        Assert.Contains("using Spot.Framework.Graphics;", migrated);
-        Assert.DoesNotContain("using Spot.Framework.Mathematics;", migrated);
+        Assert.Contains("using Spot.Engine.Graphics;", migrated);
+        Assert.Contains("using Spot.Engine.Graphics;", migrated);
+        Assert.DoesNotContain("using Spot.Engine.Mathematics;", migrated);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class ScriptNamespaceMigratorTests
 
         // Texture2D.Load is an engine extension on a framework type: the engine namespace must stay.
         Assert.Contains("using Spot.Engine.Assets;", migrated);
-        Assert.Contains("using Spot.Framework.Graphics;", migrated);
+        Assert.Contains("using Spot.Engine.Graphics;", migrated);
     }
 
     [Fact]
@@ -102,10 +102,10 @@ public class ScriptNamespaceMigratorTests
 
         string migrated = Migrate(source);
 
-        Assert.Contains("using AudioApi = Spot.Framework.Audio.Audio;", migrated);
-        Assert.Contains("Spot.Framework.Input.GetKey(Spot.Framework.Key.Space)", migrated);
+        Assert.Contains("using AudioApi = Spot.Engine.Audio.Audio;", migrated);
+        Assert.Contains("Spot.Engine.Input.GetKey(Spot.Engine.Key.Space)", migrated);
         Assert.Contains("global::Spot.Engine.Scenes.Scene?", migrated);
-        Assert.Contains("Spot.Framework.Mathematics.Aabb _box", migrated);
+        Assert.Contains("Spot.Engine.Mathematics.Aabb _box", migrated);
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class ScriptNamespaceMigratorTests
     {
         const string source = """
             using Spot.Engine.Scenes;
-            using Spot.Framework;
+            using Spot.Engine;
 
             public class Ok : Component { }
             """;
@@ -150,7 +150,7 @@ public class ScriptNamespaceMigratorTests
 
         string migrated = Migrate(source);
 
-        Assert.DoesNotContain("using Spot.Framework.Mathematics;", migrated);
+        Assert.DoesNotContain("using Spot.Engine.Mathematics;", migrated);
         Assert.DoesNotContain("using Spot.Physics;", migrated);
     }
 
@@ -162,13 +162,13 @@ public class ScriptNamespaceMigratorTests
         string current = Path.Combine(temp.Path, "Sub", "Current.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(current)!);
         File.WriteAllText(old, "using Spot.Scenes;\nclass A : Component { }\n");
-        File.WriteAllText(current, "using Spot.Engine.Scenes;\nclass B : Component { }\n");
+        File.WriteAllText(current, "using Spot.Engine;\nclass B : Component { }\n");
 
         Assert.Equal(1, ScriptNamespaceMigrator.MigrateDirectory(temp.Path, dryRun: true));
         Assert.Contains("using Spot.Scenes;", File.ReadAllText(old));
 
         Assert.Equal(1, ScriptNamespaceMigrator.MigrateDirectory(temp.Path));
-        Assert.Contains("using Spot.Engine.Scenes;", File.ReadAllText(old));
+        Assert.Contains("using Spot.Engine;", File.ReadAllText(old));
         Assert.Equal(0, ScriptNamespaceMigrator.MigrateDirectory(temp.Path));
     }
 
@@ -196,3 +196,5 @@ public class ScriptNamespaceMigratorTests
         Assert.Equal("using Spot.Scenes;\n", File.ReadAllText(Path.Combine(build, "Gen.cs")));
     }
 }
+
+

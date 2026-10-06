@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Spot.Engine.Assets;
-using Spot.Framework.Graphics;
+using Spot.Engine.Graphics;
 using Xunit;
 using Spot.Tests;
 

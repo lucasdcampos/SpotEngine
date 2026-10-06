@@ -1,9 +1,9 @@
 using System.Numerics;
-using Spot.Framework.Animation;
-using Spot.Framework.Graphics;
+using Spot.Engine.Animation;
+using Spot.Engine.Graphics;
 using Spot.Tests.Fakes;
 
-namespace Spot.Framework.Tests;
+namespace Spot.Engine.Tests;
 
 /// <summary>
 /// Covers the framework's code-only 3D: the camera, the skeleton (pose sampling and skinning palettes) and the
